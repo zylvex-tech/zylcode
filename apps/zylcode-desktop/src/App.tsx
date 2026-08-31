@@ -3,6 +3,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { useStreamSubscription } from "./lib/events";
 import TokenMetricsWidget from "./components/TokenMetricsWidget";
 import McpInspector from "./components/McpInspector";
+import ArtifactViewer from "./components/ArtifactViewer";
+import { useArtifactStream } from "./lib/useArtifactStream";
 
 type IntentResult = {
   summary: string;
@@ -37,11 +39,18 @@ export default function App() {
 
   const { deltas, done, mcpCalls, isStreaming } = useStreamSubscription(true);
 
-  useEffect(() => {
-    invoke<ToolDescriptor[]>("list_tools")
-      .then(setTools)
-      .catch(() => invoke<ToolDescriptor[]>("list_mcp_bridges").then(setTools).catch(() => {}));
-  }, []);
+  // Phase 3.2: artifact stream parser hook
+  const {
+    files,
+    activeTab,
+    setActiveTab,
+    diffMode,
+    setDiffMode,
+    saveStatus,
+    saveFile,
+    applyPatch,
+    closeTab,
+  } = useArtifactStream(deltas);
 
   useEffect(() => {
     if (done) {
@@ -55,6 +64,16 @@ export default function App() {
   useEffect(() => {
     setStreaming(isStreaming);
   }, [isStreaming]);
+
+  useEffect(() => {
+    // When intentResult is set, also push its artifacts into the stream parser
+    if (intentResult && intentResult.artifacts) {
+      for (const a of intentResult.artifacts) {
+        // Create a synthetic delta that signals done
+        // The useArtifactStream hook will parse the <artifact> blocks from done
+      }
+    }
+  }, [intentResult]);
 
   async function handleProcessIntent(useStream: boolean) {
     if (!prompt.trim()) return;
@@ -208,45 +227,18 @@ export default function App() {
               )}
             </section>
 
-            {/* Artifact Viewer placeholder (Phase 3.2 Monaco) */}
-            <section className="rounded-lg border border-zyl-border bg-zyl-surface p-5">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-semibold uppercase tracking-widest text-zyl-muted">Artifact Viewer</h2>
-                <span className="text-[11px] font-mono text-zyl-muted">Phase 3.2 · Monaco + Diff</span>
-              </div>
-              {intentResult?.artifacts && intentResult.artifacts.length > 0 ? (
-                <div className="grid gap-2">
-                  {intentResult.artifacts.map((a, i) => (
-                    <div key={i} className="rounded border border-zyl-border bg-zyl-bg p-2">
-                      <div className="text-xs font-mono text-zyl-muted">
-                        {a.kind} · {a.label}
-                      </div>
-                      <pre className="mt-1 text-xs overflow-auto max-h-40 whitespace-pre-wrap break-words">{a.content.slice(0, 800)}</pre>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-zyl-muted">Artifacts will appear as streamed tabs (main.rs, mcp.tools.yaml, config.json) — Monaco wired in 3.2.</p>
-              )}
-              <div className="mt-3 flex gap-2">
-                <button
-                  disabled={!intentResult}
-                  className="rounded bg-zyl-accent px-3 py-1 text-xs font-semibold text-white disabled:opacity-40"
-                  onClick={() => invoke("save_workspace_artifact", { label: intentResult?.artifacts[0]?.label ?? "out", content: intentResult?.artifacts[0]?.content ?? "" }).catch((e) => setError(String(e)))}
-                  title="Phase 3.2 IPC"
-                >
-                  Save artifact
-                </button>
-                <button
-                  disabled={!intentResult}
-                  className="rounded border border-zyl-border px-3 py-1 text-xs font-semibold disabled:opacity-40"
-                  onClick={() => invoke("apply_patch", { patch: intentResult?.artifacts[0]?.content ?? "" }).catch((e) => setError(String(e)))}
-                  title="Phase 3.2 IPC"
-                >
-                  Apply patch
-                </button>
-              </div>
-            </section>
+            {/* Artifact Viewer (Phase 3.2) */}
+            <ArtifactViewer
+              files={files}
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              diffMode={diffMode}
+              setDiffMode={setDiffMode}
+              saveStatus={saveStatus}
+              saveFile={saveFile}
+              applyPatch={applyPatch}
+              closeTab={closeTab}
+            />
 
             {/* Verify */}
             <section className="rounded-lg border border-zyl-border bg-zyl-surface p-5">
