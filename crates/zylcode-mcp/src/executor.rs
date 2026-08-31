@@ -31,6 +31,11 @@ fn is_transient(err: &anyhow::Error) -> bool {
         || s.contains("connection")
         || s.contains("transient")
         || s.contains("busy")
+        || s.contains("stream")
+        || s.contains("sse")
+        || s.contains("closed")
+        || s.contains("disconnect")
+        || s.contains("unexpected")
 }
 
 /// Execute a tool with structured logging, 30s timeout, and up to 2 transient retries.

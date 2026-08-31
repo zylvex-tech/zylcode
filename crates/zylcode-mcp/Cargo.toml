@@ -21,6 +21,8 @@ notify = { workspace = true }
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
 tokio = { workspace = true, features = ["rt-multi-thread"] }
+fastrand = "2"
+tempfile = "3"
 
 [[bench]]
 name = "concurrency"
