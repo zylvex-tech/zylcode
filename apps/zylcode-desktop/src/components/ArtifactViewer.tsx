@@ -1,4 +1,5 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
+import { Editor, DiffEditor } from "@monaco-editor/react";
 import { useArtifactStream } from "../lib/useArtifactStream";
 import { ArtifactFile } from "../lib/useArtifactStream";
 
@@ -34,6 +35,8 @@ const EXT_LANGUAGE_MAP: Record<string, string> = {
   zig: "zig",
 };
 
+const MONACO_THEME = "vs-dark";
+
 export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
   files,
   activeTab,
@@ -52,27 +55,39 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
     message: string;
     type: "success" | "error";
   }>({ show: false, message: "", type: "success" });
+  const [originalContent, setOriginalContent] = React.useState<string>("");
 
+  // Load original workspace content when diff mode is enabled
   useEffect(() => {
-    if (!editingFile) return;
-    const file = files.get(editingFile!);
-    if (!file) return;
-    const ext = editingFile.split(".").pop()?.toLowerCase() ?? "";
-    const lang = EXT_LANGUAGE_MAP[ext] || "plaintext";
-    const container = document.getElementById(`monaco-editor-${editingFile.replace(/\./g, "-")}`);
-    if (!container) return;
-    if ((window as any).monaco) {
-      // @ts-ignore
-      (window as any).monaco.editor.create(container, {
-        value: file.content,
-        language: lang as any,
-        automaticLayout: true,
-        fontSize: 13,
-        theme: "vs-dark",
-        minimap: { enabled: false },
-      });
-    }
-  }, [editingFile, files]);
+    if (!diffMode || !activeTab) return;
+    // In a real implementation, this would read the original file from disk
+    // For now, we'll use empty string to show all content as additions
+    setOriginalContent("");
+  }, [diffMode, activeTab]);
+
+  // Global keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+      const modifier = isMac ? e.metaKey : e.ctrlKey;
+
+      if (modifier && e.key === "s") {
+        e.preventDefault();
+        if (editingFile) {
+          handleSave();
+        }
+      }
+      if (modifier && e.key === "Enter") {
+        e.preventDefault();
+        if (activeTab && !editingFile) {
+          handleApplyPatch();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [editingFile, activeTab, saveFile, applyPatch]);
 
   const handleSave = async () => {
     if (!editingFile) return;
@@ -82,8 +97,8 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
   };
 
   const handleApplyPatch = async () => {
-    if (!editingFile) return;
-    await applyPatch(editingFile);
+    if (!activeTab) return;
+    await applyPatch(activeTab);
     setSaveBanner({ show: true, message: "Patch applied!", type: "success" });
     setTimeout(() => setSaveBanner({ show: false, message: "", type: "success" }), 2000);
   };
@@ -123,50 +138,79 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
     );
   });
 
-  // Compute the file content display section
+  // Get language for current file
+  const getLanguage = (path: string) => {
+    const ext = path.split(".").pop()?.toLowerCase() ?? "";
+    return EXT_LANGUAGE_MAP[ext] || "plaintext";
+  };
+
+  // Monaco editor options
+  const editorOptions = React.useMemo(() => ({
+    theme: MONACO_THEME,
+    automaticLayout: true,
+    fontSize: 13,
+    minimap: { enabled: false },
+    scrollBeyondLastLine: false,
+    renderWhitespace: "selection" as const,
+  }), []);
+
+  // Diff editor options
+  const diffEditorOptions = React.useMemo(() => ({
+    theme: MONACO_THEME,
+    renderSideBySide: true,
+    enableSplitViewResizing: true,
+    automaticLayout: true,
+    fontSize: 13,
+    minimap: { enabled: false },
+    readOnly: true,
+  }), []);
+
   let fileDisplay: React.ReactNode;
-  if (isEditing && editingFile) {
+
+  if (isEditing && editingFile && activeFile) {
     fileDisplay = (
-      <div className="flex-1">
-        <textarea
-          value={fileContent}
-          onChange={(e) => setFileContent(e.target.value)}
-          placeholder="Start editing..."
-          className="w-full h-full text-sm font-mono resize-none bg-zyl-bg text-white outline-none"
+      <div className="flex-1 min-h-0">
+        <Editor
+          height="100%"
+          language={getLanguage(editingFile)}
+          value={fileContent || activeFile.content}
+          options={editorOptions}
+          onChange={(value) => value && setFileContent(value)}
+          theme={MONACO_THEME}
+        />
+      </div>
+    );
+  } else if (activeFile && diffMode) {
+    // Diff view - use Monaco DiffEditor
+    const language = getLanguage(activeTab!);
+    fileDisplay = (
+      <div className="flex-1 min-h-0" style={{ height: "100%" }}>
+        <DiffEditor
+          height="100%"
+          language={language}
+          original={originalContent}
+          modified={activeFile.content}
+          options={diffEditorOptions}
+          theme={MONACO_THEME}
         />
       </div>
     );
   } else if (activeFile) {
-    const showDiff = diffMode && !isEditing;
-    if (showDiff && activeFile) {
-      fileDisplay = (
-        <div className="flex-1">
-          <div className="mt-3 p-3 border-t border-zyl-border">
-            <h3 className="text-[10px] font-semibold uppercase tracking-widest text-zyl-muted mb-2">Diff Preview</h3>
-            <pre className="text-[10px] font-mono text-zyl-muted whitespace-pre-wrap break-words">
-              {activeFile.content.slice(0, 2000)}
-            </pre>
-          </div>
-        </div>
-      );
-    } else if (!showDiff && activeFile) {
-      fileDisplay = (
-        <div className="flex-1">
-          <div className="mt-3 p-3 border-t border-zyl-border">
-            <pre className="text-[10px] font-mono text-zyl-muted whitespace-pre-wrap break-words">
-              {activeFile.content.slice(0, 2000)}
-            </pre>
-          </div>
-        </div>
-      );
-    } else {
-      fileDisplay = (
-        <p className="p-4 text-zyl-muted text-center">Select a file tab to preview</p>
-      );
-    }
+    // Code view - use Monaco Editor (read-only)
+    fileDisplay = (
+      <div className="flex-1 min-h-0">
+        <Editor
+          height="100%"
+          language={getLanguage(activeTab!)}
+          value={activeFile.content}
+          options={{ ...editorOptions, readOnly: true }}
+          theme={MONACO_THEME}
+        />
+      </div>
+    );
   } else {
     fileDisplay = (
-      <p className="p-4 text-zyl-muted text-center">No active file</p>
+      <p className="p-4 text-zyl-muted text-center">Select a file tab to preview</p>
     );
   }
 
@@ -196,6 +240,9 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
           >
             {isEditing ? "Done" : "Edit"}
           </button>
+          <div className="text-[10px] text-zyl-muted px-2 pt-1 font-mono">
+            {isMac() ? "⌘S save · ⌘⏎ apply" : "Ctrl+S save · Ctrl+⏎ apply"}
+          </div>
         </div>
       </header>
 
@@ -206,7 +253,7 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
         </div>
 
         {/* Active File Area */}
-        <div className="flex-1">
+        <div className="flex-1 min-h-0">
           {fileDisplay}
         </div>
       </div>
@@ -221,5 +268,9 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
     </div>
   );
 };
+
+function isMac() {
+  return typeof navigator !== "undefined" && navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+}
 
 export default ArtifactViewer;

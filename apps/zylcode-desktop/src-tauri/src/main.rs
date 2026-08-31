@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use std::io::{self, Write};
 use zylcode_core::{EngineConfig, Intent, McpBridgeDescriptor, ZylCodeEngine};
 
 // ---------------------------------------------------------------------------
@@ -227,7 +228,129 @@ async fn marketplace_search(
 // Tauri entry point
 // ---------------------------------------------------------------------------
 
+fn run_interactive(engine: ZylCodeEngine) -> Result<(), String> {
+    println!("ZylCode Interactive Mode");
+    println!("Type 'exit' or 'quit' to quit, 'help' for commands.");
+    println!();
+
+    // Auto-load tools from mcp.tools.yaml
+    {
+        let reg = engine.tool_registry_arc();
+        tauri::async_runtime::block_on(async {
+            let n = zylcode_mcp::register_from_default_location(reg.as_ref()).await;
+            if n > 0 {
+                println!("Loaded {} MCP tools from default location", n);
+            }
+        });
+    }
+
+    let stdin = io::stdin();
+    let mut stdout = io::stdout();
+
+    loop {
+        print!("zylcode> ");
+        stdout.flush().map_err(|e| e.to_string())?;
+
+        let mut input = String::new();
+        stdin.read_line(&mut input).map_err(|e| e.to_string())?;
+        let input = input.trim();
+
+        match input {
+            "" => continue,
+            "exit" | "quit" => {
+                println!("Goodbye!");
+                break;
+            }
+            "help" => {
+                println!("Commands:");
+                println!("  <prompt>     - Process a natural language intent");
+                println!("  tools        - List available MCP tools");
+                println!("  bridges      - List registered MCP bridges");
+                println!("  verify       - Run logic verification");
+                println!("  tokens       - Show token metrics");
+                println!("  help         - Show this help");
+                println!("  exit/quit    - Exit interactive mode");
+            }
+            "tools" => {
+                let tools = tauri::async_runtime::block_on(engine.list_tools());
+                if tools.is_empty() {
+                    println!("No tools registered. Add mcp.tools.yaml to register tools.");
+                } else {
+                    for t in tools {
+                        println!("  {} ({}) - {}", t.id, t.transport, t.description.unwrap_or_default());
+                    }
+                }
+            }
+            "bridges" => {
+                let bridges = tauri::async_runtime::block_on(engine.list_mcp_bridges());
+                if bridges.is_empty() {
+                    println!("No bridges registered.");
+                } else {
+                    for b in bridges {
+                        println!("  {} -> {} [{}]", b.id, b.endpoint, b.transport);
+                    }
+                }
+            }
+            "verify" => {
+                println!("Running verification...");
+                match tauri::async_runtime::block_on(engine.verify_logic()) {
+                    Ok(report) => {
+                        println!("{} — {}ms", if report.passed { "PASSED" } else { "FAILED" }, report.duration_ms);
+                        for c in report.checks {
+                            println!("  {} {}: {}", if c.passed { "✓" } else { "✗" }, c.name, c.message);
+                        }
+                    }
+                    Err(e) => println!("Verification failed: {}", e),
+                }
+            }
+            "tokens" => {
+                let metrics = engine.token_metrics();
+                println!("Tokens: in={} out={} saved={} fallback={}", metrics.input_tokens, metrics.output_tokens, metrics.verification_saved_tokens, metrics.fallback_count);
+            }
+            prompt => {
+                println!("Processing: {}", prompt);
+                let intent = Intent {
+                    prompt: prompt.to_string(),
+                    context: None,
+                    correlation_id: None,
+                };
+                match tauri::async_runtime::block_on(engine.process_intent(intent)) {
+                    Ok(result) => {
+                        println!("\n--- Result ---");
+                        println!("{}", result.summary);
+                        if !result.artifacts.is_empty() {
+                            println!("\nArtifacts:");
+                            for a in result.artifacts {
+                                println!("  [{}] {} ({} chars)", a.kind, a.label, a.content.len());
+                            }
+                        }
+                        println!("--- End ---\n");
+                    }
+                    Err(e) => println!("Error: {}", e),
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
 fn main() {
+    // Check for --interactive flag before Tauri initialization
+    let args: Vec<String> = std::env::args().collect();
+    if args.iter().any(|a| a == "--interactive" || a == "-i") {
+        let engine = ZylCodeEngine::new(EngineConfig {
+            workspace_root: ".".to_string(),
+            verbose: false,
+            extra: Default::default(),
+        });
+        if let Err(e) = run_interactive(engine) {
+            eprintln!("Interactive mode error: {}", e);
+            std::process::exit(1);
+        }
+        return;
+    }
+
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
