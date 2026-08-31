@@ -403,9 +403,9 @@ fn extract_cdata_or_text(inner: &str) -> String {
     let cdata_stripped = content_inner.trim();
     if cdata_stripped.starts_with("<![CDATA[") && cdata_stripped.ends_with("]]>") {
         cdata_stripped[9..cdata_stripped.len() - 3].to_string()
-    } else if cdata_stripped.starts_with("<![CDATA[") {
+    } else if let Some(stripped) = cdata_stripped.strip_prefix("<![CDATA[") {
         // Unclosed CDATA — take remainder after marker.
-        cdata_stripped[9..].to_string()
+        stripped.to_string()
     } else {
         cdata_stripped.to_string()
     }
