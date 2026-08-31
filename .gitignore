@@ -1,0 +1,42 @@
+# Rust
+/target
+**/target
+Cargo.lock
+
+# Node
+node_modules
+.pnpm-store
+dist
+build
+
+# Tauri
+apps/zylcode-desktop/src-tauri/target
+
+# Vite
+apps/zylcode-desktop/dist
+
+# TypeScript
+*.tsbuildinfo
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*

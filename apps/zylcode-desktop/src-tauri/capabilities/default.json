@@ -1,0 +1,15 @@
+{
+  "$schema": "https://schema.tauri.app/config/2/capabilities/default.json",
+  "identifier": "default",
+  "description": "Default capabilities for ZylCode desktop",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-close",
+    "core:window:allow-minimize",
+    "core:window:allow-maximize",
+    "core:window:allow-set-size",
+    "core:window:allow-start-dragging",
+    "shell:allow-open"
+  ]
+}

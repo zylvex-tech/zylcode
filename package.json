@@ -1,0 +1,28 @@
+{
+  "name": "zylcode",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ZylCode — autonomous, cross-platform developer desktop engine, CLI, and real-time artifact visualizer",
+  "type": "module",
+  "workspaces": [
+    "apps/*"
+  ],
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter zylcode-desktop dev",
+    "build": "pnpm --filter zylcode-desktop build",
+    "tauri": "pnpm --filter zylcode-desktop tauri",
+    "tauri:dev": "pnpm --filter zylcode-desktop tauri dev",
+    "tauri:build": "pnpm --filter zylcode-desktop tauri build",
+    "lint": "pnpm -r lint",
+    "format": "pnpm -r format",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0"
+  }
+}

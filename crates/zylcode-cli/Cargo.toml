@@ -1,0 +1,24 @@
+[package]
+name = "zylcode-cli"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "ZylCode cross-platform CLI application"
+rust-version.workspace = true
+
+[[bin]]
+name = "zylcode"
+path = "src/main.rs"
+
+[dependencies]
+zylcode-core = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+async-trait = { workspace = true }
+clap = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }

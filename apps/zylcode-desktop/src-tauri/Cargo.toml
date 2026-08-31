@@ -1,0 +1,24 @@
+[package]
+name = "zylcode-desktop"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "ZylCode Tauri 2.0 desktop host — cross-platform (macOS, Windows, Linux)"
+rust-version.workspace = true
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+zylcode-core = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+async-trait = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
