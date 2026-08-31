@@ -5,7 +5,6 @@ use crate::planner::IntentPlanner;
 use crate::router::{RouterConfig, TokenRouter, TokenSnapshot};
 use crate::{Intent, IntentResult, VerificationReport};
 use anyhow::{Context, Result};
-use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tracing::{info, warn};
@@ -265,27 +264,43 @@ impl ArtifactPipeline {
 
     /// Parse `<artifact>` blocks from an LLM response. Supports both the
     /// canonical `<zylcode-response>` envelope and bare markdown code fences
-    /// as fallback.
+    /// as fallback. Zero-alloc scanning via `memchr` — no per-call `Regex`.
     pub fn parse_artifacts(raw: &str) -> Vec<Artifact> {
         let mut out = Vec::new();
+        out.extend(Self::parse_artifacts_memchr(raw));
+        // Fallback: extract ``` blocks when no XML artifacts were found.
+        if out.is_empty() {
+            out.extend(parse_code_fences(raw));
+        }
+        out
+    }
 
-        // Primary: XML-like <artifact kind="...">...</artifact> extraction.
-        // We use a regex that captures kind, optional path attr, and inner content.
-        // Content may include CDATA or plain text with nested code.
-        let re = Regex::new(
-            r#"(?s)<artifact\s+kind="(?P<kind>[^"]+)"[^>]*?(?:path="(?P<path>[^"]+)")?[^>]*>(?P<inner>.*?)</artifact>"#,
-        )
-        .expect("artifact regex is valid");
-
-        for cap in re.captures_iter(raw) {
-            let kind_raw = cap.name("kind").map(|m| m.as_str()).unwrap_or("").to_lowercase();
-            let path = cap
-                .name("path")
-                .map(|m| m.as_str().to_string())
+    /// Internal memchr-based scanner — returns slices where possible and
+    /// allocates only for final `Artifact` fields.
+    fn parse_artifacts_memchr(raw: &str) -> Vec<Artifact> {
+        let mut out = Vec::new();
+        let mut pos = 0;
+        let raw_bytes = raw.as_bytes();
+        while let Some(start) = memchr::memmem::find(&raw_bytes[pos..], b"<artifact") {
+            let abs_start = pos + start;
+            let tag_end = match memchr::memchr(b'>', &raw_bytes[abs_start..]) {
+                Some(o) => abs_start + o,
+                None => break,
+            };
+            let tag = &raw[abs_start..=tag_end];
+            // Extract kind="..."
+            let kind_raw = Self::extract_attr(tag, "kind").unwrap_or("").to_lowercase();
+            let path = Self::extract_attr(tag, "path")
+                .map(|s| s.to_string())
                 .unwrap_or_else(|| default_path_for_kind(&kind_raw));
-            let inner = cap.name("inner").map(|m| m.as_str()).unwrap_or("");
-
-            let content = extract_cdata_or_text(inner);
+            // Find closing </artifact>
+            let inner_start = tag_end + 1;
+            let close_rel = match memchr::memmem::find(&raw_bytes[inner_start..], b"</artifact>") {
+                Some(o) => o,
+                None => break,
+            };
+            let inner = &raw[inner_start..inner_start + close_rel];
+            let content = extract_cdata_or_text(inner).to_string();
 
             let artifact = match kind_raw.as_str() {
                 "uicomponent" | "ui_component" | "reactcomponent" | "react_component" => Artifact::UiComponent {
@@ -314,24 +329,24 @@ impl ArtifactPipeline {
                         obligations,
                     }
                 }
-                _ => {
-                    // Unknown kind — default to RustModule to preserve content.
-                    Artifact::RustModule {
-                        path,
-                        content,
-                        tests: None,
-                    }
-                }
+                _ => Artifact::RustModule {
+                    path,
+                    content,
+                    tests: None,
+                },
             };
             out.push(artifact);
+            pos = inner_start + close_rel + "</artifact>".len();
         }
-
-        // Fallback: extract ``` blocks when no XML artifacts were found.
-        if out.is_empty() {
-            out.extend(parse_code_fences(raw));
-        }
-
         out
+    }
+
+    #[inline]
+    fn extract_attr<'a>(tag: &'a str, name: &str) -> Option<&'a str> {
+        let needle = format!(r#"{}=""#, name);
+        let start = tag.find(&needle)? + needle.len();
+        let end = tag[start..].find('"')?;
+        Some(&tag[start..start + end])
     }
 
     async fn default_verification(workspace_root: &str) -> Result<VerificationReport> {
@@ -379,11 +394,9 @@ fn default_path_for_kind(kind: &str) -> String {
     }
 }
 
-fn extract_cdata_or_text(inner: &str) -> String {
-    // Handle <![CDATA[ ... ]]> wrappers and nested <content> tags.
+/// Zero-alloc inner: returns a slice borrowed from `inner`. Caller decides when to allocate.
+fn extract_cdata_or_text_slice(inner: &str) -> &str {
     let trimmed = inner.trim();
-
-    // If there's a <content> sub-tag, extract inside it first.
     let content_inner = if let Some(start) = trimmed.find("<content") {
         if let Some(tag_end) = trimmed[start..].find('>') {
             let content_start = start + tag_end + 1;
@@ -398,17 +411,18 @@ fn extract_cdata_or_text(inner: &str) -> String {
     } else {
         trimmed
     };
-
-    // Strip CDATA wrapper if present.
     let cdata_stripped = content_inner.trim();
     if cdata_stripped.starts_with("<![CDATA[") && cdata_stripped.ends_with("]]>") {
-        cdata_stripped[9..cdata_stripped.len() - 3].to_string()
+        &cdata_stripped[9..cdata_stripped.len() - 3]
     } else if let Some(stripped) = cdata_stripped.strip_prefix("<![CDATA[") {
-        // Unclosed CDATA — take remainder after marker.
-        stripped.to_string()
+        stripped
     } else {
-        cdata_stripped.to_string()
+        cdata_stripped
     }
+}
+
+fn extract_cdata_or_text(inner: &str) -> String {
+    extract_cdata_or_text_slice(inner).to_string()
 }
 
 fn extract_obligations(content: &str) -> Vec<String> {
@@ -420,13 +434,22 @@ fn extract_obligations(content: &str) -> Vec<String> {
 }
 
 fn parse_code_fences(raw: &str) -> Vec<Artifact> {
-    // Matches ```lang\ncontent\n``` blocks.
-    let re = Regex::new(r"(?s)```(?P<lang>\w*)\n(?P<code>.*?)```").expect("fence regex valid");
     let mut out = Vec::new();
-    for cap in re.captures_iter(raw) {
-        let lang = cap.name("lang").map(|m| m.as_str()).unwrap_or("").to_lowercase();
-        let code = cap.name("code").map(|m| m.as_str()).unwrap_or("").to_string();
+    let bytes = raw.as_bytes();
+    let mut pos = 0;
+    while let Some(start) = memchr::memmem::find(&bytes[pos..], b"```") {
+        let abs = pos + start + 3;
+        // lang is up to next '\n'
+        let lang_end = memchr::memchr(b'\n', &bytes[abs..]).map(|o| abs + o).unwrap_or(bytes.len());
+        let lang = raw[abs..lang_end].trim().to_lowercase();
+        let code_start = if lang_end < bytes.len() { lang_end + 1 } else { lang_end };
+        let close_rel = match memchr::memmem::find(&bytes[code_start..], b"```") {
+            Some(o) => o,
+            None => break,
+        };
+        let code = raw[code_start..code_start + close_rel].to_string();
         if code.trim().is_empty() {
+            pos = code_start + close_rel + 3;
             continue;
         }
         let (kind, path) = match lang.as_str() {
@@ -456,6 +479,7 @@ fn parse_code_fences(raw: &str) -> Vec<Artifact> {
             },
         };
         out.push(artifact);
+        pos = code_start + close_rel + 3;
     }
     out
 }

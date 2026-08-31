@@ -1,12 +1,16 @@
 //! Multi-provider token router — routes LLM prompts across OpenRouter,
 //! DeepSeek, Anthropic, and local Ollama with fallback + telemetry.
 
+pub mod cache;
+
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use tracing::{info, warn};
+
+pub use cache::SpeculativeCache;
 
 // ---------------------------------------------------------------------------
 // Model provider
@@ -58,6 +62,15 @@ impl ModelProvider {
 // Router configuration
 // ---------------------------------------------------------------------------
 
+/// How to trim prompts that exceed the context window.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum ContextTrim {
+    TruncateHead,
+    #[default]
+    SlidingWindow,
+}
+
 /// Configuration controlling routing, fallback, and authentication.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RouterConfig {
@@ -81,6 +94,13 @@ pub struct RouterConfig {
     /// Maximum fallback attempts (0 = no fallback).
     #[serde(default = "default_max_retries")]
     pub max_retries: u32,
+    /// Adaptive context window in tokens (estimated as `len/4`). System prompt
+    /// is always preserved; excess prompt head is trimmed.
+    #[serde(default = "default_context_window_tokens")]
+    pub context_window_tokens: u32,
+    /// Strategy used when trimming.
+    #[serde(default)]
+    pub trim_strategy: ContextTrim,
 }
 
 fn default_timeout_ms() -> u64 {
@@ -88,6 +108,9 @@ fn default_timeout_ms() -> u64 {
 }
 fn default_max_retries() -> u32 {
     1
+}
+fn default_context_window_tokens() -> u32 {
+    8192
 }
 
 impl Default for RouterConfig {
@@ -101,8 +124,40 @@ impl Default for RouterConfig {
             base_url_overrides: Default::default(),
             timeout_ms: default_timeout_ms(),
             max_retries: default_max_retries(),
+            context_window_tokens: default_context_window_tokens(),
+            trim_strategy: ContextTrim::default(),
         }
     }
+}
+
+/// Trim `(prompt, system)` to fit `context_window_tokens`. System is preserved;
+/// prompt head is dropped so tail (most recent intent) remains.
+/// Returns owned trimmed strings — slices would borrow transient temporaries.
+pub fn trim_to_window(prompt: &str, system: &str, window_tokens: u32, strategy: ContextTrim) -> (String, String) {
+    let window = window_tokens.max(256) as usize;
+    let est = |s: &str| s.len().div_ceil(4);
+    let system_tokens = est(system);
+    if system_tokens >= window {
+        // System itself exceeds window — truncate system head conservatively.
+        let keep_chars = (window - 16) * 4;
+        let trimmed_system = system[system.len().saturating_sub(keep_chars)..].to_string();
+        return (String::new(), trimmed_system);
+    }
+    let remaining = window - system_tokens;
+    let prompt_tokens = est(prompt);
+    if prompt_tokens <= remaining {
+        return (prompt.to_string(), system.to_string());
+    }
+    let keep_prompt_tokens = remaining.saturating_sub(8);
+    let keep_chars = keep_prompt_tokens * 4;
+    let prompt_trimmed = match strategy {
+        ContextTrim::TruncateHead | ContextTrim::SlidingWindow => {
+            // Keep tail of prompt; for SlidingWindow we could keep a midpoint,
+            // but head-trim is optimal for intent tail relevance.
+            prompt[prompt.len().saturating_sub(keep_chars)..].to_string()
+        }
+    };
+    (prompt_trimmed, system.to_string())
 }
 
 impl RouterConfig {
@@ -199,11 +254,32 @@ pub struct TokenSnapshot {
 // ---------------------------------------------------------------------------
 
 /// Routes prompts to the configured LLM providers with automatic fallback.
-#[derive(Debug, Clone)]
 pub struct TokenRouter {
     config: RouterConfig,
     metrics: Arc<TokenMetrics>,
     http: reqwest::Client,
+    cache: Arc<SpeculativeCache>,
+}
+
+impl std::fmt::Debug for TokenRouter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TokenRouter")
+            .field("config", &self.config)
+            .field("metrics", &self.metrics.snapshot())
+            .field("cache_len", &self.cache.len())
+            .finish()
+    }
+}
+
+impl Clone for TokenRouter {
+    fn clone(&self) -> Self {
+        Self {
+            config: self.config.clone(),
+            metrics: Arc::clone(&self.metrics),
+            http: self.http.clone(),
+            cache: Arc::clone(&self.cache),
+        }
+    }
 }
 
 impl TokenRouter {
@@ -215,6 +291,7 @@ impl TokenRouter {
         Ok(Self {
             config,
             metrics: Arc::new(TokenMetrics::default()),
+            cache: Arc::new(SpeculativeCache::with_defaults()),
             http,
         })
     }
@@ -227,6 +304,20 @@ impl TokenRouter {
         Ok(Self {
             config,
             metrics,
+            http,
+            cache: Arc::new(SpeculativeCache::with_defaults()),
+        })
+    }
+
+    pub fn with_cache(config: RouterConfig, cache: Arc<SpeculativeCache>) -> Result<Self> {
+        let http = reqwest::Client::builder()
+            .timeout(Duration::from_millis(config.timeout_ms))
+            .build()
+            .context("failed to build HTTP client")?;
+        Ok(Self {
+            config,
+            metrics: Arc::new(TokenMetrics::default()),
+            cache,
             http,
         })
     }
@@ -243,11 +334,38 @@ impl TokenRouter {
         self.metrics.snapshot()
     }
 
+    pub fn cache(&self) -> &SpeculativeCache {
+        &self.cache
+    }
+
     // -- public API ---------------------------------------------------------
 
     /// Dispatch a prompt with a system preamble, applying fallback on
     /// rate-limit (429) or transient 5xx errors.
+    /// Adaptive trimming is applied first, then speculative cache is probed
+    /// before any HTTP egress.
     pub async fn dispatch_prompt(&self, prompt: &str, system: &str) -> Result<String> {
+        // Adaptive context window trimming — preserve system, trim prompt head.
+        let (prompt_owned, system_owned) = trim_to_window(
+            prompt,
+            system,
+            self.config.context_window_tokens,
+            self.config.trim_strategy,
+        );
+        let prompt = prompt_owned.as_str();
+        let system = system_owned.as_str();
+
+        // Speculative cache probe (hash includes model so fallback model
+        // differences don't collide). Record saved tokens on hit.
+        let primary_model = self.config.primary_model.clone();
+        let cache_key = SpeculativeCache::hash_key(prompt, system, &primary_model);
+        if let Some(cached) = self.cache.get(cache_key) {
+            let saved = (cached.len() / 4) as u64;
+            self.metrics.record_saved(saved);
+            info!(cache_hit = true, saved_tokens = saved, "speculative cache hit");
+            return Ok(cached);
+        }
+
         // Fast path: if no API keys are configured, return a deterministic
         // synthetic response so offline / CI builds remain functional.
         // Ollama is treated as "no key required" — but if no Ollama endpoint
@@ -266,6 +384,7 @@ impl TokenRouter {
             let inp = ((prompt.len() + system.len()) / 4) as u64;
             let out = (synthetic.len() / 4) as u64;
             self.metrics.record_usage(inp, out);
+            self.cache.insert(cache_key, synthetic.clone());
             info!(provider = "synthetic-offline", input_tokens = inp, output_tokens = out, "dispatched prompt offline");
             return Ok(synthetic);
         }
@@ -275,7 +394,10 @@ impl TokenRouter {
             .call_provider(&self.config.primary_provider, &self.config.primary_model, prompt, system)
             .await
         {
-            Ok(text) => return Ok(text),
+            Ok(text) => {
+                self.cache.insert(cache_key, text.clone());
+                return Ok(text);
+            }
             Err(e) if is_retryable(&e) => {
                 warn!(error = %e, "primary provider failed with retryable error, attempting fallback");
                 Some(e)
@@ -305,7 +427,14 @@ impl TokenRouter {
             .call_provider(&fallback_provider, &fallback_model, prompt, system)
             .await
         {
-            Ok(text) => Ok(text),
+            Ok(text) => {
+                // Insert under fallback model key as well so subsequent same-model
+                // calls hit, but also under primary key for primary-model callers.
+                let fallback_key = SpeculativeCache::hash_key(prompt, system, &fallback_model);
+                self.cache.insert(fallback_key, text.clone());
+                self.cache.insert(cache_key, text.clone());
+                Ok(text)
+            }
             Err(fallback_err) => {
                 // Ultimate offline fallback: if no keys were configured at all,
                 // degrade to synthetic so CI / offline tests remain green.
@@ -317,6 +446,7 @@ impl TokenRouter {
                     let inp = ((prompt.len() + system.len()) / 4) as u64;
                     let out = (synthetic.len() / 4) as u64;
                     self.metrics.record_usage(inp, out);
+                    self.cache.insert(cache_key, synthetic.clone());
                     return Ok(synthetic);
                 }
                 let msg = format!(
@@ -362,6 +492,16 @@ impl TokenRouter {
         prompt: &str,
         system: &str,
     ) -> Result<String> {
+        // Apply adaptive trimming again per-provider (idempotent, cheap).
+        let (prompt_owned, system_owned) = trim_to_window(
+            prompt,
+            system,
+            self.config.context_window_tokens,
+            self.config.trim_strategy,
+        );
+        let prompt = prompt_owned.as_str();
+        let system = system_owned.as_str();
+
         let base = self.config.base_url(provider);
         let url = format!("{}{}", base, provider.completions_path());
 
@@ -589,5 +729,38 @@ mod tests {
         assert_eq!(snap.input_tokens, 100);
         assert_eq!(snap.output_tokens, 200);
         assert_eq!(snap.verification_saved_tokens, 50);
+    }
+
+    #[test]
+    fn trim_to_window_preserves_system() {
+        let system = "system prompt that is short";
+        let prompt = "a".repeat(40000);
+        let (trimmed, sys) = trim_to_window(&prompt, system, 100, ContextTrim::SlidingWindow);
+        assert_eq!(sys, system);
+        assert!(trimmed.len() < prompt.len());
+        // window is clamped to min 256 tokens => 1024 chars before system overhead
+        assert!(trimmed.len() <= 1024);
+    }
+
+    #[test]
+    fn trim_to_window_noop_when_fits() {
+        let (p, s) = trim_to_window("hello", "system", 8192, ContextTrim::TruncateHead);
+        assert_eq!(p, "hello");
+        assert_eq!(s, "system");
+    }
+
+    #[tokio::test]
+    async fn speculative_cache_hit_returns_cached() {
+        let cfg = RouterConfig::default();
+        let cache = std::sync::Arc::new(SpeculativeCache::new(8, std::time::Duration::from_secs(60)));
+        let router = TokenRouter::with_cache(cfg, cache.clone()).unwrap();
+        let p = "unique prompt for cache test";
+        let s = "system";
+        let first = router.dispatch_prompt(p, s).await.unwrap();
+        let second = router.dispatch_prompt(p, s).await.unwrap();
+        assert_eq!(first, second);
+        assert_eq!(cache.len(), 1);
+        // Second hit should have recorded saved tokens
+        assert!(router.snapshot().verification_saved_tokens > 0);
     }
 }

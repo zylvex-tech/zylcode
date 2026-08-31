@@ -187,6 +187,28 @@ async fn list_mcp_bridges(
     Ok(state.engine.list_mcp_bridges().await)
 }
 
+/// List dynamic MCP tools from the registry (local `mcp.tools.yaml`).
+#[tauri::command]
+async fn list_tools(
+    state: tauri::State<'_, EngineState>,
+) -> Result<Vec<zylcode_core::ToolDescriptor>, String> {
+    Ok(state.engine.list_tools().await)
+}
+
+/// Execute a dynamic tool with recovery (30s timeout, 2 retries).
+#[tauri::command]
+async fn execute_tool(
+    id: String,
+    params: serde_json::Value,
+    state: tauri::State<'_, EngineState>,
+) -> Result<serde_json::Value, String> {
+    state
+        .engine
+        .execute_tool(&id, params)
+        .await
+        .map_err(|e| e.to_string())
+}
+
 /// Search marketplace extensions by query string.
 #[tauri::command]
 async fn marketplace_search(
@@ -220,6 +242,17 @@ fn main() {
         extra: Default::default(),
     });
 
+    // Auto-load tools from mcp.tools.yaml if present (non-fatal).
+    {
+        let reg = engine.tool_registry_arc();
+        tauri::async_runtime::block_on(async {
+            let n = zylcode_mcp::register_from_default_location(reg.as_ref()).await;
+            if n > 0 {
+                tracing::info!(tools = n, "loaded MCP tools from default location");
+            }
+        });
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .manage(EngineState { engine })
@@ -231,6 +264,8 @@ fn main() {
             verify_logic,
             register_mcp_bridge,
             list_mcp_bridges,
+            list_tools,
+            execute_tool,
             marketplace_search
         ])
         .run(tauri::generate_context!())

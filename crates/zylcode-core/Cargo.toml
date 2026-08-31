@@ -12,9 +12,25 @@ rust-version.workspace = true
 tokio = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+serde_yaml = { workspace = true }
 anyhow = { workspace = true }
 async-trait = { workspace = true }
 tracing = { workspace = true }
 reqwest = { workspace = true }
 futures = { workspace = true }
 regex = { workspace = true }
+ahash = { workspace = true }
+lru = { workspace = true }
+memchr = { workspace = true }
+zylcode-mcp = { workspace = true }
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "router_cache"
+harness = false
+
+[[bench]]
+name = "parse"
+harness = false

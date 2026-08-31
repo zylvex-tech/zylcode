@@ -14,6 +14,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{info, instrument};
+use zylcode_mcp::ToolRegistry;
 
 // ---------------------------------------------------------------------------
 // Engine configuration
@@ -146,6 +147,7 @@ pub struct ZylCodeEngine {
     bridges: Arc<RwLock<HashMap<String, RegisteredBridge>>>,
     marketplace: Arc<RwLock<marketplace::ExtensionRegistry>>,
     pipeline: Arc<pipeline::ArtifactPipeline>,
+    tool_registry: Arc<ToolRegistry>,
 }
 
 impl ZylCodeEngine {
@@ -167,6 +169,7 @@ impl ZylCodeEngine {
             bridges: Arc::new(RwLock::new(HashMap::new())),
             marketplace: Arc::new(RwLock::new(marketplace::ExtensionRegistry::new())),
             pipeline: Arc::new(pipeline),
+            tool_registry: Arc::new(ToolRegistry::new()),
         }
     }
 
@@ -183,7 +186,17 @@ impl ZylCodeEngine {
             bridges: Arc::new(RwLock::new(HashMap::new())),
             marketplace: Arc::new(RwLock::new(marketplace::ExtensionRegistry::new())),
             pipeline: Arc::new(pipeline),
+            tool_registry: Arc::new(ToolRegistry::new()),
         })
+    }
+
+    /// Access the tool registry (MCP dynamic tools).
+    pub fn tool_registry(&self) -> &ToolRegistry {
+        &self.tool_registry
+    }
+
+    pub fn tool_registry_arc(&self) -> Arc<ToolRegistry> {
+        Arc::clone(&self.tool_registry)
     }
 
     fn router_config_from_engine_config(cfg: &EngineConfig) -> router::RouterConfig {
@@ -378,6 +391,56 @@ impl ZylCodeEngine {
         bridges.values().map(|b| b.descriptor.clone()).collect()
     }
 
+    /// Register tools from a local config file (`mcp.tools.yaml`).
+    pub async fn load_tools_from_config(&self, path: &std::path::Path) -> Result<usize> {
+        zylcode_mcp::register_from_config_file(&self.tool_registry, path).await
+    }
+
+    /// Hot-reload tools on config file change (requires `notify`).
+    pub fn watch_tools_config(
+        &self,
+        path: std::path::PathBuf,
+    ) -> Result<()> {
+        let registry = Arc::clone(&self.tool_registry);
+        let cb = Arc::new(move |cfg: zylcode_mcp::McpConfigFile| {
+            let reg = Arc::clone(&registry);
+            let tools: Vec<Arc<dyn zylcode_mcp::Tool>> = cfg
+                .enabled_tools()
+                .into_iter()
+                .map(|c| Arc::new(zylcode_mcp::DynamicTool::new(c.clone())) as Arc<dyn zylcode_mcp::Tool>)
+                .collect();
+            // Spawn blocking register (tokio) — fire and forget for watcher thread
+            let rt = tokio::runtime::Handle::try_current();
+            if let Ok(handle) = rt {
+                handle.spawn(async move {
+                    reg.clear().await;
+                    reg.register_many(tools).await;
+                    tracing::info!("MCP tools hot-reloaded");
+                });
+            }
+        });
+        zylcode_mcp::config::install_global_watcher(path, cb)
+    }
+
+    /// List registered dynamic tools.
+    pub async fn list_tools(&self) -> Vec<zylcode_mcp::ToolDescriptor> {
+        self.tool_registry.list().await
+    }
+
+    /// Execute a tool with structured logging and recovery.
+    pub async fn execute_tool(
+        &self,
+        id: &str,
+        params: serde_json::Value,
+    ) -> Result<serde_json::Value> {
+        let tool = self
+            .tool_registry
+            .get(id)
+            .await
+            .ok_or_else(|| anyhow::anyhow!("tool not found: {id}"))?;
+        zylcode_mcp::execute_with_recovery(tool, params, zylcode_mcp::ExecuteOptions::default()).await
+    }
+
     /// Remove a registered MCP bridge by id. Returns `true` if it existed.
     pub async fn unregister_mcp_bridge(&self, id: &str) -> Result<bool> {
         let mut bridges = self.bridges.write().await;
@@ -410,7 +473,14 @@ pub use marketplace::{
 };
 pub use pipeline::{Artifact as PipelineArtifact, ArtifactPipeline, ProofMetrics};
 pub use planner::{ExecutionPlan, IntentPlanner, PlanStep};
-pub use router::{ModelProvider, RouterConfig, StreamEvent, TokenMetrics, TokenRouter, TokenSnapshot};
+pub use router::{
+    cache::SpeculativeCache, trim_to_window, ContextTrim, ModelProvider, RouterConfig, StreamEvent,
+    TokenMetrics, TokenRouter, TokenSnapshot,
+};
+pub use zylcode_mcp::{
+    execute_with_recovery, ExecuteOptions, McpConfigFile, McpToolConfig, McpTransport, Tool,
+    ToolDescriptor,
+};
 
 #[cfg(test)]
 mod tests {
