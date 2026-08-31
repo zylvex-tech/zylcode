@@ -17,3 +17,11 @@ tracing = { workspace = true }
 async-trait = { workspace = true }
 anyhow = { workspace = true }
 notify = { workspace = true }
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+tokio = { workspace = true, features = ["rt-multi-thread"] }
+
+[[bench]]
+name = "concurrency"
+harness = false
