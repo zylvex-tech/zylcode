@@ -5,9 +5,7 @@ use serde_json::Value;
 use std::sync::{Arc, atomic::{AtomicUsize, Ordering}};
 use std::time::Duration;
 use tempfile::NamedTempFile;
-use tokio::time::Instant;
-
-use zylcode_mcp::audit::{AuditConfig, AuditLogger, AuditSeverity, AuditEventType};
+use zylcode_mcp::audit::{AuditConfig, AuditLogger, AuditSeverity};
 use zylcode_mcp::executor::{execute_with_recovery_telemetry, ExecuteOptions};
 use zylcode_mcp::telemetry::{Telemetry, TelemetryConfig};
 use zylcode_mcp::tool::{DynamicTool, Tool};

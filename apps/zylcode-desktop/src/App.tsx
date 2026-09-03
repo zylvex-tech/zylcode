@@ -5,6 +5,8 @@ import TokenMetricsWidget from "./components/TokenMetricsWidget";
 import McpInspector from "./components/McpInspector";
 import ArtifactViewer from "./components/ArtifactViewer";
 import { useArtifactStream } from "./lib/useArtifactStream";
+import { useTheme } from "./lib/theme";
+import { StatusBar } from "./components/StatusBar";
 
 type IntentResult = {
   summary: string;
@@ -36,6 +38,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [tools, setTools] = useState<ToolDescriptor[]>([]);
   const [metricsKey, setMetricsKey] = useState(0);
+  const { theme, setTheme } = useTheme();
 
   const { deltas, done, mcpCalls, isStreaming } = useStreamSubscription(true);
 
@@ -267,13 +270,15 @@ export default function App() {
                 </div>
               )}
             </section>
-
-            {error && (
-              <div className="rounded-md border border-red-900 bg-red-950/50 p-3 font-mono text-xs text-red-300">{error}</div>
-            )}
           </div>
         </main>
       </div>
+
+      {error && (
+        <div className="rounded-md border border-red-900 bg-red-950/50 p-3 font-mono text-xs text-red-300">{error}</div>
+      )}
+
+      <StatusBar theme={theme} onThemeChange={setTheme} mcpBridgeCount={tools.length} />
     </div>
   );
 }
