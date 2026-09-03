@@ -53,3 +53,7 @@ memchr = "2.7"
 # MCP (Phase 2)
 serde_yaml = "0.9"
 notify = "6.1"
+
+# Crypto / Hashing (Phase 4.3)
+sha2 = "0.10"
+uuid = { version = "1", features = ["v4"] }

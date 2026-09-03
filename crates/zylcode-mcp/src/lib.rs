@@ -1,11 +1,15 @@
+pub mod audit;
 pub mod config;
 pub mod executor;
 pub mod registry;
+pub mod telemetry;
 pub mod tool;
 
+pub use audit::{AuditConfig, AuditEntry, AuditEventType, AuditLogger, AuditSeverity};
 pub use config::{McpConfigFile, McpToolConfig, McpTransport};
 pub use executor::{execute_with_recovery, ExecuteOptions};
 pub use registry::ToolRegistry;
+pub use telemetry::{Telemetry, TelemetryConfig, attrs, propagation, span_names};
 pub use tool::{DynamicTool, Tool, ToolDescriptor};
 
 use anyhow::Result;

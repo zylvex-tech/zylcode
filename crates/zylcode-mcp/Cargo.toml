@@ -17,6 +17,14 @@ tracing = { workspace = true }
 async-trait = { workspace = true }
 anyhow = { workspace = true }
 notify = { workspace = true }
+sha2 = { workspace = true }
+uuid = { version = "1", features = ["v4"] }
+opentelemetry = { version = "0.28", features = ["trace"] }
+opentelemetry_sdk = { version = "0.28", features = ["trace"] }
+opentelemetry-otlp = { version = "0.28", features = ["tonic"] }
+opentelemetry-stdout = { version = "0.28" }
+tracing-opentelemetry = "0.28"
+http = "1"
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }

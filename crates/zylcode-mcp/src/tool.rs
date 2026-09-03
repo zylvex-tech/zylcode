@@ -3,6 +3,7 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
+use std::time::Instant;
 
 use crate::config::{McpToolConfig, McpTransport};
 
@@ -66,7 +67,8 @@ impl Tool for DynamicTool {
         // HTTP/WebSocket. In this phase we provide a deterministic local
         // simulation that remains testable without external processes, but the
         // error recovery wrapper in executor.rs treats it as a foreign call.
-        match self.config.transport {
+        let start = Instant::now();
+        let result = match self.config.transport {
             McpTransport::Stdio => {
                 // Simulate stdio tool echo — real impl would use tokio::process::Command
                 Ok(serde_json::json!({
@@ -88,7 +90,11 @@ impl Tool for DynamicTool {
                 "echo": params,
                 "endpoint": self.config.command,
             })),
-        }
+        };
+        
+        // Record duration for internal telemetry if needed
+        let _duration = start.elapsed();
+        result
     }
 }
 

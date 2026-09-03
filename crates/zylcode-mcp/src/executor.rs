@@ -1,9 +1,11 @@
 use anyhow::Result;
 use serde_json::Value;
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tracing::{error, info, warn};
 
+use crate::audit::AuditLogger;
+use crate::telemetry::{record_duration_ms, record_error_on_span, record_payload_hash, Telemetry};
 use crate::tool::Tool;
 
 #[derive(Debug, Clone)]
@@ -38,41 +40,181 @@ fn is_transient(err: &anyhow::Error) -> bool {
         || s.contains("unexpected")
 }
 
-/// Execute a tool with structured logging, 30s timeout, and up to 2 transient retries.
+/// Execute a tool with structured logging, telemetry, audit logging, 30s timeout, and up to 2 transient retries.
 pub async fn execute_with_recovery(
     tool: Arc<dyn Tool>,
     params: Value,
     opts: ExecuteOptions,
 ) -> Result<Value> {
+    execute_with_recovery_inner(tool, params, opts, None, None, None).await
+}
+
+/// Execute a tool with full telemetry and audit logging.
+pub async fn execute_with_recovery_telemetry(
+    tool: Arc<dyn Tool>,
+    params: Value,
+    opts: ExecuteOptions,
+    telemetry: Option<Arc<Telemetry>>,
+    audit: Option<Arc<AuditLogger>>,
+    caller_id: Option<String>,
+) -> Result<Value> {
+    execute_with_recovery_inner(tool, params, opts, telemetry, audit, caller_id).await
+}
+
+async fn execute_with_recovery_inner(
+    tool: Arc<dyn Tool>,
+    params: Value,
+    opts: ExecuteOptions,
+    telemetry: Option<Arc<Telemetry>>,
+    audit: Option<Arc<AuditLogger>>,
+    caller_id: Option<String>,
+) -> Result<Value> {
     let id = tool.id().to_string();
+    let transport = tool.descriptor().transport.clone();
     let mut attempt: u32 = 0;
+    let start_time = Instant::now();
+
+    // Start telemetry span for tool invoke
+    let tool_span = telemetry.as_ref().map(|t| {
+        let span = t.tool_invoke_span(&id, &transport, caller_id.as_deref());
+        record_payload_hash(&span, &serde_json::to_vec(&params).unwrap_or_default());
+        span
+    });
+
+    // Audit log tool invoke
+    if let Some(audit_logger) = &audit {
+        let _ = audit_logger.log_tool_invoke(
+            &id,
+            &transport,
+            caller_id.as_deref(),
+            &serde_json::to_vec(&params).unwrap_or_default(),
+            Some(0), // initial attempt
+            Some(opts.max_retries),
+        );
+    }
+
     loop {
         attempt += 1;
+        let attempt_start = Instant::now();
+        
         info!(tool = %id, attempt, "executing tool");
+
+        // Create retry span for attempts > 1
+        let retry_span = if attempt > 1 {
+            telemetry.as_ref().map(|t| t.retry_span(&id, attempt, opts.max_retries))
+        } else {
+            None
+        };
+
+        // Audit retry attempt
+        if attempt > 1 {
+            if let Some(audit_logger) = &audit {
+                let _ = audit_logger.log_retry(&id, attempt, opts.max_retries, "retrying after transient failure");
+            }
+        }
+
         let fut = tool.call(params.clone());
         let res = tokio::time::timeout(opts.timeout, fut).await;
+
         match res {
             Ok(Ok(val)) => {
-                info!(tool = %id, attempt, "tool succeeded");
+                let duration = attempt_start.elapsed();
+                let total_duration = start_time.elapsed();
+
+                info!(tool = %id, attempt, duration_ms = %duration.as_millis(), "tool succeeded");
+
+                // Record telemetry
+                if let Some(span) = &tool_span {
+                    record_duration_ms(span, total_duration);
+                }
+                if let Some(span) = &retry_span {
+                    record_duration_ms(span, duration);
+                }
+
+                // Audit log success
+                if let Some(audit_logger) = &audit {
+                    let output_bytes = serde_json::to_vec(&val).unwrap_or_default();
+                    let _ = audit_logger.log_tool_result(&id, &transport, &output_bytes, total_duration.as_millis() as u64, None);
+                }
+
                 return Ok(val);
             }
             Ok(Err(e)) => {
+                let _duration = attempt_start.elapsed();
                 let transient = is_transient(&e);
+                
+                // Record error on telemetry span
+                if let Some(span) = &retry_span {
+                    record_error_on_span(span, &e);
+                }
+                if let Some(span) = &tool_span {
+                    record_error_on_span(span, &e);
+                }
+
                 if transient && attempt <= opts.max_retries {
                     warn!(tool = %id, attempt, error = %e, "transient tool error, retrying");
+                    
+                    // Audit log retry
+                    if let Some(audit_logger) = &audit {
+                        let _ = audit_logger.log_retry(&id, attempt, opts.max_retries, &e.to_string());
+                    }
+
                     tokio::time::sleep(opts.retry_backoff * attempt).await;
                     continue;
                 }
+
+                let total_duration = start_time.elapsed();
+                
+                // Record error on main span
+                if let Some(span) = &tool_span {
+                    record_error_on_span(span, &e);
+                    record_duration_ms(span, total_duration);
+                }
+
+                // Audit log failure
+                if let Some(audit_logger) = &audit {
+                    let _ = audit_logger.log_tool_result(&id, &transport, &[], total_duration.as_millis() as u64, Some(&e.to_string()));
+                }
+
                 error!(tool = %id, attempt, error = %e, transient, "tool failed");
                 return Err(e);
             }
             Err(_elapsed) => {
+                let _duration = attempt_start.elapsed();
                 let e = anyhow::anyhow!("tool {id} timed out after {:?}", opts.timeout);
+                
+                // Record timeout error
+                if let Some(span) = &retry_span {
+                    record_error_on_span(span, &e);
+                }
+                if let Some(span) = &tool_span {
+                    record_error_on_span(span, &e);
+                }
+
                 if attempt <= opts.max_retries {
                     warn!(tool = %id, attempt, error = %e, "tool timeout, retrying");
+                    
+                    if let Some(audit_logger) = &audit {
+                        let _ = audit_logger.log_retry(&id, attempt, opts.max_retries, &e.to_string());
+                    }
+
                     tokio::time::sleep(opts.retry_backoff * attempt).await;
                     continue;
                 }
+
+                let total_duration = start_time.elapsed();
+                
+                // Record error on main span
+                if let Some(span) = &tool_span {
+                    record_error_on_span(span, &e);
+                    record_duration_ms(span, total_duration);
+                }
+
+                // Audit log timeout failure
+                if let Some(audit_logger) = &audit {
+                    let _ = audit_logger.log_tool_result(&id, &transport, &[], total_duration.as_millis() as u64, Some(&e.to_string()));
+                }
+
                 error!(tool = %id, attempt, error = %e, "tool timed out");
                 return Err(e);
             }
