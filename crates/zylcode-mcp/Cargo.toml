@@ -19,6 +19,7 @@ anyhow = { workspace = true }
 notify = { workspace = true }
 sha2 = { workspace = true }
 uuid = { version = "1", features = ["v4"] }
+rusqlite = { version = "0.31", features = ["bundled"], default-features = false }
 opentelemetry = { version = "0.28", features = ["trace"] }
 opentelemetry_sdk = { version = "0.28", features = ["trace"] }
 opentelemetry-otlp = { version = "0.28", features = ["tonic"] }

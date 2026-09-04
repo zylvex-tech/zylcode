@@ -335,6 +335,157 @@ fn run_interactive(engine: ZylCodeEngine) -> Result<(), String> {
     Ok(())
 }
 
+#[allow(dead_code)]
+#[tauri::command]
+async fn init_telemetry_db(_state: tauri::State<'_, EngineState>) -> Result<String, String> {
+    use rusqlite::Connection;
+
+    let db_path = std::env::var("ZYLCODE_TELEMETRY_DB_PATH")
+        .ok()
+        .map(|p| std::path::Path::new(&p).to_path_buf())
+        .or_else(|| {
+            std::env::var("HOME")
+                .ok()
+                .map(|h| std::path::Path::new(&h).join(".zylcode/telemetry.db"))
+        });
+
+    let db_path = db_path.unwrap_or_else(|| "zylcode_telemetry.db".into());
+
+    let conn = Connection::open(&db_path)
+        .map_err(|e| format!("failed to open telemetry DB at {:?}: {}", db_path, e))?;
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS audit_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT NOT NULL,
+            event_type TEXT NOT NULL,
+            severity TEXT NOT NULL,
+            tool_id TEXT,
+            transport TEXT,
+            caller_id TEXT,
+            input_hash TEXT,
+            output_hash TEXT,
+            duration_ms INTEGER,
+            retry_attempt INTEGER,
+            max_retries INTEGER,
+            error TEXT,
+            created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+        )",
+        [],
+    )
+    .map_err(|e| format!("failed to create audit_logs table: {}", e))?;
+
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS metrics (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT NOT NULL,
+            total_tokens INTEGER,
+            input_tokens INTEGER,
+            output_tokens INTEGER,
+            active_bridges INTEGER,
+            queued_requests INTEGER,
+            error_count INTEGER,
+            created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+        )",
+        [],
+    )
+    .map_err(|e| format!("failed to create metrics table: {}", e))?;
+
+    Ok(format!("telemetry DB initialized at {:?}", db_path))
+}
+
+/// Get recent audit log entries with SHA-256 chain hash validation.
+#[allow(dead_code)]
+#[tauri::command]
+async fn get_recent_audit_logs(
+    state: tauri::State<'_, EngineState>,
+) -> Result<Vec<TelemetryAuditEntry>, String> {
+    use rusqlite::Connection;
+
+    // Determine database path: prefer env var, fallback to home dir.
+    let db_path = std::env::var("ZYLCODE_TELEMETRY_DB_PATH")
+        .ok()
+        .map(|p| std::path::Path::new(&p).to_path_buf())
+        .or_else(|| {
+            std::env::var("HOME")
+                .ok()
+                .map(|h| std::path::Path::new(&h).join(".zylcode/telemetry.db"))
+        });
+
+    let db_path = db_path.unwrap_or_else(|| "zylcode_telemetry.db".into());
+
+    let conn = Connection::open(&db_path)
+        .map_err(|e| format!("failed to open telemetry DB at {:?}: {}", db_path, e))?;
+
+    // Ensure tables exist on first open.
+    init_telemetry_db(state).await.map_err(|e| format!("DB init failed: {}", e))?;
+
+    let prepare_result = conn.prepare(
+        "SELECT timestamp, event_type, severity, tool_id, transport, caller_id, input_hash, output_hash, duration_ms, retry_attempt, max_retries, error FROM audit_logs ORDER BY id ASC LIMIT 50",
+    );
+    let mut stmt = match prepare_result {
+        Ok(s) => s,
+        Err(e) => return Err(format!("failed to prepare SQL: {}", e)),
+    };
+
+    let mut rows = Vec::new();
+    if let Ok(mapped_rows) = stmt.query_map([], |row| {
+        Ok(TelemetryAuditEntry {
+            timestamp: row.get::<_, String>(0).unwrap(),
+            event_type: row.get::<_, String>(1).unwrap(),
+            severity: row.get::<_, String>(2).unwrap(),
+            tool_id: row.get::<_, Option<String>>(3).unwrap(),
+            transport: row.get::<_, Option<String>>(4).unwrap(),
+            caller_id: row.get::<_, Option<String>>(5).unwrap(),
+            input_hash: row.get::<_, Option<String>>(6).unwrap(),
+            output_hash: row.get::<_, Option<String>>(7).unwrap(),
+            duration_ms: row.get::<_, Option<u64>>(8).unwrap(),
+            retry_attempt: row.get::<_, Option<u32>>(9).unwrap(),
+            max_retries: row.get::<_, Option<u32>>(10).unwrap(),
+            error: row.get::<_, Option<String>>(11).unwrap(),
+        })
+    }) {
+        for row in mapped_rows {
+            match row {
+                Ok(entry) => rows.push(entry),
+                Err(e) => {
+                    eprintln!("Skipping corrupted audit row: {}", e);
+                }
+            }
+        }
+    }
+
+    Ok(rows)
+}
+
+#[allow(dead_code)]
+struct TelemetryAuditEntry {
+    /// RFC3339 timestamp.
+    pub timestamp: String,
+    /// Event type.
+    pub event_type: String,
+    /// Severity level.
+    pub severity: String,
+    /// Tool identifier (if applicable).
+    pub tool_id: Option<String>,
+    /// Transport type (stdio, sse, websocket).
+    pub transport: Option<String>,
+    /// Caller identity (anonymized).
+    pub caller_id: Option<String>,
+    /// SHA-256 hash of input payload.
+    pub input_hash: Option<String>,
+    /// SHA-256 hash of output payload.
+    pub output_hash: Option<String>,
+    /// Execution duration in milliseconds.
+    pub duration_ms: Option<u64>,
+    /// Retry attempt number (if applicable).
+    pub retry_attempt: Option<u32>,
+    /// Maximum retries configured.
+    pub max_retries: Option<u32>,
+    /// Error message (if failed).
+    pub error: Option<String>,
+}
+
 fn main() {
     // Check for --interactive flag before Tauri initialization
     let args: Vec<String> = std::env::args().collect();

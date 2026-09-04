@@ -40,6 +40,9 @@ clap = { version = "4.5", features = ["derive", "env"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 
+# SQL (Phase 6.3)
+rusqlite = { version = "0.31", features = ["bundled"], default-features = false }
+
 # HTTP client (token router)
 reqwest = { version = "0.12", features = ["json", "stream", "rustls-tls"], default-features = false }
 futures = "0.3"
