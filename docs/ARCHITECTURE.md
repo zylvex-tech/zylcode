@@ -6,8 +6,8 @@
 
 ```
 zylcode/
-├── apps/zylcode-desktop/          # Tauri 2 + React + Vite
-│   ├── src-tauri/src/main.rs      # IPC commands, process_intent_stream, provider failover
+├── apps/zylcode-desktop/          # Tauri 2 + React + Vite (v0.2.0)
+│   ├── src-tauri/src/main.rs      # IPC commands, process_intent_stream, provider failover, vector cache stats
 │   └── src/
 │       ├── App.tsx                # top-level layout + ProviderSettings mount
 │       ├── components/
@@ -15,10 +15,11 @@ zylcode/
 │       │   ├── ArtifactViewer.tsx
 │       │   ├── TokenMetricsWidget.tsx
 │       │   └── ...
-│       └── lib/events.ts          # intent:chunk / telemetry:provider_failover / telemetry:compression
-├── crates/zylcode-core/           # pure Rust engine
+│       └── lib/events.ts          # intent:chunk / telemetry:provider_failover / telemetry:compression / cache_hit
+├── crates/zylcode-core/           # pure Rust engine (v0.2.0)
 │   ├── src/lib.rs                 # ZylCodeEngine, re-exports
-│   ├── src/router.rs              # ModelProvider, ProviderKind, ProviderConfig, TokenRouter
+│   ├── src/cache.rs               # Phase 8.2 — VectorCacheStore, cosine_similarity, mock_embed (SQLite)
+│   ├── src/router.rs              # ModelProvider, ProviderKind, ProviderConfig, TokenRouter (+ vector_cache)
 │   ├── src/router/cache.rs        # SpeculativeCache (ahash + lru)
 │   ├── src/compression.rs         # Phase 8.1 — ContextCompressor + 3 strategies
 │   ├── src/pipeline.rs            # ArtifactPipeline, parse_artifacts (memchr)
@@ -68,6 +69,8 @@ React invoke("process_intent_stream", {prompt, model})
 | 7.2 | Multi-model routing & failover | `router.rs` ProviderKind/Config + telemetry | ✅ |
 | 7.3 | Provider Settings UI | `ProviderSettings.tsx` + 3 Tauri commands | ✅ |
 | 8.1 | Context compression | `compression.rs` + dispatch integration | ✅ |
+| 8.2 | Vector cache & similarity | `cache.rs` VectorCacheStore + mock_embed + cosine 0.88 | ✅ |
+| 8.3 | Tagged release v0.2.0 | Workspace 0.2.0 + tauri.conf + package.json + CI tag | ✅ |
 
 ## 5. Invariants
 

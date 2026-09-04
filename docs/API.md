@@ -23,6 +23,8 @@ import { invoke } from "@tauri-apps/api/core";
 | `get_provider_configs` | — | `ProviderConfig[]` | sorted by `fallback_order` (Phase 7.3) |
 | `set_provider_config` | `{kind: ProviderKind, endpoint?: string\|null, timeoutMs?: number\|null, enabled?: boolean\|null, model?: string\|null}` | `ProviderConfig[]` | validates timeout 1000..300000 |
 | `reorder_provider_chain` | `{order: ProviderKind[]}` | `ProviderConfig[]` | authoritative prefix, rest appended |
+| `clear_vector_cache` | — | `number` (deleted count) | Phase 8.2 — clears `vector_cache` table |
+| `get_cache_stats` | — | `CacheStats {entry_count, estimated_size, db_path}` | Phase 8.2 — vector cache stats |
 
 ## Events (listen via `@tauri-apps/api/event`)
 
@@ -40,6 +42,8 @@ const unlisten2 = await listen<Failover>("telemetry:provider_failover", (ev) => 
 | `telemetry:fallback` | (tracing) `event, provider, error` | `router.rs` dispatch |
 | `telemetry:provider_failover` | (tracing) `event, from, to` | `router.rs` fallback hop |
 | `telemetry:compression` | (tracing) `original_tokens, compressed_tokens, compression_ratio` | `compression.rs` ContextCompressor |
+| `telemetry:cache_hit` | (tracing) `event, prompt_hash, threshold` | `cache.rs` VectorCacheStore find_similar |
+| `telemetry:cache_miss` | (tracing) `event` | vector cache miss branch |
 
 ## Core Rust API (`crates/zylcode-core`)
 

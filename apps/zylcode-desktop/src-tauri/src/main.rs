@@ -13,6 +13,14 @@ use serde::{Serialize, Deserialize};
 struct EngineState {
     engine: ZylCodeEngine,
     provider_configs: Arc<RwLock<Vec<ProviderConfig>>>,
+    vector_cache: Arc<zylcode_core::cache::VectorCacheStore>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CacheStats {
+    pub entry_count: usize,
+    pub estimated_size: usize,
+    pub db_path: String,
 }
 
 // ---------------------------------------------------------------------------
@@ -337,6 +345,33 @@ async fn set_provider_config(
     let mut sorted = cfgs.clone();
     sorted.sort_by_key(|c| c.fallback_order);
     Ok(sorted)
+}
+
+/// Vector cache — clear all entries.
+#[tauri::command]
+async fn clear_vector_cache(
+    state: tauri::State<'_, EngineState>,
+) -> Result<usize, String> {
+    state
+        .vector_cache
+        .clear()
+        .map_err(|e| format!("clear vector_cache failed: {}", e))
+}
+
+/// Vector cache — stats.
+#[tauri::command]
+async fn get_cache_stats(
+    state: tauri::State<'_, EngineState>,
+) -> Result<CacheStats, String> {
+    let (entry_count, estimated_size) = state
+        .vector_cache
+        .stats()
+        .map_err(|e| format!("get cache stats failed: {}", e))?;
+    Ok(CacheStats {
+        entry_count,
+        estimated_size,
+        db_path: state.vector_cache.db_path().display().to_string(),
+    })
 }
 
 /// Reorder fallback chain — `order` is authoritative; first element = fallback_order 0.
@@ -676,6 +711,14 @@ fn main() {
     let provider_configs = Arc::new(RwLock::new(
         engine.pipeline().router().config().provider_configs.clone(),
     ));
+    let vector_cache = Arc::new(
+        zylcode_core::cache::VectorCacheStore::with_default_path()
+            .unwrap_or_else(|e| {
+                tracing::warn!(error = %e, "vector_cache init failed, falling back to ./vector_cache.db");
+                zylcode_core::cache::VectorCacheStore::new("./vector_cache.db")
+                    .expect("fallback vector_cache must init")
+            }),
+    );
 
     // Auto-load tools from mcp.tools.yaml if present (non-fatal).
     {
@@ -693,6 +736,7 @@ fn main() {
         .manage(EngineState {
             engine,
             provider_configs,
+            vector_cache,
         })
         .invoke_handler(tauri::generate_handler![
             process_intent,
@@ -707,7 +751,9 @@ fn main() {
             marketplace_search,
             get_provider_configs,
             set_provider_config,
-            reorder_provider_chain
+            reorder_provider_chain,
+            clear_vector_cache,
+            get_cache_stats
         ])
         .run(tauri::generate_context!())
         .expect("error while running ZylCode desktop application");

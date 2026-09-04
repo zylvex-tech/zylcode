@@ -11,6 +11,7 @@ use std::time::Duration;
 use tracing::{info, warn};
 
 pub use cache::SpeculativeCache;
+use crate::cache::{mock_embed, VectorCacheStore};
 
 // ---------------------------------------------------------------------------
 // Model provider
@@ -431,6 +432,7 @@ pub struct TokenRouter {
     metrics: Arc<TokenMetrics>,
     http: reqwest::Client,
     cache: Arc<SpeculativeCache>,
+    vector_cache: Option<Arc<VectorCacheStore>>,
 }
 
 impl std::fmt::Debug for TokenRouter {
@@ -439,6 +441,7 @@ impl std::fmt::Debug for TokenRouter {
             .field("config", &self.config)
             .field("metrics", &self.metrics.snapshot())
             .field("cache_len", &self.cache.len())
+            .field("vector_cache", &self.vector_cache.is_some())
             .finish()
     }
 }
@@ -450,6 +453,7 @@ impl Clone for TokenRouter {
             metrics: Arc::clone(&self.metrics),
             http: self.http.clone(),
             cache: Arc::clone(&self.cache),
+            vector_cache: self.vector_cache.clone(),
         }
     }
 }
@@ -460,11 +464,14 @@ impl TokenRouter {
             .timeout(Duration::from_millis(config.timeout_ms))
             .build()
             .context("failed to build HTTP client")?;
+        // Best-effort init of local vector cache (offline-capable)
+        let vector_cache = VectorCacheStore::with_default_path().ok().map(Arc::new);
         Ok(Self {
             config,
             metrics: Arc::new(TokenMetrics::default()),
             cache: Arc::new(SpeculativeCache::with_defaults()),
             http,
+            vector_cache,
         })
     }
 
@@ -473,11 +480,13 @@ impl TokenRouter {
             .timeout(Duration::from_millis(config.timeout_ms))
             .build()
             .context("failed to build HTTP client")?;
+        let vector_cache = VectorCacheStore::with_default_path().ok().map(Arc::new);
         Ok(Self {
             config,
             metrics,
             http,
             cache: Arc::new(SpeculativeCache::with_defaults()),
+            vector_cache,
         })
     }
 
@@ -486,12 +495,24 @@ impl TokenRouter {
             .timeout(Duration::from_millis(config.timeout_ms))
             .build()
             .context("failed to build HTTP client")?;
+        let vector_cache = VectorCacheStore::with_default_path().ok().map(Arc::new);
         Ok(Self {
             config,
             metrics: Arc::new(TokenMetrics::default()),
             cache,
             http,
+            vector_cache,
         })
+    }
+
+    /// Attach a custom vector cache (useful for tests / per-workspace isolation).
+    pub fn with_vector_cache(mut self, store: VectorCacheStore) -> Self {
+        self.vector_cache = Some(Arc::new(store));
+        self
+    }
+
+    pub fn vector_cache(&self) -> Option<Arc<VectorCacheStore>> {
+        self.vector_cache.clone()
     }
 
     pub fn config(&self) -> &RouterConfig {
@@ -549,6 +570,25 @@ impl TokenRouter {
             return Ok(cached);
         }
 
+        // Phase 8.2: vector cache similarity retrieval (offline-capable, before remote egress)
+        if let Some(vstore) = &self.vector_cache {
+            let emb = mock_embed(prompt, 32);
+            match vstore.find_similar(&emb, 0.88) {
+                Ok(Some(hit)) => {
+                    info!(event = "telemetry:cache_hit", prompt_hash = %hit.prompt_hash, threshold = 0.88, "vector cache hit — returning cached response without provider call");
+                    self.metrics.record_saved((hit.response_text.len() / 4) as u64);
+                    self.cache.insert(cache_key, hit.response_text.clone());
+                    return Ok(hit.response_text);
+                }
+                Ok(None) => {
+                    tracing::debug!(event = "telemetry:cache_miss", "vector cache miss — proceeding to provider dispatch");
+                }
+                Err(e) => {
+                    tracing::warn!(error = %e, "vector cache lookup failed — proceeding to provider dispatch");
+                }
+            }
+        }
+
         // Fast path: if no API keys are configured, return a deterministic
         // synthetic response so offline / CI builds remain functional.
         // Ollama is treated as "no key required" — but if no Ollama endpoint
@@ -568,6 +608,13 @@ impl TokenRouter {
             let out = (synthetic.len() / 4) as u64;
             self.metrics.record_usage(inp, out);
             self.cache.insert(cache_key, synthetic.clone());
+            // Phase 8.2: persist synthetic response to vector cache asynchronously (best-effort)
+            if let Some(vstore) = &self.vector_cache {
+                let emb = mock_embed(prompt, 32);
+                if let Err(e) = vstore.insert_entry(prompt, &synthetic, &emb) {
+                    tracing::warn!(error = %e, "vector cache insert failed for synthetic response");
+                }
+            }
             info!(provider = "synthetic-offline", input_tokens = inp, output_tokens = out, "dispatched prompt offline");
             return Ok(synthetic);
         }
@@ -579,6 +626,12 @@ impl TokenRouter {
         {
             Ok(text) => {
                 self.cache.insert(cache_key, text.clone());
+                if let Some(vstore) = &self.vector_cache {
+                    let emb = mock_embed(prompt, 32);
+                    if let Err(e) = vstore.insert_entry(prompt, &text, &emb) {
+                        tracing::warn!(error = %e, "vector cache insert failed for primary response");
+                    }
+                }
                 return Ok(text);
             }
             Err(e) if is_retryable(&e) => {
@@ -624,6 +677,12 @@ impl TokenRouter {
                 let fallback_key = SpeculativeCache::hash_key(prompt, system, &fallback_model);
                 self.cache.insert(fallback_key, text.clone());
                 self.cache.insert(cache_key, text.clone());
+                if let Some(vstore) = &self.vector_cache {
+                    let emb = mock_embed(prompt, 32);
+                    if let Err(e) = vstore.insert_entry(prompt, &text, &emb) {
+                        tracing::warn!(error = %e, "vector cache insert failed for fallback response");
+                    }
+                }
                 Ok(text)
             }
             Err(fallback_err) => {
@@ -638,6 +697,12 @@ impl TokenRouter {
                     let out = (synthetic.len() / 4) as u64;
                     self.metrics.record_usage(inp, out);
                     self.cache.insert(cache_key, synthetic.clone());
+                    if let Some(vstore) = &self.vector_cache {
+                        let emb = mock_embed(prompt, 32);
+                        if let Err(e) = vstore.insert_entry(prompt, &synthetic, &emb) {
+                            tracing::warn!(error = %e, "vector cache insert failed for fallback synthetic");
+                        }
+                    }
                     return Ok(synthetic);
                 }
                 let msg = format!(

@@ -117,19 +117,20 @@ The engine watches `mcp.tools.yaml` and reloads registered tools in real time wi
 
 ---
 
-## Providers & Compression
+## Providers, Compression & Vector Cache (v0.2.0)
 
 - **Phase 7.2/7.3 Multi-Model Routing** — typed `ProviderKind` (Anthropic, OpenRouter, Ollama, SyntheticOffline), `ProviderConfig` fallback chain, `telemetry:provider_failover` + `ProviderSettings` UI. See `docs/PROVIDERS.md` and tutorial `docs/TUTORIALS.md#02`.
 - **Phase 8.1 Context Compression** — `ContextCompressor` (`LosslessCommentsStripper` → `ASTOutlineExtractor` → `TokenWindowCompactor`) with budget targeting and `telemetry:compression`. See `docs/COMPRESSION.md` and `docs/TUTORIALS.md#03`.
+- **Phase 8.2 Vector Cache** — SQLite `vector_cache` with deterministic `mock_embed` + cosine similarity `≥0.88` threshold, `telemetry:cache_hit` short-circuit in `TokenRouter::dispatch_prompt`, `clear_vector_cache` / `get_cache_stats` IPC. See `docs/ARCHITECTURE.md` and `docs/API.md`.
 
 ## Documentation Hub
 
 | Doc | Purpose |
 |-----|---------|
-| `docs/ARCHITECTURE.md` | Workspace graph, lifecycle, milestone map |
+| `docs/ARCHITECTURE.md` | Workspace graph, lifecycle, milestone map (v0.2.0) |
 | `docs/PROVIDERS.md` | ProviderKind/Config, failover, Tauri IPC, ProviderSettings |
 | `docs/COMPRESSION.md` | Strategies, integration, tests, knobs |
-| `docs/API.md` | Tauri IPC commands & events, core Rust API |
+| `docs/API.md` | Tauri IPC commands & events, core Rust API (includes vector cache IPC) |
 | `docs/GETTING_STARTED.md` | Install, dev, CLI, tests |
 | `docs/TUTORIALS.md` | 4 tutorials: provider setup, failover, compression tuning, MCP extensions |
 

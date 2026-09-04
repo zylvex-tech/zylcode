@@ -9,7 +9,7 @@ resolver = "2"
 
 [workspace.package]
 edition = "2021"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["ZylCode Team <team@zylcode.dev>"]
 license = "MIT"
 repository = "https://github.com/zylcode/zylcode"

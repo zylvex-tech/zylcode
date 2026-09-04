@@ -3,6 +3,7 @@
 //! Provides the central [`ZylCodeEngine`] as well as the marketplace
 //! subsystem re-exported from [`marketplace`].
 
+pub mod cache;
 pub mod compression;
 pub mod marketplace;
 pub mod pipeline;
@@ -474,6 +475,7 @@ pub use marketplace::{
 };
 pub use pipeline::{Artifact as PipelineArtifact, ArtifactPipeline, ProofMetrics};
 pub use planner::{ExecutionPlan, IntentPlanner, PlanStep};
+pub use cache::{cosine_similarity, mock_embed, prompt_hash, VectorCacheStore, VectorEntry};
 pub use compression::{ASTOutlineExtractor, CompressionMetrics, ContextCompressor, LosslessCommentsStripper, TokenWindowCompactor};
 pub use router::{
     cache::SpeculativeCache, trim_to_window, ContextTrim, ModelProvider, ProviderConfig, ProviderKind, RouterConfig, StreamEvent,
