@@ -40,3 +40,8 @@ logs
 *.log
 npm-debug.log*
 pnpm-debug.log*
+
+# Local SQLite caches
+*.db
+vector_cache.db
+zylcode_telemetry.db
