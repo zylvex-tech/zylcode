@@ -4,6 +4,7 @@ import { useStreamSubscription } from "./lib/events";
 import TokenMetricsWidget from "./components/TokenMetricsWidget";
 import McpInspector from "./components/McpInspector";
 import ArtifactViewer from "./components/ArtifactViewer";
+import ProviderSettings from "./components/ProviderSettings";
 import { useArtifactStream } from "./lib/useArtifactStream";
 import { useTheme } from "./lib/theme";
 import { StatusBar } from "./components/StatusBar";
@@ -242,6 +243,9 @@ export default function App() {
               applyPatch={applyPatch}
               closeTab={closeTab}
             />
+
+            {/* Provider Settings — Phase 7.3 */}
+            <ProviderSettings />
 
             {/* Verify */}
             <section className="rounded-lg border border-zyl-border bg-zyl-surface p-5">

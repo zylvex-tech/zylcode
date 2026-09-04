@@ -117,6 +117,22 @@ The engine watches `mcp.tools.yaml` and reloads registered tools in real time wi
 
 ---
 
+## Providers & Compression
+
+- **Phase 7.2/7.3 Multi-Model Routing** — typed `ProviderKind` (Anthropic, OpenRouter, Ollama, SyntheticOffline), `ProviderConfig` fallback chain, `telemetry:provider_failover` + `ProviderSettings` UI. See `docs/PROVIDERS.md` and tutorial `docs/TUTORIALS.md#02`.
+- **Phase 8.1 Context Compression** — `ContextCompressor` (`LosslessCommentsStripper` → `ASTOutlineExtractor` → `TokenWindowCompactor`) with budget targeting and `telemetry:compression`. See `docs/COMPRESSION.md` and `docs/TUTORIALS.md#03`.
+
+## Documentation Hub
+
+| Doc | Purpose |
+|-----|---------|
+| `docs/ARCHITECTURE.md` | Workspace graph, lifecycle, milestone map |
+| `docs/PROVIDERS.md` | ProviderKind/Config, failover, Tauri IPC, ProviderSettings |
+| `docs/COMPRESSION.md` | Strategies, integration, tests, knobs |
+| `docs/API.md` | Tauri IPC commands & events, core Rust API |
+| `docs/GETTING_STARTED.md` | Install, dev, CLI, tests |
+| `docs/TUTORIALS.md` | 4 tutorials: provider setup, failover, compression tuning, MCP extensions |
+
 ## Benchmarks
 
 To execute internal router and pipeline micro-benchmarks:

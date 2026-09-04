@@ -1,6 +1,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::io::{self, Write};
+use std::sync::{Arc, RwLock};
+use zylcode_core::router::{ProviderConfig, ProviderKind};
 use zylcode_core::{EngineConfig, Intent, McpBridgeDescriptor, ZylCodeEngine};
 use serde::{Serialize, Deserialize};
 
@@ -10,6 +12,7 @@ use serde::{Serialize, Deserialize};
 
 struct EngineState {
     engine: ZylCodeEngine,
+    provider_configs: Arc<RwLock<Vec<ProviderConfig>>>,
 }
 
 // ---------------------------------------------------------------------------
@@ -268,6 +271,115 @@ async fn marketplace_search(
         reg.register(ext);
     }
     Ok(reg.search(&query).into_iter().cloned().collect())
+}
+
+// ---------------------------------------------------------------------------
+// Phase 7.3 — Provider Configuration IPC
+// ---------------------------------------------------------------------------
+
+/// Return current provider configs sorted by fallback_order.
+#[tauri::command]
+async fn get_provider_configs(
+    state: tauri::State<'_, EngineState>,
+) -> Result<Vec<ProviderConfig>, String> {
+    let cfgs = state
+        .provider_configs
+        .read()
+        .map_err(|e| format!("lock poisoned: {}", e))?
+        .clone();
+    let mut sorted = cfgs;
+    sorted.sort_by_key(|c| c.fallback_order);
+    Ok(sorted)
+}
+
+/// Update settings for a single provider at runtime.
+#[tauri::command]
+async fn set_provider_config(
+    kind: ProviderKind,
+    endpoint: Option<String>,
+    timeout_ms: Option<u64>,
+    enabled: Option<bool>,
+    model: Option<String>,
+    state: tauri::State<'_, EngineState>,
+) -> Result<Vec<ProviderConfig>, String> {
+    let mut cfgs = state
+        .provider_configs
+        .write()
+        .map_err(|e| format!("lock poisoned: {}", e))?;
+    let mut found = false;
+    for cfg in cfgs.iter_mut() {
+        if cfg.kind == kind {
+            if let Some(ep) = endpoint.clone() {
+                cfg.endpoint = ep;
+            }
+            if let Some(t) = timeout_ms {
+                if (1000..=300_000).contains(&t) {
+                    cfg.timeout_ms = t;
+                } else {
+                    return Err(format!("timeout_ms out of range 1000..300000: {}", t));
+                }
+            }
+            if let Some(en) = enabled {
+                cfg.enabled = en;
+            }
+            if let Some(m) = model.clone() {
+                if !m.trim().is_empty() {
+                    cfg.model = m;
+                }
+            }
+            found = true;
+            break;
+        }
+    }
+    if !found {
+        return Err(format!("unknown provider kind: {}", kind));
+    }
+    let mut sorted = cfgs.clone();
+    sorted.sort_by_key(|c| c.fallback_order);
+    Ok(sorted)
+}
+
+/// Reorder fallback chain — `order` is authoritative; first element = fallback_order 0.
+#[tauri::command]
+async fn reorder_provider_chain(
+    order: Vec<ProviderKind>,
+    state: tauri::State<'_, EngineState>,
+) -> Result<Vec<ProviderConfig>, String> {
+    if order.is_empty() {
+        return Err("order must not be empty".to_string());
+    }
+    let mut cfgs = state
+        .provider_configs
+        .write()
+        .map_err(|e| format!("lock poisoned: {}", e))?;
+    // Validate all kinds exist and no duplicates
+    let mut seen = std::collections::HashSet::new();
+    for k in &order {
+        if !seen.insert(k.to_string()) {
+            return Err(format!("duplicate provider in order: {}", k));
+        }
+        if !cfgs.iter().any(|c| &c.kind == k) {
+            return Err(format!("unknown provider: {}", k));
+        }
+    }
+    // Assign new fallback_order for supplied kinds; keep remaining at tail
+    for (idx, kind) in order.iter().enumerate() {
+        if let Some(cfg) = cfgs.iter_mut().find(|c| &c.kind == kind) {
+            cfg.fallback_order = idx as u32;
+        }
+    }
+    // Remaining configs not in order get pushed to end in previous relative order
+    let mut remaining: Vec<_> = cfgs.iter().filter(|c| !order.contains(&c.kind)).cloned().collect();
+    remaining.sort_by_key(|c| c.fallback_order);
+    let base = order.len() as u32;
+    for (idx, rcfg) in remaining.into_iter().enumerate() {
+        if let Some(cfg) = cfgs.iter_mut().find(|c| c.kind == rcfg.kind) {
+            cfg.fallback_order = base + idx as u32;
+        }
+    }
+    let mut sorted = cfgs.clone();
+    sorted.sort_by_key(|c| c.fallback_order);
+    Ok(sorted)
 }
 
 // ---------------------------------------------------------------------------
@@ -561,6 +673,9 @@ fn main() {
         verbose: false,
         extra: Default::default(),
     });
+    let provider_configs = Arc::new(RwLock::new(
+        engine.pipeline().router().config().provider_configs.clone(),
+    ));
 
     // Auto-load tools from mcp.tools.yaml if present (non-fatal).
     {
@@ -575,7 +690,10 @@ fn main() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
-        .manage(EngineState { engine })
+        .manage(EngineState {
+            engine,
+            provider_configs,
+        })
         .invoke_handler(tauri::generate_handler![
             process_intent,
             process_intent_stream,
@@ -586,7 +704,10 @@ fn main() {
             list_mcp_bridges,
             list_tools,
             execute_tool,
-            marketplace_search
+            marketplace_search,
+            get_provider_configs,
+            set_provider_config,
+            reorder_provider_chain
         ])
         .run(tauri::generate_context!())
         .expect("error while running ZylCode desktop application");

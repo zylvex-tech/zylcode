@@ -514,16 +514,27 @@ impl TokenRouter {
 
     /// Dispatch a prompt with a system preamble, applying fallback on
     /// rate-limit (429) or transient 5xx errors.
-    /// Adaptive trimming is applied first, then speculative cache is probed
-    /// before any HTTP egress.
+    /// Adaptive trimming + Phase 8.1 context compression applied first, then
+    /// speculative cache is probed before any HTTP egress.
     pub async fn dispatch_prompt(&self, prompt: &str, system: &str) -> Result<String> {
-        // Adaptive context window trimming — preserve system, trim prompt head.
-        let (prompt_owned, system_owned) = trim_to_window(
-            prompt,
-            system,
-            self.config.context_window_tokens,
-            self.config.trim_strategy,
-        );
+        // Phase 8.1: Context compression against token budget before provider dispatch.
+        let budget = self.config.context_window_tokens as usize;
+        let (prompt_owned, system_owned) = {
+            let est = |s: &str| s.len().div_ceil(4);
+            if est(prompt) + est(system) > budget {
+                let compressor = crate::compression::ContextCompressor::new(budget);
+                let (p, s, _m) = compressor.compress(prompt, system);
+                (p, s)
+            } else {
+                // Budget already satisfied — just trim head as before
+                trim_to_window(
+                    prompt,
+                    system,
+                    self.config.context_window_tokens,
+                    self.config.trim_strategy,
+                )
+            }
+        };
         let prompt = prompt_owned.as_str();
         let system = system_owned.as_str();
 
