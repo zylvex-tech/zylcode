@@ -2,6 +2,7 @@
 
 use std::io::{self, Write};
 use zylcode_core::{EngineConfig, Intent, McpBridgeDescriptor, ZylCodeEngine};
+use serde::{Serialize, Deserialize};
 
 // ---------------------------------------------------------------------------
 // Shared engine state — managed by Tauri
@@ -37,11 +38,27 @@ async fn process_intent(
         .map_err(|e| e.to_string())
 }
 
+/// Payload emitted when the router falls back from one provider to another.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct ProviderFailoverPayload {
+    /// ISO 8601 timestamp when the failover occurred.
+    pub timestamp: String,
+    /// Provider that was attempted first (and failed).
+    pub from_provider: String,
+    /// Provider that was attempted next (fallback).
+    pub to_provider: String,
+    /// Human-readable reason for the failover (e.g. "rate-limited", "5xx error").
+    pub reason: String,
+    /// 1-based attempt number within the configured fallback chain.
+    pub attempt_number: usize,
+}
+
 /// Streaming execution — dispatches the intent and emits progress events
 /// (`intent:chunk` / `intent:done`) to the frontend during generation.
 ///
 /// The frontend should listen via `listen("intent:chunk", ...)` and
-/// `listen("intent:done", ...)`.
+/// `listen("intent:done", ...)` and `listen("telemetry:provider_failover", ...)`.
 #[tauri::command]
 async fn process_intent_stream(
     prompt: String,
@@ -99,6 +116,10 @@ async fn process_intent_stream(
             .await;
     });
 
+    // Snapshot fallback count before pipeline execution to detect failover.
+    let fallback_before = engine.pipeline().router().snapshot().fallback_count;
+    let router_cfg_snapshot = engine.pipeline().router().config().clone();
+
     let intent_for_pipeline = Intent {
         prompt,
         context: None,
@@ -109,6 +130,31 @@ async fn process_intent_stream(
         .process_intent_with_model(intent_for_pipeline, model)
         .await
         .map_err(|e| e.to_string())?;
+
+    // Detect failover by delta in fallback_count and emit structured telemetry.
+    let fallback_after = engine.pipeline().router().snapshot().fallback_count;
+    if fallback_after > fallback_before {
+        let delta = (fallback_after - fallback_before) as usize;
+        for attempt in 1..=delta {
+            let ts = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| {
+                    let secs = d.as_secs();
+                    // RFC3339-like: seconds since epoch as ISO string fallback
+                    format!("{}", secs)
+                })
+                .unwrap_or_else(|_| "unknown".to_string());
+            // Use chrono-like ISO if available, otherwise epoch string; keep payload serializable.
+            let payload = ProviderFailoverPayload {
+                timestamp: ts,
+                from_provider: router_cfg_snapshot.primary_provider.to_string(),
+                to_provider: router_cfg_snapshot.fallback_provider.to_string(),
+                reason: "primary provider failed — fallback attempted".to_string(),
+                attempt_number: attempt,
+            };
+            let _ = app.emit("telemetry:provider_failover", &payload);
+        }
+    }
 
     let _ = app.emit("intent:done", &result);
     // Also emit a terminal chunk so listeners can finalize.

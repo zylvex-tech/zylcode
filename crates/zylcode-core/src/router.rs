@@ -16,7 +16,7 @@ pub use cache::SpeculativeCache;
 // Model provider
 // ---------------------------------------------------------------------------
 
-/// Supported upstream model providers.
+/// Supported upstream model providers (legacy enum, kept for backward compat).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ModelProvider {
@@ -58,6 +58,118 @@ impl ModelProvider {
     }
 }
 
+/// Provider kind for Phase 7.2 multi-provider routing.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ProviderKind {
+    Anthropic,
+    OpenRouter,
+    Ollama,
+    SyntheticOffline,
+}
+
+impl std::fmt::Display for ProviderKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Anthropic => write!(f, "anthropic"),
+            Self::OpenRouter => write!(f, "openrouter"),
+            Self::Ollama => write!(f, "ollama"),
+            Self::SyntheticOffline => write!(f, "synthetic-offline"),
+        }
+    }
+}
+
+impl ProviderKind {
+    /// Default base URL for the provider.
+    pub fn default_base_url(&self) -> &'static str {
+        match self {
+            Self::Anthropic => "https://api.anthropic.com",
+            Self::OpenRouter => "https://openrouter.ai/api/v1",
+            Self::Ollama => "http://localhost:11434",
+            Self::SyntheticOffline => "",
+        }
+    }
+
+    /// Default completions path (relative to base URL) for the provider.
+    pub fn completions_path(&self) -> &'static str {
+        match self {
+            Self::Anthropic => "/v1/messages",
+            Self::OpenRouter => "/chat/completions",
+            Self::Ollama => "/api/chat",
+            Self::SyntheticOffline => "",
+        }
+    }
+}
+
+/// Per-provider configuration for the multi-provider router.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProviderConfig {
+    /// Logical kind (Anthropic, OpenRouter, Ollama, SyntheticOffline).
+    pub kind: ProviderKind,
+    /// Model identifier for this provider (e.g. `anthropic/claude-3.5-sonnet`).
+    pub model: String,
+    /// Custom endpoint override (override the default base URL + path).
+    #[serde(default)]
+    pub endpoint: String,
+    /// Request timeout in milliseconds.
+    #[serde(default = "default_provider_timeout_ms")]
+    pub timeout_ms: u64,
+    /// Whether this provider is enabled.
+    #[serde(default)]
+    pub enabled: bool,
+    /// Fallback order index (0 = first attempt, higher = later in chain).
+    #[serde(default)]
+    pub fallback_order: u32,
+    /// Whether this provider requires an API key.
+    #[serde(default)]
+    pub requires_api_key: bool,
+}
+
+fn default_provider_timeout_ms() -> u64 {
+    60_000
+}
+
+fn default_provider_configs() -> Vec<ProviderConfig> {
+    vec![
+        ProviderConfig {
+            kind: ProviderKind::Anthropic,
+            model: "anthropic/claude-3.5-sonnet".to_string(),
+            endpoint: String::new(),
+            timeout_ms: default_provider_timeout_ms(),
+            enabled: true,
+            fallback_order: 0,
+            requires_api_key: true,
+        },
+        ProviderConfig {
+            kind: ProviderKind::Ollama,
+            model: "llama3.1".to_string(),
+            endpoint: String::new(),
+            timeout_ms: default_provider_timeout_ms(),
+            enabled: true,
+            fallback_order: 1,
+            requires_api_key: false,
+        },
+        ProviderConfig {
+            kind: ProviderKind::OpenRouter,
+            model: "openrouter/gpt-4o-mini".to_string(),
+            endpoint: String::new(),
+            timeout_ms: default_provider_timeout_ms(),
+            enabled: true,
+            fallback_order: 2,
+            requires_api_key: true,
+        },
+        ProviderConfig {
+            kind: ProviderKind::SyntheticOffline,
+            model: "synthetic-offline".to_string(),
+            endpoint: String::new(),
+            timeout_ms: default_provider_timeout_ms(),
+            enabled: true,
+            fallback_order: 3,
+            requires_api_key: false,
+        },
+    ]
+}
+
 // ---------------------------------------------------------------------------
 // Router configuration
 // ---------------------------------------------------------------------------
@@ -74,9 +186,9 @@ pub enum ContextTrim {
 /// Configuration controlling routing, fallback, and authentication.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RouterConfig {
-    /// Primary provider to attempt first.
+    /// Primary provider to attempt first (legacy compat).
     pub primary_provider: ModelProvider,
-    /// Fallback provider when the primary is rate-limited or errors.
+    /// Fallback provider when the primary is rate-limited or errors (legacy compat).
     pub fallback_provider: ModelProvider,
     /// Primary model identifier (e.g. `anthropic/claude-3.5-sonnet`).
     pub primary_model: String,
@@ -88,10 +200,13 @@ pub struct RouterConfig {
     /// Per-provider base URL overrides.
     #[serde(default)]
     pub base_url_overrides: std::collections::HashMap<String, String>,
-    /// Request timeout.
+    /// Per-provider configurations for the multi-provider router (Phase 7.2).
+    #[serde(default = "default_provider_configs")]
+    pub provider_configs: Vec<ProviderConfig>,
+    /// Request timeout in milliseconds (applies to all providers).
     #[serde(default = "default_timeout_ms")]
     pub timeout_ms: u64,
-    /// Maximum fallback attempts (0 = no fallback).
+    /// Maximum fallback attempts across all providers (0 = no fallback).
     #[serde(default = "default_max_retries")]
     pub max_retries: u32,
     /// Adaptive context window in tokens (estimated as `len/4`). System prompt
@@ -122,6 +237,44 @@ impl Default for RouterConfig {
             fallback_model: "llama3.1".to_string(),
             api_keys: Default::default(),
             base_url_overrides: Default::default(),
+            provider_configs: vec![
+                ProviderConfig {
+                    kind: ProviderKind::Anthropic,
+                    model: "anthropic/claude-3.5-sonnet".to_string(),
+                    endpoint: String::new(),
+                    timeout_ms: default_provider_timeout_ms(),
+                    enabled: true,
+                    fallback_order: 0,
+                    requires_api_key: true,
+                },
+                ProviderConfig {
+                    kind: ProviderKind::Ollama,
+                    model: "llama3.1".to_string(),
+                    endpoint: String::new(),
+                    timeout_ms: default_provider_timeout_ms(),
+                    enabled: true,
+                    fallback_order: 1,
+                    requires_api_key: false,
+                },
+                ProviderConfig {
+                    kind: ProviderKind::OpenRouter,
+                    model: "openrouter/gpt-4o-mini".to_string(),
+                    endpoint: String::new(),
+                    timeout_ms: default_provider_timeout_ms(),
+                    enabled: true,
+                    fallback_order: 2,
+                    requires_api_key: true,
+                },
+                ProviderConfig {
+                    kind: ProviderKind::SyntheticOffline,
+                    model: "synthetic-offline".to_string(),
+                    endpoint: String::new(),
+                    timeout_ms: default_provider_timeout_ms(),
+                    enabled: true,
+                    fallback_order: 3,
+                    requires_api_key: false,
+                },
+            ],
             timeout_ms: default_timeout_ms(),
             max_retries: default_max_retries(),
             context_window_tokens: default_context_window_tokens(),
@@ -169,7 +322,7 @@ impl RouterConfig {
             .unwrap_or_else(|| provider.default_base_url().to_string())
     }
 
-    /// Resolve the API key for a provider, checking env as fallback.
+    /// Resolve the API key for a provider, checking config then env as fallback.
     pub fn api_key(&self, provider: &ModelProvider) -> Option<String> {
         if let Some(k) = self.api_keys.get(&provider.to_string()) {
             if !k.is_empty() {
@@ -183,6 +336,25 @@ impl RouterConfig {
             ModelProvider::Anthropic => "ANTHROPIC_API_KEY",
             ModelProvider::LocalOllama => return None,
         };
+        std::env::var(env_key).ok().filter(|v| !v.is_empty())
+    }
+
+    /// Resolve the API key for a ProviderKind, checking config then env as fallback.
+    pub fn api_key_for_kind(&self, kind: &ProviderKind) -> Option<String> {
+        // Map ProviderKind to the corresponding env variable name.
+        let env_key = match kind {
+            ProviderKind::Anthropic => "ANTHROPIC_API_KEY",
+            ProviderKind::OpenRouter => "OPENROUTER_API_KEY",
+            ProviderKind::Ollama => return None, // Ollama has no API key requirement,
+            ProviderKind::SyntheticOffline => return None,
+        };
+        // First check explicit API keys keyed by the kind display name.
+        if let Some(k) = self.api_keys.get(&kind.to_string()) {
+            if !k.is_empty() {
+                return Some(k.clone());
+            }
+        }
+        // Env fallback.
         std::env::var(env_key).ok().filter(|v| !v.is_empty())
     }
 
@@ -362,7 +534,7 @@ impl TokenRouter {
         if let Some(cached) = self.cache.get(cache_key) {
             let saved = (cached.len() / 4) as u64;
             self.metrics.record_saved(saved);
-            info!(cache_hit = true, saved_tokens = saved, "speculative cache hit");
+            info!(cache_hit = true, saved_tokens = saved, provider = %self.config.primary_provider, "speculative cache hit");
             return Ok(cached);
         }
 
@@ -399,12 +571,18 @@ impl TokenRouter {
                 return Ok(text);
             }
             Err(e) if is_retryable(&e) => {
-                warn!(error = %e, "primary provider failed with retryable error, attempting fallback");
+                // Log telemetry:fallback event on retryable primary failure.
+                self.metrics.record_fallback();
+                let provider_name = self.config.primary_provider.to_string();
+                info!(event = "telemetry:fallback", provider = %provider_name, error = %e, "primary provider failed, attempting fallback");
                 Some(e)
             }
             Err(e) => {
                 if e.to_string().contains("429") || e.to_string().to_lowercase().contains("rate") {
-                    warn!(error = %e, "primary provider rate-limited, attempting fallback");
+                    // Log telemetry:fallback event on rate-limited primary.
+                    self.metrics.record_fallback();
+                    let provider_name = self.config.primary_provider.to_string();
+                    info!(event = "telemetry:fallback", provider = %provider_name, error = %e, "primary provider rate-limited, attempting fallback");
                     Some(e)
                 } else {
                     return Err(e);
@@ -420,6 +598,8 @@ impl TokenRouter {
         self.metrics.record_fallback();
         let fallback_provider = self.config.fallback_provider.clone();
         let fallback_model = self.config.fallback_model.clone();
+
+        info!(event = "telemetry:provider_failover", from = %self.config.primary_provider, to = %fallback_provider, "falling back to configured fallback provider");
 
         info!(provider = %fallback_provider, model = %fallback_model, "dispatching to fallback provider");
 
