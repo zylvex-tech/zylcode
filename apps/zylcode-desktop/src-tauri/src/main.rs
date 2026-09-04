@@ -392,5 +392,5 @@ fn main() {
             marketplace_search
         ])
         .run(tauri::generate_context!())
-        .expect("error while running ZylCode desktop");
+        .expect("error while running ZylCode desktop application");
 }
