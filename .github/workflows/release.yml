@@ -1,120 +1,34 @@
 name: Release
-
 on:
   push:
-    tags:
-      - "v*"
     branches:
-      - "main"
+      - main
+    tags:
+      - 'v*'
 
 permissions:
   contents: write
   releases: write
 
-concurrency:
-  group: release-${{ github.ref }}
-  cancel-in-progress: false
-
 jobs:
-  # -------------------------------------------------------------------------
-  # Job 1: standalone CLI binaries (cross-compiled via cargo)
-  # -------------------------------------------------------------------------
-  build-cli:
-    name: cli (${{ matrix.target }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-22.04
-            target: x86_64-unknown-linux-gnu
-            bin: zylcode
-            archive: zylcode-x86_64-unknown-linux-gnu.tar.gz
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            bin: zylcode.exe
-            archive: zylcode-x86_64-pc-windows-msvc.zip
-          - os: macos-latest
-            target: x86_64-apple-darwin
-            bin: zylcode
-            archive: zylcode-x86_64-apple-darwin.tar.gz
-          - os: macos-latest
-            target: aarch64-apple-darwin
-            bin: zylcode
-            archive: zylcode-aarch64-apple-darwin.tar.gz
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Rust (stable)
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
-
-      - name: Rust cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: "zylcode-release-cli-${{ matrix.target }}"
-          save-if: ${{ github.ref_type == 'tag' }}
-
-      - name: Build CLI (release)
-        run: cargo build -p zylcode-cli --release --target ${{ matrix.target }}
-
-      - name: Compress (Unix .tar.gz)
-        if: runner.os != 'Windows'
-        shell: bash
-        run: |
-          set -euo pipefail
-          BIN="target/${{ matrix.target }}/release/${{ matrix.bin }}"
-          test -f "$BIN"
-          tar -czvf "${{ matrix.archive }}" -C "target/${{ matrix.target }}/release" "${{ matrix.bin }}"
-
-      - name: Compress (Windows .zip)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          $bin = "target/${{ matrix.target }}/release/${{ matrix.bin }}"
-          if (-not (Test-Path $bin)) { throw "Binary not found at $bin" }
-          Compress-Archive -Path $bin -DestinationPath "${{ matrix.archive }}" -Force
-
-      - name: Upload CLI artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: cli-${{ matrix.target }}
-          path: ${{ matrix.archive }}
-          if-no-files-found: error
-          retention-days: 7
-
-  # -------------------------------------------------------------------------
-  # Job 2: Tauri 2.0 desktop installers
-  # -------------------------------------------------------------------------
-  build-desktop:
-    name: desktop (${{ matrix.platform }})
-    needs: build-cli
+  release:
     strategy:
       fail-fast: false
       matrix:
         platform: [ubuntu-22.04, windows-latest, macos-latest]
-
     runs-on: ${{ matrix.platform }}
-
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Linux dependencies (Tauri)
+      - name: Install Linux dependencies
         if: matrix.platform == 'ubuntu-22.04'
         run: |
-          sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
 
-      - name: Setup Rust (stable)
+      - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
-
-      - name: Rust cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: "zylcode-release-desktop-${{ matrix.platform }}"
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v3
@@ -127,10 +41,10 @@ jobs:
           node-version: 20
           cache: 'pnpm'
 
-      - name: Install frontend dependencies
+      - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build web assets
+      - name: Build desktop app assets
         run: pnpm --filter zylcode-desktop build
 
       - name: Build Tauri app
@@ -141,38 +55,3 @@ jobs:
           projectPath: ./apps/zylcode-desktop
           tagName: ${{ github.ref_name }}
           releaseName: "ZylCode ${{ github.ref_name }}"
-          releaseBody: "Automated ZylCode release — see assets below."
-          releaseDraft: true
-          prerelease: false
-          includeUpdaterJson: false
-          args: ""
-
-  # -------------------------------------------------------------------------
-  # Job 3: aggregate CLI archives onto the same draft release
-  # -------------------------------------------------------------------------
-  publish-cli-to-release:
-    name: publish CLI to release
-    needs: [build-cli, build-desktop]
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Download all CLI artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: cli-*
-          merge-multiple: true
-          path: ./dist-cli
-
-      - name: List artifacts
-        shell: bash
-        run: ls -lah ./dist-cli
-
-      - name: Publish CLI archives to draft release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          draft: true
-          generate_release_notes: true
-          files: ./dist-cli/*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
