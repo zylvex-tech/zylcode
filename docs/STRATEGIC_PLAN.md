@@ -120,7 +120,7 @@ The core product narrative: ZylCode doesn't just *claim* to be verified — it *
 
 **Output:** The function exists in code. Properties over it are tested. The proof is that the implementation matches the specification.
 
-**Status:** Architecture defined (Section 0.2). Implementation blocked on Phase 11.
+**Status:** COMPLETE (Phase 11, commit `98ed76c`). Pure permission-check function, property tests, CLI subcommands, and kind-correctness enforcement all shipped. 158 tests passing.
 
 ### Rung 4: Z3/Dafny Proofs (Months of Work)
 **What:** Machine-checkable proofs that specific properties hold across all possible inputs.
@@ -218,6 +218,8 @@ This is a structural advantage over tools that bundle API access with a markup. 
 5. Publish fault-injection results as benchmark (Section 4.4)
 
 **Exit criteria:** `cargo test --workspace` passes. Property tests demonstrate soundness and completeness. Security scan produces structured output.
+
+**Status:** COMPLETE (commit `98ed76c`). All 5 actions shipped: `check_permission` with property tests (9 proptests), `security-scan` CLI subcommand, `verify --headless` CLI subcommand, fault-injection benchmark docs, and `validate_artifact_kind` kind-correctness enforcement. 158 tests passing across all crates.
 
 ### Phase 12: Rung 4 (Z3/Dafny Proofs)
 
