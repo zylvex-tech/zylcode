@@ -1,6 +1,6 @@
 # ZylCode
 
-> Formally verified AI software synthesis engine & intent workspace featuring real-time artifact previews, dynamic MCP bridges, and zero token waste.
+> AI software synthesis engine & intent workspace featuring real-time artifact previews, dynamic MCP bridges, and zero token waste.
 
 [![CI](https://github.com/zylvex-tech/zylcode/actions/workflows/ci.yml/badge.svg)](https://github.com/zylvex-tech/zylcode/actions/workflows/ci.yml)
 [![Release](https://github.com/zylvex-tech/zylcode/actions/workflows/release.yml/badge.svg)](https://github.com/zylvex-tech/zylcode/actions/workflows/release.yml)
@@ -21,7 +21,7 @@ ZylCode is structured as a high-performance modular Rust workspace with a Tauri 
               +-----------------+-----------------+
               |        crates/zylcode-core        |
               |  - Speculative Cache (LRU)        |
-              |  - Context Trimming Engine        |
+              |  - Context Compression Engine     |
               |  - Memchr Zero-Alloc Parser       |
               +-----------------+-----------------+
                                 |
