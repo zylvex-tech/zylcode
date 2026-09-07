@@ -8,6 +8,7 @@ import ProviderSettings from "./components/ProviderSettings";
 import { useArtifactStream } from "./lib/useArtifactStream";
 import { useTheme } from "./lib/theme";
 import { StatusBar } from "./components/StatusBar";
+import VerificationRungBadge from "./components/VerificationRungBadge";
 
 type IntentResult = {
   summary: string;
@@ -17,6 +18,7 @@ type IntentResult = {
 
 type VerificationReport = {
   passed: boolean;
+  rung: number;
   checks: { name: string; passed: boolean; message: string }[];
   duration_ms: number;
 };
@@ -264,6 +266,7 @@ export default function App() {
                   <p className={`text-sm font-semibold ${verification.passed ? "text-green-400" : "text-red-400"}`}>
                     {verification.passed ? "PASSED" : "FAILED"} — {verification.duration_ms} ms
                   </p>
+                  <VerificationRungBadge rung={verification.rung} />
                   <ul className="space-y-1 font-mono text-xs">
                     {verification.checks.map((c) => (
                       <li key={c.name} className={c.passed ? "text-zyl-muted" : "text-red-300"}>

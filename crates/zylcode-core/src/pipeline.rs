@@ -2,6 +2,7 @@
 //! typed [`Artifact`]s and drives the verification loop.
 
 use crate::planner::IntentPlanner;
+use crate::router::decision::{classify_verification_rung, VerificationRung};
 use crate::router::{RouterConfig, TokenRouter, TokenSnapshot};
 use crate::{Intent, IntentResult, VerificationReport};
 use anyhow::{Context, Result};
@@ -87,6 +88,7 @@ pub struct ProofMetrics {
     pub verification_passed: bool,
     pub verification_duration_ms: u64,
     pub verification_checks: usize,
+    pub max_verification_rung: VerificationRung,
     pub tokens: TokenSnapshot,
 }
 
@@ -166,6 +168,15 @@ impl ArtifactPipeline {
             warn!("no artifacts extracted; returning raw output as fallback");
         }
 
+        // 3b) Classify verification rung per artifact; track the highest rung.
+        let mut max_rung = VerificationRung::Rung0;
+        for a in &artifacts {
+            let rung = classify_verification_rung(a.kind_str());
+            if rung > max_rung {
+                max_rung = rung;
+            }
+        }
+
         // 4) Verify
         let verification = verify().await.context("verification step failed")?;
         let passed = verification.passed;
@@ -187,6 +198,7 @@ impl ArtifactPipeline {
             verification_passed: passed,
             verification_duration_ms: duration_ms,
             verification_checks: checks,
+            max_verification_rung: max_rung.clone(),
             tokens: self.router.snapshot(),
         };
 
@@ -201,18 +213,20 @@ impl ArtifactPipeline {
 
         let summary = if artifacts.is_empty() {
             format!(
-                "Processed intent: {} — no structured artifacts extracted (raw output preserved). Verification: {}",
+                "Processed intent: {} — no structured artifacts extracted (raw output preserved). Verification: {} (rung: {})",
                 intent.prompt,
-                if passed { "PASSED" } else { "FAILED" }
+                if passed { "PASSED" } else { "FAILED" },
+                max_rung.short_label()
             )
         } else {
             format!(
-                "Processed intent: {} — {} artifact(s) generated, verification {} ({} checks, {} ms). Tokens in/out: {}/{}, saved: {}",
+                "Processed intent: {} — {} artifact(s) generated, verification {} ({} checks, {} ms, rung: {}). Tokens in/out: {}/{}, saved: {}",
                 intent.prompt,
                 artifacts.len(),
                 if passed { "PASSED" } else { "FAILED" },
                 checks,
                 duration_ms,
+                max_rung.short_label(),
                 metrics.tokens.input_tokens,
                 metrics.tokens.output_tokens,
                 metrics.tokens.verification_saved_tokens

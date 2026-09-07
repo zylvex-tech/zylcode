@@ -3,8 +3,106 @@
 //! `Decision` replaces the boolean permission model with a typed enum that
 //! carries *why* the decision was made — critical for audit trails and the
 //! verification ladder (Rung 3).
+//!
+//! This module also defines `VerificationRung` and the pure classifier that
+//! maps pipeline artifacts to the minimum verification rung required.
 
 use serde::{Deserialize, Serialize};
+
+// ---------------------------------------------------------------------------
+// Verification Rung — the verification ladder (v2 §3)
+// ---------------------------------------------------------------------------
+
+/// Verification ladder rung.
+///
+/// Each rung represents an increasing level of verification rigor. The
+/// `classify_verification_rung` function maps a pipeline artifact to the
+/// *minimum* rung required to verify it, purely based on artifact kind —
+/// no I/O, no side effects, fully deterministic.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum VerificationRung {
+    /// No verification. Default when no artifact or verification is needed.
+    Rung0,
+    /// Lint + type-check only. Suitable for UI components and plugin manifests.
+    Rung1,
+    /// Property-based tests (proptest/quickcheck). Required for Rust modules
+    /// and formal proof specs.
+    Rung2,
+    /// Formal specification (lightweight). Not yet implemented.
+    Rung3,
+    /// Full formal verification (Z3/Dafny). Not yet implemented.
+    Rung4,
+}
+
+impl VerificationRung {
+    /// Human-readable label for UI badges.
+    pub fn label(&self) -> &'static str {
+        match self {
+            Self::Rung0 => "None",
+            Self::Rung1 => "Lint & Type-Check",
+            Self::Rung2 => "Property Tests",
+            Self::Rung3 => "Formal Spec",
+            Self::Rung4 => "Full Verification",
+        }
+    }
+
+    /// Short badge text (≤12 chars for UI).
+    pub fn short_label(&self) -> &'static str {
+        match self {
+            Self::Rung0 => "None",
+            Self::Rung1 => "Lint",
+            Self::Rung2 => "Props",
+            Self::Rung3 => "Spec",
+            Self::Rung4 => "Formal",
+        }
+    }
+
+    /// CSS color class for the badge background.
+    pub fn color_class(&self) -> &'static str {
+        match self {
+            Self::Rung0 => "bg-gray-500",
+            Self::Rung1 => "bg-blue-500",
+            Self::Rung2 => "bg-green-500",
+            Self::Rung3 => "bg-yellow-500",
+            Self::Rung4 => "bg-purple-500",
+        }
+    }
+}
+
+impl std::fmt::Display for VerificationRung {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.label())
+    }
+}
+
+/// Pure, side-effect-free classifier: maps a pipeline artifact kind string
+/// to the minimum [`VerificationRung`] required.
+///
+/// # Rules (v2 §3)
+///
+/// | Artifact kind | Minimum rung |
+/// |---|---|
+/// | `UiComponent` | Rung1 (lint + type-check) |
+/// | `PluginManifest` | Rung1 (lint + type-check) |
+/// | `RustModule` | Rung2 (property-based tests) |
+/// | `FormalProofSpec` | Rung2 (property-based tests) |
+/// | anything else | Rung0 (no verification) |
+pub fn classify_verification_rung(artifact_kind: &str) -> VerificationRung {
+    match artifact_kind {
+        "UiComponent" | "ui_component" | "ReactComponent" | "react_component" => {
+            VerificationRung::Rung1
+        }
+        "PluginManifest" | "plugin_manifest" | "McpManifest" | "mcp_manifest" => {
+            VerificationRung::Rung1
+        }
+        "RustModule" | "rust_module" | "RustCrate" | "rust_crate" => VerificationRung::Rung2,
+        "FormalProofSpec" | "formal_proof_spec" | "FormalProof" | "formal_proof" => {
+            VerificationRung::Rung2
+        }
+        _ => VerificationRung::Rung0,
+    }
+}
 
 /// Why a tool invocation was allowed or denied.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
