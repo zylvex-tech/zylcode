@@ -208,6 +208,7 @@ impl ArtifactPipeline {
                 kind: a.kind_str().to_string(),
                 label: a.path().to_string(),
                 content: a.content().to_string(),
+                path: a.path().to_string(),
             })
             .collect();
 
@@ -241,6 +242,7 @@ impl ArtifactPipeline {
                 kind: "llm_raw".to_string(),
                 label: "raw_output".to_string(),
                 content: raw.clone(),
+                path: String::new(),
             });
         }
 
@@ -249,6 +251,7 @@ impl ArtifactPipeline {
             kind: "proof_metrics".to_string(),
             label: "proof_metrics.json".to_string(),
             content: serde_json::to_string_pretty(&metrics).unwrap_or_default(),
+            path: "proof_metrics.json".to_string(),
         });
 
         Ok(IntentResult {

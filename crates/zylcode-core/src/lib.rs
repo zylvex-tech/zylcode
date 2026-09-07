@@ -84,6 +84,9 @@ pub struct Artifact {
     pub label: String,
     /// Content or path.
     pub content: String,
+    /// Filesystem path associated with the artifact, if any.
+    #[serde(default)]
+    pub path: String,
 }
 
 /// Outcome of a logic verification pass.
