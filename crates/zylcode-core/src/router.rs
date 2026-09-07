@@ -2,6 +2,7 @@
 //! DeepSeek, Anthropic, and local Ollama with fallback + telemetry.
 
 pub mod cache;
+pub mod decision;
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};

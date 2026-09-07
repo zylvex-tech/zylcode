@@ -21,6 +21,8 @@ pub enum AuditEventType {
     ConfigReload,
     ConfigValidationError,
     AuthFailure,
+    /// Verification-ladder event (Rung 3 permission gate evaluation).
+    VerificationRung,
 }
 
 /// Audit event severity.
