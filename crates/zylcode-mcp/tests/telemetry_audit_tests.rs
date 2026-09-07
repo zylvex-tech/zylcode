@@ -605,3 +605,137 @@ async fn concurrent_audit_logging() {
     let broken = logger.verify_chain(temp_file.path()).unwrap();
     assert!(broken.is_empty(), "Audit chain should be intact under concurrent load");
 }
+
+// ============================================================================
+// Verification Rung Telemetry Tests
+// ============================================================================
+
+#[test]
+fn audit_verification_rung_granted() {
+    let temp_file = NamedTempFile::new().unwrap();
+    let config = AuditConfig {
+        log_path: temp_file.path().to_path_buf(),
+        min_severity: AuditSeverity::Info,
+        include_hashes: true,
+        ..Default::default()
+    };
+    let logger = AuditLogger::new(config).unwrap();
+
+    // Log a verification-rung event that was granted
+    logger
+        .log_verification_rung(
+            "rung_1",
+            "agent-alpha",
+            "tool-x",
+            "Allow",
+            true,
+        )
+        .unwrap();
+
+    // Verify chain integrity
+    let broken = logger.verify_chain(temp_file.path()).unwrap();
+    assert!(broken.is_empty(), "Audit chain should be intact");
+
+    // Verify log content
+    let content = std::fs::read_to_string(temp_file.path()).unwrap();
+    assert!(content.contains("verification_rung"), "Should contain event type");
+    assert!(content.contains("rung_1"), "Should contain rung identifier");
+    assert!(content.contains("agent-alpha"), "Should contain agent_id");
+    assert!(content.contains("tool-x"), "Should contain tool_id");
+    assert!(content.contains("Allow"), "Should contain decision");
+    // granted=true => Info severity
+    assert!(content.contains("info"), "Granted event should have info severity");
+}
+
+#[test]
+fn audit_verification_rung_denied() {
+    let temp_file = NamedTempFile::new().unwrap();
+    let config = AuditConfig {
+        log_path: temp_file.path().to_path_buf(),
+        min_severity: AuditSeverity::Info,
+        include_hashes: true,
+        ..Default::default()
+    };
+    let logger = AuditLogger::new(config).unwrap();
+
+    // Log a verification-rung event that was denied
+    logger
+        .log_verification_rung(
+            "rung_2",
+            "agent-beta",
+            "tool-y",
+            "DenyNoRule",
+            false,
+        )
+        .unwrap();
+
+    let broken = logger.verify_chain(temp_file.path()).unwrap();
+    assert!(broken.is_empty(), "Audit chain should be intact");
+
+    let content = std::fs::read_to_string(temp_file.path()).unwrap();
+    assert!(content.contains("verification_rung"));
+    assert!(content.contains("rung_2"));
+    assert!(content.contains("agent-beta"));
+    assert!(content.contains("tool-y"));
+    assert!(content.contains("DenyNoRule"));
+    // granted=false => Warning severity
+    assert!(content.contains("warning"), "Denied event should have warning severity");
+}
+
+#[test]
+fn audit_verification_rung_severity_filtering() {
+    let temp_file = NamedTempFile::new().unwrap();
+    let config = AuditConfig {
+        log_path: temp_file.path().to_path_buf(),
+        min_severity: AuditSeverity::Warning, // Only Warning and above
+        ..Default::default()
+    };
+    let logger = AuditLogger::new(config).unwrap();
+
+    // granted=true => Info => should be filtered out
+    logger
+        .log_verification_rung("rung_1", "agent-a", "tool-a", "Allow", true)
+        .unwrap();
+
+    // granted=false => Warning => should be logged
+    logger
+        .log_verification_rung("rung_2", "agent-b", "tool-b", "DenyNoRule", false)
+        .unwrap();
+
+    let broken = logger.verify_chain(temp_file.path()).unwrap();
+    assert!(broken.is_empty());
+
+    let content = std::fs::read_to_string(temp_file.path()).unwrap();
+    // Only the denied event should appear
+    assert!(content.contains("rung_2"), "Denied event should be logged");
+    assert!(!content.contains("rung_1"), "Granted event should be filtered out");
+}
+
+#[test]
+fn audit_verification_rung_chain_integrity() {
+    let temp_file = NamedTempFile::new().unwrap();
+    let config = AuditConfig {
+        log_path: temp_file.path().to_path_buf(),
+        include_hashes: true,
+        ..Default::default()
+    };
+    let logger = AuditLogger::new(config).unwrap();
+
+    // Log a sequence of verification-rung events
+    logger
+        .log_verification_rung("rung_1", "agent-1", "tool-1", "Allow", true)
+        .unwrap();
+    logger
+        .log_verification_rung("rung_2", "agent-2", "tool-2", "DenyNoRule", false)
+        .unwrap();
+    logger
+        .log_verification_rung("rung_3", "agent-3", "tool-3", "Allow", true)
+        .unwrap();
+
+    let broken = logger.verify_chain(temp_file.path()).unwrap();
+    assert!(
+        broken.is_empty(),
+        "Chain should be intact across multiple rung events, broken at: {:?}",
+        broken
+    );
+}

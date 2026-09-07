@@ -4,6 +4,7 @@
 //! subsystem re-exported from [`marketplace`].
 
 pub mod cache;
+pub mod cli;
 pub mod compression;
 pub mod marketplace;
 pub mod pipeline;

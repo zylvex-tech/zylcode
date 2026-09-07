@@ -414,6 +414,52 @@ impl AuditLogger {
         self.log(entry)
     }
 
+    /// Log a verification-rung event from the permission gate.
+    ///
+    /// Records which rung of the verification ladder was evaluated, the agent
+    /// and tool involved, and the decision outcome. The `context` field carries
+    /// structured JSON for downstream telemetry aggregation.
+    pub fn log_verification_rung(
+        &self,
+        rung: &str,
+        agent_id: &str,
+        tool_id: &str,
+        decision: &str,
+        granted: bool,
+    ) -> Result<()> {
+        let severity = if granted {
+            AuditSeverity::Info
+        } else {
+            AuditSeverity::Warning
+        };
+
+        let entry = AuditEntry {
+            timestamp: Self::now_rfc3339(),
+            sequence: 0,
+            event_type: AuditEventType::VerificationRung,
+            severity,
+            tool_id: Some(tool_id.into()),
+            transport: None,
+            caller_id: Some(agent_id.into()),
+            input_hash: None,
+            output_hash: None,
+            duration_ms: None,
+            retry_attempt: None,
+            max_retries: None,
+            error: None,
+            context: Some(serde_json::json!({
+                "rung": rung,
+                "agent_id": agent_id,
+                "tool_id": tool_id,
+                "decision": decision,
+                "granted": granted,
+            })),
+            chain_hash: String::new(),
+        };
+
+        self.log(entry)
+    }
+
     /// Get current timestamp in RFC3339 format.
     fn now_rfc3339() -> String {
         let now = SystemTime::now()
