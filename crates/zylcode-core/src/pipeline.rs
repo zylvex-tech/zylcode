@@ -316,18 +316,22 @@ impl ArtifactPipeline {
             let inner = &raw[inner_start..inner_start + close_rel];
             let content = extract_cdata_or_text(inner).to_string();
 
-            let artifact = match kind_raw.as_str() {
-                "uicomponent" | "ui_component" | "reactcomponent" | "react_component" => Artifact::UiComponent {
+            // Independent cross-check: correct LLM-reported kind against
+            // file extension and content heuristics.
+            let corrected_kind = validate_artifact_kind(&path, &content, &kind_raw);
+
+            let artifact = match corrected_kind.as_str() {
+                "uicomponent" | "UiComponent" | "ui_component" | "reactcomponent" | "react_component" => Artifact::UiComponent {
                     path,
                     content,
                     language: "tsx".to_string(),
                 },
-                "rustmodule" | "rust_module" | "rustcrate" | "rust_crate" => Artifact::RustModule {
+                "rustmodule" | "RustModule" | "rust_module" | "rustcrate" | "rust_crate" => Artifact::RustModule {
                     path,
                     content,
                     tests: None,
                 },
-                "pluginmanifest" | "plugin_manifest" | "mcmanifest" | "mcpmanifest" => {
+                "pluginmanifest" | "PluginManifest" | "plugin_manifest" | "mcmanifest" | "mcpmanifest" => {
                     let manifest = serde_json::from_str::<serde_json::Value>(&content).ok();
                     Artifact::PluginManifest {
                         path,
@@ -335,7 +339,7 @@ impl ArtifactPipeline {
                         manifest,
                     }
                 }
-                "formalproof" | "formal_proof" | "formalproofspec" | "formal_proof_spec" => {
+                "formalproof" | "FormalProofSpec" | "formal_proof" | "formalproofspec" | "formal_proof_spec" => {
                     let obligations = extract_obligations(&content);
                     Artifact::FormalProofSpec {
                         path,
@@ -396,6 +400,110 @@ impl ArtifactPipeline {
             duration_ms: start.elapsed().as_millis() as u64,
         })
     }
+}
+
+// ---------------------------------------------------------------------------
+// Kind validation — independent cross-check against LLM self-report
+// ---------------------------------------------------------------------------
+
+/// Validate and correct an LLM-reported artifact `kind` against the file path
+/// and content. Returns the authoritative kind string. When correction is
+/// needed a warning is logged.
+///
+/// **Security invariant**: this function is pure (no side-effects beyond
+/// `tracing::warn!`), making it safe for proptest.
+pub fn validate_artifact_kind(path: &str, content: &str, reported_kind: &str) -> String {
+    let inferred = infer_kind_from_path(path).or_else(|| infer_kind_from_content(content));
+
+    match inferred {
+        Some(correct) if normalize_kind(correct) != normalize_kind(reported_kind) => {
+            warn!(
+                path,
+                reported = reported_kind,
+                corrected = correct,
+                "LLM-reported artifact kind corrected by independent validation"
+            );
+            correct.to_string()
+        }
+        Some(correct) => correct.to_string(),
+        // No signal available — trust the LLM report as a last resort,
+        // but if the LLM reported nothing, default to "Unknown".
+        None => {
+            let trimmed = reported_kind.trim();
+            if trimmed.is_empty() {
+                "Unknown".to_string()
+            } else {
+                trimmed.to_string()
+            }
+        }
+    }
+}
+
+/// Map file extension → canonical kind. Returns `None` for ambiguous extensions.
+fn infer_kind_from_path(path: &str) -> Option<&'static str> {
+    let ext = std::path::Path::new(path)
+        .extension()?
+        .to_str()?
+        .to_ascii_lowercase();
+    match ext.as_str() {
+        "rs" => Some("RustModule"),
+        "tsx" | "jsx" | "ts" | "js" | "mjs" | "mts" => Some("UiComponent"),
+        "json" | "jsonc" => Some("PluginManifest"),
+        "md" | "tex" | "lean" | "v" | "thy" => Some("FormalProofSpec"),
+        _ => None,
+    }
+}
+
+/// Content-heuristic fallback when the path extension is ambiguous.
+fn infer_kind_from_content(content: &str) -> Option<&'static str> {
+    let sample = &content[..content.len().min(2048)];
+    if looks_like_rust(sample) {
+        Some("RustModule")
+    } else if looks_like_typescript(sample) {
+        Some("UiComponent")
+    } else if looks_like_json(sample) {
+        Some("PluginManifest")
+    } else if looks_like_proof(sample) {
+        Some("FormalProofSpec")
+    } else {
+        None
+    }
+}
+
+fn looks_like_rust(s: &str) -> bool {
+    // Rust keywords / patterns that appear early in a module.
+    s.contains("fn ") || s.contains("pub ") || s.contains("mod ") || s.contains("impl ")
+        || s.contains("use ") && s.contains("::")
+        || s.contains("struct ") || s.contains("enum ")
+}
+
+fn looks_like_typescript(s: &str) -> bool {
+    s.contains("import ") && (s.contains("from ") || s.contains("React"))
+        || s.contains("export ") && (s.contains("const ") || s.contains("function "))
+        || s.contains("useState") || s.contains("useEffect")
+        || s.contains(": FC") || s.contains(": React.FC")
+        || s.contains("JSX") || s.contains("<div") || s.contains("<span")
+}
+
+fn looks_like_json(s: &str) -> bool {
+    let trimmed = s.trim_start();
+    if trimmed.starts_with('{') || trimmed.starts_with('[') {
+        // Attempt a quick parse; if serde is happy, it's JSON.
+        serde_json::from_str::<serde_json::Value>(trimmed).is_ok()
+    } else {
+        false
+    }
+}
+
+fn looks_like_proof(s: &str) -> bool {
+    s.contains("theorem ") || s.contains("lemma ") || s.contains("forall ")
+        || s.contains("exists ") || s.contains("obligation") || s.contains("proof")
+        || s.contains("axiom ") || s.contains("inductive ")
+}
+
+/// Normalize kind strings for case-insensitive comparison.
+fn normalize_kind(k: &str) -> String {
+    k.to_ascii_lowercase().replace('_', "").replace('-', "")
 }
 
 fn default_path_for_kind(kind: &str) -> String {
@@ -535,6 +643,163 @@ mod tests {
         } else {
             panic!("expected FormalProofSpec");
         }
+    }
+
+    // -- validate_artifact_kind tests ------------------------------------------
+
+    #[test]
+    fn validate_kind_happy_path_rust_module() {
+        let result = validate_artifact_kind("src/lib.rs", "pub fn hello() {}", "RustModule");
+        assert_eq!(result, "RustModule");
+    }
+
+    #[test]
+    fn validate_kind_happy_path_ui_component() {
+        let result = validate_artifact_kind(
+            "src/App.tsx",
+            "import React from 'react'; export const App = () => <div/>",
+            "UiComponent",
+        );
+        assert_eq!(result, "UiComponent");
+    }
+
+    #[test]
+    fn validate_kind_happy_path_plugin_manifest() {
+        let result = validate_artifact_kind(
+            "plugin.json",
+            r#"{"name": "test", "version": "1.0"}"#,
+            "PluginManifest",
+        );
+        assert_eq!(result, "PluginManifest");
+    }
+
+    #[test]
+    fn validate_kind_happy_path_formal_proof() {
+        let result = validate_artifact_kind(
+            "proof.md",
+            "- obligation 1\n- obligation 2",
+            "FormalProofSpec",
+        );
+        assert_eq!(result, "FormalProofSpec");
+    }
+
+    #[test]
+    fn validate_kind_downgrade_attack_rust_claimed_as_proof() {
+        // LLM claims FormalProofSpec for a .rs file — corrected to RustModule.
+        let result = validate_artifact_kind(
+            "src/lib.rs",
+            "pub fn add(a: i32, b: i32) -> i32 { a + b }",
+            "FormalProofSpec",
+        );
+        assert_eq!(result, "RustModule");
+    }
+
+    #[test]
+    fn validate_kind_upgrade_attack_proof_claimed_as_rust() {
+        // LLM claims RustModule for a .lean proof file — corrected to FormalProofSpec.
+        let result = validate_artifact_kind(
+            "proofs/main.lean",
+            "theorem add_comm (a b : Nat) : a + b = b + a := by\n  omega",
+            "RustModule",
+        );
+        assert_eq!(result, "FormalProofSpec");
+    }
+
+    #[test]
+    fn validate_kind_upgrade_attack_json_claimed_as_ui() {
+        // LLM claims UiComponent for a .json file — corrected to PluginManifest.
+        let result = validate_artifact_kind(
+            "config.json",
+            r#"{"name": "test", "version": "1.0"}"#,
+            "UiComponent",
+        );
+        assert_eq!(result, "PluginManifest");
+    }
+
+    #[test]
+    fn validate_kind_unknown_extension_trusts_llm() {
+        // No extension signal and ambiguous content — trust LLM report.
+        let result = validate_artifact_kind(
+            "artifact",
+            "some ambiguous text",
+            "RustModule",
+        );
+        assert_eq!(result, "RustModule");
+    }
+
+    #[test]
+    fn validate_kind_unknown_extension_content_heuristic_rust() {
+        // Unknown extension but content is clearly Rust — correct to RustModule.
+        let result = validate_artifact_kind(
+            "artifact",
+            "pub fn process() { impl Trait for Type {} }",
+            "UiComponent",
+        );
+        assert_eq!(result, "RustModule");
+    }
+
+    #[test]
+    fn validate_kind_unknown_extension_content_heuristic_typescript() {
+        // Unknown extension but content has React hooks — correct to UiComponent.
+        let result = validate_artifact_kind(
+            "artifact",
+            "import { useState } from 'react'; export const App = () => <div/>",
+            "RustModule",
+        );
+        assert_eq!(result, "UiComponent");
+    }
+
+    #[test]
+    fn validate_kind_unknown_extension_content_heuristic_json() {
+        // Unknown extension but content is valid JSON — correct to PluginManifest.
+        let result = validate_artifact_kind(
+            "artifact",
+            r#"{"key": "value", "nested": {"a": 1}}"#,
+            "RustModule",
+        );
+        assert_eq!(result, "PluginManifest");
+    }
+
+    #[test]
+    fn validate_kind_case_insensitive() {
+        // Kind with different casing should still match.
+        let result = validate_artifact_kind("src/lib.rs", "pub fn x() {}", "rustmodule");
+        assert_eq!(result, "RustModule");
+    }
+
+    #[test]
+    fn validate_kind_case_insensitive_with_underscores() {
+        let result = validate_artifact_kind("src/lib.rs", "pub fn x() {}", "rust_module");
+        assert_eq!(result, "RustModule");
+    }
+
+    #[test]
+    fn validate_kind_mixed_content_fallback() {
+        // Content that looks like both Rust and TypeScript — path wins.
+        let result = validate_artifact_kind(
+            "src/lib.rs",
+            "import React from 'react'; pub fn main() {}",
+            "UiComponent",
+        );
+        assert_eq!(result, "RustModule");
+    }
+
+    #[test]
+    fn validate_kind_empty_content_unknown_ext() {
+        // Empty content, unknown extension — trust LLM.
+        let result = validate_artifact_kind("artifact", "", "FormalProofSpec");
+        assert_eq!(result, "FormalProofSpec");
+    }
+
+    #[test]
+    fn validate_kind_proof_obligations_in_content() {
+        // Content with proof keywords but wrong extension — content heuristic wins.
+        let result = validate_artifact_kind(
+            "spec.txt",
+            "theorem main: forall x, P x → Q x\nobligation: prove base case",
+            "RustModule",
+        );
+        assert_eq!(result, "FormalProofSpec");
     }
 
     #[tokio::test]

@@ -39,3 +39,7 @@ harness = false
 [[bench]]
 name = "parse"
 harness = false
+
+[[bin]]
+name = "zylcode-core-cli"
+path = "src/bin/zylcode-core-cli/main.rs"

@@ -86,7 +86,7 @@ impl std::fmt::Display for VerificationRung {
 /// | `UiComponent` | Rung1 (lint + type-check) |
 /// | `PluginManifest` | Rung1 (lint + type-check) |
 /// | `RustModule` | Rung2 (property-based tests) |
-/// | `FormalProofSpec` | Rung2 (property-based tests) |
+/// | `FormalProofSpec` | Rung3 (formal specification, not yet machine-verified) |
 /// | anything else | Rung0 (no verification) |
 pub fn classify_verification_rung(artifact_kind: &str) -> VerificationRung {
     match artifact_kind {
@@ -98,7 +98,7 @@ pub fn classify_verification_rung(artifact_kind: &str) -> VerificationRung {
         }
         "RustModule" | "rust_module" | "RustCrate" | "rust_crate" => VerificationRung::Rung2,
         "FormalProofSpec" | "formal_proof_spec" | "FormalProof" | "formal_proof" => {
-            VerificationRung::Rung2
+            VerificationRung::Rung3
         }
         _ => VerificationRung::Rung0,
     }

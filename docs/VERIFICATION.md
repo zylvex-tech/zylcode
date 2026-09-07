@@ -41,13 +41,18 @@ Machine-checked proofs of correctness:
 
 **Gate:** Required for cryptographic operations and financial calculations.
 
+## `kind` Field Trust Model
+
+The `kind` attribute on `Artifact` in `pipeline.rs` is **LLM self-reported** — it is deserialized directly from the model's XML/JSON output via `#[serde(tag = "kind")]`. This is enforced by `validate_artifact_kind()`:
+
+- **Extension inference**: `.rs` → `RustModule`, `.tsx/.jsx/.ts/.js/.mjs/.mts` → `UiComponent`, `.json/.jsonc` → `PluginManifest`, `.md/.tex/.lean/.v/.thy` → `FormalProofSpec`. Unknown extensions trust the LLM.
+- **Content heuristics fallback**: When no known extension is present, content patterns (e.g. `fn `, `pub ` → Rust; `import`, `export const` → TypeScript; `{` → JSON) refine the kind.
+- **Empty `kind` fallback**: When the LLM omits `kind` (empty/whitespace) and no extension/content heuristic matches, the artifact is classified as `Unknown`.
+- **Current posture**: The verification ladder is defense-in-depth; incorrect rung assignment degrades to a lower verification level, not a bypass. The permission gate (`check_permission()`) remains the primary enforcement layer.
+
 ## Routing
 
-The verification rung for a given task is determined by `check_permission()` in `crates/zylcode-core/src/router/decision.rs`. The function is pure and side-effect-free:
-
-```rust
-fn check_permission(agent_id: &str, tool_id: &str, context: &SessionContext) -> Decision
-```
+The verification rung for a given task is determined by `classify_verification_rung()` in `crates/zylcode-core/src/router/decision.rs`.
 
 Task categories map to minimum rungs:
 
