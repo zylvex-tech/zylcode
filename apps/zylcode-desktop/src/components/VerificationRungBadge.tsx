@@ -58,7 +58,8 @@ export const VerificationRungBadge: React.FC<VerificationRungBadgeProps> = ({
       title={rungInfo.description}
     >
       <span className="mr-1">🔒</span>
-      <span>Verification: {rungInfo.label}</span>
+      <span className="font-medium">Verification: {rungInfo.label}</span>
+      <span className="ml-1.5 text-[0.65rem] opacity-70">({rungInfo.description})</span>
     </div>
   );
 };
