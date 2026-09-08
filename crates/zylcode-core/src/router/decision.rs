@@ -104,6 +104,17 @@ pub fn classify_verification_rung(artifact_kind: &str) -> VerificationRung {
     }
 }
 
+/// Describes the verification rung in human-readable terms.
+pub fn verification_rung_description(rung: &VerificationRung) -> &'static str {
+    match rung {
+        VerificationRung::Rung0 => "No verification. The artifact is unverified.",
+        VerificationRung::Rung1 => "Static analysis. The artifact has been validated by static checks.",
+        VerificationRung::Rung2 => "Formal proof. The artifact has been formally verified.",
+        VerificationRung::Rung3 => "Full verification. The artifact is formally proven and reviewed.",
+        VerificationRung::Rung4 => "Maximum verification. The artifact is formally proven, reviewed, and audited.",
+    }
+}
+
 /// Why a tool invocation was allowed or denied.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]

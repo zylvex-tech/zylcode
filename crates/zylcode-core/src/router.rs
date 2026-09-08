@@ -424,6 +424,36 @@ pub struct TokenSnapshot {
 }
 
 // ---------------------------------------------------------------------------
+// Cost estimation
+// ---------------------------------------------------------------------------
+
+/// Per-provider pricing: (input_per_1m, output_per_1m) in USD.
+/// Ollama and SyntheticOffline are free (local inference).
+fn provider_pricing(provider: &ProviderKind) -> (f64, f64) {
+    match provider {
+        // Anthropic Claude 3.5 Sonnet (2024-10-22 pricing)
+        ProviderKind::Anthropic => (3.0, 15.0),
+        // OpenRouter routes through various providers; use a blended mid-range
+        // estimate (GPT-4o-mini class) so cost is conservative.
+        ProviderKind::OpenRouter => (0.15, 0.60),
+        // DeepSeek V3 (deepseek-chat) pricing
+        ProviderKind::Ollama => (0.0, 0.0),
+        // Local / synthetic — no API cost.
+        ProviderKind::SyntheticOffline => (0.0, 0.0),
+    }
+}
+
+/// Estimate the dollar cost of a request for a given provider and token counts.
+/// Returns `0.0` for local/free providers (Ollama, SyntheticOffline).
+pub fn estimate_cost(provider: &ProviderKind, input_tokens: u64, output_tokens: u64) -> f64 {
+    let (in_rate, out_rate) = provider_pricing(provider);
+    let input_cost = (input_tokens as f64 / 1_000_000.0) * in_rate;
+    let output_cost = (output_tokens as f64 / 1_000_000.0) * out_rate;
+    // Round to 6 decimal places (~micro-dollar precision) to avoid float noise.
+    ((input_cost + output_cost) * 1_000_000.0).round() / 1_000_000.0
+}
+
+// ---------------------------------------------------------------------------
 // Token router
 // ---------------------------------------------------------------------------
 
@@ -1019,5 +1049,79 @@ mod tests {
         assert_eq!(cache.len(), 1);
         // Second hit should have recorded saved tokens
         assert!(router.snapshot().verification_saved_tokens > 0);
+    }
+
+    #[test]
+    fn provider_pricing_anthropic() {
+        let (input, output) = provider_pricing(&ProviderKind::Anthropic);
+        assert!((input - 3.0).abs() < 1e-9);
+        assert!((output - 15.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn provider_pricing_openrouter() {
+        let (input, output) = provider_pricing(&ProviderKind::OpenRouter);
+        assert!((input - 0.15).abs() < 1e-9);
+        assert!((output - 0.60).abs() < 1e-9);
+    }
+
+    #[test]
+    fn provider_pricing_ollama_is_zero() {
+        let (input, output) = provider_pricing(&ProviderKind::Ollama);
+        assert!((input).abs() < 1e-9);
+        assert!((output).abs() < 1e-9);
+    }
+
+    #[test]
+    fn provider_pricing_offline_is_zero() {
+        let (input, output) = provider_pricing(&ProviderKind::SyntheticOffline);
+        assert!((input).abs() < 1e-9);
+        assert!((output).abs() < 1e-9);
+    }
+
+    #[test]
+    fn estimate_cost_anthropic_small() {
+        // 1000 input tokens @ $3/M = $0.003, 500 output tokens @ $15/M = $0.0075
+        // total = $0.0105
+        let cost = estimate_cost(&ProviderKind::Anthropic, 1000, 500);
+        assert!((cost - 0.0105).abs() < 1e-9, "cost was {cost}");
+    }
+
+    #[test]
+    fn estimate_cost_anthropic_large() {
+        // 1_000_000 input tokens @ $3/M = $3.00, 1_000_000 output tokens @ $15/M = $15.00
+        let cost = estimate_cost(&ProviderKind::Anthropic, 1_000_000, 1_000_000);
+        assert!((cost - 18.0).abs() < 1e-9, "cost was {cost}");
+    }
+
+    #[test]
+    fn estimate_cost_offline_is_zero() {
+        let cost = estimate_cost(&ProviderKind::SyntheticOffline, 50_000, 10_000);
+        assert!((cost).abs() < 1e-9, "cost was {cost}");
+    }
+
+    #[test]
+    fn estimate_cost_ollama_is_zero() {
+        let cost = estimate_cost(&ProviderKind::Ollama, 50_000, 10_000);
+        assert!((cost).abs() < 1e-9, "cost was {cost}");
+    }
+
+    #[test]
+    fn estimate_cost_rounding_is_micro_dollar() {
+        // 1 input token @ Anthropic $3/M = $0.000003
+        // 1 output token @ Anthropic $15/M = $0.000015
+        // total = $0.000018
+        let cost = estimate_cost(&ProviderKind::Anthropic, 1, 1);
+        assert!((cost - 0.000018).abs() < 1e-9, "cost was {cost}");
+        // Confirm it has 6 decimal places of precision
+        let rounded = (cost * 1_000_000.0).round();
+        assert_eq!(rounded, 18.0);
+    }
+
+    #[test]
+    fn estimate_cost_zero_tokens_is_zero() {
+        for provider in [ProviderKind::Anthropic, ProviderKind::OpenRouter, ProviderKind::Ollama, ProviderKind::SyntheticOffline] {
+            assert!((estimate_cost(&provider, 0, 0)).abs() < 1e-9);
+        }
     }
 }
