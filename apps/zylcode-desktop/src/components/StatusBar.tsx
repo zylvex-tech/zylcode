@@ -1,5 +1,5 @@
 import React from "react";
-import { Theme, THEMES } from "../lib/theme";
+import { Theme, themes, useTheme } from "./ui";
 
 interface StatusBarProps {
   theme: Theme;
@@ -29,7 +29,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({ theme, onThemeChange, mcpB
             onChange={(e) => onThemeChange(e.target.value as Theme)}
             className="bg-slate-900 border border-slate-700 text-slate-200 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:border-cyan-500"
           >
-            {Object.values(THEMES).map((t) => (
+            {themes.map((t) => (
               <option key={t.id} value={t.id}>
                 {t.name}
               </option>

@@ -45,3 +45,7 @@ pnpm-debug.log*
 *.db
 vector_cache.db
 zylcode_telemetry.db
+
+deepseek-*.html
+deepseek-repos.json
+search_openai.py

@@ -10,6 +10,8 @@ pub mod marketplace;
 pub mod pipeline;
 pub mod planner;
 pub mod router;
+pub mod ai_input;
+pub mod computer_use;
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -18,6 +20,9 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{info, instrument};
 use zylcode_mcp::ToolRegistry;
+use crate::ai_input::AIInputSystem;
+use crate::computer_use::ComputerUseSystem;
+use tokio::sync::Mutex;
 
 // ---------------------------------------------------------------------------
 // Engine configuration
@@ -154,6 +159,8 @@ pub struct ZylCodeEngine {
     marketplace: Arc<RwLock<marketplace::ExtensionRegistry>>,
     pipeline: Arc<pipeline::ArtifactPipeline>,
     tool_registry: Arc<ToolRegistry>,
+    ai_input: Arc<Mutex<Option<Arc<AIInputSystem>>>>,
+    computer_use: Arc<Mutex<Option<Arc<ComputerUseSystem>>>>,
 }
 
 impl ZylCodeEngine {
@@ -176,6 +183,8 @@ impl ZylCodeEngine {
             marketplace: Arc::new(RwLock::new(marketplace::ExtensionRegistry::new())),
             pipeline: Arc::new(pipeline),
             tool_registry: Arc::new(ToolRegistry::new()),
+            ai_input: Arc::new(Mutex::new(None)),
+            computer_use: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -193,6 +202,8 @@ impl ZylCodeEngine {
             marketplace: Arc::new(RwLock::new(marketplace::ExtensionRegistry::new())),
             pipeline: Arc::new(pipeline),
             tool_registry: Arc::new(ToolRegistry::new()),
+            ai_input: Arc::new(Mutex::new(None)),
+            computer_use: Arc::new(Mutex::new(None)),
         })
     }
 
@@ -445,6 +456,31 @@ impl ZylCodeEngine {
             .await
             .ok_or_else(|| anyhow::anyhow!("tool not found: {id}"))?;
         zylcode_mcp::execute_with_recovery(tool, params, zylcode_mcp::ExecuteOptions::default()).await
+    }
+
+    /// Access the AI Input System, initialising it lazily on first use.
+    ///
+    /// Construction compiles the intent/entity regex tables, so the system is
+    /// created once and cached for the lifetime of the engine.
+    pub async fn ai_input_system(&self) -> Result<Arc<AIInputSystem>> {
+        let mut guard = self.ai_input.lock().await;
+        if let Some(system) = guard.as_ref() {
+            return Ok(system.clone());
+        }
+        let system = Arc::new(AIInputSystem::new().await?);
+        *guard = Some(system.clone());
+        Ok(system)
+    }
+
+    /// Access the Computer Use System, initialising it lazily on first use.
+    pub async fn computer_use_system(&self) -> Result<Arc<ComputerUseSystem>> {
+        let mut guard = self.computer_use.lock().await;
+        if let Some(system) = guard.as_ref() {
+            return Ok(system.clone());
+        }
+        let system = Arc::new(ComputerUseSystem::new().await?);
+        *guard = Some(system.clone());
+        Ok(system)
     }
 
     /// Remove a registered MCP bridge by id. Returns `true` if it existed.

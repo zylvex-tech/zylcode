@@ -19,6 +19,7 @@ anyhow = { workspace = true }
 notify = { workspace = true }
 sha2 = { workspace = true }
 uuid = { version = "1", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
 rusqlite = { version = "0.31", features = ["bundled"], default-features = false }
 opentelemetry = { version = "0.28", features = ["trace"] }
 opentelemetry_sdk = { version = "0.28", features = ["trace"] }
@@ -32,6 +33,7 @@ criterion = { version = "0.5", features = ["html_reports"] }
 tokio = { workspace = true, features = ["rt-multi-thread"] }
 fastrand = "2"
 tempfile = "3"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [[bench]]
 name = "concurrency"

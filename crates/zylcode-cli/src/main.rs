@@ -2,6 +2,7 @@ use anyhow::Result;
 use clap::{Args, Parser, Subcommand};
 use tracing::{error, info};
 use zylcode_core::{EngineConfig, Intent, McpBridgeDescriptor, ZylCodeEngine};
+use zylcode_core::ai_input::InputContext;
 
 // ---------------------------------------------------------------------------
 // CLI definition
@@ -38,6 +39,12 @@ enum Commands {
 
     /// Manage marketplace extensions (skills, plugins, themes, adapters).
     Marketplace(MarketplaceArgs),
+
+    /// Process multi-modal input through the AI Input System.
+    AiInput(AiInputArgs),
+
+    /// Inspect or drive the Computer Use System.
+    ComputerUse(ComputerUseArgs),
 }
 
 // ---------------------------------------------------------------------------
@@ -132,6 +139,43 @@ enum MarketplaceCommands {
         #[arg(long, default_value_t = false)]
         dry_run: bool,
     },
+}
+
+// ---------------------------------------------------------------------------
+// ai-input
+// ---------------------------------------------------------------------------
+
+#[derive(Args, Debug)]
+struct AiInputArgs {
+    #[command(subcommand)]
+    command: AiInputCommands,
+}
+
+#[derive(Subcommand, Debug)]
+enum AiInputCommands {
+    /// Process a text prompt and classify its intent.
+    ProcessText {
+        /// The text to process.
+        text: String,
+    },
+    /// Show supported input types and current statistics.
+    Stats,
+}
+
+// ---------------------------------------------------------------------------
+// computer-use
+// ---------------------------------------------------------------------------
+
+#[derive(Args, Debug)]
+struct ComputerUseArgs {
+    #[command(subcommand)]
+    command: ComputerUseCommands,
+}
+
+#[derive(Subcommand, Debug)]
+enum ComputerUseCommands {
+    /// Show Computer Use System statistics.
+    Stats,
 }
 
 // ---------------------------------------------------------------------------
@@ -300,6 +344,39 @@ async fn handle_marketplace(engine: &ZylCodeEngine, args: MarketplaceArgs) -> Re
 }
 
 // ---------------------------------------------------------------------------
+// ai-input / computer-use handlers
+// ---------------------------------------------------------------------------
+
+async fn handle_ai_input(engine: &ZylCodeEngine, args: AiInputArgs) -> Result<()> {
+    match args.command {
+        AiInputCommands::ProcessText { text } => {
+            let system = engine.ai_input_system().await?;
+            let result = system
+                .process_text(&text, InputContext::default())
+                .await?;
+            println!("{}", serde_json::to_string_pretty(&result)?);
+        }
+        AiInputCommands::Stats => {
+            let system = engine.ai_input_system().await?;
+            let stats = system.get_stats().await;
+            println!("{}", serde_json::to_string_pretty(&stats)?);
+        }
+    }
+    Ok(())
+}
+
+async fn handle_computer_use(engine: &ZylCodeEngine, args: ComputerUseArgs) -> Result<()> {
+    match args.command {
+        ComputerUseCommands::Stats => {
+            let system = engine.computer_use_system().await?;
+            let stats = system.get_stats().await;
+            println!("{}", serde_json::to_string_pretty(&stats)?);
+        }
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
 // Entry point
 // ---------------------------------------------------------------------------
 
@@ -327,6 +404,8 @@ async fn main() -> Result<()> {
         Commands::Build(args) => handle_build(&engine, args).await,
         Commands::McpBridge(args) => handle_mcp_bridge(&engine, args).await,
         Commands::Marketplace(args) => handle_marketplace(&engine, args).await,
+        Commands::AiInput(args) => handle_ai_input(&engine, args).await,
+        Commands::ComputerUse(args) => handle_computer_use(&engine, args).await,
     };
 
     if let Err(err) = &result {

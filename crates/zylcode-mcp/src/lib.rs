@@ -1,14 +1,28 @@
 pub mod audit;
+pub mod builtin_plugins;
+pub mod builtin_skills;
 pub mod config;
+pub mod enhanced_bridge;
+pub mod enhanced_plugin_marketplace;
+pub mod enhanced_skills;
 pub mod executor;
+pub mod hot_reload;
+pub mod plugin_marketplace;
 pub mod registry;
+pub mod skills_system;
 pub mod telemetry;
 pub mod tool;
 
 pub use audit::{AuditConfig, AuditEntry, AuditEventType, AuditLogger, AuditSeverity};
 pub use config::{McpConfigFile, McpToolConfig, McpTransport};
+pub use enhanced_bridge::{EnhancedMcpBridge, ToolCategory, ToolDefinition};
+pub use enhanced_plugin_marketplace::{EnhancedPluginMarketplace, RevenueManager, Payment, PaymentResult, MarketplaceAnalyticsReport};
+pub use enhanced_skills::{EnhancedSkillsSystem, CompositionEngine, SkillsMarketplace, SkillsAnalytics, SkillsAnalyticsReport};
 pub use executor::{execute_with_recovery, ExecuteOptions};
+pub use hot_reload::{HotReloadManager, HotReloadConfig, ReloadCallback, ToolAnalytics, AnalyticsReport};
+pub use plugin_marketplace::{PluginMarketplace, PluginDefinition, InstalledPlugin, UIComponent};
 pub use registry::ToolRegistry;
+pub use skills_system::{SkillsSystem, SkillDefinition, ExecutionContext, ExecutionRecord};
 pub use telemetry::{Telemetry, TelemetryConfig, attrs, propagation, span_names};
 pub use tool::{DynamicTool, Tool, ToolDescriptor};
 
