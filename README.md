@@ -131,7 +131,7 @@ Pre-built installers and archives are published on the
 > NSIS installers (Windows), DMG archives (macOS), and DEB/RPM packages (Linux).
 > However, CI is currently blocked by a GitHub billing issue, so the latest
 > installers on the Releases page are from an older `v0.2.0-dev` build
-> (August 2025) and do **not** reflect the current Phase 1D codebase.
+> (August 2026) and do **not** reflect the current Phase 1D codebase.
 >
 > To run the current code, **build from source** below.
 
