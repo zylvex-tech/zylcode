@@ -341,9 +341,18 @@ impl RealTool for ShellTool {
             approval_decision: None,
         };
         
-        let mut cmd = Command::new(command);
-        cmd.args(&args)
-            .current_dir(&context.working_directory)
+        // On Windows, built-in commands like 'echo' need to be run via cmd /C
+        let mut cmd = if cfg!(target_os = "windows") {
+            let mut cmd = Command::new("cmd");
+            cmd.arg("/C").arg(command).args(&args);
+            cmd
+        } else {
+            let mut cmd = Command::new(command);
+            cmd.args(&args);
+            cmd
+        };
+        
+        cmd.current_dir(&context.working_directory)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
         

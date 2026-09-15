@@ -3,6 +3,7 @@
 //! Provides the central [`ZylCodeEngine`] as well as the marketplace
 //! subsystem re-exported from [`marketplace`].
 
+pub mod agent;
 pub mod cache;
 pub mod cli;
 pub mod compression;
@@ -258,22 +259,42 @@ impl ZylCodeEngine {
 
     /// Process a natural-language or structured intent and return a result.
     ///
-    /// Routes execution through [`pipeline::ArtifactPipeline`]: planning →
-    /// token-router dispatch → artifact parsing → `verify_logic` → result.
+    /// Routes execution through the Agent Loop: context gathering → planning →
+    /// tool execution → verification → result.
     #[instrument(skip(self), fields(prompt_len = intent.prompt.len()))]
     pub async fn process_intent(&self, intent: Intent) -> Result<IntentResult> {
         if intent.prompt.trim().is_empty() {
             anyhow::bail!("intent prompt must not be empty");
         }
 
-        info!(prompt = %intent.prompt, "processing intent via pipeline");
+        info!(prompt = %intent.prompt, "processing intent via agent loop");
 
-        let bridges = self.list_mcp_bridges().await;
-        let workspace_root = self.config.workspace_root.clone();
-
-        self.pipeline
-            .execute_for_engine(intent, bridges, workspace_root)
-            .await
+        let workspace_root = std::path::PathBuf::from(&self.config.workspace_root);
+        
+        // Create and run agent loop
+        let mut agent = agent::AgentLoop::new(
+            &intent.prompt,
+            workspace_root,
+            None, // Use default config
+            self.tool_registry.clone(),
+        );
+        
+        // Run the agent loop
+        let final_state = agent.run().await?;
+        
+        // Convert agent result to IntentResult
+        let success = final_state == agent::AgentState::Completed;
+        let summary = if success {
+            format!("Task completed successfully: {}", intent.prompt)
+        } else {
+            format!("Task failed: {}", intent.prompt)
+        };
+        
+        Ok(IntentResult {
+            summary,
+            artifacts: Vec::new(), // TODO: Extract artifacts from agent session
+            success,
+        })
     }
 
     /// Process an intent with an explicit model override (used by the desktop
@@ -283,18 +304,9 @@ impl ZylCodeEngine {
         intent: Intent,
         model_override: Option<String>,
     ) -> Result<IntentResult> {
-        if let Some(model) = model_override.filter(|m| !m.trim().is_empty()) {
-            let mut rc = self.pipeline.router().config().clone();
-            rc.primary_model = model;
-            let ephemeral = pipeline::ArtifactPipeline::from_config(rc)?;
-            let bridges = self.list_mcp_bridges().await;
-            let workspace_root = self.config.workspace_root.clone();
-            ephemeral
-                .execute_for_engine(intent, bridges, workspace_root)
-                .await
-        } else {
-            self.process_intent(intent).await
-        }
+        // For now, ignore model override and use the agent loop
+        // In the future, we can pass the model override to the agent config
+        self.process_intent(intent).await
     }
 
     // -----------------------------------------------------------------------
