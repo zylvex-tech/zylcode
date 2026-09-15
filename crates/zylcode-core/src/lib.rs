@@ -302,6 +302,14 @@ impl ZylCodeEngine {
         // Run the agent loop
         let final_state = agent.run().await?;
 
+        // Debug: print agent state
+        println!("Agent loop completed with state: {:?}", final_state);
+
+        // Debug: print agent messages
+        for msg in agent.session().messages.iter() {
+            println!("Agent message: {:?} - {}", msg.role, msg.content);
+        }
+
         // Convert agent result to IntentResult
         let success = final_state == agent::AgentState::Completed;
         let summary = if success {
@@ -562,6 +570,7 @@ pub use zylcode_mcp::{
 #[cfg(test)]
 mod tests {
     use super::*;
+    use zylcode_mcp::{DynamicTool, McpToolConfig, McpTransport};
 
     #[tokio::test]
     async fn process_intent_rejects_empty_prompt() {
@@ -579,6 +588,21 @@ mod tests {
     #[tokio::test]
     async fn process_intent_succeeds_with_valid_prompt() {
         let engine = ZylCodeEngine::with_defaults();
+
+        // Register fs.read tool
+        let fs_config = McpToolConfig {
+            id: "fs.read".to_string(),
+            command: "read".to_string(),
+            transport: McpTransport::Stdio,
+            env: Default::default(),
+            enabled: true,
+            description: Some("Read file".to_string()),
+        };
+        engine
+            .tool_registry()
+            .register(Arc::new(DynamicTool::new(fs_config)))
+            .await;
+
         let result = engine
             .process_intent(Intent {
                 prompt: "build the project".to_string(),
@@ -587,6 +611,10 @@ mod tests {
             })
             .await
             .unwrap();
+
+        // Debug: print result
+        println!("Result: {:?}", result);
+
         assert!(result.success);
         assert!(result.summary.contains("build the project"));
     }

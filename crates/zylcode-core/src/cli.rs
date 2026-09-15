@@ -18,12 +18,12 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 use anyhow::Result;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use tracing::info;
 
-use crate::{EngineConfig, Intent, ZylCodeEngine};
 use crate::pipeline::validate_artifact_kind;
 use crate::router::decision::classify_verification_rung;
+use crate::{EngineConfig, Intent, ZylCodeEngine};
 
 // ---------------------------------------------------------------------------
 // Subcommand definitions
@@ -211,9 +211,8 @@ fn parse_prompt(args: Vec<String>) -> Result<Subcommand, ParseError> {
     }
 
     let prompt = prompt_parts.join(" ");
-    let workspace = workspace.unwrap_or_else(|| {
-        env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
-    });
+    let workspace =
+        workspace.unwrap_or_else(|| env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
 
     Ok(Subcommand::Prompt(PromptArgs {
         prompt,
@@ -254,9 +253,8 @@ fn parse_security_scan(args: impl Iterator<Item = String>) -> Result<Subcommand,
         }
     }
 
-    let workspace = workspace.unwrap_or_else(|| {
-        env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
-    });
+    let workspace =
+        workspace.unwrap_or_else(|| env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
 
     Ok(Subcommand::SecurityScan(SecurityScanArgs {
         workspace,
@@ -292,9 +290,8 @@ fn parse_verify(args: impl Iterator<Item = String>) -> Result<Subcommand, ParseE
         }
     }
 
-    let workspace = workspace.unwrap_or_else(|| {
-        env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
-    });
+    let workspace =
+        workspace.unwrap_or_else(|| env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
 
     Ok(Subcommand::Verify(VerifyArgs {
         workspace,
@@ -330,9 +327,8 @@ fn parse_benchmark(args: impl Iterator<Item = String>) -> Result<Subcommand, Par
         }
     }
 
-    let workspace = workspace.unwrap_or_else(|| {
-        env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
-    });
+    let workspace =
+        workspace.unwrap_or_else(|| env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
 
     Ok(Subcommand::Benchmark(BenchmarkArgs {
         workspace,
@@ -449,11 +445,7 @@ async fn run_security_scan(args: SecurityScanArgs) -> Result<()> {
     let mut findings: Vec<SecurityFinding> = Vec::new();
     for artifact in &result.artifacts {
         let reported_kind = artifact.kind.clone();
-        let corrected = validate_artifact_kind(
-            &artifact.path,
-            &artifact.content,
-            &reported_kind,
-        );
+        let corrected = validate_artifact_kind(&artifact.path, &artifact.content, &reported_kind);
         let rung = classify_verification_rung(&corrected);
 
         findings.push(SecurityFinding {
@@ -571,11 +563,7 @@ async fn run_verify(args: VerifyArgs) -> Result<()> {
     let mut artifact_reports: Vec<VerifyArtifactReport> = Vec::new();
     for artifact in &result.artifacts {
         let reported_kind = artifact.kind.clone();
-        let corrected = validate_artifact_kind(
-            &artifact.path,
-            &artifact.content,
-            &reported_kind,
-        );
+        let corrected = validate_artifact_kind(&artifact.path, &artifact.content, &reported_kind);
         let rung = classify_verification_rung(&corrected);
 
         artifact_reports.push(VerifyArtifactReport {
@@ -684,14 +672,19 @@ struct BenchmarkReport {
 async fn run_benchmark(args: BenchmarkArgs) -> anyhow::Result<()> {
     let workspace = args.workspace.clone();
     if !workspace.exists() {
-        anyhow::bail!("workspace directory does not exist: {}", workspace.display());
+        anyhow::bail!(
+            "workspace directory does not exist: {}",
+            workspace.display()
+        );
     }
 
     let start = Instant::now();
 
     let mut items: Vec<BenchmarkItem> = Vec::new();
-    let mut kind_counts: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
-    let mut rung_counts: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+    let mut kind_counts: std::collections::HashMap<String, usize> =
+        std::collections::HashMap::new();
+    let mut rung_counts: std::collections::HashMap<String, usize> =
+        std::collections::HashMap::new();
 
     // Recursively scan the workspace for known extension patterns.
     let walker = walkdir::WalkDir::new(&workspace)
@@ -723,11 +716,8 @@ async fn run_benchmark(args: BenchmarkArgs) -> anyhow::Result<()> {
         };
 
         // Use validate_artifact_kind to classify.
-        let kind = crate::pipeline::validate_artifact_kind(
-            &path.to_string_lossy(),
-            &content,
-            &source,
-        );
+        let kind =
+            crate::pipeline::validate_artifact_kind(&path.to_string_lossy(), &content, &source);
 
         // Skip files that validate_artifact_kind tagged as "error" (not an artifact).
         if kind == "error" || kind.is_empty() {
@@ -781,11 +771,11 @@ async fn run_benchmark(args: BenchmarkArgs) -> anyhow::Result<()> {
             println!("{json}");
         }
         OutputFormat::Text => {
+            println!("Benchmark report for {}", workspace.to_string_lossy());
             println!(
-                "Benchmark report for {}",
-                workspace.to_string_lossy()
+                "Scanned {} files, found {} artifacts",
+                files_scanned, artifacts_found
             );
-            println!("Scanned {} files, found {} artifacts", files_scanned, artifacts_found);
             println!("Scan duration: {}ms", scan_duration_ms);
             println!();
             if report.rung_counts.is_empty() {
@@ -847,6 +837,8 @@ fn infer_source(path: &std::path::Path) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Arc;
+    use zylcode_mcp::{DynamicTool, McpToolConfig, McpTransport};
 
     #[test]
     fn parse_args_simple_prompt() {
@@ -922,7 +914,10 @@ mod tests {
              \x20     zylcode-core-cli verify [--workspace <DIR>] [--offline]\n\
              \x20     zylcode-core-cli benchmark [--workspace <DIR>] [--format json|text] [--verbose]"
         );
-        assert_eq!(ParseError::MissingWorkspaceValue.to_string(), "--workspace requires a directory path");
+        assert_eq!(
+            ParseError::MissingWorkspaceValue.to_string(),
+            "--workspace requires a directory path"
+        );
         assert_eq!(
             ParseError::UnknownFlag("--foo".into()).to_string(),
             "unknown flag: --foo"
@@ -1030,6 +1025,21 @@ mod tests {
         };
 
         let engine = ZylCodeEngine::new(config);
+
+        // Register fs.read tool
+        let fs_config = McpToolConfig {
+            id: "fs.read".to_string(),
+            command: "read".to_string(),
+            transport: McpTransport::Stdio,
+            env: Default::default(),
+            enabled: true,
+            description: Some("Read file".to_string()),
+        };
+        engine
+            .tool_registry()
+            .register(Arc::new(DynamicTool::new(fs_config)))
+            .await;
+
         let intent = Intent {
             prompt: "add a README file".to_string(),
             context: None,
@@ -1147,15 +1157,13 @@ mod tests {
             artifacts_found: 4,
             rung_counts,
             kind_counts,
-            items: vec![
-                BenchmarkItem {
-                    path: "a.rs".to_string(),
-                    source: "manual".to_string(),
-                    kind: "RustModule".to_string(),
-                    rung: "R1".to_string(),
-                    passed: true,
-                },
-            ],
+            items: vec![BenchmarkItem {
+                path: "a.rs".to_string(),
+                source: "manual".to_string(),
+                kind: "RustModule".to_string(),
+                rung: "R1".to_string(),
+                passed: true,
+            }],
             scan_duration_ms: 42,
             success: true,
             error: None,
@@ -1193,10 +1201,7 @@ mod tests {
         let json = serde_json::to_string(&report).unwrap();
         let de: BenchmarkReport = serde_json::from_str(&json).unwrap();
         assert!(!de.success);
-        assert_eq!(
-            de.error.unwrap(),
-            "workspace directory does not exist: /ws"
-        );
+        assert_eq!(de.error.unwrap(), "workspace directory does not exist: /ws");
     }
 
     // -----------------------------------------------------------------------
@@ -1330,11 +1335,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let ws = dir.path().join("workspace");
         std::fs::create_dir_all(&ws).unwrap();
-        std::fs::write(
-            ws.join("zylcode.config.json"),
-            r#"{"version":"1.0"}"#,
-        )
-        .unwrap();
+        std::fs::write(ws.join("zylcode.config.json"), r#"{"version":"1.0"}"#).unwrap();
         let out = run_benchmark_binary(&[
             "benchmark",
             "--workspace",
@@ -1363,7 +1364,10 @@ mod tests {
         ]);
         assert!(out.contains("Scanned"), "should contain 'Scanned'");
         assert!(out.contains("artifacts"), "should contain 'artifacts'");
-        assert!(out.contains("Verification rungs"), "should show rung breakdown");
+        assert!(
+            out.contains("Verification rungs"),
+            "should show rung breakdown"
+        );
         assert!(out.contains("Props"), "should list Props rung");
     }
 
@@ -1372,7 +1376,13 @@ mod tests {
         let exe = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../../target/debug/zylcode-core-cli");
         let output = std::process::Command::new(exe)
-            .args(["benchmark", "--workspace", "/nonexistent/path/xyz", "--format", "json"])
+            .args([
+                "benchmark",
+                "--workspace",
+                "/nonexistent/path/xyz",
+                "--format",
+                "json",
+            ])
             .output()
             .expect("failed to execute");
         assert!(
@@ -1393,7 +1403,11 @@ mod tests {
         std::fs::create_dir_all(&ws).unwrap();
         let sub = ws.join("src").join("components");
         std::fs::create_dir_all(&sub).unwrap();
-        std::fs::write(sub.join("Button.tsx"), "export const Button = () => <button/>").unwrap();
+        std::fs::write(
+            sub.join("Button.tsx"),
+            "export const Button = () => <button/>",
+        )
+        .unwrap();
         std::fs::write(sub.join("utils.rs"), "pub fn helper() {}").unwrap();
         std::fs::write(sub.join("styles.json"), r#"{"bg":"blue"}"#).unwrap();
 
@@ -1432,21 +1446,29 @@ mod tests {
 
     #[test]
     fn diagnostic_validate_artifact_kind_with_tempdir() {
-        use tempfile::tempdir;
-        use std::fs;
         use crate::pipeline::validate_artifact_kind;
+        use std::fs;
+        use tempfile::tempdir;
 
         let dir = tempdir().unwrap();
 
         // Write test files with known extensions
         let rust_file = dir.path().join("lib.rs");
-        fs::write(&rust_file, "pub fn greet(name: &str) -> String { format!(\"Hello, {}!\", name) }").unwrap();
+        fs::write(
+            &rust_file,
+            "pub fn greet(name: &str) -> String { format!(\"Hello, {}!\", name) }",
+        )
+        .unwrap();
 
         let md_file = dir.path().join("README.md");
         fs::write(&md_file, "# Project\n\nThis is a README file.").unwrap();
 
         let tsx_file = dir.path().join("App.tsx");
-        fs::write(&tsx_file, "import React from 'react';\nexport const App = () => <div>Hello</div>;").unwrap();
+        fs::write(
+            &tsx_file,
+            "import React from 'react';\nexport const App = () => <div>Hello</div>;",
+        )
+        .unwrap();
 
         let json_file = dir.path().join("config.json");
         fs::write(&json_file, "{\"name\": \"test\", \"version\": \"1.0.0\"}").unwrap();
@@ -1466,7 +1488,11 @@ mod tests {
             let ext = file_path.extension().unwrap().to_str().unwrap();
             println!(
                 "FILE: {} | EXT: {} | CONTENT_LEN: {} | KIND: '{}' | SOURCE: '{}'",
-                path_str, ext, content.len(), kind, source
+                path_str,
+                ext,
+                content.len(),
+                kind,
+                source
             );
         }
     }
@@ -1503,18 +1529,16 @@ mod tests {
 
         // Create a known JSON artifact file
         let json_file = ws.join("package.json");
-        std::fs::write(
-            &json_file,
-            r#"{"name": "test", "version": "1.0.0"}"#,
-        )
-        .unwrap();
+        std::fs::write(&json_file, r#"{"name": "test", "version": "1.0.0"}"#).unwrap();
 
         // Replicate run_benchmark's scan logic directly
         let mut files_scanned = 0u64;
         let mut artifacts_found = 0u64;
         let mut items: Vec<BenchmarkItem> = Vec::new();
-        let mut kind_counts: std::collections::HashMap<String, u64> = std::collections::HashMap::new();
-        let mut rung_counts: std::collections::HashMap<String, u64> = std::collections::HashMap::new();
+        let mut kind_counts: std::collections::HashMap<String, u64> =
+            std::collections::HashMap::new();
+        let mut rung_counts: std::collections::HashMap<String, u64> =
+            std::collections::HashMap::new();
 
         let walker = WalkDir::new(&ws)
             .follow_links(false)
@@ -1547,11 +1571,7 @@ mod tests {
                 Ok(c) => c,
                 Err(_) => continue,
             };
-            let kind = validate_artifact_kind(
-                &path.to_string_lossy(),
-                &content,
-                &source,
-            );
+            let kind = validate_artifact_kind(&path.to_string_lossy(), &content, &source);
             if kind == "error" || kind.is_empty() {
                 continue;
             }
@@ -1565,7 +1585,9 @@ mod tests {
                 passed: true,
             });
             *kind_counts.entry(kind).or_insert(0) += 1;
-            *rung_counts.entry(rung.short_label().to_string()).or_insert(0) += 1;
+            *rung_counts
+                .entry(rung.short_label().to_string())
+                .or_insert(0) += 1;
         }
 
         eprintln!(
