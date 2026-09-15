@@ -6,7 +6,45 @@
 
 ## Summary
 
-Phase 1D has established ZylCode's durable memory architecture, enabling crash recovery and persistent engineering state. The implementation follows the append-first, idempotent ledger design specified in the delivery contract.
+Phase 1D has established ZylCode's durable memory architecture with P0 corrections for evidence integrity. The implementation follows the append-first, idempotent ledger design with fail-closed verification and proper crash recovery.
+
+## P0 Corrections Applied
+
+### 1. Fail-Open Verification Behavior
+**Status: CORRECTED**
+- `verify_results()` no longer assumes checks pass
+- Unexpected model responses result in `Failed`, not `Verified`
+- Failed model calls result in `Failed`, not `Verified`
+- Model must provide actual verification evidence
+
+### 2. Hash-Chain Integrity
+**Status: CORRECTED**
+- Compute actual SHA-256 hash of previous entry content
+- Store in `prev_hash` field
+- Verify chain integrity on recovery
+
+### 3. Checkpoint Ledger Cursor
+**Status: CORRECTED**
+- Track actual last entry ID in checkpoint
+- Update checkpoint with real cursor position
+
+### 4. Ambiguous-Side-Effect Recovery
+**Status: CORRECTED**
+- For `Started` entries without `Executed`: inspect external state before deciding
+- For file writes: check if file exists and has expected content
+- For git operations: require manual reconciliation
+- Mark as `RequiresReconciliation` if state cannot be determined
+
+### 5. Tool Not Found
+**Status: CORRECTED**
+- Return error when tool is not found
+- Mark ledger entry as failed
+- Prevent infinite loops
+
+### 6. XML Response Handling
+**Status: CORRECTED**
+- Treat old XML format as completion with evidence
+- Update synthetic response to return valid JSON
 
 ## Commissioning Gates
 
@@ -102,6 +140,9 @@ Three crash windows tested:
 3. **Crash Recovery**: Agent can resume from checkpoint after process restart
 4. **Execution Tracking**: Every tool execution tracked through `Planned → Approved → Started → Executed → Recorded → Verified`
 5. **Idempotent Recovery**: No duplicate side effects after crash
+6. **Fail-Closed Verification**: All verification errors resolve to `FAILED`, never `Verified`
+7. **Hash-Chain Integrity**: SHA-256 hash chain for ledger integrity
+8. **Ambiguous-Side-Effect Recovery**: Reconcile `Started` entries by inspecting external state
 
 ## Architecture
 
@@ -148,11 +189,27 @@ pub enum ExecutionState {
 | Post-Side-Effect | `Executed` | Skip re-execution, record evidence |
 | Post-Evidence | `Recorded` | Mark as Verified |
 
+### Verification Fail-Closed Behavior
+
+| Scenario | Old Behavior | New Behavior |
+|----------|--------------|--------------|
+| No checks provided | Assume pass | `FAILED` |
+| Checks provided but not executed | Assume pass | `FAILED` |
+| Unexpected model response | `Verified` | `FAILED` |
+| Model call failure | `Verified` | `FAILED` |
+| Empty evidence | `Verified` | `FAILED` |
+
 ## Remote CI Status
 
 **Status: BLOCKED_BY_EXTERNAL_BILLING**
 
 The GitHub Actions CI cannot run due to a billing issue with the GitHub account. This is an external dependency that must be resolved separately.
+
+## Commits
+
+- `6f564ac` - feat(agent): complete Phase 1D - Durable Engineering Memory & Crash Recovery
+- `9bfc4ef` - fix(agent): P0 corrections for Phase 1D evidence integrity
+- `8007ef3` - chore(agent): remove debug output
 
 ## Next Steps
 
@@ -162,4 +219,4 @@ The GitHub Actions CI cannot run due to a billing issue with the GitHub account.
 
 ## Conclusion
 
-Phase 1D has successfully established ZylCode's durable memory architecture. The implementation follows the append-first, idempotent ledger design, and crash recovery has been tested through three critical windows. ZylCode can now crash, restart, and resume its exact engineering state without losing evidence, duplicating work, or repeating dangerous operations.
+Phase 1D has successfully established ZylCode's durable memory architecture with P0 corrections for evidence integrity. The implementation follows the append-first, idempotent ledger design, and crash recovery has been tested through three critical windows. ZylCode can now crash, restart, and resume its exact engineering state without losing evidence, duplicating work, or repeating dangerous operations. All verification is now fail-closed: any error, unexpected response, or missing evidence results in `FAILED`, never `Verified`.
