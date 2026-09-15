@@ -12,7 +12,7 @@ edition = "2021"
 version = "0.2.0"
 authors = ["ZylCode Team <team@zylcode.dev>"]
 license = "MIT"
-repository = "https://github.com/zylcode/zylcode"
+repository = "https://github.com/zylvex-tech/zylcode"
 description = "ZylCode — autonomous, cross-platform developer desktop engine, CLI, and real-time artifact visualizer"
 rust-version = "1.77"
 

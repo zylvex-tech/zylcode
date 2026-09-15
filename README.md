@@ -122,131 +122,109 @@ skills_system.compose_skills(vec![
 
 ## 📦 Installation
 
-### Windows
+### Pre-built Releases
 
-#### Option 1: Installer (Recommended)
+Pre-built installers and archives are published on the
+[**Releases**](https://github.com/zylvex-tech/zylcode/releases) page.
 
-```powershell
-# Download and run the installer
-Invoke-WebRequest -Uri "https://github.com/zylcode/zylcode/releases/latest/download/ZylCode-Setup.exe" -OutFile "ZylCode-Setup.exe"
-.\ZylCode-Setup.exe
-```
+> **Distribution status**: The Tauri build pipeline is configured to produce
+> NSIS installers (Windows), DMG archives (macOS), and DEB/RPM packages (Linux).
+> However, CI is currently blocked by a GitHub billing issue, so the latest
+> installers on the Releases page are from an older `v0.2.0-dev` build
+> (August 2025) and do **not** reflect the current Phase 1D codebase.
+>
+> To run the current code, **build from source** below.
 
-#### Option 2: Build from Source
+### Build from Source (Recommended)
+
+Building from source always runs the current `main` branch.
+
+#### Windows
 
 ```powershell
 # Prerequisites
 # 1. Install Rust: https://rustup.rs/
-# 2. Install Node.js: https://nodejs.org/
-# 3. Install Visual Studio Build Tools
+# 2. Install Node.js (20+): https://nodejs.org/
+# 3. Install pnpm: npm install -g pnpm
+# 4. Install Visual Studio Build Tools (C++ workload)
 
-# Clone and build
-git clone https://github.com/zylcode/zylcode.git
+git clone https://github.com/zylvex-tech/zylcode.git
 cd zylcode
-cargo build --release
-cd apps/zylcode-desktop
 pnpm install
-pnpm build
+pnpm --filter zylcode-desktop build
+cargo build --release
 
-# Run
-.\target\release\zylcode-desktop.exe
+# Run the CLI
+.\target\release\zylcode.exe --help
+
+# Run the desktop app (development mode)
+cd apps\zylcode-desktop
+pnpm dev
 ```
 
-### macOS
-
-#### Option 1: DMG (Recommended)
-
-```bash
-# Download and install
-curl -L -o ZylCode.dmg "https://github.com/zylcode/zylcode/releases/latest/download/ZylCode-macos-arm64.dmg"
-hdiutil attach ZylCode.dmg
-cp -R /Volumes/ZylCode/ZylCode.app /Applications/
-hdiutil detach /Volumes/ZylCode
-open -a ZylCode
-```
-
-#### Option 2: Build from Source
+#### macOS
 
 ```bash
 # Prerequisites
 brew install rust node pnpm
 xcode-select --install
 
-# Clone and build
-git clone https://github.com/zylcode/zylcode.git
+git clone https://github.com/zylvex-tech/zylcode.git
 cd zylcode
-cargo build --release
-cd apps/zylcode-desktop
 pnpm install
-pnpm build
+pnpm --filter zylcode-desktop build
+cargo build --release
 
-# Run
-open -a ZylCode
+# Run the CLI
+./target/release/zylcode --help
 ```
 
-### Linux (Ubuntu/Debian)
-
-#### Option 1: DEB Package (Recommended)
-
-```bash
-# Download and install
-wget https://github.com/zylcode/zylcode/releases/latest/download/zylcode_0.2.0_amd64.deb
-sudo dpkg -i zylcode_0.2.0_amd64.deb
-zylcode-desktop
-```
-
-#### Option 2: Build from Source
+#### Linux (Ubuntu/Debian)
 
 ```bash
 # Prerequisites
 sudo apt update
 sudo apt install -y curl wget git build-essential \
-    libwebkit2gtk-4.0-dev libgtk-3-dev libayatana-appindicator3-dev \
+    libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev \
     librsvg2-dev libssl-dev
 
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 source $HOME/.cargo/env
-
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt-get install -y nodejs
 npm install -g pnpm
 
-# Clone and build
-git clone https://github.com/zylcode/zylcode.git
+git clone https://github.com/zylvex-tech/zylcode.git
 cd zylcode
-cargo build --release
-cd apps/zylcode-desktop
 pnpm install
-pnpm build
+pnpm --filter zylcode-desktop build
+cargo build --release
 
-# Run
-./target/release/zylcode-desktop
+# Run the CLI
+./target/release/zylcode --help
 ```
 
-### Linux (Fedora/RHEL)
+#### Linux (Fedora/RHEL)
 
 ```bash
 # Prerequisites
 sudo dnf install -y curl wget git gcc gcc-c++ make \
-    webkit2gtk3-devel gtk3-devel libappindicator-gtk3-devel \
+    webkit2gtk4.1-devel gtk3-devel libappindicator-gtk3-devel \
     librsvg2-devel openssl-devel
 
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 source $HOME/.cargo/env
-
 sudo dnf install -y nodejs npm
 npm install -g pnpm
 
-# Clone and build
-git clone https://github.com/zylcode/zylcode.git
+git clone https://github.com/zylvex-tech/zylcode.git
 cd zylcode
-cargo build --release
-cd apps/zylcode-desktop
 pnpm install
-pnpm build
+pnpm --filter zylcode-desktop build
+cargo build --release
 
-# Run
-./target/release/zylcode-desktop
+# Run the CLI
+./target/release/zylcode --help
 ```
 
 ---
@@ -416,7 +394,7 @@ ZylCode is licensed under the **MIT License**. See [LICENSE](LICENSE) for detail
 ## 📞 Support
 
 - **Documentation**: [docs.zylcode.com](https://docs.zylcode.com)
-- **Issues**: [GitHub Issues](https://github.com/zylcode/zylcode/issues)
+- **Issues**: [GitHub Issues](https://github.com/zylvex-tech/zylcode/issues)
 - **Discord**: [Join our community](https://discord.gg/zylcode)
 - **Email**: support@zylcode.com
 

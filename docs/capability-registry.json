@@ -107,14 +107,24 @@
       "status": "GREEN",
       "evidence": "Agent can resume from checkpoint after crash",
       "details": "Recovery logic scans ledger for incomplete executions"
+    },
+    "release_installers": {
+      "status": "PARTIAL",
+      "evidence": "Tauri build pipeline configured for NSIS/DEB/DMG but CI blocked by billing",
+      "details": "release.yml produces installers via tauri-action; Windows NSIS, macOS DMG, Linux DEB/RPM configured; release workflow blocked by GitHub billing issue"
+    },
+    "documentation_accuracy": {
+      "status": "GREEN",
+      "evidence": "All stale github.com/zylcode/zylcode references corrected to github.com/zylvex-tech/zylcode",
+      "details": "README installation section rewritten; fabricated download URLs removed; historical v0.2.0-dev assets documented as non-current"
     }
   },
   "summary": {
-    "total": 21,
-    "green": 20,
+    "total": 23,
+    "green": 21,
     "external_blocker": 1,
     "functional": 0,
-    "partial": 0,
+    "partial": 1,
     "stub": 0,
     "absent": 0
   }
