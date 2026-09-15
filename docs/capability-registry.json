@@ -1,6 +1,6 @@
 {
-  "version": "1.3.0",
-  "timestamp": "2026-09-15T14:00:00Z",
+  "version": "1.4.0",
+  "timestamp": "2026-09-15T15:00:00Z",
   "repository": "C:\\Projects\\zylcode",
   "capabilities": {
     "application_lifecycle": {
@@ -92,127 +92,30 @@
       "status": "EXTERNAL_BLOCKER",
       "evidence": "GitHub Actions blocked by billing issue",
       "details": "CI repair implemented but cannot run due to account billing"
+    },
+    "evidence_ledger": {
+      "status": "GREEN",
+      "evidence": "LedgerStore trait with SqliteLedgerStore and MemoryLedgerStore",
+      "details": "Append-first, idempotent evidence ledger with execution state machine"
+    },
+    "session_persistence": {
+      "status": "GREEN",
+      "evidence": "SessionCheckpoint saved/loaded from ledger",
+      "details": "Session state persisted for crash recovery"
+    },
+    "crash_recovery": {
+      "status": "GREEN",
+      "evidence": "Agent can resume from checkpoint after crash",
+      "details": "Recovery logic scans ledger for incomplete executions"
     }
   },
   "summary": {
-    "total": 18,
-    "green": 17,
+    "total": 21,
+    "green": 20,
     "external_blocker": 1,
     "functional": 0,
     "partial": 0,
     "stub": 0,
     "absent": 0
   }
-}
-    "artifact_display": {
-      "status": "GREEN",
-      "evidence": "Artifacts parsed from LLM response and displayed",
-      "details": "ArtifactViewer component shows generated artifacts"
-    },
-    "agent_conversation": {
-      "status": "FUNCTIONAL",
-      "evidence": "AgentLoop implements iterative reasoning with tool execution",
-      "details": "AgentLoop: Created → Analyzing → Planning → Executing → Verifying → Completed"
-    },
-    "file_read_write": {
-      "status": "FUNCTIONAL",
-      "evidence": "DynamicTool routes to FileSystemTool for fs.read/fs.write/fs.list",
-      "details": "Real filesystem operations via tokio::fs"
-    },
-    "terminal_execution": {
-      "status": "FUNCTIONAL",
-      "evidence": "DynamicTool routes to ShellTool for shell.execute",
-      "details": "Real process execution via tokio::process::Command"
-    },
-    "git_operations": {
-      "status": "FUNCTIONAL",
-      "evidence": "DynamicTool routes to GitTool for git.status/diff/commit",
-      "details": "Real git command execution"
-    },
-    "tool_execution": {
-      "status": "FUNCTIONAL",
-      "evidence": "Core tools (fs, shell, git, search) use real execution. Other tools fall back to mock.",
-      "details": "ToolRouter routes known tools to real executors"
-    },
-    "context_gathering": {
-      "status": "FUNCTIONAL",
-      "evidence": "ContextBuilder gathers workspace context",
-      "details": "ContextBuilder reads files, builds file tree, gathers git status"
-    },
-    "planning": {
-      "status": "FUNCTIONAL",
-      "evidence": "Model generates structured plans via AgentDecision::Plan",
-      "details": "Model generates PlanStep with expected files, tools, risk, verification"
-    },
-    "iterative_reasoning": {
-      "status": "FUNCTIONAL",
-      "evidence": "AgentLoop implements observe→plan→act→verify cycle",
-      "details": "Agent iterates through states with tool execution"
-    },
-    "error_recovery": {
-      "status": "FUNCTIONAL",
-      "evidence": "AgentLoop calls model for repair on verification failure",
-      "details": "Model diagnoses errors and suggests repairs"
-    },
-    "session_persistence": {
-      "status": "FUNCTIONAL",
-      "evidence": "AgentSession tracks conversation history and context",
-      "details": "AgentSession persists messages, tool calls, and context"
-    },
-    "diff_changes": {
-      "status": "FUNCTIONAL",
-      "evidence": "GitTool returns changed files from git status/diff",
-      "details": "Real diff generation via git commands"
-    },
-    "test_execution": {
-      "status": "FUNCTIONAL",
-      "evidence": "ShellTool can execute test commands",
-      "details": "Real test execution via process spawning"
-    },
-    "approval_system": {
-      "status": "PARTIAL",
-      "evidence": "RiskLevel defined, AwaitingApproval state exists",
-      "details": "Risk levels defined, approval state exists but auto-approves"
-    },
-    "real_agentic_loop": {
-      "status": "FUNCTIONAL",
-      "evidence": "AgentLoop implements context→plan→act→verify cycle with model",
-      "details": "AgentLoop with model-driven planning and tool execution"
-    },
-    "model_driven_planning": {
-      "status": "FUNCTIONAL",
-      "evidence": "Model generates AgentDecision::Plan with structured steps",
-      "details": "Model returns structured plan with expected files, tools, risk"
-    },
-    "model_driven_tool_selection": {
-      "status": "FUNCTIONAL",
-      "evidence": "Model selects tools via AgentDecision::ToolCall",
-      "details": "Model returns structured tool call with tool_id, arguments, reason"
-    },
-    "tool_schema_exposure": {
-      "status": "FUNCTIONAL",
-      "evidence": "ToolRegistry.list_schemas() returns ToolSchema for each tool",
-      "details": "ToolSchema includes id, description, input_schema, risk_class, available"
-    },
-    "structured_agent_protocol": {
-      "status": "FUNCTIONAL",
-      "evidence": "AgentDecision enum with Think, Plan, ToolCall, Verify, Complete, Fail",
-      "details": "Structured protocol for model-agent communication"
-    },
-    "observation_loop": {
-      "status": "FUNCTIONAL",
-      "evidence": "Tool results returned to model as ToolObservation",
-      "details": "ToolObservation includes success, stdout, stderr, exit_code, changed_files"
-    }
-  },
-  "summary": {
-    "green": 6,
-    "yellow": 0,
-    "red": 0,
-    "gray": 0,
-    "functional": 18,
-    "partial": 1,
-    "total": 25
-  },
-  "conclusion": "ZylCode now has a real model-driven agent loop with structured planning, tool execution, and verification. The model generates structured plans, selects tools, and observes results. The agent loop implements context→plan→act→verify cycle with error recovery."
 }

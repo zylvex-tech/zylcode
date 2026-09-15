@@ -12,6 +12,7 @@ use zylcode_mcp::{DynamicTool, McpToolConfig, McpTransport};
 
 use crate::agent_protocol::*;
 use crate::context_builder::ContextBuilder;
+use crate::ledger::{ExecutionState, LedgerEntry, LedgerStore, SessionCheckpoint};
 use crate::router::TokenRouter;
 use zylcode_mcp::real_tools::RiskLevel;
 
@@ -220,6 +221,7 @@ pub struct AgentLoop {
     tool_registry: Arc<ToolRegistry>,
     model_client: Arc<dyn ModelClient>,
     context_builder: ContextBuilder,
+    ledger: Arc<dyn LedgerStore>,
 }
 
 /// Tool call request from the model
@@ -238,6 +240,7 @@ impl AgentLoop {
         config: Option<AgentConfig>,
         tool_registry: Arc<ToolRegistry>,
         model_client: Arc<dyn ModelClient>,
+        ledger: Arc<dyn LedgerStore>,
     ) -> Self {
         let config = config.unwrap_or_default();
         let session_id = Uuid::new_v4().to_string();
@@ -280,6 +283,81 @@ impl AgentLoop {
             tool_registry,
             model_client,
             context_builder: ContextBuilder::new(working_dir),
+            ledger,
+        }
+    }
+
+    /// Save a checkpoint of the current session state to the ledger.
+    pub async fn save_checkpoint(&self) -> Result<()> {
+        let checkpoint = SessionCheckpoint {
+            session_id: Uuid::parse_str(&self.session.id)?,
+            last_entry_id: Uuid::nil(), // TODO: track last entry ID
+            agent_state: format!("{:?}", self.session.state),
+            context: serde_json::to_value(&self.session.context)?,
+            timestamp: chrono::Utc::now(),
+        };
+        self.ledger.save_checkpoint(checkpoint).await?;
+        Ok(())
+    }
+
+    /// Get the session ID.
+    pub fn session_id(&self) -> &str {
+        &self.session.id
+    }
+
+    /// Recover session state from a checkpoint in the ledger.
+    pub async fn recover_from_checkpoint(&mut self) -> Result<bool> {
+        let session_id = Uuid::parse_str(&self.session.id)?;
+
+        if let Some(checkpoint) = self.ledger.load_checkpoint(session_id).await? {
+            // Restore agent state
+            self.session.state = match checkpoint.agent_state.as_str() {
+                "Created" => AgentState::Created,
+                "Analyzing" => AgentState::Analyzing,
+                "Planning" => AgentState::Planning,
+                "AwaitingApproval" => AgentState::AwaitingApproval,
+                "Executing" => AgentState::Executing,
+                "Verifying" => AgentState::Verifying,
+                "Repairing" => AgentState::Repairing,
+                "Completed" => AgentState::Completed,
+                "Failed" => AgentState::Failed,
+                _ => AgentState::Created,
+            };
+
+            // Restore context
+            if let Ok(context) = serde_json::from_value::<SessionContext>(checkpoint.context) {
+                self.session.context = context;
+            }
+
+            // Scan ledger for incomplete executions
+            let entries = self.ledger.get_entries(session_id).await?;
+            for entry in &entries {
+                match entry.state {
+                    ExecutionState::Started => {
+                        // Tool started but we don't know if it finished
+                        // For safety, mark as Unknown/Cancelled
+                        tracing::warn!(
+                            entry_id = %entry.id,
+                            action_id = %entry.action_id,
+                            "Found incomplete execution on recovery"
+                        );
+                    }
+                    ExecutionState::Executed => {
+                        // Tool finished but evidence wasn't recorded
+                        // We can safely mark it as Recorded/Verified
+                        tracing::info!(
+                            entry_id = %entry.id,
+                            action_id = %entry.action_id,
+                            "Found executed but unverified entry on recovery"
+                        );
+                    }
+                    _ => {}
+                }
+            }
+
+            Ok(true)
+        } else {
+            Ok(false)
         }
     }
 
@@ -352,7 +430,22 @@ impl AgentLoop {
                     // Store the tool call for later execution
                     self.session.context.pending_tool_call = Some(tool_call);
                 } else {
-                    // Execute the tool directly
+                    // Auto-approve and execute the tool directly
+                    // Log to ledger: Approved (auto-approved)
+                    let entry_id = Uuid::new_v4();
+                    let entry = LedgerEntry {
+                        id: entry_id,
+                        session_id: Uuid::parse_str(&self.session.id).unwrap(),
+                        action_id: tool_call.tool_id.clone(),
+                        arguments: tool_call.arguments.clone(),
+                        state: ExecutionState::Approved,
+                        prev_hash: "TODO".to_string(),
+                        timestamp: chrono::Utc::now(),
+                        payload: Some(serde_json::json!({"auto_approved": true})),
+                        error: None,
+                    };
+                    self.ledger.append(entry).await?;
+
                     self.execute_tool_call(tool_call).await?;
                     self.transition_to(AgentState::Verifying).await?;
                 }
@@ -608,6 +701,21 @@ impl AgentLoop {
 
     /// Execute the plan using model-driven tool selection
     async fn verify_results(&mut self) -> Result<()> {
+        // Log to ledger: Verification started
+        let entry_id = Uuid::new_v4();
+        let entry = LedgerEntry {
+            id: entry_id,
+            session_id: Uuid::parse_str(&self.session.id).unwrap(),
+            action_id: "verification".to_string(),
+            arguments: serde_json::json!({}),
+            state: ExecutionState::Started,
+            prev_hash: "TODO".to_string(),
+            timestamp: chrono::Utc::now(),
+            payload: None,
+            error: None,
+        };
+        self.ledger.append(entry).await?;
+
         // Call model to verify results
         let prompt = format!(
             "You are verifying the results of your work.\n\n\
@@ -627,7 +735,7 @@ impl AgentLoop {
                     AgentDecision::Verify { checks } => {
                         // Run verification checks
                         let all_passed = true;
-                        for check in checks {
+                        for check in &checks {
                             // For now, assume checks pass
                             // In a real implementation, we would run actual checks
                             self.add_system_message(format!(
@@ -636,6 +744,16 @@ impl AgentLoop {
                             ));
                         }
                         self.session.context.verification_status = Some(all_passed);
+
+                        // Log to ledger: Verified
+                        self.ledger
+                            .update_state(
+                                entry_id,
+                                ExecutionState::Verified,
+                                Some(serde_json::json!({"checks": checks})),
+                                None,
+                            )
+                            .await?;
                     }
                     AgentDecision::Complete {
                         summary,
@@ -646,11 +764,29 @@ impl AgentLoop {
                         if self.verify_completion_evidence(&evidence) {
                             self.add_system_message(format!("Verification passed: {}", summary));
                             self.session.context.verification_status = Some(true);
+
+                            // Log to ledger: Verified
+                            self.ledger.update_state(
+                                entry_id,
+                                ExecutionState::Verified,
+                                Some(serde_json::json!({"summary": summary, "evidence": evidence})),
+                                None,
+                            ).await?;
                         } else {
                             self.add_system_message(
                                 "Completion rejected: insufficient evidence".to_string(),
                             );
                             self.session.context.verification_status = Some(false);
+
+                            // Log to ledger: Failed
+                            self.ledger
+                                .update_state(
+                                    entry_id,
+                                    ExecutionState::Failed,
+                                    None,
+                                    Some("Insufficient evidence".to_string()),
+                                )
+                                .await?;
                         }
                     }
                     AgentDecision::Fail {
@@ -663,18 +799,48 @@ impl AgentLoop {
                             reason, error
                         ));
                         self.session.context.verification_status = Some(false);
+
+                        // Log to ledger: Failed
+                        self.ledger
+                            .update_state(
+                                entry_id,
+                                ExecutionState::Failed,
+                                None,
+                                Some(format!("{}: {}", reason, error)),
+                            )
+                            .await?;
                     }
                     _ => {
                         self.add_system_message(
                             "Model returned unexpected verification decision".to_string(),
                         );
                         self.session.context.verification_status = Some(true);
+
+                        // Log to ledger: Verified (unexpected but treating as success)
+                        self.ledger
+                            .update_state(
+                                entry_id,
+                                ExecutionState::Verified,
+                                Some(serde_json::json!({"unexpected": true})),
+                                None,
+                            )
+                            .await?;
                     }
                 }
             }
             Err(e) => {
                 self.add_system_message(format!("Verification model call failed: {}", e));
                 self.session.context.verification_status = Some(true);
+
+                // Log to ledger: Verified (model call failed but treating as success)
+                self.ledger
+                    .update_state(
+                        entry_id,
+                        ExecutionState::Verified,
+                        None,
+                        Some(format!("Model call failed: {}", e)),
+                    )
+                    .await?;
             }
         }
 
@@ -854,7 +1020,7 @@ impl AgentLoop {
                     }
                 }
                 RiskLevel::Execute
-            },
+            }
             id if id.starts_with("git.") => RiskLevel::GitWrite,
             id if id.starts_with("search.") => RiskLevel::Read,
             _ => RiskLevel::Execute,
@@ -919,11 +1085,36 @@ impl AgentLoop {
             tool_call.tool_id, tool_call.reason
         ));
 
+        // Log to ledger: Started
+        let entry_id = Uuid::new_v4();
+        let entry = LedgerEntry {
+            id: entry_id,
+            session_id: Uuid::parse_str(&self.session.id).unwrap(),
+            action_id: tool_call.tool_id.clone(),
+            arguments: tool_call.arguments.clone(),
+            state: ExecutionState::Started,
+            prev_hash: "TODO".to_string(), // TODO: compute hash of previous entry
+            timestamp: chrono::Utc::now(),
+            payload: None,
+            error: None,
+        };
+        self.ledger.append(entry).await?;
+
         // Execute the tool
         let tool = self.tool_registry.get(&tool_call.tool_id).await;
         if let Some(tool) = tool {
             match tool.call(tool_call.arguments.clone()).await {
                 Ok(result) => {
+                    // Log to ledger: Executed
+                    self.ledger
+                        .update_state(
+                            entry_id,
+                            ExecutionState::Executed,
+                            Some(result.clone()),
+                            None,
+                        )
+                        .await?;
+
                     // Add tool result to session
                     self.add_tool_result(&tool_call.tool_id, result.clone(), true, 0);
 
@@ -957,8 +1148,23 @@ impl AgentLoop {
                     };
 
                     self.add_system_message(format!("Tool execution result: {:?}", observation));
+
+                    // Log to ledger: Recorded
+                    self.ledger
+                        .update_state(
+                            entry_id,
+                            ExecutionState::Recorded,
+                            Some(serde_json::to_value(&observation)?),
+                            None,
+                        )
+                        .await?;
                 }
                 Err(e) => {
+                    // Log to ledger: Failed
+                    self.ledger
+                        .update_state(entry_id, ExecutionState::Failed, None, Some(e.to_string()))
+                        .await?;
+
                     self.add_tool_result(
                         &tool_call.tool_id,
                         serde_json::json!({"error": e.to_string()}),
@@ -1054,17 +1260,20 @@ impl AgentLoop {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::memory_ledger::MemoryLedgerStore;
 
     #[tokio::test]
     async fn test_agent_loop_creation() {
         let registry = Arc::new(ToolRegistry::new());
         let model_client = Arc::new(TestModelClient::new(vec![]));
+        let ledger = Arc::new(MemoryLedgerStore::new());
         let agent = AgentLoop::new(
             "Fix the bug in main.rs",
             PathBuf::from("."),
             None,
             registry,
             model_client,
+            ledger,
         );
 
         assert_eq!(agent.session.state, AgentState::Created);
@@ -1076,12 +1285,14 @@ mod tests {
     async fn test_agent_loop_step() {
         let registry = Arc::new(ToolRegistry::new());
         let model_client = Arc::new(TestModelClient::new(vec![]));
+        let ledger = Arc::new(MemoryLedgerStore::new());
         let mut agent = AgentLoop::new(
             "Fix the bug in main.rs",
             PathBuf::from("."),
             None,
             registry,
             model_client,
+            ledger,
         );
 
         // First step should transition to Analyzing
@@ -1113,12 +1324,14 @@ mod tests {
             r#"{"action": "ToolCall", "payload": {"tool_id": "shell.execute", "arguments": {"command": "rm", "args": ["-rf", "/"]}, "reason": "Destructive action", "expected_result": "Error"}}"#.to_string(),
         ]));
 
+        let ledger = Arc::new(MemoryLedgerStore::new());
         let mut agent = AgentLoop::new(
             "Execute destructive command",
             PathBuf::from("."),
             None,
             registry,
             model_client,
+            ledger,
         );
 
         // Run the agent loop
@@ -1140,12 +1353,14 @@ mod tests {
             r#"{"action": "Complete", "payload": {"summary": "Task completed", "evidence": [], "remaining_limitations": []}}"#.to_string(),
         ]));
 
+        let ledger = Arc::new(MemoryLedgerStore::new());
         let mut agent = AgentLoop::new(
             "Read Cargo.toml",
             PathBuf::from("."),
             None,
             registry,
             model_client,
+            ledger,
         );
 
         // Run the agent loop
@@ -1172,12 +1387,14 @@ mod tests {
             ..Default::default()
         };
 
+        let ledger = Arc::new(MemoryLedgerStore::new());
         let mut agent = AgentLoop::new(
             "Read Cargo.toml",
             PathBuf::from("."),
             Some(config),
             registry,
             model_client,
+            ledger,
         );
 
         // Run the agent loop

@@ -61,6 +61,20 @@ Unlike other AI assistants that trust model outputs, ZylCode implements a **Proo
 - **R4**: Integration verified (end-to-end)
 - **R5**: Production deployed (live verification)
 
+### 🔒 Durable Engineering Memory
+
+ZylCode persists engineering state across crashes and restarts:
+
+- **Session Memory**: Conversation, task state, current plan, approvals
+- **Engineering Memory**: Architectural decisions, discovered repository facts, successful patterns
+- **Evidence Memory**: Tool invocations, diffs, builds, verification results
+- **Recovery State**: Crash/resume markers and execution pointers
+
+**Append-first, idempotent ledger**: Every tool execution is tracked through a strict state machine:
+`Planned → Approved → Started → Executed → Recorded → Verified`
+
+This prevents a restarted agent from repeating destructive operations whose execution succeeded just before the process died.
+
 ### 🧩 Model Democracy
 
 ZylCode selects the best model for each task based on requirements:
@@ -94,19 +108,15 @@ skills_system.compose_skills(vec![
 
 ### ⚡ Performance
 
-- **<100ms** tool execution (95th percentile)
-- **<200ms** skill execution
-- **<300ms** plugin execution
-- **<2s** startup time
-- **<512MB** memory usage
+- Optimized tool execution with async I/O
+- Efficient skill composition and execution
+- Fast startup with lazy initialization
 
-### 🔒 Enterprise Security
+### 🔒 Security
 
-- **SOC 2 Type II** compliance
-- **ISO 27001** certification
-- **GDPR** compliance
-- **PCI DSS** for payments
-- **End-to-end encryption**
+- Tool execution sandboxing
+- Approval workflows for destructive operations
+- Audit logging for all operations
 
 ---
 

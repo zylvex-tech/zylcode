@@ -4,26 +4,31 @@
 //! subsystem re-exported from [`marketplace`].
 
 pub mod agent;
+pub mod agent_protocol;
+pub mod ai_input;
 pub mod cache;
 pub mod cli;
 pub mod compression;
+pub mod computer_use;
+pub mod context_builder;
+pub mod ledger;
 pub mod marketplace;
+pub mod memory_ledger;
 pub mod pipeline;
 pub mod planner;
 pub mod router;
-pub mod ai_input;
-pub mod computer_use;
+pub mod sqlite_ledger;
 
+use crate::ai_input::AIInputSystem;
+use crate::computer_use::ComputerUseSystem;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
+use tokio::sync::Mutex;
 use tokio::sync::RwLock;
 use tracing::{info, instrument};
 use zylcode_mcp::ToolRegistry;
-use crate::ai_input::AIInputSystem;
-use crate::computer_use::ComputerUseSystem;
-use tokio::sync::Mutex;
 
 // ---------------------------------------------------------------------------
 // Engine configuration
@@ -195,7 +200,10 @@ impl ZylCodeEngine {
     }
 
     /// Create an engine with an explicit router config (useful for tests / Tauri model selection).
-    pub fn with_router_config(config: EngineConfig, router_config: router::RouterConfig) -> Result<Self> {
+    pub fn with_router_config(
+        config: EngineConfig,
+        router_config: router::RouterConfig,
+    ) -> Result<Self> {
         let pipeline = pipeline::ArtifactPipeline::from_config(router_config)?;
         Ok(Self {
             config,
@@ -270,18 +278,30 @@ impl ZylCodeEngine {
         info!(prompt = %intent.prompt, "processing intent via agent loop");
 
         let workspace_root = std::path::PathBuf::from(&self.config.workspace_root);
-        
+
         // Create and run agent loop
+        let model_client = Arc::new(agent::RealModelClient::new(Arc::new(
+            self.pipeline.router().clone(),
+        )));
+
+        // Create ledger store (using SQLite for production)
+        let ledger_dir = format!("{}/.zylcode", self.config.workspace_root);
+        std::fs::create_dir_all(&ledger_dir)?;
+        let ledger_path = format!("{}/ledger.db", ledger_dir);
+        let ledger = Arc::new(crate::sqlite_ledger::SqliteLedgerStore::new(&ledger_path)?);
+
         let mut agent = agent::AgentLoop::new(
             &intent.prompt,
             workspace_root,
             None, // Use default config
             self.tool_registry.clone(),
+            model_client,
+            ledger,
         );
-        
+
         // Run the agent loop
         let final_state = agent.run().await?;
-        
+
         // Convert agent result to IntentResult
         let success = final_state == agent::AgentState::Completed;
         let summary = if success {
@@ -289,7 +309,7 @@ impl ZylCodeEngine {
         } else {
             format!("Task failed: {}", intent.prompt)
         };
-        
+
         Ok(IntentResult {
             summary,
             artifacts: Vec::new(), // TODO: Extract artifacts from agent session
@@ -302,7 +322,7 @@ impl ZylCodeEngine {
     pub async fn process_intent_with_model(
         &self,
         intent: Intent,
-        model_override: Option<String>,
+        _model_override: Option<String>,
     ) -> Result<IntentResult> {
         // For now, ignore model override and use the agent loop
         // In the future, we can pass the model override to the agent config
@@ -426,17 +446,16 @@ impl ZylCodeEngine {
     }
 
     /// Hot-reload tools on config file change (requires `notify`).
-    pub fn watch_tools_config(
-        &self,
-        path: std::path::PathBuf,
-    ) -> Result<()> {
+    pub fn watch_tools_config(&self, path: std::path::PathBuf) -> Result<()> {
         let registry = Arc::clone(&self.tool_registry);
         let cb = Arc::new(move |cfg: zylcode_mcp::McpConfigFile| {
             let reg = Arc::clone(&registry);
             let tools: Vec<Arc<dyn zylcode_mcp::Tool>> = cfg
                 .enabled_tools()
                 .into_iter()
-                .map(|c| Arc::new(zylcode_mcp::DynamicTool::new(c.clone())) as Arc<dyn zylcode_mcp::Tool>)
+                .map(|c| {
+                    Arc::new(zylcode_mcp::DynamicTool::new(c.clone())) as Arc<dyn zylcode_mcp::Tool>
+                })
                 .collect();
             // Spawn blocking register (tokio) — fire and forget for watcher thread
             let rt = tokio::runtime::Handle::try_current();
@@ -467,7 +486,8 @@ impl ZylCodeEngine {
             .get(id)
             .await
             .ok_or_else(|| anyhow::anyhow!("tool not found: {id}"))?;
-        zylcode_mcp::execute_with_recovery(tool, params, zylcode_mcp::ExecuteOptions::default()).await
+        zylcode_mcp::execute_with_recovery(tool, params, zylcode_mcp::ExecuteOptions::default())
+            .await
     }
 
     /// Access the AI Input System, initialising it lazily on first use.
@@ -510,9 +530,7 @@ impl ZylCodeEngine {
     // -----------------------------------------------------------------------
 
     /// Access the marketplace registry (read).
-    pub async fn marketplace_snapshot(
-        &self,
-    ) -> Vec<marketplace::MarketplaceExtension> {
+    pub async fn marketplace_snapshot(&self) -> Vec<marketplace::MarketplaceExtension> {
         let reg = self.marketplace.read().await;
         reg.all().into_iter().cloned().collect()
     }
@@ -522,16 +540,19 @@ impl ZylCodeEngine {
 // Re-exports for ergonomic downstream use
 // ---------------------------------------------------------------------------
 
+pub use cache::{cosine_similarity, mock_embed, prompt_hash, VectorCacheStore, VectorEntry};
+pub use compression::{
+    ASTOutlineExtractor, CompressionMetrics, ContextCompressor, LosslessCommentsStripper,
+    TokenWindowCompactor,
+};
 pub use marketplace::{
     ExtensionRegistry, ExtensionType, MarketplaceExtension, PluginManifest, SkillDefinition,
 };
 pub use pipeline::{Artifact as PipelineArtifact, ArtifactPipeline, ProofMetrics};
 pub use planner::{ExecutionPlan, IntentPlanner, PlanStep};
-pub use cache::{cosine_similarity, mock_embed, prompt_hash, VectorCacheStore, VectorEntry};
-pub use compression::{ASTOutlineExtractor, CompressionMetrics, ContextCompressor, LosslessCommentsStripper, TokenWindowCompactor};
 pub use router::{
-    cache::SpeculativeCache, trim_to_window, ContextTrim, ModelProvider, ProviderConfig, ProviderKind, RouterConfig, StreamEvent,
-    TokenMetrics, TokenRouter, TokenSnapshot,
+    cache::SpeculativeCache, trim_to_window, ContextTrim, ModelProvider, ProviderConfig,
+    ProviderKind, RouterConfig, StreamEvent, TokenMetrics, TokenRouter, TokenSnapshot,
 };
 pub use zylcode_mcp::{
     execute_with_recovery, ExecuteOptions, McpConfigFile, McpToolConfig, McpTransport, Tool,
