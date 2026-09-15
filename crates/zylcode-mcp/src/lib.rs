@@ -7,9 +7,12 @@ pub mod enhanced_plugin_marketplace;
 pub mod enhanced_skills;
 pub mod executor;
 pub mod hot_reload;
+pub mod performance;
 pub mod plugin_marketplace;
+pub mod real_tools;
 pub mod registry;
 pub mod skills_system;
+pub mod system_integration;
 pub mod telemetry;
 pub mod tool;
 
@@ -20,9 +23,12 @@ pub use enhanced_plugin_marketplace::{EnhancedPluginMarketplace, RevenueManager,
 pub use enhanced_skills::{EnhancedSkillsSystem, CompositionEngine, SkillsMarketplace, SkillsAnalytics, SkillsAnalyticsReport};
 pub use executor::{execute_with_recovery, ExecuteOptions};
 pub use hot_reload::{HotReloadManager, HotReloadConfig, ReloadCallback, ToolAnalytics, AnalyticsReport};
+pub use performance::{ToolCache, CacheStats, ToolExecutionPool, PoolStats, MemoryPool, MemoryPoolStats};
 pub use plugin_marketplace::{PluginMarketplace, PluginDefinition, InstalledPlugin, UIComponent};
+pub use real_tools::{RealTool, ToolContext, ToolResult, ToolEvidence, ToolPermissions, FileSystemTool, ShellTool, GitTool, SearchTool};
 pub use registry::ToolRegistry;
 pub use skills_system::{SkillsSystem, SkillDefinition, ExecutionContext, ExecutionRecord};
+pub use system_integration::{SystemIntegrationManager, IntegrationConfig, IntegrationStats, McpSkillsIntegration, SkillsPluginIntegration, McpPluginIntegration};
 pub use telemetry::{Telemetry, TelemetryConfig, attrs, propagation, span_names};
 pub use tool::{DynamicTool, Tool, ToolDescriptor};
 
