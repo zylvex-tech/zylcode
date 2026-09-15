@@ -1448,9 +1448,6 @@ impl AgentLoop {
 
         let response = self.model_client.call(prompt, system_prompt).await?;
 
-        // Debug: print response
-        println!("Model response: {}", response);
-
         // Parse the response as JSON
         // Try to extract JSON from the response
         let json_str = if response.contains("```json") {

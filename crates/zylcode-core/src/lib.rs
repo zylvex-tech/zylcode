@@ -302,14 +302,6 @@ impl ZylCodeEngine {
         // Run the agent loop
         let final_state = agent.run().await?;
 
-        // Debug: print agent state
-        println!("Agent loop completed with state: {:?}", final_state);
-
-        // Debug: print agent messages
-        for msg in agent.session().messages.iter() {
-            println!("Agent message: {:?} - {}", msg.role, msg.content);
-        }
-
         // Convert agent result to IntentResult
         let success = final_state == agent::AgentState::Completed;
         let summary = if success {
@@ -611,9 +603,6 @@ mod tests {
             })
             .await
             .unwrap();
-
-        // Debug: print result
-        println!("Result: {:?}", result);
 
         assert!(result.success);
         assert!(result.summary.contains("build the project"));
