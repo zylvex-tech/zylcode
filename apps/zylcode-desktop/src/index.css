@@ -1,9 +1,9 @@
+/* Import our premium theme system */
+@import './styles/themes.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Import our premium theme system */
-@import './styles/themes.css';
 
 /* Base styles that work with all themes */
 body {
