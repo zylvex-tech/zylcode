@@ -5,8 +5,8 @@
 </p>
 
 <p align="center">
-  <strong>The Ultimate AI Coding Assistant Platform</strong><br>
-  <em>Surpassing OpenAI Codex, GitHub Copilot, and Cursor</em>
+  <strong>Evidence-First Autonomous Software Engineer</strong><br>
+  <em>Local-first, cross-platform AI coding assistant with verifiable execution</em>
 </p>
 
 <p align="center">
@@ -22,51 +22,48 @@
 
 ## 🚀 Overview
 
-**ZylCode** is a next-generation, cross-platform AI coding assistant platform that combines the power of **156 MCP tools**, **35+ composable skills**, and a **marketplace with 35+ plugins**. Built with Rust for performance and React for a modern UI, ZylCode runs natively on **Windows**, **macOS**, and **Linux**.
+**ZylCode** is an evidence-first, autonomous software engineering platform that combines **real tool execution**, **verifiable proof graphs**, and **model democracy** (task-based model selection). Built with Rust for performance and React for a modern UI, ZylCode runs natively on **Windows**, **macOS**, and **Linux**.
 
 ### Why ZylCode?
 
-| Feature | ZylCode | OpenAI Codex | GitHub Copilot | Cursor |
-|---------|---------|--------------|----------------|--------|
-| **MCP Tools** | 156 | ❌ | ❌ | ❌ |
-| **Skills System** | 35+ composable | ❌ | ❌ | Basic |
-| **Plugin Marketplace** | 35+ with revenue | ❌ | ❌ | ❌ |
-| **Cross-Platform** | ✅ Win/Mac/Linux | Web only | VS Code only | ✅ |
-| **Offline Capable** | ✅ | ❌ | ❌ | ❌ |
-| **GUI + CLI** | ✅ Both | API only | Extension | ✅ |
-| **Performance** | <100ms | Varies | Varies | Varies |
-| **Enterprise Security** | SOC 2, ISO 27001 | ✅ | ✅ | ❌ |
+| Feature | ZylCode | Traditional AI Assistants |
+|---------|---------|---------------------------|
+| **Evidence-First** | ✅ Proof Graph (R0-R5) | ❌ Trust-based |
+| **Real Tool Execution** | ✅ Filesystem, Shell, Git | ⚠️ Sandboxed/Limited |
+| **Model Democracy** | ✅ Task-based selection | ❌ Single model |
+| **Cross-Platform** | ✅ Win/Mac/Linux | ⚠️ Platform-specific |
+| **Offline Capable** | ✅ Local-first | ❌ Cloud-dependent |
+| **GUI + CLI** | ✅ Both | ⚠️ Usually one |
+| **Verifiable Execution** | ✅ Full audit trail | ❌ Black box |
 
 ---
 
 ## ✨ Features
 
-### 🛠️ 156 MCP Tools (AI-Powered Automation)
+### 🛠️ Real Tool Execution (Verifiable Automation)
 
-ZylCode ships with **156 built-in tools** organized into 16 categories:
+ZylCode features a **Real Tool Runtime** that actually executes operations with full evidence:
 
-- **Development** (25+ tools): Git operations, code analysis, testing, debugging
-- **AI/ML** (25+ tools): Model training, evaluation, deployment, data preprocessing
-- **Database** (15+ tools): Query optimization, schema design, backup, migration
-- **Cloud** (20+ tools): AWS, GCP, Azure management, serverless, Kubernetes
-- **DevOps** (15+ tools): CI/CD, monitoring, logging, security scanning
-- **Communication** (15+ tools): Slack, Discord, Teams integration, webhooks
-- **Productivity** (15+ tools): Task management, calendar, notes, reminders
-- **Security** (15+ tools): Code scanning, vulnerability detection, encryption
+- **Filesystem**: Read, write, and list files with actual I/O operations
+- **Terminal**: Execute shell commands with stdout/stderr streaming
+- **Git**: Perform actual git operations (status, diff, commit)
+- **Search**: Search repositories with actual file system traversal
+- **Execution Evidence**: Every tool execution is recorded with full audit trail
 
-### ⚡ Real Tool Runtime
+### ⚡ Evidence-First Architecture
 
-Unlike other AI assistants that simulate tool execution, ZylCode features a **Real Tool Runtime** that actually executes operations:
+Unlike other AI assistants that trust model outputs, ZylCode implements a **Proof Graph** with verifiable evidence levels:
 
-- **Real Filesystem**: Read, write, and list files with actual I/O operations
-- **Real Terminal**: Execute shell commands with stdout/stderr streaming
-- **Real Git**: Perform actual git operations (status, diff, commit)
-- **Real Search**: Search repositories with actual file system traversal
-- **Execution Evidence**: Every tool execution is recorded with full evidence
+- **R0**: Model output only (no verification)
+- **R1**: Syntax valid (parsed successfully)
+- **R2**: Compiles/Builds (no errors)
+- **R3**: Tests pass (automated verification)
+- **R4**: Integration verified (end-to-end)
+- **R5**: Production deployed (live verification)
 
-### 🧩 35+ Composable Skills
+### 🧩 Model Democracy
 
-Chain skills together for complex workflows:
+ZylCode selects the best model for each task based on requirements:
 
 ```rust
 // Example: Compose skills for code review workflow
