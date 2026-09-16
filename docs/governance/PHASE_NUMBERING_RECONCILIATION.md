@@ -192,6 +192,29 @@ cheaply and prevents another agent from re-deriving pricing strategy from a stal
 
 ---
 
+## 6.1 Resolution (2026-09-16) — options 2 and 3 combined
+
+**Resolved.** A separate governing document was created and the deferral recorded in it:
+
+- **`ZYLCODE_COMMERCIAL_MODEL.md`** — governs what is sold, the BYOK stance (no model markup,
+  no paywalling a user's own evidence), the tier table, and the pricing gate.
+- **Constitution Amendment 1** — registers it in §9.1 and records the change append-only per §13.
+- **Gate restated as a capability state.** The former gate ("no pricing page until Phase 10
+  ships") referenced an obsolete phase number. It is now: *no pricing until a capability exists
+  at **R3** in the area a tier claims to sell.* Capability states do not drift when phases are
+  renumbered — this is the general rule, and it is the same defect class as §2 of this document.
+- **Tier ladder corrected.** The original tiers referenced a four-rung ladder from the superseded
+  plan; they are restated against the authoritative **R0–R5** ladder.
+
+Option 1 (absorbing pricing into the Constitution) was **rejected**: pricing changes on a business
+cadence while the Constitution should not. The Constitution now *references* the commercial model
+rather than containing it.
+
+`STRATEGIC_PLAN.md` §5 carries a pointer to the governing document; its reasoning is retained as
+the historical origin.
+
+---
+
 ## 7. Reproduction
 
 ```bash

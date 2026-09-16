@@ -444,6 +444,7 @@ docs/governance/
     ZYLCODE_CAPABILITY_MODEL.md
     ZYLCODE_PROOF_GRAPH.md
     ZYLCODE_AGENT_OPERATING_PROTOCOL.md
+    ZYLCODE_COMMERCIAL_MODEL.md            ← deferred; governs commercial claims (§13 Am. 1)
 
 docs/roadmap/
     ZYLCODE_ROADMAP_V2.md
@@ -456,9 +457,13 @@ docs/architecture/
     ARTIFACT_SYSTEM.md
     VISION_STUDIO.md
     EXECUTION_ENGINE.md
+    COMPUTER_USE_ENGINE.md
     PROOF_ENGINE.md
     DELIVERY_ENGINE.md
 ```
+
+> `COMPUTER_USE_ENGINE.md` was added by Architecture v2.1 (eight-engine model).
+> `ZYLCODE_COMMERCIAL_MODEL.md` was added by Amendment 1 and is **deferred** — see §13.
 
 ### 9.2 Mandatory Agent Preamble
 
@@ -554,7 +559,28 @@ traceable to evidence at the claimed rung.
 
 ### Amendments
 
-*(none yet — this is the initial ratified version)*
+**Amendment 1 — 2026-09-16 — Commercial scope and the pricing gate**
+
+- **Author:** Architecture Owner (independent audit role).
+- **Changed clause:** adds `docs/governance/ZYLCODE_COMMERCIAL_MODEL.md` as a governing document
+  under §9.1, and records that the commercial model is **deferred**.
+- **Rationale:** The Constitution, Architecture and Master Execution Plan were **silent on
+  revenue**. The only record of ZylCode's commercial model was `docs/STRATEGIC_PLAN.md` §5–6 — a
+  document since marked superseded, with obsolete phase numbering. The gap had two consequences:
+  a future agent could invent pricing terms with nothing to check them against, and §11
+  (Truth-in-Advertising) had no standard to apply to a pricing claim.
+- **What this amendment does *not* do:** it does not adopt the tiers. It records them as
+  PROPOSED and **not advertised**, and it binds them to a gate.
+- **Evidence:** `docs/governance/ZYLCODE_COMMERCIAL_MODEL.md`;
+  `docs/governance/PHASE_NUMBERING_RECONCILIATION.md` §6 (where the gap was identified).
+- **Effect:** Pricing must not be published until a capability exists at **R3** in the area a
+  tier claims to sell. The gate is a truth-in-advertising control, not a business preference.
+- **Superseded by this amendment:** the former gate "do not publish pricing until Phase 10 ships"
+  (referenced an obsolete phase number). Restated as a capability state, which does not drift when
+  phases are renumbered.
+
+*(Amendment 1 is the first amendment; the body of this Constitution above is the initial ratified
+version, unaltered.)*
 
 ---
 

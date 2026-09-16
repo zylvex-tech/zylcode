@@ -26,9 +26,13 @@
 >
 > Cross-reference: `governance/PHASE_NUMBERING_RECONCILIATION.md`.
 >
-> **Unresolved:** monetization and pricing (Sections 5–6) have **no governance home**. The
-> Constitution, Architecture and Master Execution Plan are silent on revenue. This is a recorded
-> gap, not an oversight — see the reconciliation doc §6.
+> **Unresolved:** ~~monetization and pricing (Sections 5–6) have no governance home.~~
+> **RESOLVED 2026-09-16.** Sections 5–6 are now governed by
+> `governance/ZYLCODE_COMMERCIAL_MODEL.md` (Constitution Amendment 1). That document restates the
+> tiers against the authoritative R0–R5 ladder, converts the pricing gate from a phase number to
+> a capability state, and records the model as **PROPOSED and not advertised**. The reasoning in
+> Sections 5–6 below is retained as the historical origin; the governing text is the commercial
+> model document.
 
 **Version:** 2.0 (historical)
 **Date:** September 2026
@@ -181,6 +185,14 @@ Package the existing 16 fault-injection tests + 19 telemetry-audit tests as a st
 ---
 
 ## Section 5: Monetization Model
+
+> ⚠️ **This section is historical. The governing text is
+> `governance/ZYLCODE_COMMERCIAL_MODEL.md`.**
+>
+> Note especially: the "Rungs 1–4" used below is the **superseded four-rung ladder**. The
+> authoritative ladder is **R0–R5** (`governance/ZYLCODE_PROOF_GRAPH.md`); the mapping is in the
+> commercial model document §3.2. The pricing gate below referenced a phase number, which has
+> been restated as a capability state.
 
 **Principle:** Monetization is gated on real shipping progress. No pricing page until Phase 10 ships. No revenue projections until Phase 11.
 

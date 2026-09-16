@@ -41,6 +41,7 @@ Every prompt to DeepSeek, Codex, ZCode, or any other implementation agent **must
 | **`ZYLCODE_CAPABILITY_MODEL.md`** | What a capability is, how status is computed, how the registry is audited. |
 | **`ZYLCODE_PROOF_GRAPH.md`** | **R0–R5.** The definition of "proven". Governs every capability claim. |
 | **`ZYLCODE_AGENT_OPERATING_PROTOCOL.md`** | How agents work here. Pre-flight, rules, report format, anti-patterns. |
+| **`ZYLCODE_COMMERCIAL_MODEL.md`** | **Deferred.** What is sold, the BYOK stance, the pricing gate. Governs commercial *claims*, not engineering order. |
 | **`DEEPSEEK_MASTER_PROMPT_V21.md`** | The two-job work order: Phase 2A remediation, then Architecture v2.1 reconciliation. |
 | **`PHASE_NUMBERING_RECONCILIATION.md`** | Three competing phase-numbering schemes, the collision, and the fix. Also the source of rule 4.7. |
 | **`PHASE2A_INDEPENDENT_AUDIT.md`** | The audit that re-opened Phase 2A. Also the worked method for future audits. |
@@ -99,6 +100,7 @@ Every prompt to DeepSeek, Codex, ZCode, or any other implementation agent **must
 | **Phases 3A–16** | ⏸ Not started |
 | **Architecture** | v2.1 — eight systems; Phase 7 split into 7A–7D; 8–16 unrenumbered |
 | **Phase numbering** | Reconciled — three schemes found; two relabelled as named tracks |
+| **Commercial model** | Recorded as deferred (Amendment 1). Not advertised; gated on an R3 capability. |
 
 **Phase 2A was rejected** because: its headline metric counted `target/` build output (14,900 of
 15,064 files; the repository is 254 files); its benchmark **fails** on independent re-execution;
