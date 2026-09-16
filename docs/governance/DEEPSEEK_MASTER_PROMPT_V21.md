@@ -431,6 +431,38 @@ that table was previously found to contain entries presented as further along th
 Where a system has a non-functional skeleton (Computer Use is now the known case), say
 "PROPOSED — non-functional skeleton present" rather than a bare PROPOSED, and name the skeleton.
 
+## 2.6 — Finish the phase-label relabel in source comments
+
+The audit session relabelled the **documentation** sites of the obsolete `Phase N.N` milestone
+labels in commit `c4b8aa0` and recorded the rationale in
+`docs/governance/PHASE_NUMBERING_RECONCILIATION.md` (see rule 4.7 of the Agent Operating
+Protocol: *a phase number belongs to the governance roadmap and to nothing else*).
+
+**Five source files still carry the old labels.** They were **deliberately not changed** by the
+audit session, because each already held unrelated uncommitted formatting changes from your
+working tree, and mixing the two would have obscured both. They are yours to finish:
+
+| File | Line | Current | Change to |
+|---|---|---|---|
+| `crates/zylcode-core/src/router.rs` | 63 | `/// Provider kind for Phase 7.2 multi-provider routing.` | `(track: MULTIPROVIDER-1)` |
+| `crates/zylcode-core/src/router.rs` | 205 | `… multi-provider router (Phase 7.2).` | `(track: MULTIPROVIDER-1)` |
+| `crates/zylcode-core/src/cache.rs` | 1 | `//! Phase 8.2 — Local Model Cache …` | `(track: VECTOR-CACHE)` |
+| `crates/zylcode-core/src/compression.rs` | 1, 367 | `Phase 8.1` | `CTX-COMPRESSION` |
+| `apps/zylcode-desktop/src-tauri/src/main.rs` | 281 | `// Phase 7.3 — Provider Configuration IPC` | `(track: MULTIPROVIDER-2)` |
+| `apps/zylcode-desktop/src/App.tsx` | 49 | `// Phase 3.2: artifact stream parser hook` | `(track: ARTIFACT-STREAM)` |
+
+**Comment-only.** Do not change behaviour. Do not reflow surrounding code.
+
+**This is the only Job 2 item that touches a non-Markdown file.** It is explicitly permitted
+because the replacement is a comment label and the collision is live: `router.rs` will be extended
+by the real Phase 7 (Browser Runtime / Computer Use) work, and a comment reading
+`Phase 7.2 multi-provider routing` inside it is a trap.
+
+**Verify:** `grep -rn "Phase [0-9]\+\.[0-9]" --include=*.rs --include=*.ts --include=*.tsx .`
+returns nothing outside `docs/governance/PHASE_NUMBERING_RECONCILIATION.md` and
+`docs/STRATEGIC_PLAN.md` (both retain historical labels deliberately).
+Run `cargo check` and `npx tsc --noEmit` afterwards and paste the exit codes.
+
 ## Job 2 required report format
 
 ```
@@ -453,6 +485,7 @@ ARCHITECTURE v2.1 RECONCILIATION REPORT
 - [ ] Phase 7 splits into 7A–7D in both plan and roadmap; **8–16 unrenumbered**
 - [ ] Four new concepts recorded with owner, dependencies, PROPOSED
 - [ ] Architecture §9 status table reflects the skeleton truth for Computer Use
+- [ ] Phase-label relabel finished in the five source files (§2.6); `cargo check` + `tsc` exit 0
 - [ ] Zero executable Computer-Use code added or modified
 - [ ] Committed and pushed as a **separate commit** from Job 1
 
