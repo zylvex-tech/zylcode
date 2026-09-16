@@ -49,3 +49,6 @@ zylcode_telemetry.db
 deepseek-*.html
 deepseek-repos.json
 search_openai.py
+
+# Agent workspace (local memory + session state — never published)
+.workbuddy-ai/
