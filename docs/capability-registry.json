@@ -1,6 +1,6 @@
 {
-  "version": "1.4.0",
-  "timestamp": "2026-09-15T15:00:00Z",
+  "version": "1.4.1-audited",
+  "timestamp": "2026-09-16T00:00:00Z",
   "repository": "C:\\Projects\\zylcode",
   "capabilities": {
     "application_lifecycle": {
@@ -114,73 +114,134 @@
       "details": "release.yml produces installers via tauri-action; Windows NSIS, macOS DMG, Linux DEB/RPM configured; release workflow blocked by GitHub billing issue"
     },
     "documentation_accuracy": {
-      "status": "GREEN",
+      "status": "DISPUTED",
       "evidence": "All stale github.com/zylcode/zylcode references corrected to github.com/zylvex-tech/zylcode",
-      "details": "README installation section rewritten; fabricated download URLs removed; historical v0.2.0-dev assets documented as non-current"
+      "details": "README installation section rewritten; fabricated download URLs removed; historical v0.2.0-dev assets documented as non-current",
+      "status_before_audit": "GREEN",
+      "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
+      "dispute_reason": "Scope defect (ZYLCODE_CAPABILITY_MODEL.md 3.1/3.2). The capability name implies broad documentation accuracy; the evidence string only covers repo-URL references. The 2026-09-16 README review found further inaccuracies: a removed-as-unsupported '156 tools' claim had reappeared, 'Total: 32 tests passing' understated 341 test attributes and omitted a failure, three doc links pointed at files that have never existed, and the README defined an R0-R5 ladder contradicting ZYLCODE_PROOF_GRAPH.md. Requires re-verification against a stated scope."
     },
     "repository_scanner": {
-      "status": "GREEN",
+      "status": "DISPUTED",
       "evidence": "Scanner indexes 14,973 files in 12.7s with .gitignore and secret-file exclusion",
-      "details": "Deterministic file tree walker with language/role classification, content hashing, and Windows path support"
+      "details": "Deterministic file tree walker with language/role classification, content hashing, and Windows path support",
+      "status_before_audit": "GREEN",
+      "rung": "R2",
+      "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
+      "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6. METRIC DEFECT: 'indexes 14,973 files' counted target/ build output. Measured: 15,064 indexed of which 14,900 are under target/ (98.9%). The repository is 254 files (git ls-files = 193). Root cause: should_exclude() matches forward-slash patterns against Windows backslash paths, so the exclusion list is dead code on the primary target platform. Also: benchmark asserts only file_count() > 50, and the reported scan time (12.7s) does not reproduce (276.1s measured, assertion FAILS)."
     },
     "manifest_intelligence": {
-      "status": "GREEN",
+      "status": "DISPUTED",
       "evidence": "Parses Cargo.toml, package.json, pnpm-workspace.yaml; discovers 5 packages and 4 internal dependency edges",
-      "details": "Structured manifest parsing with workspace member resolution and dependency extraction"
+      "details": "Structured manifest parsing with workspace member resolution and dependency extraction",
+      "status_before_audit": "GREEN",
+      "rung": "R2",
+      "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
+      "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6."
     },
     "rust_symbol_index": {
-      "status": "GREEN",
+      "status": "DISPUTED",
       "evidence": "Extracts 1,444 symbols from Rust files using regex-based parsing",
-      "details": "Supports struct, enum, trait, impl, function, method, constant, type alias, module, macro; QUALITY: DEFINITION_INDEXED"
+      "details": "Supports struct, enum, trait, impl, function, method, constant, type alias, module, macro; QUALITY: DEFINITION_INDEXED",
+      "status_before_audit": "GREEN",
+      "rung": "R2",
+      "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
+      "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6."
     },
     "typescript_symbol_index": {
-      "status": "GREEN",
+      "status": "DISPUTED",
       "evidence": "Regex-based extraction for class, interface, type, function, variable, component",
-      "details": "QUALITY: DEFINITION_INDEXED; full semantic resolution is future work"
+      "details": "QUALITY: DEFINITION_INDEXED; full semantic resolution is future work",
+      "status_before_audit": "GREEN",
+      "rung": "R2",
+      "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
+      "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6."
     },
     "package_dependency_graph": {
-      "status": "GREEN",
+      "status": "DISPUTED",
       "evidence": "Bidirectional queries: dependencies_of(X), dependents_of(X), transitive_dependencies_of(X), packages_using(external_dep)",
-      "details": "Built from manifest parsing; supports internal and external dependency edges"
+      "details": "Built from manifest parsing; supports internal and external dependency edges",
+      "status_before_audit": "GREEN",
+      "rung": "R2",
+      "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
+      "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6."
     },
     "git_change_graph": {
-      "status": "GREEN",
+      "status": "DISPUTED",
       "evidence": "Extracts HEAD, branch, dirty state, recent commits, files changed by commit",
-      "details": "Uses git CLI; handles root commits via git show fallback"
+      "details": "Uses git CLI; handles root commits via git show fallback",
+      "status_before_audit": "GREEN",
+      "rung": "R2",
+      "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
+      "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6."
     },
     "architecture_fingerprint": {
-      "status": "GREEN",
+      "status": "DISPUTED",
       "evidence": "Detects Rust workspace, Tauri v2, React, TypeScript, pnpm, SQLite, Tokio, MCP, Vite, Tailwind CSS",
-      "details": "Each fact has evidence and provenance classification (OBSERVED/PARSED/DERIVED)"
+      "details": "Each fact has evidence and provenance classification (OBSERVED/PARSED/DERIVED)",
+      "status_before_audit": "GREEN",
+      "rung": "R2",
+      "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
+      "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6."
     },
     "incremental_indexing": {
-      "status": "PARTIAL",
+      "status": "DISPUTED",
       "evidence": "Content hashing for files; get_changed_files_since() in store",
-      "details": "File-level invalidation implemented; symbol-level incremental reindex is future work"
+      "details": "File-level invalidation implemented; symbol-level incremental reindex is future work",
+      "status_before_audit": "PARTIAL",
+      "rung": "R2",
+      "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
+      "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6."
     },
     "repository_query_api": {
-      "status": "GREEN",
+      "status": "DISPUTED",
       "evidence": "14 query methods: repository_summary, find_symbol, symbol_definition, symbols_in_file, package_for_file, dependencies_of, dependents_of, entry_points, test_targets, build_commands, recent_changes, architecture, relevant_context",
-      "details": "Typed query layer with ContextResult including relevance, reason, and provenance"
+      "details": "Typed query layer with ContextResult including relevance, reason, and provenance",
+      "status_before_audit": "GREEN",
+      "rung": "R2",
+      "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
+      "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6."
     },
     "context_retrieval": {
-      "status": "GREEN",
+      "status": "DISPUTED",
       "evidence": "Benchmark: Precision@10=0.30, Recall@10=0.53 against 10 known-answer questions",
-      "details": "Ranks by symbol match, filename, dependency distance, test relationship, recent changes; returns WHY"
+      "details": "Ranks by symbol match, filename, dependency distance, test relationship, recent changes; returns WHY",
+      "status_before_audit": "GREEN",
+      "rung": "R2",
+      "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
+      "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6."
     },
     "repository_benchmark": {
-      "status": "GREEN",
+      "status": "DISPUTED",
       "evidence": "10 known-answer questions with Precision@K and Recall@K metrics",
-      "details": "Thresholds: Precision@10 >= 0.25, Recall@10 >= 0.30; both pass"
+      "details": "Thresholds: Precision@10 >= 0.25, Recall@10 >= 0.30; both pass",
+      "status_before_audit": "GREEN",
+      "rung": "R2",
+      "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
+      "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6."
     }
   },
   "summary": {
-    "total": 35,
-    "green": 33,
+    "total": 34,
+    "green": 20,
+    "disputed": 12,
     "external_blocker": 1,
     "functional": 0,
     "partial": 1,
     "stub": 0,
-    "absent": 0
+    "absent": 0,
+    "note": "total is now computed from the registry (was hand-written and wrong). 'green' counts only non-disputed GREEN entries; disputed entries are excluded because their GREEN status is not accepted. Disputed entries previously reported as GREEN: 11."
+  },
+  "audit": {
+    "status": "UNDER CORRECTION",
+    "audit_ref": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
+    "remediation_order": "docs/governance/PHASE2A_REMEDIATION_ORDER.md",
+    "audited_commit": "0ecea8e7ef1ca0cc72608e5041a37f5b8e2133c4",
+    "audited_at": "2026-09-16",
+    "note": "This registry is not accepted as accurate. Independent audit of Phase 2A found that capabilities were recorded GREEN on unit tests and a benchmark that fails on re-execution, and that one headline metric counted build output. Affected entries are marked DISPUTED with status_before_audit preserved. Re-baselining is remediation items P0.2 and P0.6 and has NOT been performed here. Per ZYLCODE_CAPABILITY_MODEL.md 4.2, GREEN requires rung R3; unit tests alone are R2.",
+    "registry_defects_found": [
+      "summary.total claimed 35; the registry contains 34 entries",
+      "Phase 2A completion report claimed 12 new capabilities; 11 are present"
+    ]
   }
 }
