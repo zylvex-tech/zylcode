@@ -1,0 +1,188 @@
+# Public Claim Matrix
+#
+# Track: PUBLIC-FOUNDATION-04 (Website Truth Audit -> Claim Matrix)
+# Governs: every public capability claim on zylforge.com, the README, and the roadmap.
+#
+# This file is the SOURCE OF TRUTH for public claims. The website/README/roadmap READ from it.
+# They never independently assert a capability state.
+#
+# Vocabulary is canonical (ZYLCODE_PUBLIC_COMMUNICATION_POLICY.md §3). Two axes:
+#   capability_state: AVAILABLE | VERIFIED | DEVELOPER_PREVIEW | IN_DEVELOPMENT |
+#                     PROPOSED | CONCEPT | HISTORICAL | SERVICE_DELIVERED
+#   lifecycle:        ACTIVE | EXPERIMENTAL | DEPRECATED | RETIRED
+#
+# Derived from: docs/governance/ZYLCODE_ARCHITECTURE_V2.md §9 (authoritative rung status) and
+# docs/capability-registry.json (32 entries; 12 DISPUTED from the Phase 2A audit).
+# Where the two disagree, the architecture rung wins — the registry's optimistic GREEN was the
+# subject of the audit and is not a permit to advertise.
+
+schema_version: 1
+generated_from:
+  architecture_rung_table: docs/governance/ZYLCODE_ARCHITECTURE_V2.md §9
+  capability_registry: docs/capability-registry.json
+  note: >-
+    Live zylforge.com / zylvex.tech crawl was NOT completable from the build sandbox (sites return
+    HTTP 200 but the response body is not transferable here). The owner must run the crawl checklist
+    in WEBSITE_TRUTH_AUDIT.md and reconcile any live claim against this matrix. A live claim that
+    exceeds its entry below is a prohibited claim until corrected.
+
+capability_state_from_rung:
+  R3_plus: AVAILABLE          # reachable through a named surface, captured evidence
+  R2: IN_DEVELOPMENT
+  R1: IN_DEVELOPMENT          # only if a real entry point exists
+  R0: PROPOSED
+  none_implemented: PROPOSED
+
+entries:
+
+  - capability: agent_kernel
+    product: zylcode
+    capability_state: AVAILABLE
+    lifecycle: ACTIVE
+    proof_rung: R3
+    public_label: "Available"
+    allowed_claim: "ZylCode's agent kernel plans, acts, and verifies through a real tool loop."
+    prohibited_claim: "Autonomous on any task without human-gated approval for risky actions."
+
+  - capability: evidence_ledger
+    product: zylcode
+    capability_state: AVAILABLE
+    lifecycle: ACTIVE
+    proof_rung: R3
+    public_label: "Available"
+    allowed_claim: "Every claim is recorded in an append-only evidence ledger."
+    prohibited_claim: "Ledger is tamper-proof against a determined local attacker (it is local-first, not a distributed ledger)."
+
+  - capability: crash_recovery
+    product: zylcode
+    capability_state: AVAILABLE
+    lifecycle: ACTIVE
+    proof_rung: R3
+    public_label: "Available"
+    allowed_claim: "ZylCode recovers session state after an unexpected exit."
+    prohibited_claim: "Zero data loss under all failure modes."
+
+  - capability: repository_intelligence
+    product: zylcode
+    capability_state: IN_DEVELOPMENT
+    lifecycle: EXPERIMENTAL
+    proof_rung: R2
+    disputed: true
+    public_label: "In development"
+    allowed_claim: >-
+      A repository-intelligence foundation exists (index, symbols, dependency graph) and is unit-tested;
+      the program was re-opened after audit and is not yet accepted.
+    prohibited_claim: >-
+      "Production-ready repository intelligence", "understands your entire codebase", or any claim that
+      it is integrated into a product surface. (Phase 2A is RE-OPENED; "14,973 files indexed" counted
+      14,900 under target/; benchmark fails on re-run at 276s vs a claimed 12.7s; zero product integration.)
+
+  - capability: model_platform
+    product: zylcode
+    capability_state: IN_DEVELOPMENT
+    lifecycle: ACTIVE
+    proof_rung: R1
+    public_label: "In development"
+    allowed_claim: "Provider configuration and dispatch are implemented; model selection exists."
+    prohibited_claim: "Model Democracy" as a delivered capability. (Routed multi-provider dispatch is
+      implemented; capability-aware routing is not. A model dropdown is not Model Democracy.)
+
+  - capability: delivery_engine
+    product: zylcode
+    capability_state: IN_DEVELOPMENT
+    lifecycle: EXPERIMENTAL
+    proof_rung: R1
+    public_label: "In development"
+    allowed_claim: "A release workflow exists in the codebase."
+    prohibited_claim: "CI publishing is available." (CI is blocked externally; release_installers is PARTIAL.)
+
+  - capability: execution_engine_shell
+    product: zylcode
+    capability_state: AVAILABLE
+    lifecycle: ACTIVE
+    proof_rung: R3
+    public_label: "Available"
+    allowed_claim: "Local shell tool execution with bounded, approval-gated runs."
+    prohibited_claim: "Sandboxed multi-OS worker isolation is shipped." (That is a later phase.)
+
+  - capability: execution_engine_browser
+    product: zylcode
+    capability_state: PROPOSED
+    lifecycle: EXPERIMENTAL
+    proof_rung: R0
+    public_label: "Planned"
+    allowed_claim: "Browser automation is a planned Phase 7A capability."
+    prohibited_claim: "ZylCode can drive your browser today."
+
+  - capability: computer_use
+    product: zylcode
+    capability_state: PROPOSED
+    lifecycle: EXPERIMENTAL
+    proof_rung: R0
+    public_label: "In development"
+    allowed_claim: "A Computer-Use Engine is planned (Phase 7B-7D)."
+    prohibited_claim: "ZylCode can operate your computer / desktop applications." (The code present in the
+      tree is a SIMULATION FACADE: 31 simulation sites, fabricated confidences, tests asserting is_ok()
+      on actions that never occur. R0. Replace, do not extend.)
+
+  - capability: vision_studio
+    product: zylcode
+    capability_state: PROPOSED
+    lifecycle: EXPERIMENTAL
+    proof_rung: R0
+    public_label: "Planned"
+    allowed_claim: "Vision Studio (design model, canvas, design<->code) is a planned Phase 8 capability."
+    prohibited_claim: "ZylCode produces UI from design or edits live designs today."
+
+  - capability: proof_engine
+    product: zylcode
+    capability_state: PROPOSED
+    lifecycle: EXPERIMENTAL
+    proof_rung: R0
+    public_label: "Planned"
+    allowed_claim: "A Proof Graph specification exists; the engine is planned (Phase 12)."
+    prohibited_claim: "Capabilities are formally proven." (R0 claimed; the Proof Graph is a spec, not an engine.)
+
+  - capability: project_system
+    product: zylcode
+    capability_state: PROPOSED
+    lifecycle: EXPERIMENTAL
+    proof_rung: R0
+    public_label: "Planned"
+    allowed_claim: "The Project System is the planned persistent identity layer (Phase 3A)."
+    prohibited_claim: "Projects persist across sessions today."
+
+  - capability: extension_platform
+    product: zylcode
+    capability_state: PROPOSED
+    lifecycle: EXPERIMENTAL
+    proof_rung: R0
+    public_label: "Planned"
+    allowed_claim: "An extension model is planned (Phase 5)."
+    prohibited_claim: "A stable extension ABI exists." (It does not; EXTENSION_CONTRIBUTION_GUIDE.md is PROPOSED.)
+
+  # ---- Service-delivered (ZylForge Engineering) ----
+  # These are HUMAN/COMPANY services, not software automation. Marked SERVICE_DELIVERED, but each
+  # requires OWNER VERIFICATION that Zylvex/ZylForge can actually deliver before any paid claim.
+  - capability: engineering_job_packs
+    product: zylforge_engineering
+    capability_state: SERVICE_DELIVERED
+    lifecycle: ACTIVE
+    owner_verify_required: true
+    public_label: "Service"
+    allowed_claim: "Custom engineering job packs are available as a service, scoped per request."
+    prohibited_claim: "Generated automatically by software without engineer review."
+
+  - capability: fabrication_documentation
+    product: zylforge_engineering
+    capability_state: SERVICE_DELIVERED
+    lifecycle: ACTIVE
+    owner_verify_required: true
+    public_label: "Service"
+    allowed_claim: "Drawings, BOMs, cut lists, weld notes, tolerance schedules available as a service."
+    prohibited_claim: "Manufacturing-ready without engineer sign-off / compliance review."
+
+# Prohibited-claim enforcement note:
+# A claim absent from this matrix has NO permitted public claim. Web/README/roadmap copy is generated
+# from `allowed_claim`; `prohibited_claim` is as binding as `allowed_claim`. Any live site text that
+# exceeds an entry above must be corrected before publication (Constitution §11 — corrections are visible).
