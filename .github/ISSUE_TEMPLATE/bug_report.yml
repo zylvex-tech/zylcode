@@ -1,0 +1,59 @@
+name: Bug report
+description: Report a defect in ZylCode
+title: "[BUG] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before submitting, search existing issues. A good bug report is reproducible.
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, `rustc --version`, app version or commit SHA, how you built/ran it.
+      placeholder: Windows 11 / rustc 1.97.1 / commit a1fbb21 / cargo run
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: Describe the observed behaviour.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      description: What should have happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Exact commands and inputs. Include raw output (not a summary).
+      placeholder: |
+        1. ...
+        2. ...
+        Output:
+        ```
+        <paste raw output here>
+        ```
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Logs, screenshots (redact secrets), or a recording. Do not fabricate.
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Checklist
+      options:
+        - label: I have searched existing issues.
+          required: true
+        - label: I have not included any secret/API key in this report.
+          required: true

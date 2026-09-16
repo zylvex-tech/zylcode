@@ -1,0 +1,30 @@
+name: Documentation
+description: Report a docs error, gap, or improvement
+title: "[DOCS] "
+labels: ["documentation"]
+body:
+  - type: textarea
+    id: location
+    attributes:
+      label: Location
+      description: File path and section, or the URL.
+    validations:
+      required: true
+  - type: textarea
+    id: issue
+    attributes:
+      label: What is wrong or missing
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested correction
+      description: If the doc contradicts a governing document, cite the document.
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Note
+      options:
+        - label: I understand docs must not overstate capability beyond its Proof Graph rung.
+          required: true

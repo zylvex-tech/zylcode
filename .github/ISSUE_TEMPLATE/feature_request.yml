@@ -1,0 +1,50 @@
+name: Feature request
+description: Propose a new capability or improvement
+title: "[FEATURE] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What problem would this solve? Why does it matter?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed approach
+      description: How might it work? Reference the governing docs if architectural.
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope and out-of-scope
+      description: What is included; what is explicitly not.
+  - type: dropdown
+    id: system
+    attributes:
+      label: Which system does this touch?
+      options:
+        - Project System
+        - Agent Kernel
+        - Intelligence Graph
+        - Vision Studio
+        - Execution Engine
+        - Proof Engine
+        - Delivery Engine
+        - Computer-Use Engine
+        - Extension Platform
+        - Model Platform
+        - Artifact Bus
+        - Other / cross-cutting
+    validations:
+      required: true
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Before submitting
+      options:
+        - label: I have read the Constitution and Architecture.
+          required: true
+        - label: This does not silently contradict a governing document.
+          required: true

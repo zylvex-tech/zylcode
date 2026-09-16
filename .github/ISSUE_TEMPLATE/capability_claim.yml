@@ -1,0 +1,53 @@
+name: Capability claim review
+description: Flag a public claim about ZylCode that may overstate its actual Proof Graph rung
+title: "[CLAIM] "
+labels: ["documentation", "truth-in-advertising"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ZylCode's governance forbids public claims above the implemented Proof Graph rung
+        (R0 CLAIMED → R5 COMMISSIONED). Use this template to flag a claim — on the website, README,
+        release notes, or any published material — that appears to overstate what exists.
+  - type: textarea
+    id: where
+    attributes:
+      label: Where is the claim?
+      description: URL, file path, or exact quote.
+    validations:
+      required: true
+  - type: textarea
+    id: claim
+    attributes:
+      label: The claim as written
+      description: Paste the exact wording.
+    validations:
+      required: true
+  - type: dropdown
+    id: stated-state
+    attributes:
+      label: What state does the claim imply?
+      options:
+        - AVAILABLE / shipping
+        - VERIFIED / proven
+        - DEVELOPER PREVIEW
+        - IN DEVELOPMENT
+        - PROPOSED / planned
+        - CONCEPT / design-only
+        - SERVICE-DELIVERED (human service, not software)
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What is the actual implemented state?
+      description: If known — the real rung, the unimplemented skeleton, the missing entry point, etc.
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Confirmation
+      options:
+        - label: I have checked the capability registry / Public Claim Matrix where possible.
+          required: true
+        - label: I am reporting in good faith, not as a joke or spam.
+          required: true
