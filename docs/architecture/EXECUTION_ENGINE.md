@@ -68,7 +68,7 @@ time.
 
 ---
 
-## 4. Phase 7 — Browser Backend
+## 4. Phase 7A — Browser Backend
 
 **Capabilities**
 

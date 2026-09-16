@@ -71,7 +71,7 @@ Before writing any code:
 - [ ] Read the specification for the system you are touching (`docs/architecture/`).
 - [ ] Confirm the phase you are working on is **not blocked** in `ZYLCODE_MASTER_EXECUTION_PLAN.md`.
 - [ ] Confirm the phase's dependencies are **ACCEPTED**, not merely reported complete.
-- [ ] Confirm the capability you intend to add is described in the Constitution's seven-system model.
+- [ ] Confirm the capability you intend to add is described in the Constitution's eight-system model.
 - [ ] Confirm you are not about to build something a later phase owns.
 
 If any of these fail, **stop and report** rather than proceeding.

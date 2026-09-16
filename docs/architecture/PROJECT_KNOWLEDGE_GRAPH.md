@@ -211,3 +211,22 @@ Plus the UI Knowledge surface (a symbol's knowledge panel, and a project-wide co
 - Do not delete superseded knowledge; link it.
 - Do not present an unverified claim as established.
 - Do not build this before the Project System exists.
+
+---
+
+## 11. Naming Reconciliation (v2.1)
+
+Architecture v2.1 discussion referred to this system as the **Engineering Knowledge Graph**.
+
+**These are the same system, and the canonical name is `Project Knowledge Graph`.**
+
+The reconciliation is recorded rather than the rename performed, for a specific reason: the graph
+is scoped to a **Project** — it joins facts about one product, its decisions, its agents and its
+runtime evidence. "Engineering" describes a discipline; "Project" describes the ownership
+boundary, which is what the scoping rule actually depends on. Renaming to the discipline would
+weaken the one word in the name that carries architectural meaning.
+
+If the term "Engineering Knowledge Graph" appears in a future proposal, it means this document.
+
+**Do not create a second file under the other name.** Two documents describing one system is how
+this package acquires the drift it exists to prevent.

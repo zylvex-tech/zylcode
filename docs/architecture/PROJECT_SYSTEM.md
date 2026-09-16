@@ -241,3 +241,43 @@ Every one of these is a tempting shortcut and every one of them creates a second
 - `AGENT_KERNEL.md` — the primary reader/writer
 - `ARTIFACT_SYSTEM.md` — artifact records referenced here
 - `ZYLCODE_PROOF_GRAPH.md` — proof references
+
+---
+
+## 11. Workspace Composer (v2.1 — PROPOSED)
+
+**Status: PROPOSED.** Owner: Project System. Depends on: 3A, 5 (Extension Platform).
+
+**Definition.** A subsystem that **assembles a working environment** for a declared intent —
+files, tools, extensions, model configuration, and assembled context — from Project state, rather
+than requiring the user to configure it by hand.
+
+**Example shape:** declaring "I am fixing a failing Windows installer build" yields a workspace
+holding the release crate, the installer configuration, the relevant CI logs as context, and the
+packaging tool — without the user assembling that by hand each time.
+
+**Relationship to the Agent Kernel's context assembly:** the Kernel asks for context; the
+Workspace Composer decides what a *working environment* contains. They are not the same request
+and the Project System owns the latter.
+
+**Not in scope for v2.1:** the composition algorithm, extension resolution, or UI surface.
+
+---
+
+## 12. Time Travel (v2.1 — PROPOSED)
+
+**Status: PROPOSED.** Owner: Project System. Depends on: 3A, 1D (Evidence Ledger).
+
+**Definition.** The ability to **reconstruct any prior Project state** from the append-only
+ledger, and to inspect what the Project believed at that point.
+
+**The architectural reason this is a Project System concern rather than a UI feature:** it only
+works if the ledger is genuinely append-only and the working tree is genuinely derived. If any
+component treats the working tree as the source of truth, Time Travel silently returns a
+plausible-but-wrong past — which is worse than refusing to answer.
+
+**Consequence to hold now:** nothing may write project state except through the ledger. Time
+Travel is the test that will expose a violation of that rule, which is a reason to build it
+early rather than late.
+
+**Not in scope for v2.1:** the reconstruction mechanism, storage format, or UI.

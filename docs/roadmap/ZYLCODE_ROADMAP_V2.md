@@ -54,7 +54,8 @@ reported complete.
           ┌─────────────────────────────┐   ┌────────────────────────────┐
           │ EPOCH III — EXTENSIBILITY   │   │ EPOCH IV — SEE WHAT YOU BUILD│
           │        5 (Extension ABI)    │   │  6A Artifacts ─► 6B Preview │
-          └──────────────┬──────────────┘   │            ─► 7 Browser     │
+          └──────────────┬──────────────┘   │     ─► 7A Browser ─► 7B CU  │
+                         │                  │     ─► 7C Reliability ─► 7D │
                          │                  └──────────────┬─────────────┘
                          │                                 │
                          │                  ┌──────────────┴─────────────┐
@@ -102,10 +103,13 @@ reported complete.
 | 3A | ZylCode Project System | ⏸ NOT STARTED | — | 3B, 4, 5, 6A, 8A |
 | 3B | Mission Engine | ⏸ NOT STARTED | — | 4, 14 |
 | 4 | Model Platform / Model Democracy | ⏸ NOT STARTED | — | 14 |
-| 5 | Extension Platform | ⏸ NOT STARTED | — | 6A, 7, 10, 11, 13, 15 |
-| 6A | Artifact System | ⏸ NOT STARTED | — | 6B, 7, 9 |
-| 6B | Live Preview Runtime | ⏸ NOT STARTED | — | 7 |
-| 7 | Browser Execution & Computer Control | ⏸ NOT STARTED | — | 9, 12 |
+| 5 | Extension Platform | ⏸ NOT STARTED | — | 6A, 7A, 10, 11, 13, 15 |
+| 6A | Artifact System | ⏸ NOT STARTED | — | 6B, 7A, 9 |
+| 6B | Live Preview Runtime | ⏸ NOT STARTED | — | 7A |
+| 7A | Browser Runtime | ⏸ NOT STARTED | — | 7B, 9, 12 |
+| 7B | Computer Use Foundation | ⏸ NOT STARTED | — | 7C, 7D |
+| 7C | Computer Use Reliability | ⏸ NOT STARTED | — | 7D |
+| 7D | Application Adapters | ⏸ NOT STARTED | — | 9, 12 |
 | 8A | Design Foundation | ⏸ NOT STARTED | — | 8B, 8C |
 | 8B | Professional Design Canvas | ⏸ NOT STARTED | — | 9 |
 | 8C | Design ↔ Code | ⏸ NOT STARTED | — | 9 |
@@ -369,16 +373,101 @@ reload state, connected to the **real** dev server.
 
 ---
 
-## Phase 7 — Browser Execution & Computer Control
+## Phase 7 — Eyes and Hands
+> **Phase 7 carries four subphases, 7A–7D.** This is a **decomposition in place**, not a
+> renumbering: phases 8–16 are untouched, and the program remains **16 numbered phases**.
+> Rationale: browser automation and arbitrary-GUI automation share a goal but not a trust
+> profile. Keeping them in one phase would hide the Permission and evidence obligations of
+> desktop control at the architecture layer — which is how a fabricated-grounding defect ships.
 
-**Objective** — Controlled eyes and hands.
+### Phase 7A — Browser Runtime
+
+**Objective** — Controlled eyes and hands, inside a browser.
 **Input** — 5, 6A, 6B ACCEPTED.
 
 **Deliverables** — launch · navigate · click · type · DOM inspect · console inspect · network
 inspect · screenshot · record interaction · run test workflows.
 
+**Entry points** — Browser panel · `zylcode browser run <workflow>`.
+
 **Benchmark** — the full loop runs without human intervention:
 `implement → launch → observe → interact → detect problem → repair → reload → retest`.
+Transcript captures each arc with real console/network output.
+
+**Rung target** — R3. **Blocks** — 7B, 9, 12.
+
+---
+
+### Phase 7B — Computer Use Foundation
+
+**Objective** — Perception and action primitives for the user's real desktop, behind a permission
+gate, with every step recorded.
+**Input** — 7A ACCEPTED; **Permissions and Evidence Ledger at R3** (hard prerequisite — see note).
+
+**Deliverables** —
+- **Perception** — screen and window capture, window enumeration, accessibility-tree reads.
+  Every percept is an artifact with provenance and a timestamp. **No fabricated confidence**
+  (Architecture §1.1).
+- **Grounding** — mapping percepts to actionable targets with **measured** confidence. A score
+  not derived from a measurement is a defect, not a placeholder.
+- **Action** — mouse, keyboard, clipboard, window management. Every action is recorded *before*
+  it is performed.
+- **The canonical loop** — `Observe → Ground → Decide → Permission → Act → Observe → Verify`,
+  in that order. No action executes without the Permission step; no action is reported
+  successful without the Verify step producing a percept that confirms it (Architecture A11).
+- **Risk levels CU-0…CU-4**, each mapped to a required permission tier and verification depth.
+- **Agent Flight Recorder** — a replayable artifact sequence per session.
+
+**Entry points** — `zylcode cu capture|click|type|session replay` · Computer Use panel.
+
+**Benchmark** — capture the real screen and assert it is not a constant buffer; click a known
+target in a controlled fixture application and assert the **effect** (not `is_ok()`); a
+denied permission produces a recorded refusal and **no** action.
+
+**Rung target** — R3. **Blocks** — 7C, 7D.
+
+> **Hard prerequisite.** 7B depends on Permissions and the Evidence Ledger being at R3
+> (Architecture §7 hard rule 7, and A7 the rung ceiling). If they are below R3 when 7B is
+> scheduled, **7B is blocked** — record the block and wait. Do not build a local allow-list
+> "temporarily"; it will never be removed, and it will bypass the audited gate.
+>
+> **Existing skeleton.** `crates/zylcode-core/src/computer_use/` (commit `29cc936`) is a
+> **simulation facade** — 31 simulation sites, all-zero capture buffers, `sleep`-based input,
+> hardcoded OCR output, fabricated `confidence` values. It is **not a starting point**. It must
+> be **replaced**, and its tests (which assert `is_ok()` against a facade that cannot fail) must
+> be **deleted**, not adapted. See `docs/governance/ZYLCODE_ARCHITECTURE_V2.md` §9.
+
+---
+
+### Phase 7C — Computer Use Reliability
+
+**Objective** — Make desktop control trustworthy rather than merely functional.
+**Input** — 7B ACCEPTED.
+
+**Deliverables** — grounding accuracy against a labelled set (precision/recall reported);
+retry and verification semantics; UI-drift detection and recovery; idempotency handling for
+interrupted action sequences; the Flight Recorder as a shipping artifact (browsable, replayable,
+citable by the Proof Engine).
+
+**Benchmark** — a scripted task completes on a fixture application across three window sizes and
+two DPI settings; grounding precision/recall reported with the measurement method; an injected
+mid-sequence failure is detected by the Verify step and recovered without duplicate side effects.
+
+**Rung target** — R3. **Blocks** — 7D.
+
+---
+
+### Phase 7D — Application Adapters
+
+**Objective** — Per-application integrations built on the 7B/7C foundation.
+**Input** — 7C ACCEPTED.
+
+**Deliverables** — an adapter registry; adapters for target applications. Each adapter declares
+its **risk level**, its **grounding method**, and its **verification strategy** — an adapter that
+cannot state how it verifies its actions is not accepted.
+
+**Benchmark** — one adapter drives its application end-to-end on a scripted task, with a
+replayable session artifact and a verification observation for every state-changing action.
 
 **Rung target** — R3. **Blocks** — 9, 12.
 
@@ -504,7 +593,7 @@ with artifacts returned and the job attributable to a Mission step.
 ## Phase 12 — Proof Engine v2
 
 **Objective** — Unify all verification into a formal Proof Graph.
-**Input** — 7, 9, 10, 11 ACCEPTED.
+**Input** — 7D, 9, 10, 11 ACCEPTED.
 
 **Deliverables** — Proof Graph per `ZYLCODE_PROOF_GRAPH.md`; verification for compile · lint ·
 unit · integration · browser · visual · accessibility · Android runtime · iOS runtime · security ·

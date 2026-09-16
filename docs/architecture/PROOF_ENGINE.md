@@ -127,9 +127,10 @@ verification provider contract
 ├── lint          (clippy, eslint, ktlint)
 ├── unit          (test runners per ecosystem)
 ├── integration
-├── browser       (Phase 7 backend)
+├── browser       (Phase 7A backend)
 ├── visual        (Phase 9 difference model)
 ├── accessibility
+├── desktop       (Phase 7B–7D computer-use backend)
 ├── android       (Phase 10 device lab)
 ├── ios           (Phase 11 worker)
 ├── security      (scan, dependency audit)

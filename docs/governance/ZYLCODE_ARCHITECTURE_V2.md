@@ -1,10 +1,14 @@
-# ZylCode Architecture v2.0
+# ZylCode Architecture v2.1
 
-> Technical specification for the **seven-system** Software Creation OS.
+> Technical specification for the **eight-system** Software Creation OS.
 > Companion to `ZYLCODE_PRODUCT_CONSTITUTION_V2.md`.
 
 **Status:** GOVERNING
-**Supersedes:** `docs/governance/superseded/ZYLCODE_ARCHITECTURE_V2.md` (six-engine draft, never committed)
+**Supersedes:** `docs/governance/superseded/ZYLCODE_ARCHITECTURE_V2.md` (six-engine draft, never committed);
+v2.0 (seven-system revision, commit `1af2072`)
+**Revision note (v2.1, 2026-09-16):** adds the **Computer-Use Engine** as the eighth core system;
+records Artifact Composer, Workspace Composer, Time Travel and the Engineering Knowledge Graph;
+splits Phase 7 into 7A–7D **without renumbering 8–16**. See `DEEPSEEK_MASTER_PROMPT_V21.md`.
 **Implementation reality:** every system below carries an explicit rung. See §9.
 
 ---
@@ -14,7 +18,7 @@
 This document defines the technical architecture of ZylCode:
 
 1. System topology and process model
-2. The seven core systems and their contracts
+2. The eight core systems and their contracts
 3. The three cross-cutting platforms
 4. The trust foundation
 5. Data ownership and persistence
@@ -44,6 +48,19 @@ an axiom, the design is wrong.
 | **A8** | **Local-first, sovereign by default.** | Indexing and analysis are local. Egress is explicit, never implicit. |
 | **A9** | **Determinism where measurement occurs.** | Anything used as a gate must be reproducible. |
 | **A10** | **Reachability is part of correctness.** | An unreachable subsystem is not a capability, regardless of test coverage. |
+| **A11** | **Acting is not the same as having acted.** | Every action against the outside world must be *observed* to have taken effect before it is reported as done. An action whose effect was not re-perceived is UNVERIFIED, not successful. (v2.1 — added for the Computer-Use Engine.) |
+
+### 1.1 The grounding rule (v2.1)
+
+Introduced with the Computer-Use Engine, and generalisable to every perception-consuming system:
+
+> **A confidence value that is not derived from a measurement is a defect, not a placeholder.**
+
+Fabricated grounding is worse than absent grounding, because it is indistinguishable from real
+grounding at the type level. `UiElement.confidence: 0.85` on a hardcoded literal is not a
+missing feature — it is an **architectural violation**, and it was found in this repository
+(see §9, Computer-Use Engine). Any type that carries a confidence score must also carry the
+provenance and the method that produced it, or it must not carry a score at all.
 
 ---
 
@@ -65,6 +82,7 @@ crash-isolation, resource limits, and permission boundaries enforceable.
 │  │                    SERVICE REGISTRY                    │   │
 │  │  Project · Models · Tools · Skills · MCP · Memory      │   │
 │  │  Context · Verification · Execution · Delivery · Vision│   │
+│  │  Computer-Use                          (v2.1)          │   │
 │  └────────────────────────┬───────────────────────────────┘   │
 │                           │                                   │
 │  ┌────────────────────────┴───────────────────────────────┐   │
@@ -79,11 +97,23 @@ crash-isolation, resource limits, and permission boundaries enforceable.
       │  desktop · docker  │    │  diffs · screenshots │
       │  android · mac     │    │  traces · evidence   │
       └────────────────────┘    └──────────────────────┘
+
+      ┌────────────────────────────────────────────────┐
+      │  COMPUTER-USE WORKER  (v2.1 — PROPOSED)        │
+      │  perception · grounding · action               │
+      │  driven application GUI · always under         │
+      │  Permission gate · every step → Flight Recorder│
+      └────────────────────────────────────────────────┘
 ```
 
 **Host process** owns state, scheduling, permissions and the ledger.
 **Execution workers** own side effects and are killable.
 **Artifact Bus** is the only sanctioned channel for large or inspectable outputs.
+
+The **Computer-Use worker** is drawn separately because its trust profile differs from every
+other worker: it drives arbitrary applications rather than a sandboxed toolchain, so its side
+effects reach a user's real desktop. It is therefore subject to the Permission gate at *every*
+step, not once per mission. See `docs/architecture/COMPUTER_USE_ENGINE.md`.
 
 ### 2.1 Why separate workers
 
@@ -94,7 +124,7 @@ crash-isolation, resource limits, and permission boundaries enforceable.
 
 ---
 
-## 3. The Seven Core Systems
+## 3. The Eight Core Systems
 
 Each system is specified by: **Responsibility · Owns · Depends on · Exposes · Never does.**
 
@@ -183,6 +213,45 @@ Full specification: `docs/architecture/PROOF_ENGINE.md`
 | **Never does** | Publish an artifact whose required proofs are below threshold. |
 
 Full specification: `docs/architecture/DELIVERY_ENGINE.md`
+
+### 3.8 Computer-Use Engine
+
+| | |
+|---|---|
+| **Responsibility** | Perceiving and driving the user's real desktop and arbitrary third-party applications, under permission, with evidence |
+| **Owns** | Screen/window capture, accessibility-tree reads, element grounding, input synthesis (mouse/keyboard/clipboard), window management, per-application adapters, the Agent Flight Recorder |
+| **Depends on** | Permissions (every step), Evidence Ledger, Artifact Bus, Project System (scoping), Execution Engine (worker lifecycle) |
+| **Exposes** | The canonical loop `Observe → Ground → Decide → Permission → Act → Observe → Verify`; risk-level declarations; adapter registry; replayable session artifacts |
+| **Never does** | Act without passing the Permission step. Report an action as successful without the Verify step re-observing its effect (A11). Carry a confidence value not derived from a measurement (§1.1). Own a browser DOM — that is the browser worker's job; this engine drives *applications*. |
+
+> **Computer Use is a first-class engine, not a browser feature** (v2.1). Driving arbitrary GUI
+> applications carries its own perception, grounding, permission, action, verification and
+> evidence obligations. Folding it into the browser phase would hide its permission and evidence
+> semantics at the architecture layer — which is exactly how a fabricated-confidence defect
+> becomes a shipped trust defect, as it already did here.
+
+**Risk levels.** Every action declares one, and each level maps to a required permission tier
+and a required verification depth:
+
+| Level | Scope | Example |
+|---|---|---|
+| **CU-0** | Observe only | Capture a screen region. No side effects. |
+| **CU-1** | Navigate within a scoped application | Switch tabs, scroll, focus a window |
+| **CU-2** | Interact, non-destructive | Click a form field, type into a scratch document |
+| **CU-3** | Modify user data | Save a file, send a message, edit a record |
+| **CU-4** | Irreversible or externally visible | Delete, purchase, publish, transmit |
+
+**PROPOSED — non-functional skeleton present.** No real perception, no real action, no
+permission gate, no verification, and no Flight Recorder exist. The tree contains
+`crates/zylcode-core/src/computer_use/` (7 files, 1,763 lines, commit `29cc936`), wired into
+`lib.rs` with a lazy `ZylCodeEngine::computer_use_system()` accessor, containing **31
+simulation sites** — every perception returns fabricated data and every action is a
+`tokio::time::sleep`. Its only reachable surface is a CLI `computer-use stats` command that
+prints zeroed counters. Its tests assert `is_ok()` against a facade that cannot fail. It must be
+**replaced, not extended**. Full finding: `DEEPSEEK_MASTER_PROMPT_V21.md`, and the catalogue
+entry in §9.
+
+Full specification: `docs/architecture/COMPUTER_USE_ENGINE.md`
 
 ---
 
@@ -310,9 +379,12 @@ Project System ──┬─► Agent Kernel ──► Mission Engine
                  │
                  ├─► Extension Platform
                  │
-                 ├─► Artifact Bus ──► Live Preview ──► Browser/Computer Control
+                 ├─► Artifact Bus ──► Live Preview ──► Browser Runtime
                  │
                  ├─► Vision Studio ──► Visual Intelligence
+                 │
+                 ├─► Permissions ══► Computer-Use Engine (v2.1)
+                 │                    ▲ hard gate: Permissions precedes CU
                  │
                  └─► Execution Engine ──► Device Labs ──► Proof Engine v2 ──► Delivery
 ```
@@ -325,6 +397,10 @@ Project System ──┬─► Agent Kernel ──► Mission Engine
 4. Design representation precedes the design canvas.
 5. Proof Engine v2 precedes Delivery Engine — nothing ships unproven.
 6. Multi-agent orchestration comes **after** shared world state exists.
+7. **(v2.1) Permissions and the Evidence Ledger precede the Computer-Use Engine.** The `══►`
+   edge is a hard gate, not a preference. A Computer-Use capability cannot exceed the rung of
+   the Permission gate it depends on (A7, the rung ceiling). If Permissions is below R3 when
+   Phase 7B is scheduled, **7B is blocked** — record the block; do not build around it.
 
 ---
 
@@ -382,6 +458,7 @@ Rung definitions: `ZYLCODE_PROOF_GRAPH.md`.
 | **Execution Engine** — macOS/iOS worker | **R0** | PROPOSED | Not implemented. |
 | **Vision Studio** | **R0** | PROPOSED | Does not exist. |
 | **Visual Intelligence** | **R0** | PROPOSED | Does not exist. |
+| **Computer-Use Engine** | **R0** | **PROPOSED — non-functional skeleton present** | `crates/zylcode-core/src/computer_use/` (7 files, 1,763 lines, commit `29cc936`) is a **simulation facade**: 31 simulation sites; all capture returns `vec![0; …]`; all input is `tokio::time::sleep`; `recognize_text` returns a hardcoded literal; `detect_elements_internal` fabricates a "Submit" button with `confidence: 0.85` from image width alone. No permission gate, no verification, no Flight Recorder. Only reachable surface: CLI `computer-use stats`. Its tests assert `is_ok()` against a facade that cannot fail. **Replace, not extend.** |
 | **Proof Engine v2** | **R0** | PROPOSED | A verification rung exists in the pipeline; the Proof Graph does not. |
 | **Delivery Engine** | **R1** | PARTIAL | Release workflow configured (NSIS/DMG/DEB). **CI blocked externally.** Installer path has an incident history. |
 | **Multi-Agent Engineering** | **R0** | PROPOSED | Does not exist. |
@@ -390,7 +467,8 @@ Rung definitions: `ZYLCODE_PROOF_GRAPH.md`.
 ### 9.1 Honest summary
 
 ZylCode today is a **partial Agent Kernel on a partial Trust Foundation**, with a
-**non-integrated Intelligence Graph**, and **nothing above it**.
+**non-integrated Intelligence Graph**, a **non-functional Computer-Use skeleton that must not be
+mistaken for capability**, and **nothing above it**.
 
 That is a legitimate and useful state to be in. It is not the state that
 `docs/capability-registry.json` describes, and correcting that discrepancy is a
@@ -408,6 +486,9 @@ precondition for everything that follows.
 | **Cross-platform path handling** | Windows is the primary target and the current scanner is broken on it | Normalise paths at every boundary; test on the real platform |
 | **Self-certification** | Proven to have already produced a false PASS | Independent audit is mandatory (Constitution §3.2) |
 | **Metric scope creep** | "Files indexed" counted build output and was published as capability | Every metric names and scopes what it counts |
+| **Fabricated grounding (v2.1)** | A facade returning invented element positions and confidence scores is indistinguishable from real perception at the type level, and would silently corrupt Computer-Use reliability work | Percept types must carry provenance and method alongside confidence (§1.1); facades must be labelled and tested as facades |
+| **Simulated action (v2.1)** | Input synthesis that sleeps instead of acting passes every test that asserts `is_ok()` | Assert *effect*, not success. An action test must observe the change it claims to cause (A11) |
+| **Permission-gate bypass (v2.1)** | A Computer-Use engine built before the Permission gate will hard-code its own allow logic, which is then never removed | Dependency hard rule 7 — Permissions precedes CU; 7B is blocked without it |
 
 ---
 
@@ -416,6 +497,10 @@ precondition for everything that follows.
 This architecture is implemented by the 16-phase / 6-epoch program in
 `docs/governance/ZYLCODE_MASTER_EXECUTION_PLAN.md`, sequenced by
 `docs/roadmap/ZYLCODE_ROADMAP_V2.md`.
+
+**v2.1:** Phase 7 is decomposed in place into **7A Browser Runtime · 7B Computer Use
+Foundation · 7C Computer Use Reliability · 7D Application Adapters**. Phases 8–16 are **not**
+renumbered. The program remains **16 numbered phases**, with Phase 7 carrying four subphases.
 
 Per-system specifications live in `docs/architecture/`.
 

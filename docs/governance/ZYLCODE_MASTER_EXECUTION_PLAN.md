@@ -46,7 +46,7 @@ The differentiator is the **closed loop**. See Constitution §1.3.
 
 ---
 
-## 2. The Seven Core Systems
+## 2. The Eight Core Systems
 
 | # | System | Responsibility |
 |---|---|---|
@@ -57,6 +57,7 @@ The differentiator is the **closed loop**. See Constitution §1.3.
 | 5 | **Execution Engine** | Shell, browser, desktop, containers, Android, iOS, cloud |
 | 6 | **Proof Engine** | Build/test/runtime/visual/security/evidence verification |
 | 7 | **Delivery Engine** | Git, CI, packaging, deployment, app stores, releases |
+| 8 | **Computer-Use Engine** | Real desktop/app perception and control, under permission, with replayable evidence (v2.1) |
 
 Cross-cutting platforms: **Extension Platform · Model Platform · Artifact Bus**
 Trust foundation: **Evidence Ledger · Permissions · Recovery · Audit**
@@ -85,7 +86,10 @@ EPOCH III  EXTENSIBILITY
 EPOCH IV   SEE WHAT YOU BUILD
            6A Artifact System
            6B Live Preview Runtime
-           7  Browser Execution & Computer Control
+           7A Browser Runtime
+           7B Computer Use Foundation
+           7C Computer Use Reliability
+           7D Application Adapters
 
 EPOCH V    VISION STUDIO
            8A Design Foundation
@@ -416,9 +420,18 @@ dev server, real console, real network.
 
 ---
 
-## Phase 7 — Browser Execution & Computer Control
+## Phase 7 — Eyes and Hands
 
-**Give ZylCode controlled eyes and hands.**
+> **Phase 7 carries four subphases, 7A–7D — a decomposition in place, not a renumbering.**
+> Phases 8–16 are untouched; the program remains **16 numbered phases**. Browser automation and
+> arbitrary-GUI automation share a goal but not a trust profile: desktop control reaches the
+> user's real machine, so its Permission and evidence obligations must be visible at the
+> architecture layer rather than folded into the browser phase. Each subphase is independently
+> gated — 7B is not accepted because 7A passed.
+
+### Phase 7A — Browser Runtime
+
+**Give ZylCode controlled eyes and hands, inside a browser.**
 
 **Capabilities:** launch browser · navigate · click · type · inspect DOM · inspect console ·
 inspect network · screenshot · record interaction · run test workflows.
@@ -442,6 +455,48 @@ Reload
  ↓
 Retest
 ```
+
+**Blocks:** 7B, 9, 12.
+
+### Phase 7B — Computer Use Foundation
+
+**Give ZylCode eyes and hands on the user's real desktop — under permission, with evidence.**
+
+**Capabilities:** screen/window capture · window enumeration · accessibility-tree reads ·
+element grounding with **measured** confidence · mouse/keyboard/clipboard synthesis · window
+management · risk levels CU-0…CU-4 · the canonical loop
+`Observe → Ground → Decide → Permission → Act → Observe → Verify` · Agent Flight Recorder.
+
+**Hard prerequisite:** Permissions and the Evidence Ledger must be at **R3**. This is
+Architecture §7 hard rule 7 and the rung ceiling (A7). If they are below R3, **7B is blocked** —
+record the block and wait; do not build a local allow-list in the meantime.
+
+**Existing skeleton:** `crates/zylcode-core/src/computer_use/` (commit `29cc936`) is a
+**simulation facade** — 31 simulation sites, all-zero capture, `sleep`-based input, hardcoded OCR,
+fabricated confidences. **Replace, do not extend.** Its tests assert `is_ok()` against a facade
+that cannot fail and must be deleted rather than adapted.
+
+**Blocks:** 7C, 7D.
+
+### Phase 7C — Computer Use Reliability
+
+**Make desktop control trustworthy rather than merely functional.**
+
+**Capabilities:** grounding accuracy measured against a labelled set (precision/recall) ·
+retry and verification semantics · UI-drift detection and recovery · idempotency for interrupted
+action sequences · Flight Recorder as a shipping, replayable, citable artifact.
+
+**Blocks:** 7D.
+
+### Phase 7D — Application Adapters
+
+**Per-application integrations built on the 7B/7C foundation.**
+
+**Capabilities:** adapter registry · target-application adapters, each declaring its **risk
+level**, **grounding method**, and **verification strategy**. An adapter that cannot state how it
+verifies its actions is not accepted.
+
+**Blocks:** 9, 12.
 
 **That loop is crucial.** It is the first time ZylCode closes the loop without a human in it.
 

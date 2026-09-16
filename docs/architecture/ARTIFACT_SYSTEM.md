@@ -20,8 +20,8 @@ Provide the canonical home for everything a human or the Proof Engine needs to *
 
 ## 2. Why Artifacts Precede Browser Automation
 
-Phase 6A comes **before** Phase 6B (live preview) and Phase 7 (browser control). The reason is
-ordering, not importance:
+Phase 6A comes **before** Phase 6B (live preview), 7A (browser runtime), and 7B–7D (computer use).
+The reason is ordering, not importance:
 
 - Browser automation **produces** screenshots, traces, DOM dumps and network logs.
 - Live preview **produces** renderable previews.
@@ -188,3 +188,26 @@ prevents a completion report from asserting a result it never produced.
 - Do not allow a proof to cite an unresolvable artifact.
 - Do not garbage-collect release artifacts.
 - Do not let each phase invent its own storage.
+
+---
+
+## 12. Artifact Composer (v2.1 — PROPOSED)
+
+**Status: PROPOSED.** Not designed in this document beyond the definition below. Owner: Artifact
+System. Depends on: 6A (Artifact System), 3A (Project System), the Project Knowledge Graph.
+
+**Definition.** A subsystem that **composes** deliverables — documents, decks, spreadsheets,
+sites, reports — from project knowledge and cited evidence, rather than free-generating them from
+a prompt.
+
+**The distinction that makes it worth its own concept:** free generation produces a plausible
+artifact with no provenance. Composition produces an artifact whose every assertion resolves to a
+source in the Project or a proof in the Ledger. A composed report can answer "where did this
+number come from" — a generated one cannot.
+
+**Not in scope for v2.1:** the composition pipeline, template model, or renderer. Recorded here
+so the concept has an owner and is not later invented ad hoc inside a build phase.
+
+**Anti-requirement (stated now, to prevent drift):** the Artifact Composer must not become a
+generation path that bypasses the ledger. If a composed artifact cannot cite its sources, it is
+not composed — it is generated, and it must be labelled as such.

@@ -227,7 +227,7 @@ targets: parallel repository scanning, live preview responsiveness, and device-l
 - **Sandboxed execution workers** — *PROPOSED* (Phases 7–11); today tool execution runs in-process
 
 > Status markers follow `ZYLCODE_PROOF_GRAPH.md`. This section previously listed "tool execution
-> sandboxing" as if it existed; worker isolation is Phase 7 work.
+> sandboxing" as if it existed; worker isolation is Phase 7A work.
 
 ---
 
@@ -430,7 +430,7 @@ marked **PROPOSED** — describing a system is not building it.
 
 ## 🏗️ Architecture
 
-ZylCode is specified as **seven core systems** (`docs/governance/ZYLCODE_ARCHITECTURE_V2.md`).
+ZylCode is specified as **eight core systems** (`docs/governance/ZYLCODE_ARCHITECTURE_V2.md`).
 The status column is authoritative — most of it does not exist yet.
 
 ```
@@ -448,6 +448,7 @@ The status column is authoritative — most of it does not exist yet.
  │ Execution Engine                                   │
  │ Proof Engine                                       │
  │ Delivery Engine                                    │
+ │ Computer-Use Engine                                │
  └────────────────────────────────────────────────────┘
 
  ┌────────────── CROSS-CUTTING PLATFORMS ─────────────┐
@@ -464,17 +465,25 @@ The status column is authoritative — most of it does not exist yet.
 | Trust foundation — ledger, permissions, recovery | PARTIAL | R3 |
 | Agent Kernel — tools, loop, decisions, memory | PARTIAL | R3 |
 | Intelligence Graph — repository intelligence | PARTIAL | **R2** (re-opened) |
-| Model Platform — provider config + dispatch | PARTIAL | R3 (routing R1) |
+| Model Platform — provider config + dispatch | PARTIAL | R1 (capability routing absent) |
 | Delivery Engine — release workflow | PARTIAL | R1 (CI blocked) |
+| Execution Engine — shell/tools | PARTIAL | R3 |
 | Project System | **PROPOSED** | — |
 | Mission Engine | **PROPOSED** | — |
 | Extension Platform | **PROPOSED** | — |
 | Artifact Bus | **PROPOSED** | — |
 | Vision Studio | **PROPOSED** | — |
 | Execution Engine — browser / Android / Mac worker | **PROPOSED** | — |
+| **Computer-Use Engine** | **PROPOSED — non-functional skeleton present** | **R0** |
 | Proof Engine v2 | **PROPOSED** | — |
 | Multi-Agent Engineering | **PROPOSED** | — |
 | Marketplace | **PROPOSED** | — |
+
+> **On the Computer-Use Engine:** `crates/zylcode-core/src/computer_use/` exists and is wired into
+> `lib.rs`, but every perception returns fabricated data and every action is a timer. Its only
+> reachable surface is a CLI stats command. It is documented here explicitly because an unlabelled
+> skeleton in a status table is more dangerous than an absent feature — a reader would assume the
+> capability is real. See `docs/governance/ZYLCODE_ARCHITECTURE_V2.md` §9.
 
 > **A Project is not a directory.** The Project System is the persistent identity and shared world
 > state of everything ZylCode does — which is why it precedes the systems above it.

@@ -35,13 +35,15 @@ Every prompt to DeepSeek, Codex, ZCode, or any other implementation agent **must
 
 | Document | Governs |
 |---|---|
-| **`ZYLCODE_PRODUCT_CONSTITUTION_V2.md`** | The supreme specification. Seven systems. Evidence principle. Product definition. |
-| **`ZYLCODE_ARCHITECTURE_V2.md`** | System topology, contracts, data ownership, **honest implementation status**. |
-| **`ZYLCODE_MASTER_EXECUTION_PLAN.md`** | The 16-phase / 6-epoch program. Gates. Dependency order. |
+| **`ZYLCODE_PRODUCT_CONSTITUTION_V2.md`** | The supreme specification. **Eight systems.** Evidence principle. Product definition. |
+| **`ZYLCODE_ARCHITECTURE_V2.md`** | **v2.1.** System topology, contracts, data ownership, **honest implementation status**. |
+| **`ZYLCODE_MASTER_EXECUTION_PLAN.md`** | The 16-phase / 6-epoch program. Gates. Dependency order. Phase 7 splits into 7A–7D. |
 | **`ZYLCODE_CAPABILITY_MODEL.md`** | What a capability is, how status is computed, how the registry is audited. |
 | **`ZYLCODE_PROOF_GRAPH.md`** | **R0–R5.** The definition of "proven". Governs every capability claim. |
 | **`ZYLCODE_AGENT_OPERATING_PROTOCOL.md`** | How agents work here. Pre-flight, rules, report format, anti-patterns. |
+| **`DEEPSEEK_MASTER_PROMPT_V21.md`** | The two-job work order: Phase 2A remediation, then Architecture v2.1 reconciliation. |
 | **`PHASE2A_INDEPENDENT_AUDIT.md`** | The audit that re-opened Phase 2A. Also the worked method for future audits. |
+| **`PHASE2A_REMEDIATION_ORDER.md`** | The operational work order for the Phase 2A fix. |
 
 ### Roadmap (`docs/roadmap/`)
 
@@ -60,12 +62,18 @@ Every prompt to DeepSeek, Codex, ZCode, or any other implementation agent **must
 | `EXTENSION_PLATFORM.md` | **PROPOSED** | 5 |
 | `ARTIFACT_SYSTEM.md` | **PROPOSED** | 6A |
 | `VISION_STUDIO.md` | **PROPOSED** | 8A–9 |
-| `EXECUTION_ENGINE.md` | **PARTIAL** (R3 shell / R0 devices) | 7, 10, 11 |
+| `EXECUTION_ENGINE.md` | **PARTIAL** (R3 shell / R0 devices) | 7A, 10, 11 |
+| `COMPUTER_USE_ENGINE.md` | **PROPOSED — non-functional skeleton present** | 7B–7D |
 | `PROOF_ENGINE.md` | **PROPOSED** | 12 |
 | `DELIVERY_ENGINE.md` | **PARTIAL** (R1) | 13 |
 
 > **PROPOSED means it does not exist.** Per Constitution §9.3, describing a system is not
 > building it. Documentation must never imply otherwise.
+>
+> **"Non-functional skeleton present"** means code exists in the tree but performs no real work —
+> it is labelled explicitly because an unlabelled skeleton in a status table is more dangerous
+> than an absent feature. The Computer-Use Engine is the current case: see
+> `../architecture/COMPUTER_USE_ENGINE.md`.
 
 ---
 
@@ -88,6 +96,7 @@ Every prompt to DeepSeek, Codex, ZCode, or any other implementation agent **must
 | **Phase 2A** | ❌ **NOT ACCEPTED — RE-OPENED** |
 | **Phase 2B** | 🚫 **BLOCKED** on 2A |
 | **Phases 3A–16** | ⏸ Not started |
+| **Architecture** | v2.1 — eight systems; Phase 7 split into 7A–7D; 8–16 unrenumbered |
 
 **Phase 2A was rejected** because: its headline metric counted `target/` build output (14,900 of
 15,064 files; the repository is 254 files); its benchmark **fails** on independent re-execution;
@@ -96,7 +105,14 @@ expectation rather than captured from a run.
 
 See `PHASE2A_INDEPENDENT_AUDIT.md`.
 
-**Next action:** issue the Phase 2A remediation order, then re-audit.
+**Separate finding, surfaced during v2.1 preparation:** the **Computer-Use Engine** exists in the
+tree as a **simulation facade** — 31 simulation sites, all-zero capture buffers, `sleep`-based
+input, hardcoded OCR text, and fabricated confidence values — with tests that pass because the
+facade cannot fail. It is **not** a capability and must not be treated as one. See
+`../architecture/COMPUTER_USE_ENGINE.md` and `ZYLCODE_ARCHITECTURE_V2.md` §9.
+
+**Next action:** DeepSeek executes `DEEPSEEK_MASTER_PROMPT_V21.md` — Job 1 (Phase 2A remediation)
+first, then Job 2 (Architecture v2.1 reconciliation) as a separate commit.
 
 ---
 

@@ -168,7 +168,7 @@ The registry has history.
 
 ## 7. Capability Domains
 
-Capabilities are grouped by the seven core systems plus the trust foundation.
+Capabilities are grouped by the eight core systems plus the trust foundation.
 
 | Domain | Examples |
 |---|---|
@@ -182,6 +182,7 @@ Capabilities are grouped by the seven core systems plus the trust foundation.
 | **Delivery Engine** | git, CI, packaging, deployment, store publishing |
 | **Model Platform** | provider config, capability routing, measured performance |
 | **Extension Platform** | package ABI, permissions, contribution points |
+| **Computer-Use Engine** | screen/window perception, element grounding, input synthesis, risk levels, flight recorder |
 
 ---
 

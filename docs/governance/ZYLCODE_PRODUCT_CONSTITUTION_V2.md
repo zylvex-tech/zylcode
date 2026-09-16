@@ -125,13 +125,20 @@ execution is not promised; a complete, evidence-backed loop of this shape is.
 
 ---
 
-## 2. The Seven Core Systems
+## 2. The Eight Core Systems
 
-ZylCode is composed of **seven** core systems.
+ZylCode is composed of **eight** core systems.
 
-The seventh — the **Project System** — is not optional and is not a UI folder. Projects define
-the persistent identity and shared world state of everything ZylCode does. Without it, the
-other six systems have nowhere to agree on what they are building.
+Two of them are additions made after the original six-engine draft, and neither is optional:
+
+- The **seventh** — the **Project System** — is not a UI folder. Projects define the persistent
+  identity and shared world state of everything ZylCode does. Without it, the other systems have
+  nowhere to agree on what they are building.
+- The **eighth** — the **Computer-Use Engine** (v2.1) — drives the user's real desktop and
+  arbitrary third-party applications. It is not a browser feature. Driving GUI applications
+  carries its own perception, grounding, permission, action, verification and evidence
+  obligations; those obligations must be visible at the architecture layer or they will be
+  forgotten in the implementation layer.
 
 | # | System | Responsibility |
 |---|---|---|
@@ -142,6 +149,24 @@ other six systems have nowhere to agree on what they are building.
 | **5** | **Execution Engine** | Shell, browser, desktop, containers, Android, iOS, cloud |
 | **6** | **Proof Engine** | Build / test / runtime / visual / security / evidence verification |
 | **7** | **Delivery Engine** | Git, CI, packaging, deployment, app stores, releases |
+| **8** | **Computer-Use Engine** | Perceiving and driving real desktop applications, under permission, with replayable evidence |
+
+### 2.0.1 The acting principle (v2.1)
+
+> **Acting is not the same as having acted.**
+
+An action directed at the outside world is not complete when it is issued. It is complete when
+its effect has been **re-observed**. Any system that reports actions as successful without a
+verification observation is violating this principle, and evidence drawn from it is not
+admissible. This principle is what separates the Computer-Use Engine from a macro recorder.
+
+### 2.0.2 The grounding principle (v2.1)
+
+> **A confidence value that is not derived from a measurement is a defect, not a placeholder.**
+
+A fabricated element position with a fabricated `0.85` confidence is worse than no element at
+all, because downstream reasoning cannot distinguish it from a real one. Every percept must
+carry its provenance and the method that produced it.
 
 ### 2.1 System Topology
 
@@ -160,6 +185,7 @@ other six systems have nowhere to agree on what they are building.
  │ Execution Engine                                   │
  │ Proof Engine                                       │
  │ Delivery Engine                                    │
+ │ Computer-Use Engine              (v2.1)            │
  └────────────────────────────────────────────────────┘
 
  ┌────────────── CROSS-CUTTING PLATFORMS ─────────────┐
