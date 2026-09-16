@@ -139,6 +139,24 @@ case-sensitivity assumption must be tested on Windows specifically.
 - **Test against the real repository**, not a synthetic fixture. A fixture that differs from
   reality produces green tests over broken behaviour — this has already happened once.
 
+### 4.7 The phase-numbering rule
+
+**A phase number belongs to the governance roadmap and to nothing else.**
+
+- `Phase N` (including `NA`/`NB` subphases and `7A`–`7D`) refers **only** to
+  `roadmap/ZYLCODE_ROADMAP_V2.md`. Do not invent a phase number, and do not reuse one.
+- Internal milestone tracking — feature steps, migration steps, remediation steps — uses a
+  **named track with its own prefix**, never `Phase N`. Existing examples: `MULTIPROVIDER-1`,
+  `VECTOR-CACHE`, `CTX-COMPRESSION`.
+- If a document needs to reference work outside the roadmap, it names the track, not a number.
+- The roadmap is **not renumbered** to accommodate a colliding document. Colliding documents are
+  relabelled.
+
+**Why this rule exists.** Three documents in this repository used `Phase N` for unrelated work;
+Phases 9–14 collided in six of six cases, and two documents each claimed to be the source of
+truth. An agent told to "implement Phase 12" could have built the wrong thing with no way to
+detect it from the instruction alone. See `PHASE_NUMBERING_RECONCILIATION.md`.
+
 ---
 
 ## 5. Completion Report Format

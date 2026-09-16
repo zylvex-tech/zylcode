@@ -20,11 +20,11 @@ import { invoke } from "@tauri-apps/api/core";
 | `list_tools` | — | `ToolDescriptor[]` | registry snapshot |
 | `execute_tool` | `{id, params: Json}` | `Json` | with recovery (timeout 30s, 2 retries) |
 | `marketplace_search` | `{query: string}` | `MarketplaceExtension[]` | |
-| `get_provider_configs` | — | `ProviderConfig[]` | sorted by `fallback_order` (Phase 7.3) |
+| `get_provider_configs` | — | `ProviderConfig[]` | sorted by `fallback_order` (track: MULTIPROVIDER-2) |
 | `set_provider_config` | `{kind: ProviderKind, endpoint?: string\|null, timeoutMs?: number\|null, enabled?: boolean\|null, model?: string\|null}` | `ProviderConfig[]` | validates timeout 1000..300000 |
 | `reorder_provider_chain` | `{order: ProviderKind[]}` | `ProviderConfig[]` | authoritative prefix, rest appended |
-| `clear_vector_cache` | — | `number` (deleted count) | Phase 8.2 — clears `vector_cache` table |
-| `get_cache_stats` | — | `CacheStats {entry_count, estimated_size, db_path}` | Phase 8.2 — vector cache stats |
+| `clear_vector_cache` | — | `number` (deleted count) | track: VECTOR-CACHE — clears `vector_cache` table |
+| `get_cache_stats` | — | `CacheStats {entry_count, estimated_size, db_path}` | VECTOR-CACHE — vector cache stats |
 
 ## Events (listen via `@tauri-apps/api/event`)
 
@@ -90,7 +90,7 @@ TokenMetrics::{snapshot, record_usage, record_saved, record_fallback}
 SpeculativeCache::new(capacity, ttl) / with_defaults() / hash_key / get / insert
 ```
 
-### Compression (Phase 8.1)
+### Compression (track: CTX-COMPRESSION)
 
 ```rust
 ContextCompressor::new(budget_tokens) / default() // 8192

@@ -1,4 +1,8 @@
-# Providers — Multi-Model Routing & Failover (Phase 7.2 + 7.3)
+# Providers — Multi-Model Routing & Failover (tracks: MULTIPROVIDER-1, MULTIPROVIDER-2)
+
+> **Milestone labels here are track names, not roadmap phase numbers.** These tracks are complete
+> and shipped. See `governance/PHASE_NUMBERING_RECONCILIATION.md` for why they were renamed off
+> the `Phase N` form.
 
 ## ProviderKind
 
@@ -51,7 +55,7 @@ Engine extra keys `anthropic_api_key`/`openrouter_api_key`/`deepseek_api_key` ar
 ### Failover Semantics
 
 `TokenRouter::dispatch_prompt(prompt, system)`:
-1. `ContextCompressor` if over budget (Phase 8.1).
+1. `ContextCompressor` if over budget (track: CTX-COMPRESSION).
 2. Cache probe `hash(prompt, system, primary_model)`.
 3. If no keys and both providers need keys → synthetic immediately.
 4. `call_provider(primary)`:
@@ -69,7 +73,7 @@ Engine extra keys `anthropic_api_key`/`openrouter_api_key`/`deepseek_api_key` ar
 
 `TokenMetrics::fallback_count` counts each retryable primary failure + fallback attempt.
 
-### Tauri IPC — Phase 7.3
+### Tauri IPC — MULTIPROVIDER-2
 
 State: `EngineState { engine, provider_configs: Arc<RwLock<Vec<ProviderConfig>>> }` seeded from `engine.pipeline().router().config().provider_configs`.
 

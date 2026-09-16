@@ -1,7 +1,36 @@
 # ZylCode Strategic Plan v2.0
 
-**Status:** ACTIVE — single source of truth for all strategic decisions
-**Version:** 2.0
+> ## ⚠️ SUPERSEDED — NOT A SOURCE OF TRUTH
+>
+> **Status:** SUPERSEDED (2026-09-16). Retained for history and for the commercial reasoning in
+> Sections 5–6, which has no governance equivalent.
+>
+> This document previously declared itself *"ACTIVE — single source of truth for all strategic
+> decisions"*. **That claim is withdrawn.** The governing documents are:
+>
+> - `governance/ZYLCODE_PRODUCT_CONSTITUTION_V2.md` — supreme spec
+> - `governance/ZYLCODE_ARCHITECTURE_V2.md` — system topology and contracts
+> - `governance/ZYLCODE_MASTER_EXECUTION_PLAN.md` — the phase program
+> - `roadmap/ZYLCODE_ROADMAP_V2.md` — per-phase detail
+>
+> **The phase numbers in Section 6 below are OBSOLETE and do not match the roadmap.**
+>
+> | This document | Meaning here | Now |
+> |---|---|---|
+> | Phase 9 | Plan Commit + README Fix | **Absorbed** — README corrected in `4ddefd3` |
+> | Phase 10 | Rungs 1–2 (structured logs, attestation) | **Absorbed** — `governance/ZYLCODE_PROOF_GRAPH.md` |
+> | Phase 11 | Rung 3 (Permission Gate) | **Absorbed** — Architecture §5.2; prerequisite for Phase 7B |
+> | Phase 12 | Rung 4 (Z3/Dafny proofs) | **Deferred** — not scheduled; see roadmap Phase 12 (Proof Engine v2) |
+> | Phase 13 | Offline Mode | **See** `AIR_GAPPED.md` (separate track) |
+> | Phase 14 | Cost/Rung UI + Benchmark | **Deferred** — see note below |
+>
+> Cross-reference: `governance/PHASE_NUMBERING_RECONCILIATION.md`.
+>
+> **Unresolved:** monetization and pricing (Sections 5–6) have **no governance home**. The
+> Constitution, Architecture and Master Execution Plan are silent on revenue. This is a recorded
+> gap, not an oversight — see the reconciliation doc §6.
+
+**Version:** 2.0 (historical)
 **Date:** September 2026
 
 ---
@@ -177,6 +206,10 @@ This is a structural advantage over tools that bundle API access with a markup. 
 ---
 
 ## Section 6: Roadmap
+
+> ⚠️ **The phase numbers in this section are OBSOLETE.** See the banner at the top of this
+> document and `governance/PHASE_NUMBERING_RECONCILIATION.md`. The text below is preserved as
+> written, so that the historical record is not altered — not because the numbers are valid.
 
 ### Phase 9: Plan Commit + README Fix
 

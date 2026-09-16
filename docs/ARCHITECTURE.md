@@ -1,6 +1,11 @@
 # ZylCode Architecture — Deep Dive
 
-> Source of truth for workspace layout, data flow, and milestone map through Phase 8.1.
+> Source of truth for workspace layout and data flow.
+>
+> **Note on milestone labels:** this document uses **track names**
+> (`MULTIPROVIDER-1/-2`, `CTX-COMPRESSION`, `VECTOR-CACHE`) for feature-internal milestones.
+> These are *not* governance roadmap phase numbers. The roadmap lives in
+> `roadmap/ZYLCODE_ROADMAP_V2.md`; see `governance/PHASE_NUMBERING_RECONCILIATION.md`.
 
 ## 1. Workspace Graph
 
@@ -11,17 +16,17 @@ zylcode/
 │   └── src/
 │       ├── App.tsx                # top-level layout + ProviderSettings mount
 │       ├── components/
-│       │   ├── ProviderSettings.tsx   # Phase 7.3 — reorder, endpoint, timeout, live failover
+│       │   ├── ProviderSettings.tsx   # MULTIPROVIDER-2 — reorder, endpoint, timeout, live failover
 │       │   ├── ArtifactViewer.tsx
 │       │   ├── TokenMetricsWidget.tsx
 │       │   └── ...
 │       └── lib/events.ts          # intent:chunk / telemetry:provider_failover / telemetry:compression / cache_hit
 ├── crates/zylcode-core/           # pure Rust engine (v0.2.0)
 │   ├── src/lib.rs                 # ZylCodeEngine, re-exports
-│   ├── src/cache.rs               # Phase 8.2 — VectorCacheStore, cosine_similarity, mock_embed (SQLite)
+│   ├── src/cache.rs               # VECTOR-CACHE — VectorCacheStore, cosine_similarity, mock_embed (SQLite)
 │   ├── src/router.rs              # ModelProvider, ProviderKind, ProviderConfig, TokenRouter (+ vector_cache)
 │   ├── src/router/cache.rs        # SpeculativeCache (ahash + lru)
-│   ├── src/compression.rs         # Phase 8.1 — ContextCompressor + 3 strategies
+│   ├── src/compression.rs         # CTX-COMPRESSION — ContextCompressor + 3 strategies
 │   ├── src/pipeline.rs            # ArtifactPipeline, parse_artifacts (memchr)
 │   └── src/planner.rs             # IntentPlanner
 └── crates/zylcode-mcp/            # MCP registry, executor, telemetry
@@ -38,7 +43,7 @@ React invoke("process_intent_stream", {prompt, model})
       → ArtifactPipeline::execute_for_engine
         → IntentPlanner::build_execution_plan(prompt, bridges) → {compiled_prompt, system_prompt}
         → TokenRouter::dispatch_prompt
-          → [Phase 8.1] ContextCompressor::compress if est_tokens > budget
+          → [CTX-COMPRESSION track] ContextCompressor::compress if est_tokens > budget
             → telemetry:compression {original, compressed, ratio}
           → SpeculativeCache probe
           → call_provider(primary)

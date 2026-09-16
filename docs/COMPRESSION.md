@@ -1,4 +1,4 @@
-# Compression — Phase 8.1 Context Compaction Engine
+# Compression — Context Compaction Engine (track: CTX-COMPRESSION)
 
 ## Goals
 

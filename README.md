@@ -419,7 +419,7 @@ marked **PROPOSED** — describing a system is not building it.
 - [Developer Guide](DEVELOPER_GUIDE.md)
 - [Air-gapped / offline mode](docs/AIR_GAPPED.md)
 - [Providers](docs/PROVIDERS.md)
-- [Strategic Plan](docs/STRATEGIC_PLAN.md)
+- [Strategic Plan](docs/STRATEGIC_PLAN.md) — *superseded; retained for the commercial reasoning*
 
 > **Note:** `USER_GUIDE.md`, `DEVELOPER_GUIDE.md` and `INSTALLATION_GUIDE.md` currently exist only
 > in the local working tree and are **not tracked in git**, so those links 404 on GitHub. Earlier
