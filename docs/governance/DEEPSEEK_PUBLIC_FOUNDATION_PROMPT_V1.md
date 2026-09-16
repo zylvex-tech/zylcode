@@ -62,7 +62,11 @@ If any document is missing or unreadable, stop and report.
    with `CONCEPT` / `PROPOSED` / `IN DEVELOPMENT` (Public Comm Policy §2, screenshot rule).
 6. **DO NOT publish a pricing page or revenue claim** before its commercial gate (Commercial Model
    §4). Level 0 (public development) is permitted now — Level 2 (paid) requires R3+ on the specific
-   capability sold; Level 3 (GA) requires Phase 16.
+   capability sold; **Level 3 (GA/Enterprise) requires PUBLIC COMMISSIONING to have satisfied its
+   governing acceptance criteria, and all capabilities advertised by the commercial offering to meet
+   their required Proof Graph states.** Do **not** encode this gate as a phase number — the roadmap
+   may currently schedule Public Commissioning as Phase 16, but the gate is the acceptance, not the
+   integer. (See the prohibition immediately above against using phase numbers as gates.)
 7. **DO NOT commit secrets.** Cloudflare/AWS/Penpot MCP/GitHub/model/SMTP/payment keys stay in
    environment/secret management. Never in source, repo, docs, screenshots, logs, commits.
 8. **DO NOT fabricate a Penpot MCP connection.** Detect, report what is missing, stop. Read-only
@@ -151,9 +155,26 @@ repository only when enough reproducible tasks exist.
 ## E. ZYLFORGE.COM REBUILD — `PUBLIC-FOUNDATION-04` then `07` → `08` → `09`
 
 Begin with a **truth audit** (PF-04): audit existing zylforge.com, relevant zylvex.tech content,
-current Engineering and ZylCode capability evidence. Produce the **Public Claim Matrix** mapping each
-material capability to `AVAILABLE / DEVELOPER PREVIEW / BETA / IN DEVELOPMENT / PROPOSED /
-SERVICE-DELIVERED / DEPRECATED`. No website copy may promote a PROPOSED capability as shipping.
+current Engineering and ZylCode capability evidence. Produce the **Public Claim Matrix**. Its
+`capability_state` dimension uses the **canonical vocabulary** from `ZYLCODE_PUBLIC_COMMUNICATION_
+POLICY.md` §3 — **exactly, with no additions or substitutions**:
+
+```
+capability_state:
+  AVAILABLE | VERIFIED | DEVELOPER_PREVIEW | IN_DEVELOPMENT
+  PROPOSED | CONCEPT | HISTORICAL | SERVICE_DELIVERED
+```
+
+Lifecycle is a **separate** dimension, never folded into capability_state:
+
+```
+lifecycle:
+  ACTIVE | EXPERIMENTAL | DEPRECATED | RETIRED
+```
+
+Do **not** introduce `BETA` — it is not in the canonical vocabulary; use `DEVELOPER_PREVIEW` or
+`IN_DEVELOPMENT`. Do **not** drop `VERIFIED`, `CONCEPT` or `HISTORICAL`. No website copy may promote a
+PROPOSED capability as shipping.
 
 **IA (PF-07):** three co-equal pillars — `ZylForge Engineering`, `ZylCode`, `Services` — under
 `zylforge.com`, plus a `PLATFORM` area (MCP / Models / Extensions / Community). Homepage gives
