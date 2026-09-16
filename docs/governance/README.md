@@ -1,0 +1,108 @@
+# ZylCode Governance
+
+> **The governing documents. They govern implementation.**
+
+**Ratified:** 2026-09-16
+**Supersedes:** the six-engine / 14-stage drafts, archived in `superseded/`
+
+---
+
+## Start Here
+
+| If you are… | Read, in order |
+|---|---|
+| **An implementation agent** | `ZYLCODE_AGENT_OPERATING_PROTOCOL.md` → `ZYLCODE_PRODUCT_CONSTITUTION_V2.md` → your phase spec |
+| **New to the project** | `ZYLCODE_PRODUCT_CONSTITUTION_V2.md` → `ZYLCODE_ARCHITECTURE_V2.md` → `ZYLCODE_MASTER_EXECUTION_PLAN.md` |
+| **Auditing a phase** | `PHASE2A_INDEPENDENT_AUDIT.md` (method) → `ZYLCODE_PROOF_GRAPH.md` → `ZYLCODE_CAPABILITY_MODEL.md` |
+| **Planning work** | `ZYLCODE_MASTER_EXECUTION_PLAN.md` → `../roadmap/ZYLCODE_ROADMAP_V2.md` |
+
+---
+
+## The Mandatory Preamble
+
+Every prompt to DeepSeek, Codex, ZCode, or any other implementation agent **must** begin with:
+
+> Read the ZylCode Constitution, Architecture, Master Execution Plan, Capability Model and Proof
+> Graph, plus the current phase specification. They govern implementation.
+> Where implementation conflicts with documentation, **investigate the discrepancy rather than
+> silently choosing one**.
+
+---
+
+## Document Map
+
+### Governance (`docs/governance/`)
+
+| Document | Governs |
+|---|---|
+| **`ZYLCODE_PRODUCT_CONSTITUTION_V2.md`** | The supreme specification. Seven systems. Evidence principle. Product definition. |
+| **`ZYLCODE_ARCHITECTURE_V2.md`** | System topology, contracts, data ownership, **honest implementation status**. |
+| **`ZYLCODE_MASTER_EXECUTION_PLAN.md`** | The 16-phase / 6-epoch program. Gates. Dependency order. |
+| **`ZYLCODE_CAPABILITY_MODEL.md`** | What a capability is, how status is computed, how the registry is audited. |
+| **`ZYLCODE_PROOF_GRAPH.md`** | **R0–R5.** The definition of "proven". Governs every capability claim. |
+| **`ZYLCODE_AGENT_OPERATING_PROTOCOL.md`** | How agents work here. Pre-flight, rules, report format, anti-patterns. |
+| **`PHASE2A_INDEPENDENT_AUDIT.md`** | The audit that re-opened Phase 2A. Also the worked method for future audits. |
+
+### Roadmap (`docs/roadmap/`)
+
+| Document | Governs |
+|---|---|
+| **`ZYLCODE_ROADMAP_V2.md`** | Per-phase objective, deliverables, entry points, gates, benchmarks. |
+
+### Architecture (`docs/architecture/`)
+
+| Document | Status | Phase |
+|---|---|---|
+| `PROJECT_SYSTEM.md` | **PROPOSED** | 3A |
+| `PROJECT_KNOWLEDGE_GRAPH.md` | **PROPOSED** | 3A |
+| `AGENT_KERNEL.md` | **PARTIAL** (R3) | 1A–1D done |
+| `INTELLIGENCE_GRAPH.md` | **PARTIAL** (R2) | 2A re-opened |
+| `EXTENSION_PLATFORM.md` | **PROPOSED** | 5 |
+| `ARTIFACT_SYSTEM.md` | **PROPOSED** | 6A |
+| `VISION_STUDIO.md` | **PROPOSED** | 8A–9 |
+| `EXECUTION_ENGINE.md` | **PARTIAL** (R3 shell / R0 devices) | 7, 10, 11 |
+| `PROOF_ENGINE.md` | **PROPOSED** | 12 |
+| `DELIVERY_ENGINE.md` | **PARTIAL** (R1) | 13 |
+
+> **PROPOSED means it does not exist.** Per Constitution §9.3, describing a system is not
+> building it. Documentation must never imply otherwise.
+
+---
+
+## The Five Laws
+
+1. **The loop is the product.** Every capability is justified by an arc of
+   *Imagine → Specify → Design → Build → Run → See → Test → Repair → Verify → Ship*.
+2. **Evidence or it did not happen.** A claim is not a fact until it is independently reproducible.
+3. **Builders do not certify their own work.**
+4. **A Project is not a directory.** It is the persistent representation of a software product.
+5. **Where implementation conflicts with documentation, investigate — never silently choose.**
+
+---
+
+## Current Status (2026-09-16)
+
+| | |
+|---|---|
+| **Phase 1A–1D** | ✅ Accepted (1C, 1D with conditions) |
+| **Phase 2A** | ❌ **NOT ACCEPTED — RE-OPENED** |
+| **Phase 2B** | 🚫 **BLOCKED** on 2A |
+| **Phases 3A–16** | ⏸ Not started |
+
+**Phase 2A was rejected** because: its headline metric counted `target/` build output (14,900 of
+15,064 files; the repository is 254 files); its benchmark **fails** on independent re-execution;
+it has **zero** product integration; and its "Acceptance Demonstration" was written as an
+expectation rather than captured from a run.
+
+See `PHASE2A_INDEPENDENT_AUDIT.md`.
+
+**Next action:** issue the Phase 2A remediation order, then re-audit.
+
+---
+
+## Superseded
+
+`superseded/` holds the earlier six-engine / 14-stage drafts. They were never committed and
+contradicted the approved architecture. They are retained for history only.
+
+**Do not implement from anything in `superseded/`.**
