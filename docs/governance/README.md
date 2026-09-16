@@ -49,6 +49,14 @@ Every prompt to DeepSeek, Codex, ZCode, or any other implementation agent **must
 | **`PHASE_NUMBERING_RECONCILIATION.md`** | Three competing phase-numbering schemes, the collision, and the fix. Also the source of rule 4.7. |
 | **`PHASE2A_INDEPENDENT_AUDIT.md`** | The audit that re-opened Phase 2A. Also the worked method for future audits. |
 | **`PHASE2A_REMEDIATION_ORDER.md`** | The operational work order for the Phase 2A fix. |
+| **`STATUS_SWEEP_2026-09-16.md`** | Full-repository observation sweep: what was executed, what the code actually does, and the shortest honest path to GREEN. **Read this for the current state.** |
+| **`CODEX_BRAND_FOUNDATION_WORK_ORDER.md`** | The brand-governance work order (design tokens, Engineering Document Standard, terminology, authority hierarchy). |
+
+### Repository index (`docs/`)
+
+| Document | Governs |
+|---|---|
+| **`../README_INDEX.md`** | The map of **63 root-level `.md` files**. Mandatory reading order, and the quarantine list for 26 legacy files that assert completion under a **retired** phase-numbering scheme. **Read before any root-level `.md`.** |
 
 ### Roadmap (`docs/roadmap/`)
 
@@ -122,6 +130,29 @@ facade cannot fail. It is **not** a capability and must not be treated as one. S
 
 **Next action:** DeepSeek executes `DEEPSEEK_MASTER_PROMPT_V21.md` — Job 1 (Phase 2A remediation)
 first, then Job 2 (Architecture v2.1 reconciliation) as a separate commit.
+
+### Sweep findings (2026-09-16, `STATUS_SWEEP_2026-09-16.md`)
+
+A full observation sweep executed the actual checks rather than reading claims. Current truth:
+
+| Check | Result |
+|---|---|
+| `cargo check --workspace --lib` | ✅ **PASS** (4.78s) |
+| `cargo test --workspace --lib` | ❌ **225 passed; 1 failed** |
+| `cargo build --workspace` | ⚠️ **NOT OBSERVABLE** — sandbox denies build-script execution; not a code defect |
+| Phase 2A remediation (10 items) | ❌ **0 complete; 1 half-applied** |
+| Dirty tree | ❌ **89 entries** (was 53 at audit) — now includes untracked **source** |
+
+**The failing test is `router.rs:1030`**, a stale assertion: `synthetic_response()` returns
+AgentDecision **JSON**, while the test still asserts an **XML** tag. Both are present in HEAD, so the
+**committed tree is red**. This is the same failure the Phase 2A audit recorded, still unfixed.
+
+**Also found:** 63 root-level `.md` files, **26 asserting completion** under a retired numbering
+scheme, **none carrying a superseded banner** — the single most dangerous documentation state in the
+repository, because it is the first thing an agent reads. Mitigated by `../README_INDEX.md`.
+
+See `STATUS_SWEEP_2026-09-16.md` §6 for the shortest honest path to GREEN, and §11 for the ordered
+blocker list.
 
 ---
 

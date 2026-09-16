@@ -719,9 +719,20 @@ A phase failing G3 is **RE-OPENED** and blocks its dependents.
 | 1 | Audit `0ecea8e` | ✔ DONE — **NOT ACCEPTED** |
 | 2 | Publish governance package | ✔ DONE |
 | 3 | Supersede six-engine / 14-stage drafts | ✔ DONE |
-| 4 | Issue Phase 2A remediation order | **NEXT** |
-| 5 | Re-audit Phase 2A | blocked on #4 |
+| 4 | Issue Phase 2A remediation order | ✔ DONE — `PHASE2A_REMEDIATION_ORDER.md` |
+| 5 | Re-audit Phase 2A | blocked on #4 execution — **remediation has NOT started** |
 | 6 | Authorize Phase 2B | blocked on #5 |
 | 7 | Authorize Phase 3A | blocked on #6 |
+| 8 | **Restore a green baseline** | **NEW — required before #5** (see below) |
+| 9 | **Resolve the dirty tree** | **NEW — required before #5** |
 
 **Phase 2B does not begin until Phase 2A is re-accepted.**
+
+### Newly surfaced blockers (sweep `STATUS_SWEEP_2026-09-16.md`)
+
+| Blocker | Detail |
+|---|---|
+| **Suite is red** | `crates/zylcode-core/src/router.rs:1030` asserts `contains("<zylcode-response>")`, but `synthetic_response()` returns AgentDecision **JSON**. Both are in HEAD. **Fix before any re-audit** — a red suite cannot support a claim, and `.github/workflows/ci.yml:77` fails the build on it. |
+| **Dirty tree grew** | 89 status entries (was 53). Now includes **untracked source**: `crates/zylcode-mcp/src/performance.rs` (409 lines), `crates/zylcode-mcp/src/system_integration.rs` (391 lines) — both declared in `lib.rs` but never reviewed — plus `crates/zylcode-core/tests/commissioning_test.rs`, which is a `#[tokio::test]` attempting **real provider inference**. Committing that as-is would put a network-dependent test into CI (`--all-targets`). Needs an explicit skip guard. |
+| **Build unobserved** | `cargo build --workspace` cannot be executed in the build sandbox (build-script execution denied). One clean run outside the sandbox is required. **Not** a code defect. |
+| **Registry has no rungs** | 23 of 34 entries carry `rung: null`. Remediation P1-6 was half-applied: the GREEN count was corrected, but the honest downgrade was not completed. |

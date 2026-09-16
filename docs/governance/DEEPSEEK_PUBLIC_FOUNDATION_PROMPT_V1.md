@@ -215,6 +215,12 @@ Deliver in order: P0 shared foundations → P1 ZylForge.com → P2 ZylCode → P
 Document Penpot lessons for Vision Studio in `docs/research/PENPOT_TO_VISION_STUDIO_LESSONS.md`
 (research evidence; no copying Penpot source or proprietary assets).
 
+> **Path status (swept 2026-09-16).** The last two deliverables name documents that **do not yet exist**:
+> `docs/research/PENPOT_TO_VISION_STUDIO_LESSONS.md` and
+> `docs/architecture/WEB_CLOUD_ARCHITECTURE.md` (§CLOUD-PLATFORM below). Neither directory is present
+> in the repository. They are **outputs of this workstream**, not existing inputs — create them, or
+> report the blocker. Do not cite them as though they were already authored.
+
 ---
 
 # PENPOT CONNECTION — READ BEFORE WRITE
@@ -234,10 +240,11 @@ Document Penpot lessons for Vision Studio in `docs/research/PENPOT_TO_VISION_STU
 
 # CLOUD — `CLOUD-PLATFORM-01` → `03`
 
-`docs/architecture/WEB_CLOUD_ARCHITECTURE.md`: Cloudflare edge (DNS/TLS/CDN/WAF/DDoS/rate-limit/bot,
-Workers only where justified) for the public site first. AWS only when backend requirements justify
-(identity, services, storage, marketplace backend, remote jobs). Local product stays local-first. **No
-expensive AWS provisioning for hypothetical traffic.**
+**Target output:** `docs/architecture/WEB_CLOUD_ARCHITECTURE.md` — **does not exist yet**; author it as
+`CLOUD-PLATFORM-01` before provisioning anything. It specifies: Cloudflare edge
+(DNS/TLS/CDN/WAF/DDoS/rate-limit/bot, Workers only where justified) for the public site first. AWS only
+when backend requirements justify (identity, services, storage, marketplace backend, remote jobs).
+Local product stays local-first. **No expensive AWS provisioning for hypothetical traffic.**
 
 ---
 
