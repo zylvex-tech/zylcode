@@ -109,6 +109,11 @@ The fundamental problem: **there is no objective, auditable proof that an AI cod
 
 1. **Existing 3.3–8.3 implementation** — provider routing, failover, caching, compression, vector search, fault injection, telemetry, config hot-reload, benchmarks. This is real, tested, shippable infrastructure. Not a prototype.
 
+   > ⚠️ **HISTORICAL ASSERTION — NOT CURRENT CAPABILITY EVIDENCE.** Per Agent Operating Protocol
+   > §4.8, this sentence may not be lifted into a README, website, capability claim, or completion
+   > report. It records what was believed in September 2026. Left unaltered deliberately: rewriting
+   > it would falsify the historical record. **Re-derive any claim from current evidence.**
+
 2. **Rungs 1–2 are trivially buildable** — we already have the pieces. Structured logs + attestation manifest + a CLI command to produce a verification artifact. This is glue work, not research.
 
 3. **The permission-check function shape is known** — we know what the pure function looks like (Section 0.2). We can implement it as a typed enum now and prove properties over it later.
@@ -332,6 +337,11 @@ Old numbering (conversation) → New numbering (this plan):
 | Phase 5 | Phase 14 | Cost/Rung UI + Benchmark |
 
 Existing completed work (Phases 3.3–8.3) is not renumbered. It's done. It's in `main`. It's tested. It ships.
+
+> ⚠️ **HISTORICAL ASSERTION — NOT CURRENT CAPABILITY EVIDENCE.** Per Agent Operating Protocol §4.8,
+> this sentence may not be lifted into a README, website, capability claim, or completion report. It
+> records what was believed in September 2026; it is not a present-tense statement about the product.
+> **Re-derive any claim from current evidence.**
 
 ---
 

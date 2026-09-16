@@ -1,10 +1,16 @@
 # ZYLCODE_COMMERCIAL_MODEL.md — ZylCode Commercial Model
 
 **Status: GOVERNING (deferred — not yet active)**
-**Version:** 1.0
-**Ratified:** 2026-09-16
+**Version:** 1.1
+**Ratified:** 2026-09-16 · **Amended:** 2026-09-16 (v1.1 — gate ladder, BYOK terminology)
 **Governing docs:** `ZYLCODE_PRODUCT_CONSTITUTION_V2.md` §11 (Truth-in-Advertising),
 §13 (Amendment Procedure)
+
+> **v1.1 correction.** v1.0 contained a material contradiction: §4 gated activation on an R3
+> capability while §6 gated it on Phase 16 "whichever is later", which would have blocked a paid
+> Developer Preview until Public Commissioning. Replaced with the graduated four-level ladder
+> (§4). Also resolved the "managed key" / never-resell-tokens ambiguity (§3.1).
+> **Level 0 (public development) is permitted immediately.**
 
 > **⚠️ This document is deferred by design.**
 > ZylCode is **not for sale** and has **no pricing page** until the gate in §4 is met. This
@@ -58,6 +64,18 @@ control**, and it is enforceable in the same way as the PROPOSED marking rule.
 - **Model access is never bundled or marked up.** ZylCode routes to the user's own provider key
   (Anthropic, OpenRouter, Ollama, or a self-hosted endpoint) and the user pays that provider
   directly. ZylCode does not touch or resell tokens.
+
+**Terminology — "managed key" is prohibited.** The phrase is ambiguous between two incompatible
+things:
+
+| Meaning | Compatible? |
+|---|---|
+| **Secure BYOK credential vault** — ZylCode stores and injects *the user's own* key | ✅ **Yes.** This is what a tier may include. |
+| **ZylCode-provided managed model API key** — ZylCode supplies access to models | ❌ **No.** This is reselling model access, which §3.1 forbids. |
+
+Tier copy must say **secure BYOK credential management** or **BYOK credential vault**. The
+unqualified phrase "managed key" must never appear in a public claim, because the reader cannot
+tell which is meant — and only one of the two is permitted.
 - **The user's code and artifacts are never the product.** Local-first is a Constitution-level
   commitment (§10.3), not a pricing lever.
 - **Evidence is never paywalled from the user who produced it.** A user can always export their
@@ -72,7 +90,7 @@ efficiency the Evidence Principle demands.
 | Tier | Price | Includes | Intended for |
 |---|---|---|---|
 | **Free** | $0 | Rungs R1–R2 (structured logs, attestation manifest), BYOK, community support | Individual developers, OSS contributors |
-| **Pro** | $9/mo flat | Rung R3 (verified, reachable capability), managed key, priority support | Solo developers, small teams evaluating |
+| **Pro** | $9/mo flat | R3 (verified, reachable capability), **secure BYOK credential vault**, priority support | Solo developers, small teams evaluating |
 | **Team** | $19/seat | Audit trail, governance controls, SSO | Teams with compliance requirements |
 | **Enterprise** | Custom | Self-hosted, contractual verification SLA, dedicated support | Regulated industries |
 
@@ -93,37 +111,74 @@ and must not be published before the gate.
 
 ---
 
-## 4. The Pricing Gate
+## 4. The Commercial Activation Ladder
 
-> **Do not publish a pricing page, price commitment, or revenue projection until the gate below
-> is met.**
+> **Correction (2026-09-16).** An earlier version of this document stated the gate as *"a
+> capability at R3"* in §4 and *"Phase 16, whichever is later"* in §6. Those are materially
+> different. The second would have blocked a paid Developer Preview until Public Commissioning —
+> including for a capability that had already been independently accepted. **§6 was the defect and
+> is withdrawn.** The ladder below replaces both.
+>
+> **Governing rule: the scope of the paid claim determines the evidence gate.**
 
-**Gate condition:** ZylCode has shipped a capability at **R3** — reachable through a named product
-surface, with captured evidence — in the area the tier claims to sell.
+Commercial activation is **graduated**, not binary. Four levels, each with its own gate.
 
-**Current status: NOT MET.**
+| Level | Gate | What is permitted |
+|---|---|---|
+| **0 — PUBLIC DEVELOPMENT** | **None. May start now.** | Build in public: devlog, community, roadmap, status-labelled capability descriptions. No commercial offer. |
+| **1 — DEVELOPER PREVIEW** | The included capabilities satisfy their **defined acceptance gates**. May be free or invite-only. | A preview offer, explicitly labelled pre-release. |
+| **2 — PAID EARLY ACCESS / PRO** | The **specific** capabilities being sold are **R3+ and independently accepted**. **Does NOT require Phase 16.** | Charge for those capabilities. |
+| **3 — GENERAL AVAILABILITY / ENTERPRISE** | **Public Commissioning (Phase 16)**, plus release, security and support gates. | GA claims, enterprise contractual claims, SLAs, compliance representations. |
 
-| Requirement | Status |
-|---|---|
-| A capability at R3 in the verification area | ❌ Phase 2A is **RE-OPENED**; the Intelligence Graph is R2 |
-| Any phase beyond 1A–1D accepted | ❌ Phases 2B and 3A–16 not started |
-| Truth-in-advertising position (§11) clean | ❌ The README previously carried unsupported claims (corrected in `4ddefd3`) |
+### 4.1 Why the levels are scoped, not global
 
-**The gate is not "when we feel ready".** It is met when the evidence exists. The Proof Engine's
-rung computation is the mechanism; a hand-asserted readiness is **R0** by definition
-(`ZYLCODE_CAPABILITY_MODEL.md` §6).
+Level 2 does **not** require the whole product to be complete. It requires the **sold capability**
+to be proven.
 
-**The original plan's gate — "do not publish pricing until Phase 10 ships" — is superseded.** That
-referenced the obsolete numbering. The condition is restated above in capability terms, which do
-not drift when phases are renumbered. This is the general rule: *express a gate as a capability
-state, never as a phase number.*
+> Selling *repository intelligence* requires repository intelligence at R3.
+> It does not require Vision Studio, Computer Use, Android, iOS, or multi-agent engineering.
+
+The alternative — blocking all revenue until every phase lands — is not a truth-in-advertising
+control. It is a business decision wearing the costume of one. It would forbid charging $9/month
+for a genuinely commissioned capability because an unrelated later capability is unfinished, which
+the Evidence Principle does not require and which would encourage the very behaviour this
+governance exists to prevent: publishing optimistic claims in the absence of a legitimate path to
+publishing true ones.
+
+Level 3 is the exception. **GA and enterprise claims are global**, because they represent the
+whole product as dependable — so they require Public Commissioning.
+
+### 4.2 Current status
+
+| Level | Status | Why |
+|---|---|---|
+| 0 — Public Development | ✅ **Permitted now** | No gate |
+| 1 — Developer Preview | ❌ Not yet | No capability has passed its acceptance gate; Phase 2A is **RE-OPENED**, Intelligence Graph is R2 |
+| 2 — Paid Early Access | ❌ Not yet | No capability at R3; the Computer-Use Engine is R0 |
+| 3 — GA / Enterprise | ❌ Not yet | Requires Phase 16 |
+
+### 4.3 The general rule
+
+**Express a gate as a capability state, never as a phase number.** Phase numbers drift when
+phases are renumbered or split — as happened when Phase 7 became 7A–7D. Capability states do not.
+
+The former gate, *"do not publish pricing until Phase 10 ships"* (from the superseded plan),
+referenced an obsolete phase number and is **withdrawn**.
+
+Level 3's reference to Phase 16 is the one deliberate exception, and it is stated as an
+**evidence condition** (Public Commissioning) with the phase given only as a locator — not as the
+gate itself.
 
 ---
 
 ## 5. Anti-Requirements
 
-- **Do not publish pricing before the gate.** (§4)
+- **Do not publish pricing before the gate for its level.** (§4)
 - **Do not bundle or mark up model access.** (§3.1)
+- **Do not use the unqualified phrase "managed key".** Name it *secure BYOK credential
+  management*. (§3.1)
+- **Do not block a paid capability because an unrelated capability is unfinished.** The scope of
+  the paid claim sets the gate. (§4.1)
 - **Do not paywall a user's own evidence, code, or artifacts.** (§3.1)
 - **Do not describe a tier's included capability above its actual rung.** A tier that sells "R3
   verification" while R3 is unreachable is a truth-in-advertising breach (Constitution §11).
@@ -134,10 +189,25 @@ state, never as a phase number.*
 
 ---
 
-## 6. Dependency
+## 6. Dependency — Withdrawn and Replaced
 
-Activating the commercial model is gated on **Phase 16 (Public Commissioning)** at the earliest,
-and on the §4 gate unconditionally — whichever is later.
+> **This section previously read:** *"Activating the commercial model is gated on Phase 16
+> (Public Commissioning) at the earliest, and on the §4 gate unconditionally — whichever is
+> later."* **That is withdrawn.** It contradicted §4 and would have blocked a paid Developer
+> Preview until Public Commissioning. See the correction notice at §4.
 
-Recording this dependency is the point of the document. The gap is now a **decision**, not an
-oversight.
+**Replaced by the graduated ladder in §4.** The only dependency on Phase 16 is at **Level 3
+(GA / Enterprise)**, which is correct, because GA represents the whole product as dependable.
+
+| Level | Depends on |
+|---|---|
+| 0 — Public Development | nothing |
+| 1 — Developer Preview | acceptance gates for the included capabilities |
+| 2 — Paid Early Access | R3+ and independent acceptance of **the capabilities being sold** |
+| 3 — GA / Enterprise | Public Commissioning (Phase 16) + release/security/support gates |
+
+**This document governs commercial claims, not engineering sequence.** It must not be read as
+licence to accelerate engineering, nor as a reason to delay commercial activity that has met its
+gate.
+
+Recording the model is the point of this document. The gap is now a **decision**, not an oversight.

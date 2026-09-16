@@ -157,6 +157,34 @@ Phases 9–14 collided in six of six cases, and two documents each claimed to be
 truth. An agent told to "implement Phase 12" could have built the wrong thing with no way to
 detect it from the instruction alone. See `PHASE_NUMBERING_RECONCILIATION.md`.
 
+### 4.8 The superseded-document rule
+
+> **Superseded and historical documents may be consulted for provenance and rationale, but may
+> never be used as current capability evidence.**
+
+A document carrying a **SUPERSEDED**, **HISTORICAL**, or **DEPRECATED** banner is a record of what
+was believed at the time it was written. It is not a statement about the present.
+
+- **Permitted:** reading it to understand *why* a decision was made, and citing it as rationale.
+- **Forbidden:** extracting a sentence from it as evidence that a capability exists, works, ships,
+  or is tested.
+
+**The live case.** `docs/STRATEGIC_PLAN.md` is marked SUPERSEDED with its obsolete phase numbering
+flagged. Its body still asserts *"This is real, tested, shippable infrastructure. Not a
+prototype."* (§2, line ~110) and *"It's done. It's in `main`. It's tested. It ships."*
+(Appendix A, line ~334).
+
+Those statements are **deliberately not rewritten** — altering them would falsify history. They are
+**quarantined instead**:
+
+1. Do not lift them into a README, website page, capability claim, or completion report.
+2. Do not treat them as satisfying a gate.
+3. If a superseded document appears to support a claim, **re-derive the claim from current
+   evidence** or drop it.
+
+The same applies to `docs/governance/superseded/` and to any file carrying a supersession banner.
+Governing text for public claims: `ZYLCODE_PUBLIC_COMMUNICATION_POLICY.md`.
+
 ---
 
 ## 5. Completion Report Format

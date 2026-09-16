@@ -445,6 +445,8 @@ docs/governance/
     ZYLCODE_PROOF_GRAPH.md
     ZYLCODE_AGENT_OPERATING_PROTOCOL.md
     ZYLCODE_COMMERCIAL_MODEL.md            ← deferred; governs commercial claims (§13 Am. 1)
+    ZYLCODE_PUBLIC_COMMUNICATION_POLICY.md ← governs public claims, status vocab, claim matrix
+    ZYLCODE_PUBLIC_FOUNDATION_PLAN.md      ← parallel public-foundation program (named tracks)
 
 docs/roadmap/
     ZYLCODE_ROADMAP_V2.md
@@ -464,6 +466,8 @@ docs/architecture/
 
 > `COMPUTER_USE_ENGINE.md` was added by Architecture v2.1 (eight-engine model).
 > `ZYLCODE_COMMERCIAL_MODEL.md` was added by Amendment 1 and is **deferred** — see §13.
+> `ZYLCODE_PUBLIC_COMMUNICATION_POLICY.md` and `ZYLCODE_PUBLIC_FOUNDATION_PLAN.md` were added by
+> Amendment 2 — see §13.
 
 ### 9.2 Mandatory Agent Preamble
 
@@ -581,6 +585,25 @@ traceable to evidence at the claimed rung.
 
 *(Amendment 1 is the first amendment; the body of this Constitution above is the initial ratified
 version, unaltered.)*
+
+**Amendment 2 — 2026-09-16 — Public communication + public foundation program**
+
+- **Author:** Architecture Owner (independent audit role).
+- **Added documents:** `ZYLCODE_PUBLIC_COMMUNICATION_POLICY.md` (§9.1) and
+  `ZYLCODE_PUBLIC_FOUNDATION_PLAN.md` (§9.1).
+- **Rationale:** Public development — GitHub, community, devlog, website, design system, cloud
+  architecture, release communication — has grown significant enough to need an operational policy of
+  its own, distinct from the engineering roadmap. The Constitution's §11 (Truth-in-Advertising)
+  governs truth broadly; the policy governs truth *publicly* (status vocabulary, the screenshot rule,
+  the Public Claim Matrix). The Foundation Plan coordinates the work as **named tracks**
+  (`PUBLIC-FOUNDATION`, `DESIGN-SYSTEM`, `CLOUD-PLATFORM`) that run in parallel with, but outside,
+  the 16-phase engineering roadmap — directly obeying Protocol §4.7 (a phase number belongs to the
+  roadmap and to nothing else).
+- **Effect:** public capability claims are driven from the Public Claim Matrix, computed from the
+  capability registry, never hand-asserted. The public-foundation program is **not** a phase, and may
+  not be numbered as one.
+- **Evidence:** the public communication policy and the public foundation plan; `PHASE_NUMBERING_
+  RECONCILIATION.md` §6 (now resolved) for why the tracks avoid a third numbering collision.
 
 ---
 
