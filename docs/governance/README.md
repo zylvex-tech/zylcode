@@ -154,6 +154,39 @@ repository, because it is the first thing an agent reads. Mitigated by `../READM
 See `STATUS_SWEEP_2026-09-16.md` §6 for the shortest honest path to GREEN, and §11 for the ordered
 blocker list.
 
+### Dirty-tree audit (2026-09-17, `STATUS_SWEEP_2026-09-16.md` §15)
+
+Blocker #1 (`router.rs:1030`) is **closed** as of `8f751ed`; the suite is green (261 passed, 0 failed).
+Blockers #2 and #3 remain. Blocker #2 was **characterised** rather than resolved:
+
+| Measurement | Value |
+|---|---|
+| Dirty entries | **88** — 52 modified source files, 33 untracked |
+| Raw source delta | 4157 inserts / 1545 deletes |
+| Whitespace-insensitive | 3487 / 875 — **≈670 lines are pure formatting churn** (contributed by `core.autocrlf=true` with **no `.gitattributes`**) |
+| `cargo check --workspace --all-targets` | ✅ **PASS** (1m 23s) — **including** the untracked modules |
+| `cargo clippy … -D warnings` | ✅ **PASS** — zero warnings, whole tree |
+
+**What the dirty tree is:** real, compiling, clippy-clean implementation work (a tool catalog in
+`enhanced_bridge.rs` +776, new telemetry tests, 17 mechanically-added `impl Default` blocks) mixed with
+formatting churn. **Critically, `computer_use/` changes are formatting-only** — the 31 simulation
+markers and the five fabricated confidences in `vision_ai.rs` are untouched, consistent with
+*replace, do not extend*.
+
+**Two latent defects surfaced by the audit:**
+
+- **Finding F — a retracted claim re-entered the repo.** `PHASE1C_COMPLETION_REPORT.md:59` records that
+  `156 tools` was removed as unsupported. It is back in **eight** files, including the **tracked**
+  `FINAL_SUMMARY.md`. Measured reality: **112** tool IDs. Corrected in `FINAL_SUMMARY.md`; a standing
+  grep check is now in `../README_INDEX.md` §7.
+- **Finding G — `DEEPSEEK_MASTER_PROMPT_V21.md` is clobbered (OPEN, owner decision).** The committed
+  522-line master work order is overwritten in the working tree with a 156-line stale v1.0 copy of
+  `ZYLCODE_COMMERCIAL_MODEL.md`, **missing the v1.1 gate correction**. Original recoverable from HEAD.
+  **Not reverted** — it is another session's in-flight edit.
+
+Per-group disposition recommendations are in `STATUS_SWEEP_2026-09-16.md` §15.7. **Resolving the dirty
+tree is an owner decision**; none of it was committed by this pass.
+
 ---
 
 ## Superseded

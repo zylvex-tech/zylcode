@@ -1,0 +1,63 @@
+# ZylCode line-ending and diff normalisation
+#
+# WHY THIS EXISTS
+# ---------------
+# This repository is developed on Windows (primary target platform) with
+# `core.autocrlf=true` and, until now, no `.gitattributes`.
+#
+# Consequence observed on 2026-09-17: touching a single line in a file could
+# inflate the diff, and the working tree carried ~670 lines of pure
+# whitespace/formatting churn across 52 modified files (16% of all insertions).
+# That churn obscures real review signal and makes the dirty tree impossible to
+# attribute. See docs/governance/STATUS_SWEEP_2026-09-16.md §15.
+#
+# RULE: normalise to LF in the repository, always. Let the working tree be
+# whatever the platform prefers. Reviewers see semantic diffs, not EOL noise.
+
+# Default: text files checked in with LF.
+* text=auto eol=lf
+
+# --- Source code -----------------------------------------------------------
+*.rs    text eol=lf
+*.toml  text eol=lf
+*.json  text eol=lf
+*.yaml  text eol=lf
+*.yml   text eol=lf
+*.ts    text eol=lf
+*.tsx   text eol=lf
+*.js    text eol=lf
+*.css   text eol=lf
+*.html  text eol=lf
+
+# --- Documentation: normalise, and treat as prose for diff purposes --------
+*.md    text eol=lf
+*.txt   text eol=lf
+
+# --- Windows launchers: MUST stay CRLF or cmd.exe misparses them -----------
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+*.ps1   text eol=crlf
+
+# --- Binary: never touch, never diff --------------------------------------
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.pdf   binary
+*.db    binary
+*.db.bak binary
+*.exe   binary
+*.dll   binary
+*.so    binary
+*.dylib binary
+
+# --- Generated / vendored: collapse in diffs and file listings ------------
+target/            export-ignore
+node_modules/      export-ignore
+*.lock             -diff linguist-generated
+Cargo.lock         -diff linguist-generated
+pnpm-lock.yaml     -diff linguist-generated
+
+# --- Evidence artifacts: keep visible in diffs, but mark as generated -----
+docs/governance/** linguist-documentation

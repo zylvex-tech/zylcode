@@ -427,3 +427,168 @@ Three specific hazards were found in the same file, all worth a lint or a review
    appeared to mean "the wire format" in one module and "a retired format" in another. **Do not
    "clean up" the XML envelope in `pipeline.rs` or the benchmarks** — that format is current for
    artifacts. The two are unrelated contracts that happened to collide on a tag name.
+
+---
+
+## 15. Dirty-tree audit (2026-09-17) — blocker #2, characterised
+
+HEAD at audit: `8f751edbf89d11ad2d7daa15c558379e23ba8809` (identical to `origin/main`).
+This section answers *what the ~88 dirty entries actually are*, so the owner can decide
+commit / discard / quarantine per group. It does not resolve them.
+
+### 15.1 Composition
+
+| Measure | Value |
+|---|---|
+| Total dirty entries | **88** (55 `M` under `crates/`+`apps/`, 33 `??`) |
+| Modified tracked source files | **52** |
+| Raw delta (`git diff --shortstat crates/ apps/`) | **4157 insertions(+), 1545 deletions(-)** |
+| Whitespace-insensitive delta (`git diff -w`) | **3487 insertions(+), 875 deletions(-)** |
+| **Reformatting-only inflation** | **≈ 670 lines (16% of insertions) are pure formatting churn** |
+| Untracked source files | 3 (`commissioning_test.rs`, `performance.rs`, `system_integration.rs`) |
+
+Contributing factor: **`core.autocrlf=true` and no `.gitattributes`.** Every touched file emits
+`LF will be replaced by CRLF`, so a one-line edit inflates the diff. The 16% churn figure is a
+*floor* — it counts only lines that vanish entirely under `-w`.
+
+### 15.2 The 52 modified files fall into four workload classes
+
+| Class | What it is | Evidence | Roughly |
+|---|---|---|---|
+| **A. Substantive new implementation** | New modules & tool catalogs | `enhanced_bridge.rs` +776 (whitespace-insensitive), `hot_reload.rs` +186, `real_tools.rs` +74 (`RiskLevel`, `ToolSchema`), `builtin_skills.rs` +787/−158 | ~8 files |
+| **B. New tests** | `telemetry_audit_tests.rs` +158, `integration_test.rs` +120, plus assertions in `fault_injection.rs` | real `log_tool_invoke` / `log_retry` / `log_tool_result` calls | ~4 files |
+| **C. `impl Default` additions** | **17 added, 0 removed** — clippy `new_without_default` remediation | traced to untracked `fix_clippy_defaults.ps1` | ~15 files |
+| **D. Pure formatting/import-order churn** | `use` reordering, one-statement-per-line expansion | visible in every sampled file | ~25 files |
+
+**Class C is now redundant.** `cargo clippy --workspace --all-targets --offline -- -D warnings`
+**passes cleanly on the current tree**. Whatever the script chased, the tree is already
+clippy-clean with those impls in place — but the impls are mechanically generated and were never
+reviewed as a unit.
+
+### 15.3 What is genuinely good here — stated plainly
+
+This is not scratch state. The `enhanced_bridge.rs` tool catalog is real, compiling,
+clippy-clean code, and the new telemetry tests exercise real logger APIs. **The Computer-Use
+Engine was NOT extended** — `computer_use/` changes are **formatting-only** (`-w` diff shows
+only `use` reordering and `.await` line-wrapping; the 31 simulation markers and the five
+fabricated confidences at `vision_ai.rs:110,123,136,158,170` are **untouched**). That is the
+correct outcome given `docs/architecture/COMPUTER_USE_ENGINE.md` says *replace, do not extend*.
+
+```
+$ cargo check --workspace --all-targets --offline
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1m 23s     # ✅ compiles with the untracked modules
+$ cargo clippy --workspace --all-targets --offline -- -D warnings
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 4.49s     # ✅ zero warnings
+```
+
+### 15.4 Finding F — a retracted claim has re-entered the repository
+
+**This is the highest-value result of the dirty-tree audit.**
+
+`docs/PHASE1C_COMPLETION_REPORT.md:59` records the claim as **already removed**:
+
+> Removed unsupported claims (SOC 2, ISO 27001, `<100ms`, **156 tools**)
+
+The claim is **back**, in **eight** files, and it is **still false**:
+
+| File | Tracked? |
+|---|---|
+| `DEVELOPER_GUIDE.md` | untracked |
+| `PHASE3_COMPLETE.md` | untracked |
+| `PHASE3_SUMMARY.md` | untracked |
+| `phase4-implementation-plan.md` | untracked |
+| `PHASE4_SUMMARY.md` | untracked |
+| `USER_GUIDE.md` | untracked |
+| **`FINAL_SUMMARY.md`** | **TRACKED** (commit `29cc936`) |
+| `docs/PHASE1C_COMPLETION_REPORT.md` | tracked — but only as the *removal record* |
+
+**Ground truth, measured:**
+
+```
+$ grep -c 'ToolDefinition {' crates/zylcode-mcp/src/enhanced_bridge.rs        → 113   (HEAD: 28)
+$ grep -o 'id: "[a-z0-9._-]*"' ... | sort -u | wc -l                          → 112
+$ grep -c 'fn get_.*ToolCategory' ...                                          → 17
+$ ls categories referenced in EnhancedMcpBridge::new()                         → 16
+```
+
+**112 distinct tool IDs across 16 categories.** Not 156. The number was never true and was
+explicitly retracted, and it has now propagated into a **tracked** document (`FINAL_SUMMARY.md`)
+and into an untracked developer guide (574 lines) that reads as authoritative onboarding material.
+
+`FINAL_SUMMARY.md` **is** covered by the `README_INDEX.md` quarantine table, which limits the
+damage — but only for a reader who finds the index first. The untracked carriers have no such
+protection at all: `DEVELOPER_GUIDE.md` and `USER_GUIDE.md` are currently invisible to git,
+undeclared by any index, and contain the exact claim this project spent a phase removing.
+
+> **Rule this finding establishes.** A claim that has been *retracted* is more dangerous on
+> re-entry than a claim that was merely never made — because reviewers who remember the
+> retraction assume it stuck. Retractions must be enforced by a **grep-based check in CI**, not
+> by a line in a completion report.
+
+**A complication found while correcting it — `FINAL_SUMMARY.md` carries foreign work.** HEAD's
+version of this file is a *"Complete Project Summary & Next Steps"* (research findings, market
+sizing, a 24-week roadmap, pricing tiers). The working tree has replaced it **wholesale** with a
+different document, *"ZylCode Desktop App — Fixed and Running"*. The `156 tools` claim appears in
+**both** versions. My correction was applied to the working-tree version and **left uncommitted**:
+committing it would have published another session's unreviewed on-disk rewrite under a governance
+commit message. It is flagged here instead. The `156 tools` claim in the file remains uncorrected in
+git until that rewrite is adjudicated.
+
+### 15.5 Finding G — `DEEPSEEK_MASTER_PROMPT_V21.md` is clobbered (still open)
+
+The tracked, committed 522-line master work order has been overwritten in the working tree with a
+**156-line stale v1.0 copy of `ZYLCODE_COMMERCIAL_MODEL.md`** (469 deletions). It is missing the
+**v1.1 correction** — the §4-vs-§6 gate contradiction the owner caught and had fixed.
+
+```
+$ wc -l docs/governance/DEEPSEEK_MASTER_PROMPT_V21.md                       → 156   (expect 522)
+$ head -1 docs/governance/DEEPSEEK_MASTER_PROMPT_V21.md
+# ZYLCODE_COMMERCIAL_MODEL.md — ZylCode Commercial Model
+```
+
+The true original is intact at HEAD (`git show HEAD:docs/governance/DEEPSEEK_MASTER_PROMPT_V21.md`
+→ 522 lines). **Not reverted** — restoring it would silently destroy another session's in-flight
+edit if that edit is deliberate. **This is an owner decision.** Note the file *also* appears to be
+a mis-named artifact: a commercial-model draft living under the master-prompt filename.
+
+### 15.6 Finding H — untracked governance-colliding reports
+
+Sixteen untracked root `.md` files assert completion in the vocabulary this program reserved.
+Worst offenders by collision risk:
+
+| File | Lines | Problem |
+|---|---|---|
+| `PHASE3_COMPLETE.md` | 323 | "**Phase 3** Implementation Status: **COMPLETE**" — collides with governance Phase 3A–3B, which are **NOT STARTED** |
+| `PHASE4_COMPLETE.md` | 236 | "**Phase 4** Complete" — collides with governance Phase 4, **NOT STARTED** |
+| `INSTALLATION_SUMMARY.md` | 329 | "All Tests Passed!" — no command, no environment, no raw output |
+| `INSTALLATION_SUCCESS.md` | 321 | **UTF-16 encoded** (`ÿþ#` BOM) — mojibake for most tooling, undiffable |
+| `PHASE4_PROGRESS.md` / `PHASE4_SUMMARY.md` | 224 / 208 | Report "IN PROGRESS" under a conflicting "🎉 …Progress" title |
+
+Per Protocol §4.7 (phase numbers belong to the roadmap only) and §4.8 (superseded documents are
+provenance, never evidence), **these cannot be committed as-is.** They are a local-session
+vocabulary that predates the governance program.
+
+Also untracked and unaddressed: `mcp.tools.yaml` (6.3 KB tool config — referenced by anything?),
+`vector_cache.db.bak` (20 KB — **a stale vector-cache backup; the exact class of file that caused
+the §14 defect**), and 5 PowerShell diagnosis/test scripts (`diagnose.ps1`, `simple-diagnose.ps1`,
+`test-installation.ps1`, `test-simple.ps1`, `fix_clippy_defaults.ps1`) plus 4 `.bat` launchers.
+
+### 15.7 Recommended disposition (owner decision — not executed)
+
+| Group | Entries | Recommendation |
+|---|---|---|
+| Class A + B (implementation + tests) | ~12 files | **Review as a unit, then commit** under a named track — this is real work, but it is **not Phase 2A remediation** and must not be represented as progress on the ladder |
+| Class C (`impl Default` ×17) | ~15 files | Commit with A/B **or** revert; do not leave half-applied |
+| Class D (formatting churn) | ~25 files | Revert. No semantic content; inflates every future diff. Pairs with adding a **`.gitattributes`** |
+| Untracked completion reports | 16 files | **Do not commit.** Move to a local `_archive/` or delete. They carry retracted claims (Finding F) and phase-number collisions (Finding H) |
+| `vector_cache.db.bak` | 1 file | **Delete.** It is a stale artifact of the defect fixed in §14 |
+| `commissioning_test.rs` | 1 file | **Do not commit as a test** — it asserts nothing and returns `Ok(())` on failure (§14.6.2) |
+| `DEEPSEEK_MASTER_PROMPT_V21.md` | 1 file | **Owner decision** — restore from HEAD, or confirm the overwrite is intended |
+
+### 15.8 Effect on the blocker list
+
+Blocker #1 (`router.rs:1030`) — **closed**. Blocker #3 (clean workspace build outside the sandbox)
+— **still open**; this audit confirms the tree *checks* and *clippies* cleanly, but the sandbox
+still cannot *execute* the Tauri build script, so the build itself remains unobserved here.
+Blocker #2 — **now characterised, still open**, and reduced from "88 opaque entries" to the table
+in §15.7. Two latent defects were surfaced while doing it: **Findings F and G**.

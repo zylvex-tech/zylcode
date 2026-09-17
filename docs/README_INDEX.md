@@ -146,7 +146,40 @@ These are **decisions**, not defects I should resolve unilaterally:
 
 ---
 
-## 7. Maintenance
+## 7. Retracted claims — a standing check
+
+Some claims in this repository were **made, then retracted as unsupported, then made again**.
+`docs/PHASE1C_COMPLETION_REPORT.md:59` records the retraction:
+
+> Removed unsupported claims (SOC 2, ISO 27001, `<100ms`, **156 tools**)
+
+As of **2026-09-17** the `156 tools` claim is present in **eight** files, including the **tracked**
+`FINAL_SUMMARY.md`. It is still false: the measured figure is **112 distinct tool IDs across 16
+categories** (`crates/zylcode-mcp/src/enhanced_bridge.rs`).
+
+> **A retracted claim is more dangerous on re-entry than a claim never made** — reviewers who
+> remember the retraction assume it stuck.
+
+**Standing check.** Before any commit that touches documentation, run:
+
+```bash
+grep -rn '156 tools\|SOC 2\|ISO 27001' --include='*.md' . \
+  | grep -v '^\./\.workbuddy-ai' | grep -v 'PHASE1C_COMPLETION_REPORT'
+```
+
+Any hit outside the retraction record itself is a regression. This should be a CI step.
+
+### 7.1 Known retracted / unsupported claims
+
+| Claim | Retracted | Measured reality | Current carriers (2026-09-17) |
+|---|---|---|---|
+| `156 tools` | Phase 1C | **112** tool IDs, 16 categories | `FINAL_SUMMARY.md` (tracked), plus 7 untracked files |
+| `SOC 2`, `ISO 27001` | Phase 1C | No certification held | none found |
+| `<100ms` latency | Phase 1C | Not benchmarked under a stated budget | none found |
+
+---
+
+## 8. Maintenance
 
 When a root-level file gains a proper home in `docs/`, or a new legacy file appears, update §3 and §4
 in the same commit. This index is only useful if it is true.

@@ -258,6 +258,25 @@ The audit could not determine whether this predated `0ecea8e`, because the worki
 
 ### P1.10 — Commit or discard the working tree
 
+> **STATUS (2026-09-17): ⚠ CHARACTERISED, NOT RESOLVED.** The tree has since **grown to 88 entries**
+> (from 53). A full audit is in `STATUS_SWEEP_2026-09-16.md` §15 — composition, per-file change
+> volume, whitespace-churn quantification (≈670 lines, 16% of insertions, caused by
+> `core.autocrlf=true` with **no `.gitattributes`**), and a per-group disposition table (§15.7).
+>
+> **Verified this pass:** `cargo check --workspace --all-targets` → **PASS** (1m 23s, *including* the
+> untracked modules); `cargo clippy --workspace --all-targets -- -D warnings` → **PASS**, zero
+> warnings. So the tree is *coherent* — it is simply unreviewed and co-mingled with foreign work.
+>
+> **Two latent defects surfaced** (both new): **Finding F** — the retracted `156 tools` claim has
+> re-entered 8 files including tracked `FINAL_SUMMARY.md` (measured: 112 tools); **Finding G** —
+> `DEEPSEEK_MASTER_PROMPT_V21.md` is clobbered with a stale 156-line v1.0 commercial-model draft.
+>
+> **Resolution is an owner decision.** Recommended grouping: commit Classes A+B (implementation +
+> tests) under a *named track*, commit-or-revert Class C (17 `impl Default`), **revert** Class D
+> (formatting churn) and add `.gitattributes`, **do not commit** the 16 untracked completion reports
+> (they carry retracted claims and phase-number collisions per Protocol §4.7). Nothing was committed
+> by this pass. None of this is Phase 2A remediation and **must not be reported as ladder progress**.
+
 **Defect.** 53 modified tracked files, 36 untracked. This is not a reviewable state — it is why
 the audit could not attribute the failing test above.
 
