@@ -53,3 +53,7 @@ search_openai.py
 
 # Agent workspace (local memory + session state — never published)
 .workbuddy-ai/
+
+# Python (CI guard scripts)
+__pycache__/
+*.pyc

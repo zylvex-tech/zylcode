@@ -1,0 +1,91 @@
+# Retracted-claim baseline
+#
+# Pre-existing occurrences of claims already measured, found unsupported, and
+# retracted. These are ARCHIVED DEBT, not accepted practice.
+#
+# Format:  <claim>|<path>|<line>
+#
+# RULES FOR THIS FILE
+#   1. It may only SHRINK. Fix the document, then delete the line.
+#   2. Never add a line for a violation you just introduced. That is the exact
+#      defect this guard exists to prevent.
+#   3. If a file is edited and line numbers shift, re-run:
+#          python scripts/check_retracted_claims.py --baseline
+#      and review the diff -- do NOT blind-copy.
+#   4. An entry that stops reproducing fails the build as STALE, by design.
+#
+# WHY THE BACKLOG EXISTS
+#   Almost all of these live in untracked legacy status reports that predate the
+#   governance program (PHASE3_*, PHASE4_*, INSTALLATION_*, FINAL_SUMMARY).
+#   docs/README_INDEX.md already quarantines them by name. They are not published
+#   and not cited as evidence; the correct fix is archive-or-delete, which is an
+#   owner decision pending. Until then they stay baselined so that NEW
+#   occurrences are enforceable immediately.
+#
+#   Two files are not simply stale reports:
+#     - competitive-analysis.md and research-findings.md hits are competitor
+#       profiles (Tabnine, JetBrains) and forward-looking roadmap items
+#       ("obtain SOC 2 certification"). That content is legitimate; the
+#       heuristics cannot fully distinguish it. Prefer an allowlist over
+#       baselining these -- see RULES[*]["allow_paths"].
+#     - FINAL_SUMMARY.md is TRACKED. Its line numbers below will churn the moment
+#       its unreviewed on-disk rewrite is adjudicated.
+#
+# Canonical case: "156 tools"
+#   Retracted : docs/PHASE1C_COMPLETION_REPORT.md:59
+#   Reality   : 112 distinct tool IDs across 16 categories
+#               (crates/zylcode-mcp/src/enhanced_bridge.rs)
+#
+# Generated 2026-09-17 by: python scripts/check_retracted_claims.py --baseline
+# Total: 50 occurrence(s) across 12 file(s).
+#
+156 tools|DEVELOPER_GUIDE.md|29
+156 tools|DEVELOPER_GUIDE.md|147
+156 tools|FINAL_SUMMARY.md|161
+156 tools|FINAL_SUMMARY.md|173
+156 tools|INSTALLATION_SUMMARY.md|286
+156 tools|INSTALLATION_SUMMARY.md|296
+156 tools|PHASE3_COMPLETE.md|69
+156 tools|PHASE3_COMPLETE.md|162
+156 tools|PHASE3_COMPLETE.md|253
+156 tools|PHASE3_COMPLETE.md|277
+156 tools|PHASE3_COMPLETE.md|305
+156 tools|PHASE3_COMPLETE.md|316
+156 tools|PHASE3_SUMMARY.md|6
+156 tools|PHASE3_SUMMARY.md|7
+156 tools|PHASE3_SUMMARY.md|38
+156 tools|PHASE3_SUMMARY.md|49
+156 tools|PHASE3_SUMMARY.md|144
+156 tools|PHASE3_SUMMARY.md|172
+156 tools|PHASE3_SUMMARY.md|183
+156 tools|PHASE3_SUMMARY.md|200
+156 tools|PHASE4_SUMMARY.md|30
+156 tools|PHASE4_SUMMARY.md|46
+156 tools|USER_GUIDE.md|60
+156 tools|USER_GUIDE.md|369
+156 tools|phase4-implementation-plan.md|86
+156 tools|phase4-implementation-plan.md|202
+ISO 27001|FINAL_SUMMARY.md|215
+ISO 27001|PHASE4_COMPLETE.md|136
+ISO 27001|PHASE4_COMPLETE.md|195
+ISO 27001|PHASE4_COMPLETE.md|232
+ISO 27001|USER_GUIDE.md|405
+ISO 27001|competitive-analysis.md|231
+ISO 27001|production-deployment-plan.md|393
+ISO 27001|research-findings.md|757
+SOC 2|FINAL_SUMMARY.md|215
+SOC 2|PHASE4_COMPLETE.md|136
+SOC 2|PHASE4_COMPLETE.md|195
+SOC 2|PHASE4_COMPLETE.md|232
+SOC 2|USER_GUIDE.md|405
+SOC 2|competitive-analysis.md|231
+SOC 2|competitive-analysis.md|247
+SOC 2|competitive-analysis.md|466
+SOC 2|competitive-analysis.md|520
+SOC 2|competitive-analysis.md|614
+SOC 2|competitive-analysis.md|683
+SOC 2|phase4-implementation-plan.md|120
+SOC 2|production-deployment-plan.md|392
+SOC 2|research-findings.md|757
+SOC 2|research-findings.md|774
+SOC 2|research-findings.md|819

@@ -160,22 +160,44 @@ categories** (`crates/zylcode-mcp/src/enhanced_bridge.rs`).
 > **A retracted claim is more dangerous on re-entry than a claim never made** — reviewers who
 > remember the retraction assume it stuck.
 
-**Standing check.** Before any commit that touches documentation, run:
+**This is now enforced, not advised.** `scripts/check_retracted_claims.py` runs in CI
+(`.github/workflows/ci.yml`, step *Retracted-claim guard*). It fails the build on any **new**
+occurrence. Run it locally:
 
 ```bash
-grep -rn '156 tools\|SOC 2\|ISO 27001' --include='*.md' . \
-  | grep -v '^\./\.workbuddy-ai' | grep -v 'PHASE1C_COMPLETION_REPORT'
+python scripts/check_retracted_claims.py            # exit 1 on a new occurrence
+python scripts/check_retracted_claims.py --list      # the rule table
+python scripts/check_retracted_claims.py --baseline  # re-baseline after a line shift
 ```
 
-Any hit outside the retraction record itself is a regression. This should be a CI step.
+**Baseline.** The repository carries **50 pre-existing occurrences** across **12 files**, recorded in
+`scripts/retracted_claims_baseline.txt`. They are overwhelmingly in untracked legacy reports that
+this index already quarantines by name. The baseline **may only shrink**: an entry that stops
+reproducing is reported `STALE` and fails the run, so the backlog can neither grow back nor be
+quietly abandoned.
+
+**Adding a rule** requires both a retraction reference *and* the measurement that replaced the
+claim. A rule with only one is not admissible.
 
 ### 7.1 Known retracted / unsupported claims
 
-| Claim | Retracted | Measured reality | Current carriers (2026-09-17) |
+| Claim | Retracted | Measured reality | Baselined (2026-09-17) |
 |---|---|---|---|
-| `156 tools` | Phase 1C | **112** tool IDs, 16 categories | `FINAL_SUMMARY.md` (tracked), plus 7 untracked files |
-| `SOC 2`, `ISO 27001` | Phase 1C | No certification held | none found |
-| `<100ms` latency | Phase 1C | Not benchmarked under a stated budget | none found |
+| `156 tools` | Phase 1C | **112** tool IDs, 16 categories | **26** hits / 8 files |
+| `SOC 2` | Phase 1C | No certification held | **16** hits / 7 files (incl. competitor profiles) |
+| `ISO 27001` | Phase 1C | No certification held | **8** hits / 6 files (incl. competitor profiles) |
+| `<100ms` latency | Phase 1C | Not benchmarked under a stated budget | 0 |
+
+Verified with:
+
+```bash
+grep -v '^#' scripts/retracted_claims_baseline.txt | cut -d'|' -f1 | sort | uniq -c
+```
+
+**Note on `competitive-analysis.md` and `research-findings.md`:** their hits are *competitor*
+certifications (Tabnine, JetBrains) and forward-looking roadmap items ("obtain SOC 2"). That content
+is legitimate; the heuristics cannot fully separate it from a self-claim. Prefer a rule allowlist
+over baselining these, and delete the corresponding baseline lines when you do.
 
 ---
 

@@ -187,6 +187,34 @@ markers and the five fabricated confidences in `vision_ai.rs` are untouched, con
 Per-group disposition recommendations are in `STATUS_SWEEP_2026-09-16.md` §15.7. **Resolving the dirty
 tree is an owner decision**; none of it was committed by this pass.
 
+### Enforcement — the retracted-claim guard (2026-09-17, `STATUS_SWEEP_2026-09-16.md` §16)
+
+Finding F is now **mechanically enforced** rather than advised:
+
+| Artifact | Purpose |
+|---|---|
+| `scripts/check_retracted_claims.py` | Fails CI on any **new** occurrence of a retracted claim |
+| `scripts/retracted_claims_baseline.txt` | The **archived debt**: 50 occurrences / 12 files. May only shrink |
+| `.github/workflows/ci.yml` | Step *Retracted-claim guard*, runs on every push and PR |
+
+**Baseline discipline.** An entry that stops reproducing is reported `STALE` and **fails the run** —
+so the backlog can neither regrow nor be quietly abandoned. The only way to remove a line is to fix
+the document.
+
+**Falsification-proven** (§16.3): clean → exit 0; new regression → exit 1 with all three claims
+named; stale baseline entry → exit 1. A check that cannot fail is not a check.
+
+**Backlog: 26 × `156 tools`, 16 × `SOC 2`, 8 × `ISO 27001`.** Bounded, now.
+
+### Open owner decisions
+
+1. **Findings F/G** — whether to restore `DEEPSEEK_MASTER_PROMPT_V21.md` from HEAD, and how to
+   adjudicate the `FINAL_SUMMARY.md` on-disk rewrite.
+2. **Dirty-tree disposition** — `STATUS_SWEEP_2026-09-16.md` §15.7.
+3. **The 12 baselined carriers** — archive or delete the untracked legacy reports.
+4. **Blocker #3** — a single clean `cargo build --workspace` on a machine that can execute build
+   scripts.
+
 ---
 
 ## Superseded

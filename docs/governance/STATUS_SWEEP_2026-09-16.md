@@ -592,3 +592,70 @@ Blocker #1 (`router.rs:1030`) — **closed**. Blocker #3 (clean workspace build 
 still cannot *execute* the Tauri build script, so the build itself remains unobserved here.
 Blocker #2 — **now characterised, still open**, and reduced from "88 opaque entries" to the table
 in §15.7. Two latent defects were surfaced while doing it: **Findings F and G**.
+
+---
+
+## 16. Enforcement — the retracted-claim guard (2026-09-17)
+
+Finding F established the rule: *a retracted claim is more dangerous on re-entry than a claim never
+made.* A line in a completion report does not enforce that. §16 makes it mechanical.
+
+### 16.1 What was built
+
+| Artifact | Purpose |
+|---|---|
+| `scripts/check_retracted_claims.py` | The guard. Fails on any **new** occurrence of a retracted claim. |
+| `scripts/retracted_claims_baseline.txt` | The **archived debt**: 50 pre-existing occurrences across 12 files. May only shrink. |
+| `.github/workflows/ci.yml` → *Retracted-claim guard* | Runs the guard on every push and PR. |
+
+Each rule carries three mandatory fields: the **claim**, the **retraction reference**
+(`docs/PHASE1C_COMPLETION_REPORT.md:59`), and the **measurement that replaced it**
+(`112 distinct tool IDs across 16 categories`). A rule without both is inadmissible.
+
+### 16.2 Design decisions worth recording
+
+1. **Baseline may only shrink.** An entry that stops reproducing is reported `STALE` and **fails
+   the run**. This prevents the two failure modes that would otherwise appear: a backlog that
+   silently regrows, and a backlog that is quietly abandoned. Deleting the documents is the only
+   way to remove a line.
+2. **Heuristic discrimination, not blanket matching.** Three false-positive classes were found and
+   handled: text that *negates* the claim, text that *discusses* the retraction, and compliance
+   terms describing a **third party** (Tabnine, JetBrains) or a **future objective** ("obtain SOC 2
+   certification"). Numeric claims like `156 tools` are never third-party, so they have no excuse
+   path — every hit is a defect.
+3. **The guard excludes itself.** `SELF_PATHS` keeps the guard and its baseline out of the scan;
+   their entire purpose is to name the claims.
+
+### 16.3 Falsification evidence (the guard can fail)
+
+A check that cannot fail is not a check. Three tests were run against synthetic repositories:
+
+| Test | Input | Expected | Observed |
+|---|---|---|---|
+| **A** | clean document + correct baseline | exit 0 | ✅ `OK: no NEW retracted claims` — exit 0 |
+| **B** | new file asserting `156 tools` + `SOC 2` + `ISO 27001` | exit 1, all three named | ✅ 3 new occurrences reported — exit 1 |
+| **C** | baseline containing a non-existent entry | exit 1, reported STALE | ✅ `STALE: 156 tools\|NONEXISTENT_FILE.md\|999` — exit 1 |
+
+Also verified: `python -m py_compile` (syntax), and the CI workflow parses as valid YAML with the
+guard step present as step 11 of 12.
+
+### 16.4 Current state of the backlog
+
+```
+$ python scripts/check_retracted_claims.py
+OK: no NEW retracted claims (50 pre-existing baselined occurrence(s), 50 baseline line(s)).
+
+$ grep -v '^#' scripts/retracted_claims_baseline.txt | cut -d'|' -f1 | sort | uniq -c
+     26 156 tools
+     16 SOC 2
+      8 ISO 27001
+```
+
+**12 files** carry the backlog. Eight of them are untracked legacy reports already quarantined by
+`README_INDEX.md`. Two (`competitive-analysis.md`, `research-findings.md`) are competitor profiles
+and roadmap items — legitimate content the heuristics cannot fully separate; they should be
+**allowlisted** rather than baselined, which will remove ~9 lines. One (`FINAL_SUMMARY.md`) is
+**tracked**, and its baseline line numbers will churn the moment its unreviewed on-disk rewrite is
+adjudicated (Finding F).
+
+**The backlog is now bounded.** It cannot grow, and it cannot be forgotten.
