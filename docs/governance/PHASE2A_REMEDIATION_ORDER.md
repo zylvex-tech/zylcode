@@ -214,7 +214,34 @@ With a clean index, `Precision@10 ≥ 0.25` is not a meaningful bar — a keywor
 
 ### P1.9 — Resolve the failing test
 
-**Defect.** `cargo test --workspace` → `225 passed; 1 failed`:
+> **STATUS (2026-09-17): ✔ RESOLVED.** See `STATUS_SWEEP_2026-09-16.md` §14 for the evidence.
+> The diagnosis below was **partly wrong** — the offline path was not broken. Corrected summary:
+>
+> **What was actually wrong.** The test asserted a **retired contract** (the `<zylcode-response>` XML
+> envelope) while the live wire format for dispatch is `AgentDecision` **JSON**. Worse, the test
+> **could not have detected either state**: `TokenRouter::new()` resolved a SQLite vector cache at
+> `./vector_cache.db` relative to the working directory, and a stale cache satisfied the prompt — so
+> the response came from cache and `synthetic_response()` was never executed. Proven by injecting a
+> deliberate corruption into `synthetic_response()`; the test **still passed**.
+>
+> **Fix.** Added `TokenRouter::without_vector_cache()` (hermetic, no filesystem access) and changed
+> the assertion from a substring match to a real **parse** into `AgentDecision`. Falsified: with the
+> corrupted contract the test now fails with `trailing characters at line 1 column 222`.
+>
+> **Answer to the audit's open question — pre-existing?** The failure was **present in `0ecea8e`**
+> (`git show HEAD:` confirms both the JSON body and the XML assertion), so it **predates the audit**
+> and was not introduced by the remediation attempt. It was also **not** caused by the dirty tree,
+> so P1.10 is not a precondition for this item as the audit assumed.
+>
+> **Not a consequence:** `docs/AIR_GAPPED.md` — the offline/air-gapped dispatch path **works**. Do not
+> cite this test failure as evidence that offline operation is broken.
+>
+> **New hazard recorded for review** (not a P1.9 defect): `crates/zylcode-core/tests/commissioning_test.rs`
+> is a `#[tokio::test]` that attempts real provider inference and **returns `Ok(())` on every path**,
+> asserting nothing. Under CI's `--all-targets` it would pass unconditionally. Do not commit it as a
+> test target without conversion (see `STATUS_SWEEP_2026-09-16.md` §14.6).
+
+**Original defect text, retained for provenance.** `cargo test --workspace` → `225 passed; 1 failed`:
 
 ```
 router::tests::synthetic_offline_dispatch_returns_parseable_payload
@@ -222,12 +249,12 @@ router::tests::synthetic_offline_dispatch_returns_parseable_payload
   assertion failed: text.contains("<zylcode-response>")
 ```
 
-The synthetic offline provider does not emit the `<zylcode-response>` envelope the router's own
-test requires. This breaks the **offline / air-gapped** path (`docs/AIR_GAPPED.md`) — a path that
-matters for a local-first product.
+The original analysis read this as the synthetic offline provider failing to emit the
+`<zylcode-response>` envelope the test requires, and inferred that this broke the offline /
+air-gapped path (`docs/AIR_GAPPED.md`). **The inference was incorrect** — see the status block above.
 
-The audit could not determine whether this predates `0ecea8e`, because the working tree was dirty
-(see P1.10). Fix it, and state plainly whether it was pre-existing.
+The audit could not determine whether this predated `0ecea8e`, because the working tree was dirty
+(see P1.10). It is now known: **it predated `0ecea8e`.**
 
 ### P1.10 — Commit or discard the working tree
 

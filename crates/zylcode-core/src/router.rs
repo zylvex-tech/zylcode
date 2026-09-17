@@ -60,7 +60,7 @@ impl ModelProvider {
     }
 }
 
-/// Provider kind for Phase 7.2 multi-provider routing.
+/// Provider kind for multi-provider routing (track: MULTIPROVIDER-1).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ProviderKind {
@@ -202,7 +202,7 @@ pub struct RouterConfig {
     /// Per-provider base URL overrides.
     #[serde(default)]
     pub base_url_overrides: std::collections::HashMap<String, String>,
-    /// Per-provider configurations for the multi-provider router (Phase 7.2).
+    /// Per-provider configurations for the multi-provider router (track: MULTIPROVIDER-1).
     #[serde(default = "default_provider_configs")]
     pub provider_configs: Vec<ProviderConfig>,
     /// Request timeout in milliseconds (applies to all providers).
@@ -524,6 +524,32 @@ impl TokenRouter {
         })
     }
 
+    /// Construct a router with **no persistent vector cache**.
+    ///
+    /// `new()` and `with_metrics()` both resolve the cache path via
+    /// `VectorCacheStore::with_default_path()`, which falls back to `./vector_cache.db`
+    /// relative to the process working directory. That makes any dispatch result depend
+    /// on ambient filesystem state: a stale cache on disk will satisfy a prompt from a
+    /// previous run, so a test can pass without ever exercising the code path it claims
+    /// to test (observed directly — a deliberately corrupted `synthetic_response` was
+    /// still "returned" from cache).
+    ///
+    /// Use this constructor in tests and in any caller that requires deterministic
+    /// behaviour. It performs no filesystem access.
+    pub fn without_vector_cache(config: RouterConfig) -> Result<Self> {
+        let http = reqwest::Client::builder()
+            .timeout(Duration::from_millis(config.timeout_ms))
+            .build()
+            .context("failed to build HTTP client")?;
+        Ok(Self {
+            config,
+            metrics: Arc::new(TokenMetrics::default()),
+            cache: Arc::new(SpeculativeCache::with_defaults()),
+            http,
+            vector_cache: None,
+        })
+    }
+
     pub fn with_cache(config: RouterConfig, cache: Arc<SpeculativeCache>) -> Result<Self> {
         let http = reqwest::Client::builder()
             .timeout(Duration::from_millis(config.timeout_ms))
@@ -569,10 +595,10 @@ impl TokenRouter {
 
     /// Dispatch a prompt with a system preamble, applying fallback on
     /// rate-limit (429) or transient 5xx errors.
-    /// Adaptive trimming + Phase 8.1 context compression applied first, then
+    /// Adaptive trimming + CTX-COMPRESSION context compression applied first, then
     /// speculative cache is probed before any HTTP egress.
     pub async fn dispatch_prompt(&self, prompt: &str, system: &str) -> Result<String> {
-        // Phase 8.1: Context compression against token budget before provider dispatch.
+        // CTX-COMPRESSION: Context compression against token budget before provider dispatch.
         let budget = self.config.context_window_tokens as usize;
         let (prompt_owned, system_owned) = {
             let est = |s: &str| s.len().div_ceil(4);
@@ -604,7 +630,7 @@ impl TokenRouter {
             return Ok(cached);
         }
 
-        // Phase 8.2: vector cache similarity retrieval (offline-capable, before remote egress)
+        // VECTOR-CACHE: vector cache similarity retrieval (offline-capable, before remote egress)
         if let Some(vstore) = &self.vector_cache {
             let emb = mock_embed(prompt, 32);
             match vstore.find_similar(&emb, 0.88) {
@@ -646,7 +672,7 @@ impl TokenRouter {
             let out = (synthetic.len() / 4) as u64;
             self.metrics.record_usage(inp, out);
             self.cache.insert(cache_key, synthetic.clone());
-            // Phase 8.2: persist synthetic response to vector cache asynchronously (best-effort)
+            // VECTOR-CACHE: persist synthetic response to vector cache asynchronously (best-effort)
             if let Some(vstore) = &self.vector_cache {
                 let emb = mock_embed(prompt, 32);
                 if let Err(e) = vstore.insert_entry(prompt, &synthetic, &emb) {
@@ -998,6 +1024,7 @@ fn is_retryable(err: &anyhow::Error) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::agent_protocol::AgentDecision;
 
     #[test]
     fn default_router_config_has_sensible_models() {
@@ -1022,12 +1049,28 @@ mod tests {
     #[tokio::test]
     async fn synthetic_offline_dispatch_returns_parseable_payload() {
         let cfg = RouterConfig::default();
-        let router = TokenRouter::new(cfg).unwrap();
+        // Hermetic: no persistent vector cache. Using `new()` here made the result depend
+        // on whatever `./vector_cache.db` existed on the machine — a stale entry would
+        // satisfy the prompt and the test would pass without exercising this path at all.
+        let router = TokenRouter::without_vector_cache(cfg).unwrap();
         let text = router
             .dispatch_prompt("build a counter", "you are a code generator")
             .await
             .unwrap();
-        assert!(text.contains("<zylcode-response>"));
+
+        // The synthetic offline path must emit a payload that the agent protocol can
+        // actually consume. The contract is AgentDecision JSON (see `agent.rs`, which
+        // instructs the model to "respond with valid JSON matching the AgentDecision
+        // protocol"), NOT the legacy `<zylcode-response>` XML envelope. Asserting the
+        // real contract — a successful parse — is stronger than a substring match,
+        // because a substring match cannot catch a payload the consumer would reject.
+        let decision: AgentDecision = serde_json::from_str(text.trim()).unwrap_or_else(|e| {
+            panic!("synthetic response is not a valid AgentDecision: {e}\npayload: {text}")
+        });
+        assert!(
+            matches!(decision, AgentDecision::Complete { .. }),
+            "synthetic offline dispatch must complete the turn, got: {decision:?}"
+        );
         assert!(text.contains("build a counter"));
     }
 

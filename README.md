@@ -529,24 +529,14 @@ cargo bench
 ### Test Coverage
 
 > **This section previously claimed "Total: 32 tests passing" across named modules.** That figure
-> was stale by an order of magnitude and omitted a failure. Corrected below.
+> was stale by an order of magnitude and omitted a failure. It was then corrected to report a real
+> failure. **That failure is now fixed**, and the correction history is kept visible below.
 
 | Suite | Count | Status |
 |---|---|---|
 | Test attributes across `crates/` | **341** | — |
-| `zylcode-core` unit tests | 226 | ⚠️ **1 failing** |
-
-Known failing test:
-
-```
-router::tests::synthetic_offline_dispatch_returns_parseable_payload
-  panicked at crates\zylcode-core\src\router.rs:1030:9:
-  assertion failed: text.contains("<zylcode-response>")
-```
-
-The synthetic offline provider does not emit the `<zylcode-response>` envelope that the router's
-own test requires — i.e. the **offline / air-gapped dispatch path is currently broken**. This is
-tracked as remediation item **P1.9** in the Phase 2A remediation order.
+| `zylcode-core` unit tests | 226 | ✅ **passing** |
+| `zylcode-mcp` unit tests | 35 | ✅ **passing** |
 
 Counts are produced with:
 
@@ -556,6 +546,35 @@ cargo test --workspace
 ```
 
 Per `ZYLCODE_CAPABILITY_MODEL.md` §3.2, a count names and scopes what it counts.
+
+#### Correction log — `router.rs` offline dispatch test
+
+A previous revision of this section reported one failing test and concluded:
+
+> *"The synthetic offline provider does not emit the `<zylcode-response>` envelope that the router's
+> own test requires — i.e. the **offline / air-gapped dispatch path is currently broken**."*
+
+**That conclusion was wrong, and the way it was wrong is instructive.** The offline path was working.
+What was broken was the *test*, in two ways:
+
+1. **It asserted a retired contract.** The live wire format is `AgentDecision` JSON — `agent.rs`
+   instructs the model to respond with JSON matching that protocol. The test still substring-matched
+   the older `<zylcode-response>` XML envelope. (Note: that envelope is **still current for artifact
+   parsing** in `pipeline.rs` — two unrelated contracts that collide on a tag name. Do not "clean up"
+   the XML there.)
+2. **It could not have tested anything.** `TokenRouter::new()` resolved a SQLite vector cache at
+   `./vector_cache.db` relative to the working directory, and a stale cache satisfied the prompt — so
+   the response came from cache and `synthetic_response()` was never called. Proven by injecting a
+   deliberate corruption into `synthetic_response()`: the test **still passed**.
+
+The fix adds `TokenRouter::without_vector_cache()`, a hermetic constructor performing no filesystem
+access, and the test now **parses** the payload into `AgentDecision` rather than matching a substring —
+strictly stronger, since a substring match cannot catch a payload the consumer would reject.
+
+Re-verified by falsification: with the corrupted contract the test now **fails**
+(`synthetic response is not a valid AgentDecision: trailing characters at line 1 column 222`).
+
+Full detail: `docs/governance/STATUS_SWEEP_2026-09-16.md` §14.
 
 ---
 

@@ -5,6 +5,11 @@
 **Head at sweep:** `1faf90944a132fcb008c9a1dcad19f85286c3628` (identical to `origin/main`)
 **Verdict:** **NOT GREEN.** One committed test failure and one unstarted remediation block the ladder.
 
+> **UPDATE (2026-09-17) — see §14.** The committed test failure reported below has been **FIXED**, and
+> a deeper defect beneath it was found: the test was reading a **persisted `./vector_cache.db`**, so it
+> could pass without exercising its own code path. Both are resolved. **The suite is green
+> (261 passed, 0 failed).** Phase 2A remediation remains unstarted — the ladder is unchanged.
+
 ---
 
 ## 1. Where we are right now — one paragraph
@@ -312,3 +317,113 @@ which has not been started.
 - **`REMOTE_CI = BLOCKED_EXTERNAL`** per the foundation plan; the local red test is independent of that.
 - **Where this sweep disagrees with `ARCHITECTURE_V2.md` §9, that document wins** — it is the
   authoritative rung table, and this sweep did not find it wrong.
+
+---
+
+## 13. Rung and status boards — unchanged
+
+The sweep did not find `ARCHITECTURE_V2.md` §9 or the roadmap §2 status board wrong. Consult them
+directly; they remain authoritative. Highest rung in the repository: **R3**. Nothing is R4 or R5.
+
+---
+
+## 14. UPDATE 2026-09-17 — the failing test is fixed, and the defect beneath it
+
+### 14.1 What was fixed
+
+The `router.rs:1030` failure reported in §4 is **resolved**. The fix was **not** a cosmetic assertion
+swap; investigation revealed the test was not testing what it claimed.
+
+**Root cause, corrected.** The original diagnosis in §4 ("a stale contract assertion") was right but
+**incomplete**. The deeper defect is that the test was **reading a persisted SQLite vector cache**:
+
+`TokenRouter::new()` calls `VectorCacheStore::with_default_path()`, which resolves to
+`$ZYLCODE_VECTOR_CACHE_PATH` → `~/.zylcode/vector_cache.db` → **`./vector_cache.db`** relative to the
+process working directory. A pre-existing `vector_cache.db` (untracked, 20 KB, dated Sep 15) was
+present in the repo root. The test's prompt therefore returned a **cached response from a previous
+run**, and the code path the test claims to exercise was never reached.
+
+**This was proven by falsification.** A deliberate corruption was injected into
+`synthetic_response()` (appending `"NOT JSON"`), which must break the contract. The test **still
+passed** — the corrupt function was never called, because the cache answered first. Re-running with
+`ZYLCODE_VECTOR_CACHE_PATH` pointed at a fresh path caused the same corruption to **fail** correctly.
+A test whose result depends on untracked local filesystem state is not evidence.
+
+### 14.2 The fix — two parts
+
+**Part 1 — a hermetic constructor.** Added `TokenRouter::without_vector_cache(config)`, which performs
+no filesystem access. `new()` and `with_metrics()` are unchanged for production callers; the new
+constructor exists because ambient cache state must not be reachable from a test.
+
+**Part 2 — the test now asserts the real contract.** It previously substring-matched
+`"<zylcode-response>"`, an **XML envelope that is no longer the protocol**. The live contract is
+`AgentDecision` JSON — `agent.rs:1447` instructs the model to *"respond with valid JSON matching the
+AgentDecision protocol"*, and `pipeline.rs:159` consumes `dispatch_prompt` output. The test now
+**parses** the payload into `AgentDecision` and asserts the `Complete` variant. A parse is strictly
+stronger than a substring match: a substring match cannot catch a payload the consumer would reject.
+
+### 14.3 Falsification evidence (A11 — assert effect, not success)
+
+| Step | Condition | Expected | Observed |
+|---|---|---|---|
+| 1 | Clean contract, stale cache present | PASS | ✅ `1 passed` |
+| 2 | **Corrupted** contract, stale cache present | **FAIL** | ✅ `synthetic response is not a valid AgentDecision: trailing characters at line 1 column 222` |
+| 3 | Clean contract, full suite | PASS | ✅ `226 passed; 0 failed` + `35 passed; 0 failed` |
+
+Step 2 is the one that matters. Before the fix, the same corruption **passed silently**. After it, the
+test fails as it must.
+
+### 14.4 Suite status
+
+```
+running 226 tests
+test result: ok. 226 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 13.20s
+running 35 tests
+test result: ok. 35 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.33s
+```
+
+**Blocker #1 from §11 is cleared.** The committed tree is green.
+
+### 14.5 What this changes for Phase 2A
+
+**Nothing yet — and it is important not to read this as progress on the phase.** The fix restores a
+*working baseline*, which is a precondition for the re-audit, not a remediation item. The audit's
+findings stand unchanged: **0 of 10 remediation items complete**, P0-1 (`should_exclude()`
+normalisation + the `ignore` crate) still unimplemented, and the Intelligence Graph still has zero
+product integration. Phase 2A remains at **R2**.
+
+Three items from §11 remain open before a re-audit is possible:
+
+1. ~~Fix `router.rs:1030`~~ — **DONE** (§14).
+2. **Resolve the dirty tree** — still open, and still growing.
+3. **One clean `cargo build --workspace` outside the sandbox** — still open. This sweep could not
+   observe it.
+
+### 14.6 A generalisable rule this uncovered
+
+> **A test that reads persisted local state is not a test.**
+
+Three specific hazards were found in the same file, all worth a lint or a review checklist:
+
+1. **Ambient filesystem dependency.** `TokenRouter::new()` resolves a cache path relative to the
+   process working directory. Any test using it inherits whatever is on disk. Tests must construct
+   hermetic instances, or the cache path must be injectable.
+2. **A test that cannot fail.** `crates/zylcode-core/tests/commissioning_test.rs` reaches a real
+   provider (Ollama) and then **returns `Ok(())` on every path**, including failure — it prints emoji
+   status and asserts nothing. Under `ci.yml:77` (`cargo test --workspace --all-targets`) it would
+   pass unconditionally and green-light nothing. It is a **commissioning script**, not a test, and its
+   name overstates it. It is currently untracked; **do not commit it as a test target** without
+   converting it into either (a) a `#[ignore]`-gated test that asserts real outcomes, or (b) a script
+   outside `tests/`.
+3. **Two different "protocols" share one tag name — a genuine trap, but not a defect.** The
+   `<zylcode-response>` envelope is **still live and correct** for *artifact* parsing:
+   `ArtifactPipeline::parse_artifacts` (pipeline.rs:286) scans `<artifact>` tags inside that envelope
+   with a `memchr` scanner, the fallback to bare markdown fences is intentional, and the format is
+   covered by a passing test (pipeline.rs:648). The benchmarks in `benches/parse.rs` and
+   `benches/router_cache.rs` are therefore **valid** — they measure live code.
+
+   The defect was narrower and is now fixed: the **router's** `synthetic_response()` had been migrated
+   to `AgentDecision` **JSON** while its test still asserted the **XML** envelope. So the same tag
+   appeared to mean "the wire format" in one module and "a retired format" in another. **Do not
+   "clean up" the XML envelope in `pipeline.rs` or the benchmarks** — that format is current for
+   artifacts. The two are unrelated contracts that happened to collide on a tag name.
