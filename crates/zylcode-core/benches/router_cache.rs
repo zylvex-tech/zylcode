@@ -4,8 +4,27 @@ use std::time::Duration;
 use tokio::runtime::Runtime;
 use zylcode_core::pipeline::ArtifactPipeline;
 use zylcode_core::router::{
-    cache::SpeculativeCache, trim_to_window, ContextTrim, RouterConfig, TokenRouter,
+    cache::SpeculativeCache, trim_to_window, ContextTrim, ModelProvider, RouterConfig, TokenRouter,
 };
+
+/// Router configuration for benchmarks that measure router *mechanics* (cache
+/// behaviour, trimming, dispatch bookkeeping) rather than upstream provider
+/// latency.
+///
+/// The default configuration is `primary = OpenRouter`, which reads
+/// `OPENROUTER_API_KEY` from the ambient environment. Any machine with that
+/// variable set — including the placeholder value shipped in `.env.example` —
+/// takes the router off the offline fast path and onto the network, where the
+/// call fails and `.unwrap()` panics. Pinning the explicit `SyntheticOffline`
+/// provider makes these benchmarks deterministic, credential-independent and
+/// network-free, which is what they are actually trying to measure.
+fn synthetic_config() -> RouterConfig {
+    RouterConfig {
+        primary_provider: ModelProvider::SyntheticOffline,
+        fallback_provider: ModelProvider::SyntheticOffline,
+        ..RouterConfig::default()
+    }
+}
 
 /// Generate a multi-megabyte artifact payload for stress testing
 fn generate_large_payload(num_artifacts: usize, artifact_size_kb: usize) -> String {
@@ -28,18 +47,22 @@ fn bench_parse_artifacts(c: &mut Criterion) {
     for num_artifacts in [1, 5, 10, 20, 50].iter() {
         let raw = generate_large_payload(*num_artifacts, 1); // 1KB each
         group.throughput(Throughput::Bytes(raw.len() as u64));
-        group.bench_with_input(BenchmarkId::new("xml_artifacts", num_artifacts), &raw, |b, input| {
-            b.iter(|| black_box(ArtifactPipeline::parse_artifacts(black_box(input))))
-        });
+        group.bench_with_input(
+            BenchmarkId::new("xml_artifacts", num_artifacts),
+            &raw,
+            |b, input| b.iter(|| black_box(ArtifactPipeline::parse_artifacts(black_box(input)))),
+        );
     }
 
     // Test different artifact sizes with fixed count
     for artifact_size_kb in [1, 4, 16, 64, 256].iter() {
         let raw = generate_large_payload(10, *artifact_size_kb);
         group.throughput(Throughput::Bytes(raw.len() as u64));
-        group.bench_with_input(BenchmarkId::new("xml_size_kb", artifact_size_kb), &raw, |b, input| {
-            b.iter(|| black_box(ArtifactPipeline::parse_artifacts(black_box(input))))
-        });
+        group.bench_with_input(
+            BenchmarkId::new("xml_size_kb", artifact_size_kb),
+            &raw,
+            |b, input| b.iter(|| black_box(ArtifactPipeline::parse_artifacts(black_box(input)))),
+        );
     }
 
     group.finish();
@@ -53,9 +76,11 @@ fn bench_parse_fences(c: &mut Criterion) {
             .map(|i| format!("```rust\npub fn f{}() {{}}\n```\n", i))
             .collect::<String>();
         group.throughput(Throughput::Bytes(raw.len() as u64));
-        group.bench_with_input(BenchmarkId::new("fences_count", num_fences), &raw, |b, input| {
-            b.iter(|| black_box(ArtifactPipeline::parse_artifacts(black_box(input))))
-        });
+        group.bench_with_input(
+            BenchmarkId::new("fences_count", num_fences),
+            &raw,
+            |b, input| b.iter(|| black_box(ArtifactPipeline::parse_artifacts(black_box(input)))),
+        );
     }
     group.finish();
 }
@@ -87,13 +112,15 @@ fn bench_speculative_cache_hit(c: &mut Criterion) {
     for capacity in [16, 64, 256, 1024].iter() {
         let cache = Arc::new(SpeculativeCache::new(*capacity, Duration::from_secs(600)));
         let rt = Runtime::new().unwrap();
-        let cfg = RouterConfig::default();
+        let cfg = synthetic_config();
         let router = TokenRouter::with_cache(cfg, Arc::clone(&cache)).unwrap();
 
         // Prime the cache
         rt.block_on(async {
             for i in 0..*capacity {
-                let _ = router.dispatch_prompt(&format!("prompt {i}"), "system").await;
+                let _ = router
+                    .dispatch_prompt(&format!("prompt {i}"), "system")
+                    .await;
             }
         });
 
@@ -117,8 +144,10 @@ fn bench_speculative_cache_miss(c: &mut Criterion) {
     let mut group = c.benchmark_group("speculative_cache_miss");
 
     for capacity in [16, 64, 256, 1024].iter() {
-        let cfg = RouterConfig::default();
-        let router = TokenRouter::new(cfg).unwrap();
+        let cfg = synthetic_config();
+        // `without_vector_cache` avoids depending on whatever `./vector_cache.db`
+        // happens to exist on the machine.
+        let router = TokenRouter::without_vector_cache(cfg).unwrap();
         let mut i = 0u64;
 
         group.bench_with_input(
@@ -129,7 +158,11 @@ fn bench_speculative_cache_miss(c: &mut Criterion) {
                     let rt = Runtime::new().unwrap();
                     i += 1;
                     rt.block_on(async {
-                        black_box(r.dispatch_prompt(&format!("miss prompt {i}"), "system").await.unwrap());
+                        black_box(
+                            r.dispatch_prompt(&format!("miss prompt {i}"), "system")
+                                .await
+                                .unwrap(),
+                        );
                     })
                 })
             },
@@ -142,8 +175,8 @@ fn bench_router_dispatch_synthetic(c: &mut Criterion) {
     let mut group = c.benchmark_group("router_dispatch_synthetic");
 
     for prompt_kb in [1, 4, 16, 64].iter() {
-        let cfg = RouterConfig::default();
-        let router = TokenRouter::new(cfg).unwrap();
+        let cfg = synthetic_config();
+        let router = TokenRouter::without_vector_cache(cfg).unwrap();
         let prompt = "x".repeat(prompt_kb * 1024);
         group.throughput(Throughput::Bytes(prompt.len() as u64));
 
@@ -218,7 +251,13 @@ fn bench_cache_hash_key(c: &mut Criterion) {
             BenchmarkId::new("prompt_kb", prompt_kb),
             &(prompt, system, model),
             |b, (p, s, m)| {
-                b.iter(|| black_box(SpeculativeCache::hash_key(black_box(p), black_box(s), black_box(m))))
+                b.iter(|| {
+                    black_box(SpeculativeCache::hash_key(
+                        black_box(p),
+                        black_box(s),
+                        black_box(m),
+                    ))
+                })
             },
         );
     }

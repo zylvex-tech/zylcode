@@ -95,29 +95,29 @@ impl InputController {
             
             // In a real implementation, this would execute the event
             match &event.data {
-                InputEventData::MouseMove { x, y } => {
+                InputEventData::MouseMove { x: _, y: _ } => {
                     // Simulate mouse move
                 }
-                InputEventData::MouseClick { x, y, button } => {
+                InputEventData::MouseClick { x: _, y: _, button: _ } => {
                     // Simulate mouse click
                 }
-                InputEventData::KeyPress { key, modifiers } => {
+                InputEventData::KeyPress { key: _, modifiers: _ } => {
                     // Simulate key press
                 }
-                InputEventData::KeyType { text } => {
+                InputEventData::KeyType { text: _ } => {
                     // Simulate text typing
                 }
-                InputEventData::Clipboard { content } => {
+                InputEventData::Clipboard { content: _ } => {
                     // Simulate clipboard operation
                 }
-                InputEventData::Window { id, action } => {
+                InputEventData::Window { id: _, action: _ } => {
                     // Simulate window action
                 }
             }
         }
         
         // Update stats
-        let duration = start.elapsed().as_millis() as u64;
+        let _duration = start.elapsed().as_millis() as u64;
         {
             let mut stats = self.stats.write().unwrap();
             stats.playback_count += 1;

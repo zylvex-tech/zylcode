@@ -659,3 +659,129 @@ and roadmap items — legitimate content the heuristics cannot fully separate; t
 adjudicated (Finding F).
 
 **The backlog is now bounded.** It cannot grow, and it cannot be forgotten.
+
+---
+
+## 17. Finding I — `origin/main` DOES NOT COMPILE (2026-09-17)
+
+**Severity: highest in this document.** Discovered during parallel-execution preflight
+(`PARALLEL_EXECUTION_MANIFEST.md` §9). This finding supersedes §3 and corrects §11 item 3.
+
+### 17.1 What was observed
+
+A **clean worktree** at `1338d0b` (no uncommitted changes), built with network access so the
+failure cannot be a registry-fetch issue:
+
+```
+$ git worktree add .wt/probe HEAD --detach && cd .wt/probe && cargo check --lib
+error[E0583]: file not found for module `performance`
+error[E0583]: file not found for module `system_integration`
+error[E0599]: no method named `get_more_development_tools`  found for `&EnhancedMcpBridge`
+error[E0599]: no method named `get_more_ai_ml_tools`        found for `&EnhancedMcpBridge`
+error[E0599]: no method named `get_more_database_tools`     found for `&EnhancedMcpBridge`
+error[E0599]: no method named `get_more_cloud_tools`        found for `&EnhancedMcpBridge`
+error[E0599]: no method named `get_more_devops_tools`       found for `&EnhancedMcpBridge`
+error[E0599]: no method named `get_more_communication_tools` found for `&EnhancedMcpBridge`
+error[E0599]: no method named `get_more_productivity_tools`  found for `&EnhancedMcpBridge`
+error: could not compile `zylcode-mcp` (lib) due to 10 previous errors
+```
+
+### 17.2 Two independent defects, both committed
+
+**Defect 1 — declared modules with no source file.**
+
+```
+$ git show HEAD:crates/zylcode-mcp/src/lib.rs | grep -c 'pub mod performance;'         → 1
+$ git cat-file -e HEAD:crates/zylcode-mcp/src/performance.rs                          → MISSING
+$ git show HEAD:crates/zylcode-mcp/src/lib.rs | grep -c 'pub mod system_integration;' → 1
+$ git cat-file -e HEAD:crates/zylcode-mcp/src/system_integration.rs                   → MISSING
+```
+
+`lib.rs` **at HEAD** declares both. Neither file is in git; both exist **only as untracked**
+working-tree files (409 + 391 lines).
+
+**Defect 2 — a half-committed refactor.**
+
+```
+$ git show HEAD:crates/zylcode-mcp/src/enhanced_bridge.rs | grep -c 'fn get_more_'  → 0
+$ git show HEAD:crates/zylcode-mcp/src/enhanced_bridge.rs | grep -n  'get_more_'    → lines 87–94
+$ git show HEAD:crates/zylcode-mcp/src/enhanced_bridge.rs | wc -l                   → 743
+$ wc -l < crates/zylcode-mcp/src/enhanced_bridge.rs                                 → 1518
+```
+
+The committed `new()` **calls** eight methods the committed file **does not define**. They exist
+only in the dirty tree (+775 lines).
+
+### 17.3 Why §15 missed it, and why that matters
+
+§15 audited the **working tree** — which compiles, because it carries the uncommitted work. The
+correct check is a **clean checkout**, which §15 did not perform. The lesson is generalisable and
+belongs beside the §14.6 rule:
+
+> **A working tree that compiles is not evidence that the repository compiles.**
+> Only a clean checkout at a recorded SHA can establish that. When reviewing a dirty tree, the dirty
+> part must be removed from the question, not measured alongside it.
+
+This is the same class of error as §14's *"a test that reads persisted local state is not a test"*:
+**the ambient state made a real defect invisible.**
+
+### 17.4 Consequence — the dirty tree is load-bearing
+
+Any instruction to "discard the dirty tree" would now **destroy two modules and 775 lines of
+implementations**, leaving `main` permanently unbuildable. The dirty tree and the repository are
+fused until FIX-1/FIX-2 land. `§15.7`'s recommendation to revert "Class D formatting churn" remains
+valid; its recommendation to delete untracked files must now **exclude anything the build depends
+on**.
+
+### 17.5 Corrections to earlier sections
+
+| Section | Was | Now |
+|---|---|---|
+| §3 | `cargo build` "BLOCKED BY SANDBOX — not a code failure" | **Partly wrong.** See §17.6. The sandbox does not block worktree builds. |
+| §11 item 2 | "Resolve the dirty tree — review, commit, or discard" | **Discard is now unsafe.** Commit is mandatory for the build-critical subset. |
+| §11 item 3 | "One clean workspace build outside the sandbox" | **Re-scoped.** The build is achievable *inside*; it fails for a code reason, not a sandbox reason. |
+| §15.3 | "The tree is *coherent*" | **True of the tree, false of the repository.** The tree is coherent only because it is dirty. |
+
+### 17.6 Finding J — the worktree blocker was misdiagnosed
+
+§11 item 3 recorded `git worktree`-based builds as impossible. **Falsified.** Two real causes,
+neither a sandbox restriction:
+
+1. **Path translation.** `git worktree add /tmp/wt_probe` created `C:/tmp/wt_probe` — outside the
+   project's writable tree. Use a path **inside** the project (`.wt/<name>`).
+2. **`--offline` with an empty registry.** `error: failed to download clap_derive v4.6.7 … --offline
+   was specified`. A worktree has no `target/` and no fetched registry; the first build needs
+   network.
+
+Proof:
+
+```
+$ git worktree add .wt/probe HEAD --detach
+HEAD is now at 1338d0b ci(governance): retracted-claim guard …
+$ ls .wt/probe/Cargo.toml
+.wt/probe/Cargo.toml                                  # ✅ materialised inside the tree
+$ cd .wt/probe && cargo check --lib                   # ✅ compiled — and surfaced Finding I
+```
+
+**Consequence:** parallel isolated worktrees are viable, which is what makes
+`PARALLEL_EXECUTION_MANIFEST.md` LAW 1 satisfiable at all. `.wt/` has been added to `.gitignore`.
+
+### 17.7 CI status — NOT OBSERVABLE
+
+`.github/workflows/ci.yml:69` runs `cargo check --workspace --all-targets` on a clean checkout, so
+CI **must** be failing. This is an **inference from the compile result**, not a reading of a
+dashboard: `gh` authentication fails (`GITHUB_TOKEN` invalid; the keyring account returns HTTP 401),
+so runs cannot be queried. Recorded as `NOT OBSERVABLE`, never as green.
+
+### 17.8 Required repair — owner decision
+
+| Step | Action |
+|---|---|
+| **FIX-1** | Commit `crates/zylcode-mcp/src/performance.rs` (409 lines) and `system_integration.rs` (391 lines) |
+| **FIX-2** | Commit the eight `get_more_*_tools()` implementations in `enhanced_bridge.rs` (+775 lines) |
+| **FIX-3** | Verify a **fresh worktree** passes `cargo check --workspace --all-targets` |
+| **FIX-4** | Confirm CI green (requires a valid token — §17.7) |
+
+Both fixes commit **another session's unreviewed work** — the same restraint exercised in `6c19e1f`
+for `FINAL_SUMMARY.md`. **Not performed unilaterally.** Until they land, no parallel agent may be
+spawned: every worktree would inherit a broken base.

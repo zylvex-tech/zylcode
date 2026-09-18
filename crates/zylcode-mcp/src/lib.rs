@@ -1,20 +1,22 @@
 pub mod audit;
+pub mod actor;
 pub mod builtin_plugins;
 pub mod builtin_skills;
 pub mod config;
 pub mod enhanced_bridge;
 pub mod enhanced_plugin_marketplace;
 pub mod enhanced_skills;
+pub mod evidence;
 pub mod executor;
 pub mod hot_reload;
-pub mod performance;
+pub mod permission;
 pub mod plugin_marketplace;
 pub mod real_tools;
 pub mod registry;
 pub mod skills_system;
-pub mod system_integration;
 pub mod telemetry;
 pub mod tool;
+pub mod tool_catalogue;
 
 pub use audit::{AuditConfig, AuditEntry, AuditEventType, AuditLogger, AuditSeverity};
 pub use config::{McpConfigFile, McpToolConfig, McpTransport};
@@ -23,14 +25,16 @@ pub use enhanced_plugin_marketplace::{EnhancedPluginMarketplace, RevenueManager,
 pub use enhanced_skills::{EnhancedSkillsSystem, CompositionEngine, SkillsMarketplace, SkillsAnalytics, SkillsAnalyticsReport};
 pub use executor::{execute_with_recovery, ExecuteOptions};
 pub use hot_reload::{HotReloadManager, HotReloadConfig, ReloadCallback, ToolAnalytics, AnalyticsReport};
-pub use performance::{ToolCache, CacheStats, ToolExecutionPool, PoolStats, MemoryPool, MemoryPoolStats};
 pub use plugin_marketplace::{PluginMarketplace, PluginDefinition, InstalledPlugin, UIComponent};
-pub use real_tools::{RealTool, ToolContext, ToolResult, ToolEvidence, ToolPermissions, FileSystemTool, ShellTool, GitTool, SearchTool};
+pub use permission::{PermissionDecision, PermissionGate, PermissionPolicy};
+pub use evidence::{EvidenceSink, JsonlEvidenceSink, NullEvidenceSink, ToolRuntime};
+pub use actor::{current_actor, has_actor, with_actor};
+pub use real_tools::{RealTool, ToolContext, ToolResult, ToolEvidence, ToolPermissions, ToolSchema, RiskLevel, FileSystemTool, ShellTool, GitTool, SearchTool, get_real_tool, dispatch, DispatchOutcome, ToolError};
 pub use registry::ToolRegistry;
-pub use skills_system::{SkillsSystem, SkillDefinition, ExecutionContext, ExecutionRecord};
-pub use system_integration::{SystemIntegrationManager, IntegrationConfig, IntegrationStats, McpSkillsIntegration, SkillsPluginIntegration, McpPluginIntegration};
+pub use skills_system::{SkillsSystem, SkillDefinition};
 pub use telemetry::{Telemetry, TelemetryConfig, attrs, propagation, span_names};
 pub use tool::{DynamicTool, Tool, ToolDescriptor};
+pub use tool_catalogue::{Catalogue, CatalogueMetrics, CapabilityStatus, EvidenceRung, ToolEntry};
 
 use anyhow::Result;
 use std::path::Path;

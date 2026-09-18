@@ -57,3 +57,15 @@ search_openai.py
 # Python (CI guard scripts)
 __pycache__/
 *.pyc
+
+# Parallel-execution worktrees (isolated agent working trees)
+# Must be inside the project for the sandbox to permit cargo writes.
+# See PARALLEL_EXECUTION_MANIFEST.md §3.
+.wt/
+
+# Agent tooling state (vision attachment scratch space, client session state)
+.dsh-vision-toolkit/
+.freebuff/
+
+# ZylCode per-project session state (agent memory, evidence, recovery markers)
+.zylcode/

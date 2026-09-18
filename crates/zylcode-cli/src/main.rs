@@ -1,8 +1,8 @@
 use anyhow::Result;
 use clap::{Args, Parser, Subcommand};
 use tracing::{error, info};
-use zylcode_core::{EngineConfig, Intent, McpBridgeDescriptor, ZylCodeEngine};
 use zylcode_core::ai_input::InputContext;
+use zylcode_core::{EngineConfig, Intent, McpBridgeDescriptor, ZylCodeEngine};
 
 // ---------------------------------------------------------------------------
 // CLI definition
@@ -221,7 +221,10 @@ async fn handle_build(engine: &ZylCodeEngine, args: BuildArgs) -> Result<()> {
     } else {
         println!("{}", result.summary);
         for artifact in &result.artifacts {
-            println!("  [{}] {} — {}", artifact.kind, artifact.label, artifact.content);
+            println!(
+                "  [{}] {} — {}",
+                artifact.kind, artifact.label, artifact.content
+            );
         }
     }
 
@@ -351,9 +354,7 @@ async fn handle_ai_input(engine: &ZylCodeEngine, args: AiInputArgs) -> Result<()
     match args.command {
         AiInputCommands::ProcessText { text } => {
             let system = engine.ai_input_system().await?;
-            let result = system
-                .process_text(&text, InputContext::default())
-                .await?;
+            let result = system.process_text(&text, InputContext::default()).await?;
             println!("{}", serde_json::to_string_pretty(&result)?);
         }
         AiInputCommands::Stats => {

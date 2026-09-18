@@ -79,12 +79,18 @@ pub trait Skill: Send + Sync + std::fmt::Debug {
     async fn get_schema(&self) -> Value;
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ExecutionContext {
     pub user_id: Option<String>,
     pub project_id: Option<String>,
     pub permissions: Vec<String>,
     pub environment: HashMap<String, String>,
+}
+
+impl Default for SkillsSystem {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl SkillsSystem {
@@ -107,7 +113,10 @@ impl SkillsSystem {
             total_skills += 1;
         }
 
-        tracing::info!("Initialized skills system with {} built-in skills", total_skills);
+        tracing::info!(
+            "Initialized skills system with {} built-in skills",
+            total_skills
+        );
         Ok(total_skills)
     }
 
@@ -115,10 +124,10 @@ impl SkillsSystem {
     pub async fn register_skill(&self, skill: Arc<dyn Skill>) {
         let id = skill.id().to_string();
         let category = skill.definition().category.clone();
-        
+
         // Add to skills map
         self.skills.write().await.insert(id.clone(), skill);
-        
+
         // Add to category
         let mut categories = self.skill_categories.write().await;
         categories.entry(category).or_insert_with(Vec::new).push(id);
@@ -132,14 +141,19 @@ impl SkillsSystem {
         context: ExecutionContext,
     ) -> Result<Value> {
         let start = std::time::Instant::now();
-        
+
         // Get skill
-        let skill = self.skills.read().await.get(skill_id).cloned()
+        let skill = self
+            .skills
+            .read()
+            .await
+            .get(skill_id)
+            .cloned()
             .ok_or_else(|| anyhow::anyhow!("Skill not found: {}", skill_id))?;
 
         // Execute skill
         let result = skill.execute(input.clone(), context).await;
-        
+
         // Record execution
         let duration = start.elapsed().as_millis() as u64;
         let output = match &result {
@@ -154,20 +168,26 @@ impl SkillsSystem {
             duration_ms: duration,
             timestamp: chrono::Utc::now(),
         };
-        
+
         self.execution_history.write().await.push(record);
-        
+
         result
     }
 
     /// Get skill definition
     pub async fn get_skill_definition(&self, skill_id: &str) -> Option<SkillDefinition> {
-        self.skills.read().await.get(skill_id).map(|s| s.definition())
+        self.skills
+            .read()
+            .await
+            .get(skill_id)
+            .map(|s| s.definition())
     }
 
     /// List skills by category
     pub async fn list_skills_by_category(&self, category: &str) -> Vec<String> {
-        self.skill_categories.read().await
+        self.skill_categories
+            .read()
+            .await
             .get(category)
             .cloned()
             .unwrap_or_default()
@@ -181,7 +201,11 @@ impl SkillsSystem {
     /// Get execution history
     pub async fn get_execution_history(&self, limit: usize) -> Vec<ExecutionRecord> {
         let history = self.execution_history.read().await;
-        let start = if history.len() > limit { history.len() - limit } else { 0 };
+        let start = if history.len() > limit {
+            history.len() - limit
+        } else {
+            0
+        };
         history[start..].to_vec()
     }
 
@@ -216,12 +240,12 @@ impl Skill for BuiltinSkill {
     async fn execute(&self, input: Value, context: ExecutionContext) -> Result<Value> {
         // Simulate skill execution
         let start = std::time::Instant::now();
-        
+
         // Simulate processing time
         tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-        
+
         let duration = start.elapsed().as_millis() as u64;
-        
+
         Ok(serde_json::json!({
             "skill": self.definition.id,
             "input": input,
@@ -266,10 +290,10 @@ mod tests {
     async fn test_skills_system() {
         let system = SkillsSystem::new();
         let count = system.initialize_with_builtin_skills().await.unwrap();
-        
+
         assert!(count > 0);
         assert_eq!(system.skill_count().await, count);
-        
+
         let categories = system.list_categories().await;
         assert!(categories.contains(&"development".to_string()));
         assert!(categories.contains(&"ai-ml".to_string()));
@@ -280,20 +304,23 @@ mod tests {
     async fn test_skill_execution() {
         let system = SkillsSystem::new();
         system.initialize_with_builtin_skills().await.unwrap();
-        
+
         let input = serde_json::json!({
             "files": ["src/main.rs"],
             "options": {"auto_fix": false}
         });
-        
+
         let context = ExecutionContext {
             user_id: Some("user123".to_string()),
             project_id: Some("project456".to_string()),
             permissions: vec!["filesystem.read".to_string()],
             environment: HashMap::new(),
         };
-        
-        let result = system.execute_skill("code-review", input, context).await.unwrap();
+
+        let result = system
+            .execute_skill("code-review", input, context)
+            .await
+            .unwrap();
         assert_eq!(result["skill"], "code-review");
         assert_eq!(result["result"]["success"], true);
     }

@@ -4,6 +4,7 @@ use anyhow::Result;
 use std::path::PathBuf;
 use std::sync::Arc;
 use zylcode_core::agent::{AgentLoop, AgentState, TestModelClient};
+use zylcode_core::memory_ledger::MemoryLedgerStore;
 use zylcode_mcp::{DynamicTool, McpToolConfig, McpTransport, ToolRegistry};
 
 #[tokio::test]
@@ -52,12 +53,14 @@ async fn test_agent_loop_end_to_end() -> Result<()> {
     let model_client = Arc::new(TestModelClient::new(responses));
 
     // Create an agent loop
+    let ledger = Arc::new(MemoryLedgerStore::new());
     let mut agent = AgentLoop::new(
         "Read Cargo.toml and echo completion message",
         PathBuf::from("."),
         None,
         registry,
         model_client,
+        ledger,
     );
 
     // Run the agent loop
@@ -121,12 +124,14 @@ async fn test_agent_loop_with_tool_execution() -> Result<()> {
     let model_client = Arc::new(TestModelClient::new(responses));
 
     // Create an agent loop with a specific task
+    let ledger = Arc::new(MemoryLedgerStore::new());
     let mut agent = AgentLoop::new(
         "Execute echo command and read Cargo.toml",
         PathBuf::from("."),
         None,
         registry,
         model_client,
+        ledger,
     );
 
     // Run the agent loop
@@ -186,12 +191,14 @@ async fn test_observation_loop() -> Result<()> {
     let model_client = Arc::new(TestModelClient::new(responses));
 
     // Create an agent loop
+    let ledger = Arc::new(MemoryLedgerStore::new());
     let mut agent = AgentLoop::new(
         "Read Cargo.toml and README.md",
         PathBuf::from("."),
         None,
         registry,
         model_client,
+        ledger,
     );
 
     // Run the agent loop
@@ -213,7 +220,7 @@ async fn test_observation_loop() -> Result<()> {
 async fn test_repair_loop() -> Result<()> {
     // Create a tool registry
     let registry = Arc::new(ToolRegistry::new());
-    
+
     // Register real tools
     let fs_read_config = McpToolConfig {
         id: "fs.read".to_string(),
@@ -223,8 +230,10 @@ async fn test_repair_loop() -> Result<()> {
         enabled: true,
         description: Some("Read file contents".to_string()),
     };
-    registry.register(Arc::new(DynamicTool::new(fs_read_config))).await;
-    
+    registry
+        .register(Arc::new(DynamicTool::new(fs_read_config)))
+        .await;
+
     // Create deterministic test model client that fails first, then succeeds
     let responses = vec![
         // Response for planning
@@ -239,34 +248,38 @@ async fn test_repair_loop() -> Result<()> {
         r#"{"action": "Complete", "payload": {"summary": "Repair successful", "evidence": ["Read Cargo.toml after repair"], "remaining_limitations": []}}"#.to_string(),
     ];
     let model_client = Arc::new(TestModelClient::new(responses));
-    
+
     // Create an agent loop with auto_repair enabled
     let config = zylcode_core::agent::AgentConfig {
         auto_repair: true,
         ..Default::default()
     };
-    
+
+    let ledger = Arc::new(MemoryLedgerStore::new());
     let mut agent = AgentLoop::new(
         "Read a file",
         PathBuf::from("."),
         Some(config),
         registry,
         model_client,
+        ledger,
     );
-    
+
     // Run the agent loop
     let final_state = agent.run().await?;
-    
+
     // Verify the final state
     assert_eq!(final_state, AgentState::Completed);
-    
+
     // Verify that repair happened
-    let has_repair_message = agent.session().messages.iter().any(|m| 
-        m.content.contains("Repairing") || m.content.contains("repair")
-    );
-    
+    let _has_repair_message = agent
+        .session()
+        .messages
+        .iter()
+        .any(|m| m.content.contains("Repairing") || m.content.contains("repair"));
+
     println!("✅ Repair loop test passed!");
     println!("   Final state: {:?}", final_state);
-    
+
     Ok(())
 }

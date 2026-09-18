@@ -1,6 +1,6 @@
-use std::sync::RwLock;
-use std::collections::HashMap;
 use anyhow::Result;
+use std::collections::HashMap;
+use std::sync::RwLock;
 
 use super::types::*;
 
@@ -26,14 +26,14 @@ impl VisionAi {
     /// Analyze screen image
     pub async fn analyze_screen(&self, image: ScreenImage) -> Result<ScreenAnalysis> {
         let start = std::time::Instant::now();
-        
+
         // Simulate screen analysis
         let elements = self.detect_elements_internal(&image).await?;
         let text_regions = self.extract_text_regions(&image).await?;
         let color_palette = self.extract_color_palette(&image).await?;
         let complexity = self.calculate_complexity(&image).await?;
         let readability = self.calculate_readability(&image).await?;
-        
+
         let analysis = ScreenAnalysis {
             elements,
             text_regions,
@@ -41,7 +41,7 @@ impl VisionAi {
             complexity,
             readability,
         };
-        
+
         // Update stats
         let duration = start.elapsed().as_millis() as u64;
         {
@@ -49,16 +49,16 @@ impl VisionAi {
             stats.analysis_count += 1;
             stats.total_analysis_time_ms += duration;
         }
-        
+
         Ok(analysis)
     }
 
     /// Detect UI elements
     pub async fn detect_elements(&self, image: ScreenImage) -> Result<Vec<UiElement>> {
         let start = std::time::Instant::now();
-        
+
         let elements = self.detect_elements_internal(&image).await?;
-        
+
         // Update stats
         let duration = start.elapsed().as_millis() as u64;
         {
@@ -66,21 +66,21 @@ impl VisionAi {
             stats.analysis_count += 1;
             stats.total_analysis_time_ms += duration;
         }
-        
+
         Ok(elements)
     }
 
     /// Recognize text in image
     pub async fn recognize_text(&self, image: ScreenImage) -> Result<String> {
         let start = std::time::Instant::now();
-        
+
         // Simulate OCR
         let text = if image.width > 1000 {
             "function main() {\n  console.log('Hello World');\n}".to_string()
         } else {
             "Hello World".to_string()
         };
-        
+
         // Update stats
         let duration = start.elapsed().as_millis() as u64;
         {
@@ -88,14 +88,14 @@ impl VisionAi {
             stats.analysis_count += 1;
             stats.total_analysis_time_ms += duration;
         }
-        
+
         Ok(text)
     }
 
     /// Internal element detection
     async fn detect_elements_internal(&self, image: &ScreenImage) -> Result<Vec<UiElement>> {
         let mut elements = Vec::new();
-        
+
         // Simulate element detection based on image size
         if image.width > 800 {
             elements.push(UiElement {
@@ -110,7 +110,7 @@ impl VisionAi {
                 confidence: 0.85,
                 properties: HashMap::new(),
             });
-            
+
             elements.push(UiElement {
                 element_type: UiElementType::Input,
                 text: Some("Enter text...".to_string()),
@@ -123,7 +123,7 @@ impl VisionAi {
                 confidence: 0.9,
                 properties: HashMap::new(),
             });
-            
+
             elements.push(UiElement {
                 element_type: UiElementType::Text,
                 text: Some("Welcome to ZylCode".to_string()),
@@ -137,14 +137,14 @@ impl VisionAi {
                 properties: HashMap::new(),
             });
         }
-        
+
         Ok(elements)
     }
 
     /// Extract text regions
     async fn extract_text_regions(&self, image: &ScreenImage) -> Result<Vec<TextRegion>> {
         let mut regions = Vec::new();
-        
+
         // Simulate text region extraction
         if image.width > 800 {
             regions.push(TextRegion {
@@ -158,7 +158,7 @@ impl VisionAi {
                 confidence: 0.95,
                 language: Some("en".to_string()),
             });
-            
+
             regions.push(TextRegion {
                 text: "function main()".to_string(),
                 bounding_box: BoundingBox {
@@ -171,12 +171,12 @@ impl VisionAi {
                 language: Some("en".to_string()),
             });
         }
-        
+
         Ok(regions)
     }
 
     /// Extract color palette
-    async fn extract_color_palette(&self, image: &ScreenImage) -> Result<Vec<String>> {
+    async fn extract_color_palette(&self, _image: &ScreenImage) -> Result<Vec<String>> {
         // Simulate color palette extraction
         let palette = vec![
             "#1e293b".to_string(), // Dark blue
@@ -185,7 +185,7 @@ impl VisionAi {
             "#10b981".to_string(), // Green
             "#f59e0b".to_string(), // Yellow
         ];
-        
+
         Ok(palette)
     }
 
@@ -199,7 +199,7 @@ impl VisionAi {
         } else {
             0.4
         };
-        
+
         Ok(complexity)
     }
 
@@ -213,7 +213,7 @@ impl VisionAi {
         } else {
             0.7
         };
-        
+
         Ok(readability)
     }
 
@@ -230,7 +230,7 @@ mod tests {
     #[tokio::test]
     async fn test_screen_analysis() {
         let vision = VisionAi::new().await.unwrap();
-        
+
         let image = ScreenImage {
             data: vec![0; 1920 * 1080 * 4],
             width: 1920,
@@ -239,7 +239,7 @@ mod tests {
             timestamp: chrono::Utc::now(),
             cursor_position: None,
         };
-        
+
         let result = vision.analyze_screen(image).await.unwrap();
         assert!(!result.elements.is_empty());
         assert!(!result.text_regions.is_empty());
@@ -249,7 +249,7 @@ mod tests {
     #[tokio::test]
     async fn test_element_detection() {
         let vision = VisionAi::new().await.unwrap();
-        
+
         let image = ScreenImage {
             data: vec![0; 1920 * 1080 * 4],
             width: 1920,
@@ -258,7 +258,7 @@ mod tests {
             timestamp: chrono::Utc::now(),
             cursor_position: None,
         };
-        
+
         let result = vision.detect_elements(image).await.unwrap();
         assert!(!result.is_empty());
     }
@@ -266,7 +266,7 @@ mod tests {
     #[tokio::test]
     async fn test_text_recognition() {
         let vision = VisionAi::new().await.unwrap();
-        
+
         let image = ScreenImage {
             data: vec![0; 1920 * 1080 * 4],
             width: 1920,
@@ -275,7 +275,7 @@ mod tests {
             timestamp: chrono::Utc::now(),
             cursor_position: None,
         };
-        
+
         let result = vision.recognize_text(image).await.unwrap();
         assert!(!result.is_empty());
     }

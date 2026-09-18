@@ -14,6 +14,13 @@ pub struct EnhancedMcpBridge {
     registry: ToolRegistry,
     tool_categories: RwLock<HashMap<String, Vec<String>>>,
     execution_stats: RwLock<ExecutionStats>,
+    /// The runtime (policy plus evidence sink) every tool registered by this
+    /// bridge inherits.
+    ///
+    /// Restrictive by default: reads proceed, everything above them requires
+    /// approval, and every outcome is recorded. Use
+    /// [`EnhancedMcpBridge::with_runtime`] to state a different policy.
+    runtime: crate::evidence::ToolRuntime,
 }
 
 #[derive(Debug, Default)]
@@ -41,36 +48,84 @@ pub struct ToolDefinition {
     pub required_permissions: Vec<String>,
 }
 
+impl Default for EnhancedMcpBridge {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl EnhancedMcpBridge {
     pub fn new() -> Self {
         Self {
             registry: ToolRegistry::new(),
             tool_categories: RwLock::new(HashMap::new()),
             execution_stats: RwLock::new(ExecutionStats::default()),
+            runtime: crate::evidence::ToolRuntime::restrictive(),
         }
     }
 
+    /// Build a bridge whose tools share an explicit runtime.
+    ///
+    /// The caller is stating its policy and where evidence goes. Tests that
+    /// need to exercise a mutating executor use
+    /// [`crate::evidence::ToolRuntime::permissive_without_evidence`]; nothing
+    /// reaches a permissive policy by accident.
+    pub fn with_runtime(runtime: crate::evidence::ToolRuntime) -> Self {
+        Self {
+            runtime,
+            ..Self::new()
+        }
+    }
+
+    pub fn runtime(&self) -> &crate::evidence::ToolRuntime {
+        &self.runtime
+    }
+
     /// Initialize with 100+ built-in tools
+    /// Populate the executable registry from the **canonical catalogue**.
+    ///
+    /// The bridge no longer registers its own legacy definitions. It registers
+    /// exactly the ids the catalogue marks executable — the set that has a real
+    /// executor. Definitions without an executor remain available through
+    /// [`Self::all_definitions`] as metadata and are never callable.
+    ///
+    /// The previous implementation registered all 27 definitions and answered
+    /// every call with a fabricated `success: true`.
+    ///
+    /// Returns the number of tools actually registered.
     pub async fn initialize_with_builtin_tools(&self) -> Result<usize> {
-        let categories = self.get_builtin_tool_categories();
-        let mut total_tools = 0;
+        let catalogue = crate::tool_catalogue::Catalogue::canonical();
 
-        for category in categories {
-            let mut category_tools = Vec::new();
-            
-            for tool_def in category.tools {
-                let tool = BuiltinTool::new(tool_def.clone());
-                self.registry.register(std::sync::Arc::new(tool)).await;
-                category_tools.push(tool_def.id.clone());
-                total_tools += 1;
-            }
+        let mut registered = 0usize;
+        let mut ids = Vec::new();
 
-            let mut categories = self.tool_categories.write().await;
-            categories.insert(category.name.clone(), category_tools);
+        for id in catalogue.executable_ids() {
+            let entry = catalogue
+                .get(id)
+                .expect("an executable id is always present in the catalogue");
+            let tool = BuiltinTool::with_runtime(ToolDefinition {
+                id: entry.id.clone(),
+                name: entry.id.clone(),
+                description: entry.description.clone(),
+                category: "executable".to_string(),
+                parameters: entry.input_schema.clone(),
+                required_permissions: Vec::new(),
+            }, self.runtime.clone());
+            self.registry.register(std::sync::Arc::new(tool)).await;
+            ids.push(entry.id.clone());
+            registered += 1;
         }
 
-        tracing::info!("Initialized MCP bridge with {} built-in tools", total_tools);
-        Ok(total_tools)
+        let mut categories = self.tool_categories.write().await;
+        categories.clear();
+        categories.insert("executable".to_string(), ids);
+
+        tracing::info!(
+            registered,
+            definition_only = catalogue.definition_only_ids().len(),
+            "initialised MCP bridge from the canonical catalogue"
+        );
+        Ok(registered)
     }
 
     /// Get all built-in tool categories
@@ -84,15 +139,20 @@ impl EnhancedMcpBridge {
             self.get_communication_tools(),
             self.get_productivity_tools(),
             self.get_security_tools(),
-            self.get_more_development_tools(),
-            self.get_more_ai_ml_tools(),
-            self.get_more_database_tools(),
-            self.get_more_cloud_tools(),
-            self.get_more_devops_tools(),
-            self.get_more_communication_tools(),
-            self.get_more_productivity_tools(),
-            self.get_more_security_tools(),
         ]
+    }
+
+    /// Every definition this bridge knows about, flattened.
+    ///
+    /// These are **definitions, not capabilities**: they carry a schema and
+    /// nothing else. They have no executor, so they must never be registered as
+    /// executable tools. `crate::tool_catalogue::Catalogue` consumes this to
+    /// preserve the schemas as `DefinitionOnly` metadata.
+    pub fn all_definitions(&self) -> Vec<ToolDefinition> {
+        self.get_builtin_tool_categories()
+            .into_iter()
+            .flat_map(|c| c.tools)
+            .collect()
     }
 
     /// Development Tools (25+)
@@ -640,6 +700,18 @@ impl EnhancedMcpBridge {
         categories.get(category).cloned()
     }
 
+    /// Every id currently present in the executable registry.
+    ///
+    /// This is the authoritative "what is registered" answer. Any count
+    /// reported elsewhere must equal `self.registered_ids().await.len()`.
+    pub async fn registered_ids(&self) -> Vec<String> {
+        let categories = self.tool_categories.read().await;
+        let mut ids: Vec<String> = categories.values().flatten().cloned().collect();
+        ids.sort();
+        ids.dedup();
+        ids
+    }
+
     /// Get execution statistics
     pub async fn get_stats(&self) -> (u64, u64, u64, u64) {
         let stats = self.execution_stats.read().await;
@@ -661,11 +733,13 @@ impl EnhancedMcpBridge {
 #[derive(Debug, Clone)]
 struct BuiltinTool {
     definition: ToolDefinition,
+    /// The policy this tool is subject to and where its evidence goes.
+    runtime: crate::evidence::ToolRuntime,
 }
 
 impl BuiltinTool {
-    fn new(definition: ToolDefinition) -> Self {
-        Self { definition }
+    fn with_runtime(definition: ToolDefinition, runtime: crate::evidence::ToolRuntime) -> Self {
+        Self { definition, runtime }
     }
 }
 
@@ -686,24 +760,42 @@ impl Tool for BuiltinTool {
     }
 
     async fn call(&self, params: Value) -> Result<Value> {
-        // Simulate tool execution
-        // In real implementation, this would execute the actual tool
-        let start = Instant::now();
-        
-        // Simulate some processing time
-        tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
-        
-        let duration = start.elapsed().as_millis() as u64;
-        
+        // Dispatch to a real executor through the permission gate, or fail
+        // closed.
+        //
+        // This method used to sleep 10 ms and return
+        // `{"success": true, "message": "Tool X executed successfully"}`
+        // without performing any operation at all. Every one of the 27 bridge
+        // tools reported success for work it had not done. That is the single
+        // most dangerous pattern in the repository: a caller cannot distinguish
+        // a fabricated success from a real one, so the fabrication propagates
+        // into whatever the caller does next.
+        //
+        // See docs/governance/TOOL_CATALOGUE_TRUTH_TABLE.md §1.1.
+        let context = crate::real_tools::ToolContext {
+            working_directory: std::env::current_dir()
+                .unwrap_or_else(|_| std::path::PathBuf::from(".")),
+            environment: std::env::vars().collect(),
+            timeout: std::time::Duration::from_secs(30),
+            session_id: None,
+            actor: None,
+            approval_required: false,
+        };
+
+        let outcome =
+            crate::real_tools::dispatch(&self.definition.id, params, &context, &self.runtime).await;
+        let result = outcome.result?;
+
         Ok(serde_json::json!({
             "tool": self.definition.id,
             "category": self.definition.category,
-            "params": params,
-            "result": {
-                "success": true,
-                "message": format!("Tool {} executed successfully", self.definition.id),
-                "duration_ms": duration
-            },
+            "executed": true,
+            "success": result.success,
+            "output": result.output,
+            "bound_operation": result.evidence.bound_operation,
+            "risk": result.evidence.risk,
+            "approval_decision": result.evidence.approval_decision,
+            "invocation_id": result.evidence.invocation_id,
             "timestamp": chrono::Utc::now().to_rfc3339()
         }))
     }
@@ -713,32 +805,159 @@ impl Tool for BuiltinTool {
 mod tests {
     use super::*;
 
-    #[tokio::test]
-    async fn test_enhanced_mcp_bridge() {
-        let bridge = EnhancedMcpBridge::new();
-        let count = bridge.initialize_with_builtin_tools().await.unwrap();
-        
-        assert!(count > 100);
-        assert_eq!(bridge.tool_count().await, count);
-        
-        let categories = bridge.get_categories().await;
-        assert!(categories.contains(&"development".to_string()));
-        assert!(categories.contains(&"ai-ml".to_string()));
-        assert!(categories.contains(&"database".to_string()));
+    async fn registered_ids(bridge: &EnhancedMcpBridge) -> std::collections::HashSet<String> {
+        let mut set = std::collections::HashSet::new();
+        for category in bridge.get_categories().await {
+            for id in bridge.get_tools_in_category(&category).await.unwrap_or_default() {
+                set.insert(id);
+            }
+        }
+        set
     }
 
+    /// The bridge registers only definitions that have a real executor.
+    ///
+    /// Replaces `assert!(count > 100)`. Tool quantity is not a correctness
+    /// invariant; the invariant that matters is that everything registered can
+    /// actually run.
     #[tokio::test]
-    async fn test_tool_execution() {
+    async fn bridge_registers_only_executable_tools() {
+        let bridge = EnhancedMcpBridge::new();
+        let registered = bridge.initialize_with_builtin_tools().await.unwrap();
+
+        assert_eq!(bridge.tool_count().await, registered);
+
+        for id in registered_ids(&bridge).await {
+            assert!(
+                crate::real_tools::get_real_tool(&id).is_some(),
+                "`{id}` was registered as executable but has no real executor"
+            );
+        }
+    }
+
+    /// Definition-only entries are preserved as metadata and never registered.
+    #[tokio::test]
+    async fn definition_only_entries_are_not_registered() {
         let bridge = EnhancedMcpBridge::new();
         bridge.initialize_with_builtin_tools().await.unwrap();
-        
-        let params = serde_json::json!({
-            "message": "test commit",
-            "files": ["src/main.rs"]
-        });
-        
-        let result = bridge.execute_tool("git.commit", params).await.unwrap();
-        assert_eq!(result["tool"], "git.commit");
-        assert_eq!(result["result"]["success"], true);
+        let registered = registered_ids(&bridge).await;
+
+        for definition in bridge.all_definitions() {
+            let has_executor = crate::real_tools::get_real_tool(&definition.id).is_some();
+            assert_eq!(
+                registered.contains(&definition.id),
+                has_executor,
+                "`{}`: registered={} but has_executor={}",
+                definition.id,
+                registered.contains(&definition.id),
+                has_executor
+            );
+        }
+    }
+
+    /// The headline invariant: nothing in this bridge reports success for work
+    /// it did not perform.
+    ///
+    /// The previous implementation answered every one of the 27 definitions
+    /// with `{"success": true}` after a 10 ms sleep.
+    #[tokio::test]
+    async fn bridge_never_fabricates_success() {
+        let bridge = EnhancedMcpBridge::new();
+        bridge.initialize_with_builtin_tools().await.unwrap();
+
+        // A definition with no executor must fail loudly, not succeed.
+        let err = bridge
+            .execute_tool("docker.build", serde_json::json!({}))
+            .await
+            .expect_err("a definition-only tool must not report success");
+        let msg = err.to_string();
+        assert!(
+            msg.contains("not found") || msg.contains("unsupported") || msg.contains("no executor"),
+            "expected a typed refusal, got: {msg}"
+        );
+    }
+
+    /// Unknown ids fail closed.
+    #[tokio::test]
+    async fn unknown_tool_id_fails_closed() {
+        let bridge = EnhancedMcpBridge::new();
+        bridge.initialize_with_builtin_tools().await.unwrap();
+        assert!(
+            bridge
+                .execute_tool("no.such.tool", serde_json::json!({}))
+                .await
+                .is_err()
+        );
+    }
+
+    /// A cross-operation substitution fails through the bridge too.
+    ///
+    /// A permissive gate is used deliberately: the gate is checked *before* the
+    /// executor, so a restrictive gate would mask the binding violation with a
+    /// permission denial. Both refusals are correct, but this test is about the
+    /// binding.
+    #[tokio::test]
+    async fn bridge_git_commit_cannot_push() {
+        let bridge = EnhancedMcpBridge::with_runtime(
+            crate::evidence::ToolRuntime::permissive_without_evidence(),
+        );
+        bridge.initialize_with_builtin_tools().await.unwrap();
+
+        let err = bridge
+            .execute_tool("git.commit", serde_json::json!({ "subcommand": "push" }))
+            .await
+            .expect_err("git.commit must not push through the bridge");
+        assert!(err.to_string().contains("may not perform"), "{err}");
+    }
+
+    /// The gate is consulted before the executor, and a refusal records the
+    /// decision without running anything.
+    #[tokio::test]
+    async fn bridge_gate_refuses_before_the_executor_runs() {
+        let bridge = EnhancedMcpBridge::new(); // restrictive by default
+        bridge.initialize_with_builtin_tools().await.unwrap();
+
+        // `git.commit` is GitWrite: refused without approval.
+        let err = bridge
+            .execute_tool("git.commit", serde_json::json!({ "message": "must not run" }))
+            .await
+            .expect_err("an unapproved GitWrite tool must not run");
+        assert!(err.to_string().contains("permission denied"), "{err}");
+
+        // And the refusal is counted as a failure, not a success.
+        let (_total, _ok, failed, _dur) = bridge.get_stats().await;
+        assert!(failed >= 1, "a refusal must not be counted as a success");
+    }
+
+    /// Reads pass the default gate through the bridge.
+    #[tokio::test]
+    async fn bridge_default_gate_permits_reads() {
+        let bridge = EnhancedMcpBridge::new();
+        bridge.initialize_with_builtin_tools().await.unwrap();
+
+        let result = bridge
+            .execute_tool("fs.read", serde_json::json!({ "path": "Cargo.toml" }))
+            .await
+            .expect("reads are permitted by the default gate");
+        assert_eq!(result["executed"], true);
+        assert!(result["approval_decision"]
+            .as_str()
+            .unwrap_or_default()
+            .starts_with("allow: "));
+    }
+
+    /// The definitions themselves are still available as metadata.
+    #[tokio::test]
+    async fn definitions_are_preserved_as_metadata() {
+        let bridge = EnhancedMcpBridge::new();
+        let definitions = bridge.all_definitions();
+        assert!(!definitions.is_empty(), "schemas must be preserved");
+        for definition in &definitions {
+            assert!(
+                definition.parameters.is_object(),
+                "`{}` lost its parameter schema",
+                definition.id
+            );
+        }
     }
 }

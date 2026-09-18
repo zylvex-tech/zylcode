@@ -1,6 +1,6 @@
-use std::sync::RwLock;
 use anyhow::Result;
 use chrono::Utc;
+use std::sync::RwLock;
 
 use super::types::*;
 
@@ -26,19 +26,19 @@ impl ScreenCapture {
     /// Capture full screen
     pub async fn capture_screen(&self, options: CaptureOptions) -> Result<ScreenImage> {
         let start = std::time::Instant::now();
-        
+
         // Simulate screen capture
         // In a real implementation, this would use platform-specific APIs
         let width = 1920;
         let height = 1080;
         let data = vec![0; (width * height * 4) as usize]; // RGBA
-        
+
         let cursor_position = if options.include_cursor {
             Some(CursorPosition { x: 960, y: 540 })
         } else {
             None
         };
-        
+
         let image = ScreenImage {
             data,
             width,
@@ -47,7 +47,7 @@ impl ScreenCapture {
             timestamp: Utc::now(),
             cursor_position,
         };
-        
+
         // Update stats
         let duration = start.elapsed().as_millis() as u64;
         {
@@ -55,17 +55,17 @@ impl ScreenCapture {
             stats.captured_count += 1;
             stats.total_capture_time_ms += duration;
         }
-        
+
         Ok(image)
     }
 
     /// Capture specific region
     pub async fn capture_region(&self, region: Region) -> Result<ScreenImage> {
         let start = std::time::Instant::now();
-        
+
         // Simulate region capture
         let data = vec![0; (region.width * region.height * 4) as usize];
-        
+
         let image = ScreenImage {
             data,
             width: region.width,
@@ -74,7 +74,7 @@ impl ScreenCapture {
             timestamp: Utc::now(),
             cursor_position: None,
         };
-        
+
         // Update stats
         let duration = start.elapsed().as_millis() as u64;
         {
@@ -82,20 +82,20 @@ impl ScreenCapture {
             stats.captured_count += 1;
             stats.total_capture_time_ms += duration;
         }
-        
+
         Ok(image)
     }
 
     /// Capture specific window
-    pub async fn capture_window(&self, window_id: WindowId) -> Result<ScreenImage> {
+    pub async fn capture_window(&self, _window_id: WindowId) -> Result<ScreenImage> {
         let start = std::time::Instant::now();
-        
+
         // Simulate window capture
         // In a real implementation, this would use platform-specific window APIs
         let width = 800;
         let height = 600;
         let data = vec![0; (width * height * 4) as usize];
-        
+
         let image = ScreenImage {
             data,
             width,
@@ -104,7 +104,7 @@ impl ScreenCapture {
             timestamp: Utc::now(),
             cursor_position: None,
         };
-        
+
         // Update stats
         let duration = start.elapsed().as_millis() as u64;
         {
@@ -112,7 +112,7 @@ impl ScreenCapture {
             stats.captured_count += 1;
             stats.total_capture_time_ms += duration;
         }
-        
+
         Ok(image)
     }
 
@@ -130,7 +130,7 @@ mod tests {
     async fn test_screen_capture() {
         let capture = ScreenCapture::new().await.unwrap();
         let options = CaptureOptions::default();
-        
+
         let result = capture.capture_screen(options).await.unwrap();
         assert_eq!(result.width, 1920);
         assert_eq!(result.height, 1080);
@@ -145,7 +145,7 @@ mod tests {
             width: 400,
             height: 300,
         };
-        
+
         let result = capture.capture_region(region).await.unwrap();
         assert_eq!(result.width, 400);
         assert_eq!(result.height, 300);

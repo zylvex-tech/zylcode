@@ -1,5 +1,7 @@
+use crate::plugin_marketplace::{
+    PluginDefinition, PluginExecution, PluginMarketplaceInfo, PluginPermission, PluginPricing,
+};
 use serde_json::json;
-use crate::plugin_marketplace::{PluginDefinition, PluginPricing, PluginExecution, PluginPermission, PluginMarketplaceInfo};
 
 /// Generate a list of 25 pre-shipped plugins
 pub fn get_preshipped_plugins() -> Vec<PluginDefinition> {
@@ -62,10 +64,16 @@ fn create_ai_model_provider_plugin() -> PluginDefinition {
         id: "ai-model-provider".to_string(),
         name: "AI Model Provider".to_string(),
         version: "1.0.0".to_string(),
-        description: "Multi-model AI provider with OpenAI, Anthropic, and DeepSeek support".to_string(),
+        description: "Multi-model AI provider with OpenAI, Anthropic, and DeepSeek support"
+            .to_string(),
         author: "ZylCode Team".to_string(),
         category: "ai-models".to_string(),
-        tags: vec!["ai".to_string(), "models".to_string(), "openai".to_string(), "deepseek".to_string()],
+        tags: vec![
+            "ai".to_string(),
+            "models".to_string(),
+            "openai".to_string(),
+            "deepseek".to_string(),
+        ],
         pricing: PluginPricing {
             pricing_type: "freemium".to_string(),
             price: 0.0,
@@ -87,8 +95,14 @@ fn create_ai_model_provider_plugin() -> PluginDefinition {
             timeout_ms: 30000,
         },
         permissions: vec![
-            PluginPermission { resource: "ai-models".to_string(), actions: vec!["access".to_string(), "execute".to_string()] },
-            PluginPermission { resource: "network".to_string(), actions: vec!["request".to_string()] },
+            PluginPermission {
+                resource: "ai-models".to_string(),
+                actions: vec!["access".to_string(), "execute".to_string()],
+            },
+            PluginPermission {
+                resource: "network".to_string(),
+                actions: vec!["request".to_string()],
+            },
         ],
         marketplace: PluginMarketplaceInfo {
             screenshots: vec![],
@@ -111,7 +125,11 @@ fn create_file_explorer_plugin() -> PluginDefinition {
         description: "Advanced file explorer with preview and search capabilities".to_string(),
         author: "ZylCode Team".to_string(),
         category: "productivity".to_string(),
-        tags: vec!["files".to_string(), "explorer".to_string(), "preview".to_string()],
+        tags: vec![
+            "files".to_string(),
+            "explorer".to_string(),
+            "preview".to_string(),
+        ],
         pricing: PluginPricing {
             pricing_type: "free".to_string(),
             price: 0.0,
@@ -132,9 +150,10 @@ fn create_file_explorer_plugin() -> PluginDefinition {
             background: false,
             timeout_ms: 10000,
         },
-        permissions: vec![
-            PluginPermission { resource: "filesystem".to_string(), actions: vec!["read".to_string()] },
-        ],
+        permissions: vec![PluginPermission {
+            resource: "filesystem".to_string(),
+            actions: vec!["read".to_string()],
+        }],
         marketplace: PluginMarketplaceInfo {
             screenshots: vec![],
             documentation: "docs/README.md".to_string(),
@@ -156,7 +175,11 @@ fn create_git_integration_plugin() -> PluginDefinition {
         description: "Advanced Git integration with visual diff and branch management".to_string(),
         author: "ZylCode Team".to_string(),
         category: "development".to_string(),
-        tags: vec!["git".to_string(), "version-control".to_string(), "diff".to_string()],
+        tags: vec![
+            "git".to_string(),
+            "version-control".to_string(),
+            "diff".to_string(),
+        ],
         pricing: PluginPricing {
             pricing_type: "free".to_string(),
             price: 0.0,
@@ -178,8 +201,18 @@ fn create_git_integration_plugin() -> PluginDefinition {
             timeout_ms: 30000,
         },
         permissions: vec![
-            PluginPermission { resource: "git".to_string(), actions: vec!["read".to_string(), "write".to_string(), "execute".to_string()] },
-            PluginPermission { resource: "filesystem".to_string(), actions: vec!["read".to_string()] },
+            PluginPermission {
+                resource: "git".to_string(),
+                actions: vec![
+                    "read".to_string(),
+                    "write".to_string(),
+                    "execute".to_string(),
+                ],
+            },
+            PluginPermission {
+                resource: "filesystem".to_string(),
+                actions: vec!["read".to_string()],
+            },
         ],
         marketplace: PluginMarketplaceInfo {
             screenshots: vec![],
@@ -202,7 +235,11 @@ fn create_database_manager_plugin() -> PluginDefinition {
         description: "Database management with query editor and visualization".to_string(),
         author: "ZylCode Team".to_string(),
         category: "database".to_string(),
-        tags: vec!["database".to_string(), "sql".to_string(), "query".to_string()],
+        tags: vec![
+            "database".to_string(),
+            "sql".to_string(),
+            "query".to_string(),
+        ],
         pricing: PluginPricing {
             pricing_type: "freemium".to_string(),
             price: 9.99,
@@ -224,8 +261,14 @@ fn create_database_manager_plugin() -> PluginDefinition {
             timeout_ms: 60000,
         },
         permissions: vec![
-            PluginPermission { resource: "database".to_string(), actions: vec!["read".to_string(), "write".to_string()] },
-            PluginPermission { resource: "network".to_string(), actions: vec!["request".to_string()] },
+            PluginPermission {
+                resource: "database".to_string(),
+                actions: vec!["read".to_string(), "write".to_string()],
+            },
+            PluginPermission {
+                resource: "network".to_string(),
+                actions: vec!["request".to_string()],
+            },
         ],
         marketplace: PluginMarketplaceInfo {
             screenshots: vec![],
@@ -248,7 +291,11 @@ fn create_theme_studio_plugin() -> PluginDefinition {
         description: "Create and customize themes with visual editor".to_string(),
         author: "ZylCode Team".to_string(),
         category: "creative".to_string(),
-        tags: vec!["themes".to_string(), "design".to_string(), "customization".to_string()],
+        tags: vec![
+            "themes".to_string(),
+            "design".to_string(),
+            "customization".to_string(),
+        ],
         pricing: PluginPricing {
             pricing_type: "free".to_string(),
             price: 0.0,
@@ -270,8 +317,14 @@ fn create_theme_studio_plugin() -> PluginDefinition {
             timeout_ms: 15000,
         },
         permissions: vec![
-            PluginPermission { resource: "filesystem".to_string(), actions: vec!["read".to_string(), "write".to_string()] },
-            PluginPermission { resource: "ui".to_string(), actions: vec!["render".to_string()] },
+            PluginPermission {
+                resource: "filesystem".to_string(),
+                actions: vec!["read".to_string(), "write".to_string()],
+            },
+            PluginPermission {
+                resource: "ui".to_string(),
+                actions: vec!["render".to_string()],
+            },
         ],
         marketplace: PluginMarketplaceInfo {
             screenshots: vec![],
@@ -294,7 +347,11 @@ fn create_code_formatter_plugin() -> PluginDefinition {
         description: "Format code with Prettier, ESLint, and more".to_string(),
         author: "ZylCode Team".to_string(),
         category: "development".to_string(),
-        tags: vec!["formatter".to_string(), "prettier".to_string(), "eslint".to_string()],
+        tags: vec![
+            "formatter".to_string(),
+            "prettier".to_string(),
+            "eslint".to_string(),
+        ],
         pricing: PluginPricing {
             pricing_type: "free".to_string(),
             price: 0.0,
@@ -315,9 +372,10 @@ fn create_code_formatter_plugin() -> PluginDefinition {
             background: false,
             timeout_ms: 5000,
         },
-        permissions: vec![
-            PluginPermission { resource: "filesystem".to_string(), actions: vec!["read".to_string(), "write".to_string()] },
-        ],
+        permissions: vec![PluginPermission {
+            resource: "filesystem".to_string(),
+            actions: vec!["read".to_string(), "write".to_string()],
+        }],
         marketplace: PluginMarketplaceInfo {
             screenshots: vec![],
             documentation: "docs/README.md".to_string(),
@@ -339,7 +397,11 @@ fn create_terminal_emulator_plugin() -> PluginDefinition {
         description: "Integrated terminal with multiple tabs and shells".to_string(),
         author: "ZylCode Team".to_string(),
         category: "development".to_string(),
-        tags: vec!["terminal".to_string(), "shell".to_string(), "console".to_string()],
+        tags: vec![
+            "terminal".to_string(),
+            "shell".to_string(),
+            "console".to_string(),
+        ],
         pricing: PluginPricing {
             pricing_type: "free".to_string(),
             price: 0.0,
@@ -361,8 +423,14 @@ fn create_terminal_emulator_plugin() -> PluginDefinition {
             timeout_ms: 5000,
         },
         permissions: vec![
-            PluginPermission { resource: "filesystem".to_string(), actions: vec!["read".to_string(), "write".to_string()] },
-            PluginPermission { resource: "process".to_string(), actions: vec!["execute".to_string()] },
+            PluginPermission {
+                resource: "filesystem".to_string(),
+                actions: vec!["read".to_string(), "write".to_string()],
+            },
+            PluginPermission {
+                resource: "process".to_string(),
+                actions: vec!["execute".to_string()],
+            },
         ],
         marketplace: PluginMarketplaceInfo {
             screenshots: vec![],
@@ -407,8 +475,14 @@ fn create_api_tester_plugin() -> PluginDefinition {
             timeout_ms: 30000,
         },
         permissions: vec![
-            PluginPermission { resource: "network".to_string(), actions: vec!["request".to_string()] },
-            PluginPermission { resource: "filesystem".to_string(), actions: vec!["read".to_string(), "write".to_string()] },
+            PluginPermission {
+                resource: "network".to_string(),
+                actions: vec!["request".to_string()],
+            },
+            PluginPermission {
+                resource: "filesystem".to_string(),
+                actions: vec!["read".to_string(), "write".to_string()],
+            },
         ],
         marketplace: PluginMarketplaceInfo {
             screenshots: vec![],
@@ -431,7 +505,11 @@ fn create_docker_manager_plugin() -> PluginDefinition {
         description: "Manage Docker containers, images, and compose".to_string(),
         author: "ZylCode Team".to_string(),
         category: "devops".to_string(),
-        tags: vec!["docker".to_string(), "containers".to_string(), "devops".to_string()],
+        tags: vec![
+            "docker".to_string(),
+            "containers".to_string(),
+            "devops".to_string(),
+        ],
         pricing: PluginPricing {
             pricing_type: "free".to_string(),
             price: 0.0,
@@ -452,9 +530,14 @@ fn create_docker_manager_plugin() -> PluginDefinition {
             background: false,
             timeout_ms: 15000,
         },
-        permissions: vec![
-            PluginPermission { resource: "docker".to_string(), actions: vec!["read".to_string(), "write".to_string(), "execute".to_string()] },
-        ],
+        permissions: vec![PluginPermission {
+            resource: "docker".to_string(),
+            actions: vec![
+                "read".to_string(),
+                "write".to_string(),
+                "execute".to_string(),
+            ],
+        }],
         marketplace: PluginMarketplaceInfo {
             screenshots: vec![],
             documentation: "docs/README.md".to_string(),
@@ -476,7 +559,13 @@ fn create_cloud_deployer_plugin() -> PluginDefinition {
         description: "Deploy to AWS, GCP, Azure, Vercel, Netlify".to_string(),
         author: "ZylCode Team".to_string(),
         category: "cloud".to_string(),
-        tags: vec!["cloud".to_string(), "deploy".to_string(), "aws".to_string(), "gcp".to_string(), "azure".to_string()],
+        tags: vec![
+            "cloud".to_string(),
+            "deploy".to_string(),
+            "aws".to_string(),
+            "gcp".to_string(),
+            "azure".to_string(),
+        ],
         pricing: PluginPricing {
             pricing_type: "freemium".to_string(),
             price: 4.99,
@@ -498,8 +587,14 @@ fn create_cloud_deployer_plugin() -> PluginDefinition {
             timeout_ms: 60000,
         },
         permissions: vec![
-            PluginPermission { resource: "cloud".to_string(), actions: vec!["deploy".to_string(), "configure".to_string()] },
-            PluginPermission { resource: "filesystem".to_string(), actions: vec!["read".to_string()] },
+            PluginPermission {
+                resource: "cloud".to_string(),
+                actions: vec!["deploy".to_string(), "configure".to_string()],
+            },
+            PluginPermission {
+                resource: "filesystem".to_string(),
+                actions: vec!["read".to_string()],
+            },
         ],
         marketplace: PluginMarketplaceInfo {
             screenshots: vec![],
@@ -522,7 +617,11 @@ fn create_performance_monitor_plugin() -> PluginDefinition {
         description: "Monitor CPU, memory, and network usage".to_string(),
         author: "ZylCode Team".to_string(),
         category: "devops".to_string(),
-        tags: vec!["performance".to_string(), "monitoring".to_string(), "metrics".to_string()],
+        tags: vec![
+            "performance".to_string(),
+            "monitoring".to_string(),
+            "metrics".to_string(),
+        ],
         pricing: PluginPricing {
             pricing_type: "free".to_string(),
             price: 0.0,
@@ -543,9 +642,10 @@ fn create_performance_monitor_plugin() -> PluginDefinition {
             background: true,
             timeout_ms: 5000,
         },
-        permissions: vec![
-            PluginPermission { resource: "system".to_string(), actions: vec!["read".to_string()] },
-        ],
+        permissions: vec![PluginPermission {
+            resource: "system".to_string(),
+            actions: vec!["read".to_string()],
+        }],
         marketplace: PluginMarketplaceInfo {
             screenshots: vec![],
             documentation: "docs/README.md".to_string(),
@@ -567,7 +667,11 @@ fn create_security_auditor_plugin() -> PluginDefinition {
         description: "Audit code for security vulnerabilities".to_string(),
         author: "ZylCode Team".to_string(),
         category: "security".to_string(),
-        tags: vec!["security".to_string(), "audit".to_string(), "vulnerabilities".to_string()],
+        tags: vec![
+            "security".to_string(),
+            "audit".to_string(),
+            "vulnerabilities".to_string(),
+        ],
         pricing: PluginPricing {
             pricing_type: "freemium".to_string(),
             price: 9.99,
@@ -589,8 +693,14 @@ fn create_security_auditor_plugin() -> PluginDefinition {
             timeout_ms: 120000,
         },
         permissions: vec![
-            PluginPermission { resource: "filesystem".to_string(), actions: vec!["read".to_string()] },
-            PluginPermission { resource: "security".to_string(), actions: vec!["scan".to_string()] },
+            PluginPermission {
+                resource: "filesystem".to_string(),
+                actions: vec!["read".to_string()],
+            },
+            PluginPermission {
+                resource: "security".to_string(),
+                actions: vec!["scan".to_string()],
+            },
         ],
         marketplace: PluginMarketplaceInfo {
             screenshots: vec![],
@@ -613,7 +723,11 @@ fn create_database_designer_plugin() -> PluginDefinition {
         description: "Design database schemas with visual editor".to_string(),
         author: "ZylCode Team".to_string(),
         category: "database".to_string(),
-        tags: vec!["database".to_string(), "schema".to_string(), "design".to_string()],
+        tags: vec![
+            "database".to_string(),
+            "schema".to_string(),
+            "design".to_string(),
+        ],
         pricing: PluginPricing {
             pricing_type: "free".to_string(),
             price: 0.0,
@@ -635,8 +749,14 @@ fn create_database_designer_plugin() -> PluginDefinition {
             timeout_ms: 30000,
         },
         permissions: vec![
-            PluginPermission { resource: "filesystem".to_string(), actions: vec!["read".to_string(), "write".to_string()] },
-            PluginPermission { resource: "database".to_string(), actions: vec!["read".to_string()] },
+            PluginPermission {
+                resource: "filesystem".to_string(),
+                actions: vec!["read".to_string(), "write".to_string()],
+            },
+            PluginPermission {
+                resource: "database".to_string(),
+                actions: vec!["read".to_string()],
+            },
         ],
         marketplace: PluginMarketplaceInfo {
             screenshots: vec![],
@@ -659,7 +779,11 @@ fn create_graphql_playground_plugin() -> PluginDefinition {
         description: "Interactive GraphQL IDE".to_string(),
         author: "ZylCode Team".to_string(),
         category: "development".to_string(),
-        tags: vec!["graphql".to_string(), "api".to_string(), "playground".to_string()],
+        tags: vec![
+            "graphql".to_string(),
+            "api".to_string(),
+            "playground".to_string(),
+        ],
         pricing: PluginPricing {
             pricing_type: "free".to_string(),
             price: 0.0,
@@ -680,9 +804,10 @@ fn create_graphql_playground_plugin() -> PluginDefinition {
             background: false,
             timeout_ms: 10000,
         },
-        permissions: vec![
-            PluginPermission { resource: "network".to_string(), actions: vec!["request".to_string()] },
-        ],
+        permissions: vec![PluginPermission {
+            resource: "network".to_string(),
+            actions: vec!["request".to_string()],
+        }],
         marketplace: PluginMarketplaceInfo {
             screenshots: vec![],
             documentation: "docs/README.md".to_string(),
@@ -704,7 +829,11 @@ fn create_websocket_tester_plugin() -> PluginDefinition {
         description: "Test WebSocket connections and messages".to_string(),
         author: "ZylCode Team".to_string(),
         category: "development".to_string(),
-        tags: vec!["websocket".to_string(), "testing".to_string(), "real-time".to_string()],
+        tags: vec![
+            "websocket".to_string(),
+            "testing".to_string(),
+            "real-time".to_string(),
+        ],
         pricing: PluginPricing {
             pricing_type: "free".to_string(),
             price: 0.0,
@@ -725,9 +854,10 @@ fn create_websocket_tester_plugin() -> PluginDefinition {
             background: false,
             timeout_ms: 10000,
         },
-        permissions: vec![
-            PluginPermission { resource: "network".to_string(), actions: vec!["request".to_string(), "listen".to_string()] },
-        ],
+        permissions: vec![PluginPermission {
+            resource: "network".to_string(),
+            actions: vec!["request".to_string(), "listen".to_string()],
+        }],
         marketplace: PluginMarketplaceInfo {
             screenshots: vec![],
             documentation: "docs/README.md".to_string(),
@@ -749,7 +879,11 @@ fn create_markdown_editor_plugin() -> PluginDefinition {
         description: "Rich markdown editor with preview".to_string(),
         author: "ZylCode Team".to_string(),
         category: "productivity".to_string(),
-        tags: vec!["markdown".to_string(), "editor".to_string(), "preview".to_string()],
+        tags: vec![
+            "markdown".to_string(),
+            "editor".to_string(),
+            "preview".to_string(),
+        ],
         pricing: PluginPricing {
             pricing_type: "free".to_string(),
             price: 0.0,
@@ -770,9 +904,10 @@ fn create_markdown_editor_plugin() -> PluginDefinition {
             background: false,
             timeout_ms: 5000,
         },
-        permissions: vec![
-            PluginPermission { resource: "filesystem".to_string(), actions: vec!["read".to_string(), "write".to_string()] },
-        ],
+        permissions: vec![PluginPermission {
+            resource: "filesystem".to_string(),
+            actions: vec!["read".to_string(), "write".to_string()],
+        }],
         marketplace: PluginMarketplaceInfo {
             screenshots: vec![],
             documentation: "docs/README.md".to_string(),
@@ -794,7 +929,11 @@ fn create_image_optimizer_plugin() -> PluginDefinition {
         description: "Optimize images for web performance".to_string(),
         author: "ZylCode Team".to_string(),
         category: "productivity".to_string(),
-        tags: vec!["image".to_string(), "optimization".to_string(), "compression".to_string()],
+        tags: vec![
+            "image".to_string(),
+            "optimization".to_string(),
+            "compression".to_string(),
+        ],
         pricing: PluginPricing {
             pricing_type: "free".to_string(),
             price: 0.0,
@@ -815,9 +954,10 @@ fn create_image_optimizer_plugin() -> PluginDefinition {
             background: false,
             timeout_ms: 30000,
         },
-        permissions: vec![
-            PluginPermission { resource: "filesystem".to_string(), actions: vec!["read".to_string(), "write".to_string()] },
-        ],
+        permissions: vec![PluginPermission {
+            resource: "filesystem".to_string(),
+            actions: vec!["read".to_string(), "write".to_string()],
+        }],
         marketplace: PluginMarketplaceInfo {
             screenshots: vec![],
             documentation: "docs/README.md".to_string(),
@@ -860,9 +1000,10 @@ fn create_csv_json_viewer_plugin() -> PluginDefinition {
             background: false,
             timeout_ms: 10000,
         },
-        permissions: vec![
-            PluginPermission { resource: "filesystem".to_string(), actions: vec!["read".to_string(), "write".to_string()] },
-        ],
+        permissions: vec![PluginPermission {
+            resource: "filesystem".to_string(),
+            actions: vec!["read".to_string(), "write".to_string()],
+        }],
         marketplace: PluginMarketplaceInfo {
             screenshots: vec![],
             documentation: "docs/README.md".to_string(),
@@ -884,7 +1025,11 @@ fn create_regex_tester_plugin() -> PluginDefinition {
         description: "Test and debug regular expressions".to_string(),
         author: "ZylCode Team".to_string(),
         category: "development".to_string(),
-        tags: vec!["regex".to_string(), "testing".to_string(), "debugging".to_string()],
+        tags: vec![
+            "regex".to_string(),
+            "testing".to_string(),
+            "debugging".to_string(),
+        ],
         pricing: PluginPricing {
             pricing_type: "free".to_string(),
             price: 0.0,
@@ -927,7 +1072,11 @@ fn create_color_picker_plugin() -> PluginDefinition {
         description: "Pick and convert colors".to_string(),
         author: "ZylCode Team".to_string(),
         category: "creative".to_string(),
-        tags: vec!["color".to_string(), "picker".to_string(), "design".to_string()],
+        tags: vec![
+            "color".to_string(),
+            "picker".to_string(),
+            "design".to_string(),
+        ],
         pricing: PluginPricing {
             pricing_type: "free".to_string(),
             price: 0.0,
@@ -948,9 +1097,10 @@ fn create_color_picker_plugin() -> PluginDefinition {
             background: false,
             timeout_ms: 5000,
         },
-        permissions: vec![
-            PluginPermission { resource: "ui".to_string(), actions: vec!["render".to_string()] },
-        ],
+        permissions: vec![PluginPermission {
+            resource: "ui".to_string(),
+            actions: vec!["render".to_string()],
+        }],
         marketplace: PluginMarketplaceInfo {
             screenshots: vec![],
             documentation: "docs/README.md".to_string(),
@@ -972,7 +1122,11 @@ fn create_lorem_ipsum_generator_plugin() -> PluginDefinition {
         description: "Generate placeholder text".to_string(),
         author: "ZylCode Team".to_string(),
         category: "productivity".to_string(),
-        tags: vec!["lorem".to_string(), "placeholder".to_string(), "text".to_string()],
+        tags: vec![
+            "lorem".to_string(),
+            "placeholder".to_string(),
+            "text".to_string(),
+        ],
         pricing: PluginPricing {
             pricing_type: "free".to_string(),
             price: 0.0,
@@ -1015,7 +1169,11 @@ fn create_uuid_generator_plugin() -> PluginDefinition {
         description: "Generate UUIDs and GUIDs".to_string(),
         author: "ZylCode Team".to_string(),
         category: "development".to_string(),
-        tags: vec!["uuid".to_string(), "guid".to_string(), "generator".to_string()],
+        tags: vec![
+            "uuid".to_string(),
+            "guid".to_string(),
+            "generator".to_string(),
+        ],
         pricing: PluginPricing {
             pricing_type: "free".to_string(),
             price: 0.0,
@@ -1101,7 +1259,11 @@ fn create_base64_plugin() -> PluginDefinition {
         description: "Encode and decode Base64".to_string(),
         author: "ZylCode Team".to_string(),
         category: "development".to_string(),
-        tags: vec!["base64".to_string(), "encoder".to_string(), "decoder".to_string()],
+        tags: vec![
+            "base64".to_string(),
+            "encoder".to_string(),
+            "decoder".to_string(),
+        ],
         pricing: PluginPricing {
             pricing_type: "free".to_string(),
             price: 0.0,
@@ -1144,7 +1306,11 @@ fn create_json_formatter_plugin() -> PluginDefinition {
         description: "Format, validate, and visualize JSON".to_string(),
         author: "ZylCode Team".to_string(),
         category: "development".to_string(),
-        tags: vec!["json".to_string(), "formatter".to_string(), "validator".to_string()],
+        tags: vec![
+            "json".to_string(),
+            "formatter".to_string(),
+            "validator".to_string(),
+        ],
         pricing: PluginPricing {
             pricing_type: "free".to_string(),
             price: 0.0,
@@ -1165,9 +1331,10 @@ fn create_json_formatter_plugin() -> PluginDefinition {
             background: false,
             timeout_ms: 1000,
         },
-        permissions: vec![
-            PluginPermission { resource: "clipboard".to_string(), actions: vec!["read".to_string(), "write".to_string()] },
-        ],
+        permissions: vec![PluginPermission {
+            resource: "clipboard".to_string(),
+            actions: vec!["read".to_string(), "write".to_string()],
+        }],
         marketplace: PluginMarketplaceInfo {
             screenshots: vec![],
             documentation: "docs/README.md".to_string(),

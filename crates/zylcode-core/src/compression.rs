@@ -1,4 +1,4 @@
-//! Phase 8.1 — Advanced Context Compression & Window Compaction Engine.
+//! Advanced Context Compression & Window Compaction Engine (track: CTX-COMPRESSION).
 //!
 //! Provides [`ContextCompressor`] with pluggable strategies:
 //! - `LosslessCommentsStripper` — strips `//` and `/* */` without touching string literals
@@ -271,7 +271,10 @@ impl CompressionStrategy for TokenWindowCompactor {
             .nth(tail_start)
             .map(|(idx, _)| idx)
             .unwrap_or(tail_start)..];
-        format!("{head}\n// … [compacted {} chars] …\n{tail}", input.len() - head.len() - tail.len())
+        format!(
+            "{head}\n// … [compacted {} chars] …\n{tail}",
+            input.len() - head.len() - tail.len()
+        )
     }
 }
 
@@ -290,7 +293,9 @@ pub struct ContextCompressor {
 
 impl Default for ContextCompressor {
     fn default() -> Self {
-        Self { budget_tokens: 8192 }
+        Self {
+            budget_tokens: 8192,
+        }
     }
 }
 
@@ -320,7 +325,9 @@ impl ContextCompressor {
             let outliner = ASTOutlineExtractor;
             // Allocate system ~30% of budget
             let sys_budget = (self.budget_tokens as f64 * 0.3) as usize;
-            let prm_budget = self.budget_tokens.saturating_sub(Self::estimate_tokens(&sys).min(sys_budget));
+            let prm_budget = self
+                .budget_tokens
+                .saturating_sub(Self::estimate_tokens(&sys).min(sys_budget));
             let new_prm = outliner.compress(&prm, prm_budget);
             prm = new_prm;
             current = Self::estimate_tokens(&prm) + Self::estimate_tokens(&sys);
@@ -329,7 +336,9 @@ impl ContextCompressor {
             let win = TokenWindowCompactor;
             let sys_budget = (self.budget_tokens as f64 * 0.3) as usize;
             sys = win.compress(&sys, sys_budget.max(64));
-            let prm_budget = self.budget_tokens.saturating_sub(Self::estimate_tokens(&sys));
+            let prm_budget = self
+                .budget_tokens
+                .saturating_sub(Self::estimate_tokens(&sys));
             prm = win.compress(&prm, prm_budget.max(64));
             current = Self::estimate_tokens(&prm) + Self::estimate_tokens(&sys);
         }
@@ -355,7 +364,7 @@ impl ContextCompressor {
 }
 
 // ---------------------------------------------------------------------------
-// Tests — Phase 8.1 validation
+// Tests — CTX-COMPRESSION validation
 // ---------------------------------------------------------------------------
 
 #[cfg(test)]

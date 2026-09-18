@@ -1,21 +1,17 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use zylcode_mcp::real_tools::{ToolSchema, RiskLevel};
+use zylcode_mcp::real_tools::RiskLevel;
 
 /// Structured decision from the agent model
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "action", content = "payload")]
 pub enum AgentDecision {
     /// Model is thinking/reasoning
-    Think {
-        thought: String,
-    },
-    
+    Think { thought: String },
+
     /// Model is generating a plan
-    Plan {
-        steps: Vec<PlanStep>,
-    },
-    
+    Plan { steps: Vec<PlanStep> },
+
     /// Model wants to execute a tool
     ToolCall {
         tool_id: String,
@@ -23,26 +19,24 @@ pub enum AgentDecision {
         reason: String,
         expected_result: Option<String>,
     },
-    
+
     /// Model requests user approval
     RequestApproval {
         action_description: String,
         risk_level: RiskLevel,
         tool_id: Option<String>,
     },
-    
+
     /// Model wants to verify results
-    Verify {
-        checks: Vec<String>,
-    },
-    
+    Verify { checks: Vec<String> },
+
     /// Model declares task complete
     Complete {
         summary: String,
         evidence: Vec<String>,
         remaining_limitations: Vec<String>,
     },
-    
+
     /// Model declares task failed
     Fail {
         reason: String,

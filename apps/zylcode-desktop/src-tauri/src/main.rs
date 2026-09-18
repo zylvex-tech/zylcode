@@ -1,10 +1,10 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use serde::{Deserialize, Serialize};
 use std::io::{self, Write};
 use std::sync::{Arc, RwLock};
 use zylcode_core::router::{ProviderConfig, ProviderKind};
 use zylcode_core::{EngineConfig, Intent, McpBridgeDescriptor, ZylCodeEngine};
-use serde::{Serialize, Deserialize};
 
 // ---------------------------------------------------------------------------
 // Shared engine state — managed by Tauri
@@ -210,11 +210,7 @@ async fn token_metrics(
 async fn verify_logic(
     state: tauri::State<'_, EngineState>,
 ) -> Result<zylcode_core::VerificationReport, String> {
-    state
-        .engine
-        .verify_logic()
-        .await
-        .map_err(|e| e.to_string())
+    state.engine.verify_logic().await.map_err(|e| e.to_string())
 }
 
 /// Register an MCP bridge from the desktop UI.
@@ -282,7 +278,7 @@ async fn marketplace_search(
 }
 
 // ---------------------------------------------------------------------------
-// Phase 7.3 — Provider Configuration IPC
+// Provider Configuration IPC (track: MULTIPROVIDER-2)
 // ---------------------------------------------------------------------------
 
 /// Return current provider configs sorted by fallback_order.
@@ -349,9 +345,7 @@ async fn set_provider_config(
 
 /// Vector cache — clear all entries.
 #[tauri::command]
-async fn clear_vector_cache(
-    state: tauri::State<'_, EngineState>,
-) -> Result<usize, String> {
+async fn clear_vector_cache(state: tauri::State<'_, EngineState>) -> Result<usize, String> {
     state
         .vector_cache
         .clear()
@@ -360,9 +354,7 @@ async fn clear_vector_cache(
 
 /// Vector cache — stats.
 #[tauri::command]
-async fn get_cache_stats(
-    state: tauri::State<'_, EngineState>,
-) -> Result<CacheStats, String> {
+async fn get_cache_stats(state: tauri::State<'_, EngineState>) -> Result<CacheStats, String> {
     let (entry_count, estimated_size) = state
         .vector_cache
         .stats()
@@ -404,7 +396,11 @@ async fn reorder_provider_chain(
         }
     }
     // Remaining configs not in order get pushed to end in previous relative order
-    let mut remaining: Vec<_> = cfgs.iter().filter(|c| !order.contains(&c.kind)).cloned().collect();
+    let mut remaining: Vec<_> = cfgs
+        .iter()
+        .filter(|c| !order.contains(&c.kind))
+        .cloned()
+        .collect();
     remaining.sort_by_key(|c| c.fallback_order);
     let base = order.len() as u32;
     for (idx, rcfg) in remaining.into_iter().enumerate() {
@@ -470,7 +466,12 @@ fn run_interactive(engine: ZylCodeEngine) -> Result<(), String> {
                     println!("No tools registered. Add mcp.tools.yaml to register tools.");
                 } else {
                     for t in tools {
-                        println!("  {} ({}) - {}", t.id, t.transport, t.description.unwrap_or_default());
+                        println!(
+                            "  {} ({}) - {}",
+                            t.id,
+                            t.transport,
+                            t.description.unwrap_or_default()
+                        );
                     }
                 }
             }
@@ -488,9 +489,18 @@ fn run_interactive(engine: ZylCodeEngine) -> Result<(), String> {
                 println!("Running verification...");
                 match tauri::async_runtime::block_on(engine.verify_logic()) {
                     Ok(report) => {
-                        println!("{} — {}ms", if report.passed { "PASSED" } else { "FAILED" }, report.duration_ms);
+                        println!(
+                            "{} — {}ms",
+                            if report.passed { "PASSED" } else { "FAILED" },
+                            report.duration_ms
+                        );
                         for c in report.checks {
-                            println!("  {} {}: {}", if c.passed { "✓" } else { "✗" }, c.name, c.message);
+                            println!(
+                                "  {} {}: {}",
+                                if c.passed { "✓" } else { "✗" },
+                                c.name,
+                                c.message
+                            );
                         }
                     }
                     Err(e) => println!("Verification failed: {}", e),
@@ -498,7 +508,13 @@ fn run_interactive(engine: ZylCodeEngine) -> Result<(), String> {
             }
             "tokens" => {
                 let metrics = engine.token_metrics();
-                println!("Tokens: in={} out={} saved={} fallback={}", metrics.input_tokens, metrics.output_tokens, metrics.verification_saved_tokens, metrics.fallback_count);
+                println!(
+                    "Tokens: in={} out={} saved={} fallback={}",
+                    metrics.input_tokens,
+                    metrics.output_tokens,
+                    metrics.verification_saved_tokens,
+                    metrics.fallback_count
+                );
             }
             prompt => {
                 println!("Processing: {}", prompt);
@@ -611,7 +627,9 @@ async fn get_recent_audit_logs(
         .map_err(|e| format!("failed to open telemetry DB at {:?}: {}", db_path, e))?;
 
     // Ensure tables exist on first open.
-    init_telemetry_db(state).await.map_err(|e| format!("DB init failed: {}", e))?;
+    init_telemetry_db(state)
+        .await
+        .map_err(|e| format!("DB init failed: {}", e))?;
 
     let prepare_result = conn.prepare(
         "SELECT timestamp, event_type, severity, tool_id, transport, caller_id, input_hash, output_hash, duration_ms, retry_attempt, max_retries, error FROM audit_logs ORDER BY id ASC LIMIT 50",

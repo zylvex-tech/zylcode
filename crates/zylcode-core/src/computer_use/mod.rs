@@ -1,19 +1,19 @@
-pub mod screen_capture;
 pub mod gui_automation;
+pub mod input_controller;
+pub mod screen_capture;
+pub mod types;
 pub mod vision_ai;
 pub mod workflow_engine;
-pub mod input_controller;
-pub mod types;
 
-use std::sync::Arc;
 use anyhow::Result;
+use std::sync::Arc;
 
-use self::screen_capture::ScreenCapture;
 use self::gui_automation::GuiAutomation;
+use self::input_controller::InputController;
+use self::screen_capture::ScreenCapture;
+pub use self::types::*;
 use self::vision_ai::VisionAi;
 use self::workflow_engine::WorkflowEngine;
-use self::input_controller::InputController;
-pub use self::types::*;
 
 /// Computer Use System - Screen capture, GUI automation, and workflow engine
 pub struct ComputerUseSystem {
@@ -129,7 +129,9 @@ impl ComputerUseSystem {
 
     /// Schedule workflow
     pub async fn schedule_workflow(&self, workflow_id: &str, schedule: Schedule) -> Result<()> {
-        self.workflow_engine.schedule_workflow(workflow_id, schedule).await
+        self.workflow_engine
+            .schedule_workflow(workflow_id, schedule)
+            .await
     }
 
     /// Start input recording
@@ -174,7 +176,7 @@ mod tests {
     async fn test_screen_capture() {
         let system = ComputerUseSystem::new().await.unwrap();
         let options = CaptureOptions::default();
-        
+
         // This would fail in a real environment without a display
         // but we're testing the API with simulated success
         let result = system.capture_screen(options).await;

@@ -1,6 +1,6 @@
-use serde_json::json;
 use crate::skills_system::SkillDefinition;
-use crate::skills_system::{SkillDependency, SkillExecution, SkillPermission, MarketplaceInfo};
+use crate::skills_system::{MarketplaceInfo, SkillDependency, SkillExecution, SkillPermission};
+use serde_json::json;
 
 /// Generate a list of 25 pre-built skills
 pub fn get_builtin_skills() -> Vec<SkillDefinition> {
@@ -66,10 +66,22 @@ fn create_code_review_skill() -> SkillDefinition {
         description: "Automated code review with AI analysis".to_string(),
         author: "ZylCode Team".to_string(),
         category: "development".to_string(),
-        tags: vec!["code-review".to_string(), "ai".to_string(), "quality".to_string()],
+        tags: vec![
+            "code-review".to_string(),
+            "ai".to_string(),
+            "quality".to_string(),
+        ],
         dependencies: vec![
-            SkillDependency { name: "git-tools".to_string(), version: ">=1.0.0".to_string(), optional: false },
-            SkillDependency { name: "ai-models".to_string(), version: ">=2.0.0".to_string(), optional: false },
+            SkillDependency {
+                name: "git-tools".to_string(),
+                version: ">=1.0.0".to_string(),
+                optional: false,
+            },
+            SkillDependency {
+                name: "ai-models".to_string(),
+                version: ">=2.0.0".to_string(),
+                optional: false,
+            },
         ],
         config_schema: json!({
             "type": "object",
@@ -79,13 +91,32 @@ fn create_code_review_skill() -> SkillDefinition {
                 "auto_fix": { "type": "boolean", "default": false }
             }
         }),
-        execution: SkillExecution { runtime: "node".to_string(), entry_point: "src/index.js".to_string(), timeout_ms: 300000, memory_limit_mb: 512 },
+        execution: SkillExecution {
+            runtime: "node".to_string(),
+            entry_point: "src/index.js".to_string(),
+            timeout_ms: 300000,
+            memory_limit_mb: 512,
+        },
         permissions: vec![
-            SkillPermission { resource: "filesystem".to_string(), actions: vec!["read".to_string()] },
-            SkillPermission { resource: "git".to_string(), actions: vec!["read".to_string(), "status".to_string()] },
-            SkillPermission { resource: "ai-models".to_string(), actions: vec!["execute".to_string()] },
+            SkillPermission {
+                resource: "filesystem".to_string(),
+                actions: vec!["read".to_string()],
+            },
+            SkillPermission {
+                resource: "git".to_string(),
+                actions: vec!["read".to_string(), "status".to_string()],
+            },
+            SkillPermission {
+                resource: "ai-models".to_string(),
+                actions: vec!["execute".to_string()],
+            },
         ],
-        marketplace: MarketplaceInfo { price: 0.0, category: "Development Tools".to_string(), screenshots: vec![], documentation: "docs/README.md".to_string() },
+        marketplace: MarketplaceInfo {
+            price: 0.0,
+            category: "Development Tools".to_string(),
+            screenshots: vec![],
+            documentation: "docs/README.md".to_string(),
+        },
     }
 }
 
@@ -97,8 +128,16 @@ fn create_doc_generator_skill() -> SkillDefinition {
         description: "Generate documentation from code".to_string(),
         author: "ZylCode Team".to_string(),
         category: "development".to_string(),
-        tags: vec!["documentation".to_string(), "ai".to_string(), "generation".to_string()],
-        dependencies: vec![SkillDependency { name: "ai-models".to_string(), version: ">=2.0.0".to_string(), optional: false }],
+        tags: vec![
+            "documentation".to_string(),
+            "ai".to_string(),
+            "generation".to_string(),
+        ],
+        dependencies: vec![SkillDependency {
+            name: "ai-models".to_string(),
+            version: ">=2.0.0".to_string(),
+            optional: false,
+        }],
         config_schema: json!({
             "type": "object",
             "properties": {
@@ -106,12 +145,28 @@ fn create_doc_generator_skill() -> SkillDefinition {
                 "include_examples": { "type": "boolean", "default": true }
             }
         }),
-        execution: SkillExecution { runtime: "node".to_string(), entry_point: "src/index.js".to_string(), timeout_ms: 180000, memory_limit_mb: 256 },
+        execution: SkillExecution {
+            runtime: "node".to_string(),
+            entry_point: "src/index.js".to_string(),
+            timeout_ms: 180000,
+            memory_limit_mb: 256,
+        },
         permissions: vec![
-            SkillPermission { resource: "filesystem".to_string(), actions: vec!["read".to_string(), "write".to_string()] },
-            SkillPermission { resource: "ai-models".to_string(), actions: vec!["execute".to_string()] },
+            SkillPermission {
+                resource: "filesystem".to_string(),
+                actions: vec!["read".to_string(), "write".to_string()],
+            },
+            SkillPermission {
+                resource: "ai-models".to_string(),
+                actions: vec!["execute".to_string()],
+            },
         ],
-        marketplace: MarketplaceInfo { price: 0.0, category: "Development Tools".to_string(), screenshots: vec![], documentation: "docs/README.md".to_string() },
+        marketplace: MarketplaceInfo {
+            price: 0.0,
+            category: "Development Tools".to_string(),
+            screenshots: vec![],
+            documentation: "docs/README.md".to_string(),
+        },
     }
 }
 
@@ -123,8 +178,16 @@ fn create_test_generator_skill() -> SkillDefinition {
         description: "Generate unit tests from code".to_string(),
         author: "ZylCode Team".to_string(),
         category: "development".to_string(),
-        tags: vec!["testing".to_string(), "ai".to_string(), "generation".to_string()],
-        dependencies: vec![SkillDependency { name: "ai-models".to_string(), version: ">=2.0.0".to_string(), optional: false }],
+        tags: vec![
+            "testing".to_string(),
+            "ai".to_string(),
+            "generation".to_string(),
+        ],
+        dependencies: vec![SkillDependency {
+            name: "ai-models".to_string(),
+            version: ">=2.0.0".to_string(),
+            optional: false,
+        }],
         config_schema: json!({
             "type": "object",
             "properties": {
@@ -132,12 +195,28 @@ fn create_test_generator_skill() -> SkillDefinition {
                 "coverage_target": { "type": "number", "default": 80 }
             }
         }),
-        execution: SkillExecution { runtime: "node".to_string(), entry_point: "src/index.js".to_string(), timeout_ms: 240000, memory_limit_mb: 256 },
+        execution: SkillExecution {
+            runtime: "node".to_string(),
+            entry_point: "src/index.js".to_string(),
+            timeout_ms: 240000,
+            memory_limit_mb: 256,
+        },
         permissions: vec![
-            SkillPermission { resource: "filesystem".to_string(), actions: vec!["read".to_string(), "write".to_string()] },
-            SkillPermission { resource: "ai-models".to_string(), actions: vec!["execute".to_string()] },
+            SkillPermission {
+                resource: "filesystem".to_string(),
+                actions: vec!["read".to_string(), "write".to_string()],
+            },
+            SkillPermission {
+                resource: "ai-models".to_string(),
+                actions: vec!["execute".to_string()],
+            },
         ],
-        marketplace: MarketplaceInfo { price: 0.0, category: "Development Tools".to_string(), screenshots: vec![], documentation: "docs/README.md".to_string() },
+        marketplace: MarketplaceInfo {
+            price: 0.0,
+            category: "Development Tools".to_string(),
+            screenshots: vec![],
+            documentation: "docs/README.md".to_string(),
+        },
     }
 }
 
@@ -151,8 +230,16 @@ fn create_data_analysis_skill() -> SkillDefinition {
         category: "ai-ml".to_string(),
         tags: vec!["data".to_string(), "analysis".to_string(), "ai".to_string()],
         dependencies: vec![
-            SkillDependency { name: "ai-models".to_string(), version: ">=2.0.0".to_string(), optional: false },
-            SkillDependency { name: "data-processing".to_string(), version: ">=1.0.0".to_string(), optional: false },
+            SkillDependency {
+                name: "ai-models".to_string(),
+                version: ">=2.0.0".to_string(),
+                optional: false,
+            },
+            SkillDependency {
+                name: "data-processing".to_string(),
+                version: ">=1.0.0".to_string(),
+                optional: false,
+            },
         ],
         config_schema: json!({
             "type": "object",
@@ -161,13 +248,32 @@ fn create_data_analysis_skill() -> SkillDefinition {
                 "output_format": { "type": "string", "enum": ["report", "chart", "table"], "default": "report" }
             }
         }),
-        execution: SkillExecution { runtime: "python".to_string(), entry_point: "src/main.py".to_string(), timeout_ms: 600000, memory_limit_mb: 1024 },
+        execution: SkillExecution {
+            runtime: "python".to_string(),
+            entry_point: "src/main.py".to_string(),
+            timeout_ms: 600000,
+            memory_limit_mb: 1024,
+        },
         permissions: vec![
-            SkillPermission { resource: "filesystem".to_string(), actions: vec!["read".to_string()] },
-            SkillPermission { resource: "ai-models".to_string(), actions: vec!["execute".to_string()] },
-            SkillPermission { resource: "database".to_string(), actions: vec!["read".to_string()] },
+            SkillPermission {
+                resource: "filesystem".to_string(),
+                actions: vec!["read".to_string()],
+            },
+            SkillPermission {
+                resource: "ai-models".to_string(),
+                actions: vec!["execute".to_string()],
+            },
+            SkillPermission {
+                resource: "database".to_string(),
+                actions: vec!["read".to_string()],
+            },
         ],
-        marketplace: MarketplaceInfo { price: 9.99, category: "AI/ML Tools".to_string(), screenshots: vec![], documentation: "docs/README.md".to_string() },
+        marketplace: MarketplaceInfo {
+            price: 9.99,
+            category: "AI/ML Tools".to_string(),
+            screenshots: vec![],
+            documentation: "docs/README.md".to_string(),
+        },
     }
 }
 
@@ -179,8 +285,16 @@ fn create_security_scanner_skill() -> SkillDefinition {
         description: "Scan code for security vulnerabilities".to_string(),
         author: "ZylCode Team".to_string(),
         category: "security".to_string(),
-        tags: vec!["security".to_string(), "scanning".to_string(), "vulnerabilities".to_string()],
-        dependencies: vec![SkillDependency { name: "security-tools".to_string(), version: ">=1.0.0".to_string(), optional: false }],
+        tags: vec![
+            "security".to_string(),
+            "scanning".to_string(),
+            "vulnerabilities".to_string(),
+        ],
+        dependencies: vec![SkillDependency {
+            name: "security-tools".to_string(),
+            version: ">=1.0.0".to_string(),
+            optional: false,
+        }],
         config_schema: json!({
             "type": "object",
             "properties": {
@@ -188,12 +302,28 @@ fn create_security_scanner_skill() -> SkillDefinition {
                 "severity_threshold": { "type": "string", "enum": ["low", "medium", "high", "critical"], "default": "medium" }
             }
         }),
-        execution: SkillExecution { runtime: "node".to_string(), entry_point: "src/index.js".to_string(), timeout_ms: 300000, memory_limit_mb: 512 },
+        execution: SkillExecution {
+            runtime: "node".to_string(),
+            entry_point: "src/index.js".to_string(),
+            timeout_ms: 300000,
+            memory_limit_mb: 512,
+        },
         permissions: vec![
-            SkillPermission { resource: "filesystem".to_string(), actions: vec!["read".to_string()] },
-            SkillPermission { resource: "security".to_string(), actions: vec!["scan".to_string()] },
+            SkillPermission {
+                resource: "filesystem".to_string(),
+                actions: vec!["read".to_string()],
+            },
+            SkillPermission {
+                resource: "security".to_string(),
+                actions: vec!["scan".to_string()],
+            },
         ],
-        marketplace: MarketplaceInfo { price: 19.99, category: "Security Tools".to_string(), screenshots: vec![], documentation: "docs/README.md".to_string() },
+        marketplace: MarketplaceInfo {
+            price: 19.99,
+            category: "Security Tools".to_string(),
+            screenshots: vec![],
+            documentation: "docs/README.md".to_string(),
+        },
     }
 }
 
@@ -205,8 +335,16 @@ fn create_code_refactoring_skill() -> SkillDefinition {
         description: "Automated code refactoring with AI suggestions".to_string(),
         author: "ZylCode Team".to_string(),
         category: "development".to_string(),
-        tags: vec!["refactoring".to_string(), "ai".to_string(), "optimization".to_string()],
-        dependencies: vec![SkillDependency { name: "ai-models".to_string(), version: ">=2.0.0".to_string(), optional: false }],
+        tags: vec![
+            "refactoring".to_string(),
+            "ai".to_string(),
+            "optimization".to_string(),
+        ],
+        dependencies: vec![SkillDependency {
+            name: "ai-models".to_string(),
+            version: ">=2.0.0".to_string(),
+            optional: false,
+        }],
         config_schema: json!({
             "type": "object",
             "properties": {
@@ -214,12 +352,28 @@ fn create_code_refactoring_skill() -> SkillDefinition {
                 "preserve_behavior": { "type": "boolean", "default": true }
             }
         }),
-        execution: SkillExecution { runtime: "node".to_string(), entry_point: "src/index.js".to_string(), timeout_ms: 200000, memory_limit_mb: 256 },
+        execution: SkillExecution {
+            runtime: "node".to_string(),
+            entry_point: "src/index.js".to_string(),
+            timeout_ms: 200000,
+            memory_limit_mb: 256,
+        },
         permissions: vec![
-            SkillPermission { resource: "filesystem".to_string(), actions: vec!["read".to_string(), "write".to_string()] },
-            SkillPermission { resource: "ai-models".to_string(), actions: vec!["execute".to_string()] },
+            SkillPermission {
+                resource: "filesystem".to_string(),
+                actions: vec!["read".to_string(), "write".to_string()],
+            },
+            SkillPermission {
+                resource: "ai-models".to_string(),
+                actions: vec!["execute".to_string()],
+            },
         ],
-        marketplace: MarketplaceInfo { price: 4.99, category: "Development Tools".to_string(), screenshots: vec![], documentation: "docs/README.md".to_string() },
+        marketplace: MarketplaceInfo {
+            price: 4.99,
+            category: "Development Tools".to_string(),
+            screenshots: vec![],
+            documentation: "docs/README.md".to_string(),
+        },
     }
 }
 
@@ -231,8 +385,16 @@ fn create_performance_optimizer_skill() -> SkillDefinition {
         description: "Optimize code for better performance".to_string(),
         author: "ZylCode Team".to_string(),
         category: "optimization".to_string(),
-        tags: vec!["performance".to_string(), "optimization".to_string(), "profiling".to_string()],
-        dependencies: vec![SkillDependency { name: "ai-models".to_string(), version: ">=2.0.0".to_string(), optional: false }],
+        tags: vec![
+            "performance".to_string(),
+            "optimization".to_string(),
+            "profiling".to_string(),
+        ],
+        dependencies: vec![SkillDependency {
+            name: "ai-models".to_string(),
+            version: ">=2.0.0".to_string(),
+            optional: false,
+        }],
         config_schema: json!({
             "type": "object",
             "properties": {
@@ -240,13 +402,32 @@ fn create_performance_optimizer_skill() -> SkillDefinition {
                 "threshold": { "type": "number", "default": 100 }
             }
         }),
-        execution: SkillExecution { runtime: "node".to_string(), entry_point: "src/index.js".to_string(), timeout_ms: 300000, memory_limit_mb: 512 },
+        execution: SkillExecution {
+            runtime: "node".to_string(),
+            entry_point: "src/index.js".to_string(),
+            timeout_ms: 300000,
+            memory_limit_mb: 512,
+        },
         permissions: vec![
-            SkillPermission { resource: "filesystem".to_string(), actions: vec!["read".to_string(), "write".to_string()] },
-            SkillPermission { resource: "ai-models".to_string(), actions: vec!["execute".to_string()] },
-            SkillPermission { resource: "monitoring".to_string(), actions: vec!["read".to_string()] },
+            SkillPermission {
+                resource: "filesystem".to_string(),
+                actions: vec!["read".to_string(), "write".to_string()],
+            },
+            SkillPermission {
+                resource: "ai-models".to_string(),
+                actions: vec!["execute".to_string()],
+            },
+            SkillPermission {
+                resource: "monitoring".to_string(),
+                actions: vec!["read".to_string()],
+            },
         ],
-        marketplace: MarketplaceInfo { price: 9.99, category: "Optimization Tools".to_string(), screenshots: vec![], documentation: "docs/README.md".to_string() },
+        marketplace: MarketplaceInfo {
+            price: 9.99,
+            category: "Optimization Tools".to_string(),
+            screenshots: vec![],
+            documentation: "docs/README.md".to_string(),
+        },
     }
 }
 
@@ -259,7 +440,11 @@ fn create_api_designer_skill() -> SkillDefinition {
         author: "ZylCode Team".to_string(),
         category: "development".to_string(),
         tags: vec!["api".to_string(), "rest".to_string(), "design".to_string()],
-        dependencies: vec![SkillDependency { name: "ai-models".to_string(), version: ">=2.0.0".to_string(), optional: false }],
+        dependencies: vec![SkillDependency {
+            name: "ai-models".to_string(),
+            version: ">=2.0.0".to_string(),
+            optional: false,
+        }],
         config_schema: json!({
             "type": "object",
             "properties": {
@@ -267,12 +452,28 @@ fn create_api_designer_skill() -> SkillDefinition {
                 "auth_type": { "type": "string", "enum": ["jwt", "oauth2", "api-key", "basic"], "default": "jwt" }
             }
         }),
-        execution: SkillExecution { runtime: "node".to_string(), entry_point: "src/index.js".to_string(), timeout_ms: 180000, memory_limit_mb: 256 },
+        execution: SkillExecution {
+            runtime: "node".to_string(),
+            entry_point: "src/index.js".to_string(),
+            timeout_ms: 180000,
+            memory_limit_mb: 256,
+        },
         permissions: vec![
-            SkillPermission { resource: "filesystem".to_string(), actions: vec!["read".to_string(), "write".to_string()] },
-            SkillPermission { resource: "ai-models".to_string(), actions: vec!["execute".to_string()] },
+            SkillPermission {
+                resource: "filesystem".to_string(),
+                actions: vec!["read".to_string(), "write".to_string()],
+            },
+            SkillPermission {
+                resource: "ai-models".to_string(),
+                actions: vec!["execute".to_string()],
+            },
         ],
-        marketplace: MarketplaceInfo { price: 4.99, category: "Development Tools".to_string(), screenshots: vec![], documentation: "docs/README.md".to_string() },
+        marketplace: MarketplaceInfo {
+            price: 4.99,
+            category: "Development Tools".to_string(),
+            screenshots: vec![],
+            documentation: "docs/README.md".to_string(),
+        },
     }
 }
 
@@ -284,8 +485,16 @@ fn create_database_optimizer_skill() -> SkillDefinition {
         description: "Optimize database queries and schema".to_string(),
         author: "ZylCode Team".to_string(),
         category: "database".to_string(),
-        tags: vec!["database".to_string(), "sql".to_string(), "optimization".to_string()],
-        dependencies: vec![SkillDependency { name: "database-tools".to_string(), version: ">=1.0.0".to_string(), optional: false }],
+        tags: vec![
+            "database".to_string(),
+            "sql".to_string(),
+            "optimization".to_string(),
+        ],
+        dependencies: vec![SkillDependency {
+            name: "database-tools".to_string(),
+            version: ">=1.0.0".to_string(),
+            optional: false,
+        }],
         config_schema: json!({
             "type": "object",
             "properties": {
@@ -293,12 +502,28 @@ fn create_database_optimizer_skill() -> SkillDefinition {
                 "optimization_level": { "type": "string", "enum": ["basic", "advanced", "expert"], "default": "advanced" }
             }
         }),
-        execution: SkillExecution { runtime: "node".to_string(), entry_point: "src/index.js".to_string(), timeout_ms: 240000, memory_limit_mb: 256 },
+        execution: SkillExecution {
+            runtime: "node".to_string(),
+            entry_point: "src/index.js".to_string(),
+            timeout_ms: 240000,
+            memory_limit_mb: 256,
+        },
         permissions: vec![
-            SkillPermission { resource: "database".to_string(), actions: vec!["read".to_string(), "write".to_string()] },
-            SkillPermission { resource: "ai-models".to_string(), actions: vec!["execute".to_string()] },
+            SkillPermission {
+                resource: "database".to_string(),
+                actions: vec!["read".to_string(), "write".to_string()],
+            },
+            SkillPermission {
+                resource: "ai-models".to_string(),
+                actions: vec!["execute".to_string()],
+            },
         ],
-        marketplace: MarketplaceInfo { price: 14.99, category: "Database Tools".to_string(), screenshots: vec![], documentation: "docs/README.md".to_string() },
+        marketplace: MarketplaceInfo {
+            price: 14.99,
+            category: "Database Tools".to_string(),
+            screenshots: vec![],
+            documentation: "docs/README.md".to_string(),
+        },
     }
 }
 
@@ -310,8 +535,18 @@ fn create_cloud_architect_skill() -> SkillDefinition {
         description: "Design and implement cloud architecture".to_string(),
         author: "ZylCode Team".to_string(),
         category: "cloud".to_string(),
-        tags: vec!["cloud".to_string(), "architecture".to_string(), "aws".to_string(), "gcp".to_string(), "azure".to_string()],
-        dependencies: vec![SkillDependency { name: "cloud-tools".to_string(), version: ">=1.0.0".to_string(), optional: false }],
+        tags: vec![
+            "cloud".to_string(),
+            "architecture".to_string(),
+            "aws".to_string(),
+            "gcp".to_string(),
+            "azure".to_string(),
+        ],
+        dependencies: vec![SkillDependency {
+            name: "cloud-tools".to_string(),
+            version: ">=1.0.0".to_string(),
+            optional: false,
+        }],
         config_schema: json!({
             "type": "object",
             "properties": {
@@ -319,12 +554,32 @@ fn create_cloud_architect_skill() -> SkillDefinition {
                 "architecture_pattern": { "type": "string", "enum": ["microservices", "serverless", "monolith", "event-driven"], "default": "microservices" }
             }
         }),
-        execution: SkillExecution { runtime: "node".to_string(), entry_point: "src/index.js".to_string(), timeout_ms: 300000, memory_limit_mb: 512 },
+        execution: SkillExecution {
+            runtime: "node".to_string(),
+            entry_point: "src/index.js".to_string(),
+            timeout_ms: 300000,
+            memory_limit_mb: 512,
+        },
         permissions: vec![
-            SkillPermission { resource: "cloud".to_string(), actions: vec!["read".to_string(), "write".to_string(), "execute".to_string()] },
-            SkillPermission { resource: "ai-models".to_string(), actions: vec!["execute".to_string()] },
+            SkillPermission {
+                resource: "cloud".to_string(),
+                actions: vec![
+                    "read".to_string(),
+                    "write".to_string(),
+                    "execute".to_string(),
+                ],
+            },
+            SkillPermission {
+                resource: "ai-models".to_string(),
+                actions: vec!["execute".to_string()],
+            },
         ],
-        marketplace: MarketplaceInfo { price: 19.99, category: "Cloud Tools".to_string(), screenshots: vec![], documentation: "docs/README.md".to_string() },
+        marketplace: MarketplaceInfo {
+            price: 19.99,
+            category: "Cloud Tools".to_string(),
+            screenshots: vec![],
+            documentation: "docs/README.md".to_string(),
+        },
     }
 }
 
@@ -336,8 +591,16 @@ fn create_cicd_builder_skill() -> SkillDefinition {
         description: "Build and configure CI/CD pipelines".to_string(),
         author: "ZylCode Team".to_string(),
         category: "devops".to_string(),
-        tags: vec!["cicd".to_string(), "pipeline".to_string(), "automation".to_string()],
-        dependencies: vec![SkillDependency { name: "devops-tools".to_string(), version: ">=1.0.0".to_string(), optional: false }],
+        tags: vec![
+            "cicd".to_string(),
+            "pipeline".to_string(),
+            "automation".to_string(),
+        ],
+        dependencies: vec![SkillDependency {
+            name: "devops-tools".to_string(),
+            version: ">=1.0.0".to_string(),
+            optional: false,
+        }],
         config_schema: json!({
             "type": "object",
             "properties": {
@@ -345,12 +608,28 @@ fn create_cicd_builder_skill() -> SkillDefinition {
                 "stages": { "type": "array", "items": {"type": "string"}, "default": ["build", "test", "deploy"] }
             }
         }),
-        execution: SkillExecution { runtime: "node".to_string(), entry_point: "src/index.js".to_string(), timeout_ms: 180000, memory_limit_mb: 256 },
+        execution: SkillExecution {
+            runtime: "node".to_string(),
+            entry_point: "src/index.js".to_string(),
+            timeout_ms: 180000,
+            memory_limit_mb: 256,
+        },
         permissions: vec![
-            SkillPermission { resource: "filesystem".to_string(), actions: vec!["read".to_string(), "write".to_string()] },
-            SkillPermission { resource: "git".to_string(), actions: vec!["read".to_string(), "write".to_string()] },
+            SkillPermission {
+                resource: "filesystem".to_string(),
+                actions: vec!["read".to_string(), "write".to_string()],
+            },
+            SkillPermission {
+                resource: "git".to_string(),
+                actions: vec!["read".to_string(), "write".to_string()],
+            },
         ],
-        marketplace: MarketplaceInfo { price: 9.99, category: "DevOps Tools".to_string(), screenshots: vec![], documentation: "docs/README.md".to_string() },
+        marketplace: MarketplaceInfo {
+            price: 9.99,
+            category: "DevOps Tools".to_string(),
+            screenshots: vec![],
+            documentation: "docs/README.md".to_string(),
+        },
     }
 }
 
@@ -362,8 +641,16 @@ fn create_container_orchestrator_skill() -> SkillDefinition {
         description: "Manage Docker and Kubernetes deployments".to_string(),
         author: "ZylCode Team".to_string(),
         category: "devops".to_string(),
-        tags: vec!["docker".to_string(), "kubernetes".to_string(), "containers".to_string()],
-        dependencies: vec![SkillDependency { name: "devops-tools".to_string(), version: ">=1.0.0".to_string(), optional: false }],
+        tags: vec![
+            "docker".to_string(),
+            "kubernetes".to_string(),
+            "containers".to_string(),
+        ],
+        dependencies: vec![SkillDependency {
+            name: "devops-tools".to_string(),
+            version: ">=1.0.0".to_string(),
+            optional: false,
+        }],
         config_schema: json!({
             "type": "object",
             "properties": {
@@ -371,12 +658,32 @@ fn create_container_orchestrator_skill() -> SkillDefinition {
                 "replicas": { "type": "number", "default": 3 }
             }
         }),
-        execution: SkillExecution { runtime: "node".to_string(), entry_point: "src/index.js".to_string(), timeout_ms: 240000, memory_limit_mb: 256 },
+        execution: SkillExecution {
+            runtime: "node".to_string(),
+            entry_point: "src/index.js".to_string(),
+            timeout_ms: 240000,
+            memory_limit_mb: 256,
+        },
         permissions: vec![
-            SkillPermission { resource: "containers".to_string(), actions: vec!["read".to_string(), "write".to_string(), "execute".to_string()] },
-            SkillPermission { resource: "cloud".to_string(), actions: vec!["read".to_string(), "write".to_string()] },
+            SkillPermission {
+                resource: "containers".to_string(),
+                actions: vec![
+                    "read".to_string(),
+                    "write".to_string(),
+                    "execute".to_string(),
+                ],
+            },
+            SkillPermission {
+                resource: "cloud".to_string(),
+                actions: vec!["read".to_string(), "write".to_string()],
+            },
         ],
-        marketplace: MarketplaceInfo { price: 14.99, category: "DevOps Tools".to_string(), screenshots: vec![], documentation: "docs/README.md".to_string() },
+        marketplace: MarketplaceInfo {
+            price: 14.99,
+            category: "DevOps Tools".to_string(),
+            screenshots: vec![],
+            documentation: "docs/README.md".to_string(),
+        },
     }
 }
 
@@ -388,8 +695,17 @@ fn create_frontend_builder_skill() -> SkillDefinition {
         description: "Build and optimize frontend applications".to_string(),
         author: "ZylCode Team".to_string(),
         category: "development".to_string(),
-        tags: vec!["frontend".to_string(), "react".to_string(), "vue".to_string(), "angular".to_string()],
-        dependencies: vec![SkillDependency { name: "ai-models".to_string(), version: ">=2.0.0".to_string(), optional: false }],
+        tags: vec![
+            "frontend".to_string(),
+            "react".to_string(),
+            "vue".to_string(),
+            "angular".to_string(),
+        ],
+        dependencies: vec![SkillDependency {
+            name: "ai-models".to_string(),
+            version: ">=2.0.0".to_string(),
+            optional: false,
+        }],
         config_schema: json!({
             "type": "object",
             "properties": {
@@ -397,12 +713,28 @@ fn create_frontend_builder_skill() -> SkillDefinition {
                 "styling": { "type": "string", "enum": ["tailwind", "css-modules", "styled-components", "emotion"], "default": "tailwind" }
             }
         }),
-        execution: SkillExecution { runtime: "node".to_string(), entry_point: "src/index.js".to_string(), timeout_ms: 300000, memory_limit_mb: 512 },
+        execution: SkillExecution {
+            runtime: "node".to_string(),
+            entry_point: "src/index.js".to_string(),
+            timeout_ms: 300000,
+            memory_limit_mb: 512,
+        },
         permissions: vec![
-            SkillPermission { resource: "filesystem".to_string(), actions: vec!["read".to_string(), "write".to_string()] },
-            SkillPermission { resource: "ai-models".to_string(), actions: vec!["execute".to_string()] },
+            SkillPermission {
+                resource: "filesystem".to_string(),
+                actions: vec!["read".to_string(), "write".to_string()],
+            },
+            SkillPermission {
+                resource: "ai-models".to_string(),
+                actions: vec!["execute".to_string()],
+            },
         ],
-        marketplace: MarketplaceInfo { price: 4.99, category: "Development Tools".to_string(), screenshots: vec![], documentation: "docs/README.md".to_string() },
+        marketplace: MarketplaceInfo {
+            price: 4.99,
+            category: "Development Tools".to_string(),
+            screenshots: vec![],
+            documentation: "docs/README.md".to_string(),
+        },
     }
 }
 
@@ -414,8 +746,17 @@ fn create_backend_builder_skill() -> SkillDefinition {
         description: "Build and optimize backend services".to_string(),
         author: "ZylCode Team".to_string(),
         category: "development".to_string(),
-        tags: vec!["backend".to_string(), "node".to_string(), "python".to_string(), "rust".to_string()],
-        dependencies: vec![SkillDependency { name: "ai-models".to_string(), version: ">=2.0.0".to_string(), optional: false }],
+        tags: vec![
+            "backend".to_string(),
+            "node".to_string(),
+            "python".to_string(),
+            "rust".to_string(),
+        ],
+        dependencies: vec![SkillDependency {
+            name: "ai-models".to_string(),
+            version: ">=2.0.0".to_string(),
+            optional: false,
+        }],
         config_schema: json!({
             "type": "object",
             "properties": {
@@ -423,12 +764,28 @@ fn create_backend_builder_skill() -> SkillDefinition {
                 "framework": { "type": "string", "enum": ["express", "fastify", "django", "flask", "actix", "axum"], "default": "express" }
             }
         }),
-        execution: SkillExecution { runtime: "node".to_string(), entry_point: "src/index.js".to_string(), timeout_ms: 300000, memory_limit_mb: 512 },
+        execution: SkillExecution {
+            runtime: "node".to_string(),
+            entry_point: "src/index.js".to_string(),
+            timeout_ms: 300000,
+            memory_limit_mb: 512,
+        },
         permissions: vec![
-            SkillPermission { resource: "filesystem".to_string(), actions: vec!["read".to_string(), "write".to_string()] },
-            SkillPermission { resource: "ai-models".to_string(), actions: vec!["execute".to_string()] },
+            SkillPermission {
+                resource: "filesystem".to_string(),
+                actions: vec!["read".to_string(), "write".to_string()],
+            },
+            SkillPermission {
+                resource: "ai-models".to_string(),
+                actions: vec!["execute".to_string()],
+            },
         ],
-        marketplace: MarketplaceInfo { price: 4.99, category: "Development Tools".to_string(), screenshots: vec![], documentation: "docs/README.md".to_string() },
+        marketplace: MarketplaceInfo {
+            price: 4.99,
+            category: "Development Tools".to_string(),
+            screenshots: vec![],
+            documentation: "docs/README.md".to_string(),
+        },
     }
 }
 
@@ -440,8 +797,18 @@ fn create_mobile_builder_skill() -> SkillDefinition {
         description: "Build cross-platform mobile applications".to_string(),
         author: "ZylCode Team".to_string(),
         category: "development".to_string(),
-        tags: vec!["mobile".to_string(), "react-native".to_string(), "flutter".to_string(), "ios".to_string(), "android".to_string()],
-        dependencies: vec![SkillDependency { name: "ai-models".to_string(), version: ">=2.0.0".to_string(), optional: false }],
+        tags: vec![
+            "mobile".to_string(),
+            "react-native".to_string(),
+            "flutter".to_string(),
+            "ios".to_string(),
+            "android".to_string(),
+        ],
+        dependencies: vec![SkillDependency {
+            name: "ai-models".to_string(),
+            version: ">=2.0.0".to_string(),
+            optional: false,
+        }],
         config_schema: json!({
             "type": "object",
             "properties": {
@@ -449,12 +816,28 @@ fn create_mobile_builder_skill() -> SkillDefinition {
                 "target_os": { "type": "array", "items": {"type": "string"}, "default": ["ios", "android"] }
             }
         }),
-        execution: SkillExecution { runtime: "node".to_string(), entry_point: "src/index.js".to_string(), timeout_ms: 600000, memory_limit_mb: 1024 },
+        execution: SkillExecution {
+            runtime: "node".to_string(),
+            entry_point: "src/index.js".to_string(),
+            timeout_ms: 600000,
+            memory_limit_mb: 1024,
+        },
         permissions: vec![
-            SkillPermission { resource: "filesystem".to_string(), actions: vec!["read".to_string(), "write".to_string()] },
-            SkillPermission { resource: "ai-models".to_string(), actions: vec!["execute".to_string()] },
+            SkillPermission {
+                resource: "filesystem".to_string(),
+                actions: vec!["read".to_string(), "write".to_string()],
+            },
+            SkillPermission {
+                resource: "ai-models".to_string(),
+                actions: vec!["execute".to_string()],
+            },
         ],
-        marketplace: MarketplaceInfo { price: 14.99, category: "Development Tools".to_string(), screenshots: vec![], documentation: "docs/README.md".to_string() },
+        marketplace: MarketplaceInfo {
+            price: 14.99,
+            category: "Development Tools".to_string(),
+            screenshots: vec![],
+            documentation: "docs/README.md".to_string(),
+        },
     }
 }
 
@@ -466,10 +849,23 @@ fn create_ai_model_trainer_skill() -> SkillDefinition {
         description: "Train and fine-tune AI models".to_string(),
         author: "ZylCode Team".to_string(),
         category: "ai-ml".to_string(),
-        tags: vec!["ai".to_string(), "ml".to_string(), "training".to_string(), "fine-tuning".to_string()],
+        tags: vec![
+            "ai".to_string(),
+            "ml".to_string(),
+            "training".to_string(),
+            "fine-tuning".to_string(),
+        ],
         dependencies: vec![
-            SkillDependency { name: "ai-models".to_string(), version: ">=2.0.0".to_string(), optional: false },
-            SkillDependency { name: "ml-frameworks".to_string(), version: ">=1.0.0".to_string(), optional: false },
+            SkillDependency {
+                name: "ai-models".to_string(),
+                version: ">=2.0.0".to_string(),
+                optional: false,
+            },
+            SkillDependency {
+                name: "ml-frameworks".to_string(),
+                version: ">=1.0.0".to_string(),
+                optional: false,
+            },
         ],
         config_schema: json!({
             "type": "object",
@@ -478,13 +874,32 @@ fn create_ai_model_trainer_skill() -> SkillDefinition {
                 "training_method": { "type": "string", "enum": ["full", "fine-tune", "lora", "qlora"], "default": "lora" }
             }
         }),
-        execution: SkillExecution { runtime: "python".to_string(), entry_point: "src/main.py".to_string(), timeout_ms: 3600000, memory_limit_mb: 4096 },
+        execution: SkillExecution {
+            runtime: "python".to_string(),
+            entry_point: "src/main.py".to_string(),
+            timeout_ms: 3600000,
+            memory_limit_mb: 4096,
+        },
         permissions: vec![
-            SkillPermission { resource: "filesystem".to_string(), actions: vec!["read".to_string(), "write".to_string()] },
-            SkillPermission { resource: "gpu".to_string(), actions: vec!["execute".to_string()] },
-            SkillPermission { resource: "ai-models".to_string(), actions: vec!["execute".to_string()] },
+            SkillPermission {
+                resource: "filesystem".to_string(),
+                actions: vec!["read".to_string(), "write".to_string()],
+            },
+            SkillPermission {
+                resource: "gpu".to_string(),
+                actions: vec!["execute".to_string()],
+            },
+            SkillPermission {
+                resource: "ai-models".to_string(),
+                actions: vec!["execute".to_string()],
+            },
         ],
-        marketplace: MarketplaceInfo { price: 29.99, category: "AI/ML Tools".to_string(), screenshots: vec![], documentation: "docs/README.md".to_string() },
+        marketplace: MarketplaceInfo {
+            price: 29.99,
+            category: "AI/ML Tools".to_string(),
+            screenshots: vec![],
+            documentation: "docs/README.md".to_string(),
+        },
     }
 }
 
@@ -496,8 +911,17 @@ fn create_data_pipeline_skill() -> SkillDefinition {
         description: "Build ETL and data processing pipelines".to_string(),
         author: "ZylCode Team".to_string(),
         category: "data".to_string(),
-        tags: vec!["data".to_string(), "pipeline".to_string(), "etl".to_string(), "streaming".to_string()],
-        dependencies: vec![SkillDependency { name: "data-tools".to_string(), version: ">=1.0.0".to_string(), optional: false }],
+        tags: vec![
+            "data".to_string(),
+            "pipeline".to_string(),
+            "etl".to_string(),
+            "streaming".to_string(),
+        ],
+        dependencies: vec![SkillDependency {
+            name: "data-tools".to_string(),
+            version: ">=1.0.0".to_string(),
+            optional: false,
+        }],
         config_schema: json!({
             "type": "object",
             "properties": {
@@ -505,12 +929,28 @@ fn create_data_pipeline_skill() -> SkillDefinition {
                 "data_sources": { "type": "array", "items": {"type": "string"}, "default": ["database", "api", "file"] }
             }
         }),
-        execution: SkillExecution { runtime: "python".to_string(), entry_point: "src/main.py".to_string(), timeout_ms: 600000, memory_limit_mb: 1024 },
+        execution: SkillExecution {
+            runtime: "python".to_string(),
+            entry_point: "src/main.py".to_string(),
+            timeout_ms: 600000,
+            memory_limit_mb: 1024,
+        },
         permissions: vec![
-            SkillPermission { resource: "database".to_string(), actions: vec!["read".to_string(), "write".to_string()] },
-            SkillPermission { resource: "filesystem".to_string(), actions: vec!["read".to_string(), "write".to_string()] },
+            SkillPermission {
+                resource: "database".to_string(),
+                actions: vec!["read".to_string(), "write".to_string()],
+            },
+            SkillPermission {
+                resource: "filesystem".to_string(),
+                actions: vec!["read".to_string(), "write".to_string()],
+            },
         ],
-        marketplace: MarketplaceInfo { price: 19.99, category: "Data Tools".to_string(), screenshots: vec![], documentation: "docs/README.md".to_string() },
+        marketplace: MarketplaceInfo {
+            price: 19.99,
+            category: "Data Tools".to_string(),
+            screenshots: vec![],
+            documentation: "docs/README.md".to_string(),
+        },
     }
 }
 
@@ -522,8 +962,16 @@ fn create_microservice_architect_skill() -> SkillDefinition {
         description: "Design and implement microservice architecture".to_string(),
         author: "ZylCode Team".to_string(),
         category: "architecture".to_string(),
-        tags: vec!["microservices".to_string(), "architecture".to_string(), "distributed".to_string()],
-        dependencies: vec![SkillDependency { name: "ai-models".to_string(), version: ">=2.0.0".to_string(), optional: false }],
+        tags: vec![
+            "microservices".to_string(),
+            "architecture".to_string(),
+            "distributed".to_string(),
+        ],
+        dependencies: vec![SkillDependency {
+            name: "ai-models".to_string(),
+            version: ">=2.0.0".to_string(),
+            optional: false,
+        }],
         config_schema: json!({
             "type": "object",
             "properties": {
@@ -531,12 +979,28 @@ fn create_microservice_architect_skill() -> SkillDefinition {
                 "service_mesh": { "type": "boolean", "default": false }
             }
         }),
-        execution: SkillExecution { runtime: "node".to_string(), entry_point: "src/index.js".to_string(), timeout_ms: 300000, memory_limit_mb: 512 },
+        execution: SkillExecution {
+            runtime: "node".to_string(),
+            entry_point: "src/index.js".to_string(),
+            timeout_ms: 300000,
+            memory_limit_mb: 512,
+        },
         permissions: vec![
-            SkillPermission { resource: "filesystem".to_string(), actions: vec!["read".to_string(), "write".to_string()] },
-            SkillPermission { resource: "ai-models".to_string(), actions: vec!["execute".to_string()] },
+            SkillPermission {
+                resource: "filesystem".to_string(),
+                actions: vec!["read".to_string(), "write".to_string()],
+            },
+            SkillPermission {
+                resource: "ai-models".to_string(),
+                actions: vec!["execute".to_string()],
+            },
         ],
-        marketplace: MarketplaceInfo { price: 24.99, category: "Architecture Tools".to_string(), screenshots: vec![], documentation: "docs/README.md".to_string() },
+        marketplace: MarketplaceInfo {
+            price: 24.99,
+            category: "Architecture Tools".to_string(),
+            screenshots: vec![],
+            documentation: "docs/README.md".to_string(),
+        },
     }
 }
 
@@ -548,8 +1012,16 @@ fn create_graphql_generator_skill() -> SkillDefinition {
         description: "Generate GraphQL schemas and resolvers".to_string(),
         author: "ZylCode Team".to_string(),
         category: "development".to_string(),
-        tags: vec!["graphql".to_string(), "api".to_string(), "schema".to_string()],
-        dependencies: vec![SkillDependency { name: "ai-models".to_string(), version: ">=2.0.0".to_string(), optional: false }],
+        tags: vec![
+            "graphql".to_string(),
+            "api".to_string(),
+            "schema".to_string(),
+        ],
+        dependencies: vec![SkillDependency {
+            name: "ai-models".to_string(),
+            version: ">=2.0.0".to_string(),
+            optional: false,
+        }],
         config_schema: json!({
             "type": "object",
             "properties": {
@@ -557,12 +1029,28 @@ fn create_graphql_generator_skill() -> SkillDefinition {
                 "database_integration": { "type": "boolean", "default": true }
             }
         }),
-        execution: SkillExecution { runtime: "node".to_string(), entry_point: "src/index.js".to_string(), timeout_ms: 180000, memory_limit_mb: 256 },
+        execution: SkillExecution {
+            runtime: "node".to_string(),
+            entry_point: "src/index.js".to_string(),
+            timeout_ms: 180000,
+            memory_limit_mb: 256,
+        },
         permissions: vec![
-            SkillPermission { resource: "filesystem".to_string(), actions: vec!["read".to_string(), "write".to_string()] },
-            SkillPermission { resource: "ai-models".to_string(), actions: vec!["execute".to_string()] },
+            SkillPermission {
+                resource: "filesystem".to_string(),
+                actions: vec!["read".to_string(), "write".to_string()],
+            },
+            SkillPermission {
+                resource: "ai-models".to_string(),
+                actions: vec!["execute".to_string()],
+            },
         ],
-        marketplace: MarketplaceInfo { price: 9.99, category: "Development Tools".to_string(), screenshots: vec![], documentation: "docs/README.md".to_string() },
+        marketplace: MarketplaceInfo {
+            price: 9.99,
+            category: "Development Tools".to_string(),
+            screenshots: vec![],
+            documentation: "docs/README.md".to_string(),
+        },
     }
 }
 
@@ -574,8 +1062,16 @@ fn create_websocket_handler_skill() -> SkillDefinition {
         description: "Build real-time WebSocket applications".to_string(),
         author: "ZylCode Team".to_string(),
         category: "development".to_string(),
-        tags: vec!["websocket".to_string(), "real-time".to_string(), "socket.io".to_string()],
-        dependencies: vec![SkillDependency { name: "ai-models".to_string(), version: ">=2.0.0".to_string(), optional: false }],
+        tags: vec![
+            "websocket".to_string(),
+            "real-time".to_string(),
+            "socket.io".to_string(),
+        ],
+        dependencies: vec![SkillDependency {
+            name: "ai-models".to_string(),
+            version: ">=2.0.0".to_string(),
+            optional: false,
+        }],
         config_schema: json!({
             "type": "object",
             "properties": {
@@ -583,12 +1079,28 @@ fn create_websocket_handler_skill() -> SkillDefinition {
                 "scaling": { "type": "string", "enum": ["single", "redis", "cluster"], "default": "single" }
             }
         }),
-        execution: SkillExecution { runtime: "node".to_string(), entry_point: "src/index.js".to_string(), timeout_ms: 180000, memory_limit_mb: 256 },
+        execution: SkillExecution {
+            runtime: "node".to_string(),
+            entry_point: "src/index.js".to_string(),
+            timeout_ms: 180000,
+            memory_limit_mb: 256,
+        },
         permissions: vec![
-            SkillPermission { resource: "filesystem".to_string(), actions: vec!["read".to_string(), "write".to_string()] },
-            SkillPermission { resource: "network".to_string(), actions: vec!["listen".to_string(), "connect".to_string()] },
+            SkillPermission {
+                resource: "filesystem".to_string(),
+                actions: vec!["read".to_string(), "write".to_string()],
+            },
+            SkillPermission {
+                resource: "network".to_string(),
+                actions: vec!["listen".to_string(), "connect".to_string()],
+            },
         ],
-        marketplace: MarketplaceInfo { price: 9.99, category: "Development Tools".to_string(), screenshots: vec![], documentation: "docs/README.md".to_string() },
+        marketplace: MarketplaceInfo {
+            price: 9.99,
+            category: "Development Tools".to_string(),
+            screenshots: vec![],
+            documentation: "docs/README.md".to_string(),
+        },
     }
 }
 
@@ -600,8 +1112,17 @@ fn create_auth_system_skill() -> SkillDefinition {
         description: "Build authentication and authorization systems".to_string(),
         author: "ZylCode Team".to_string(),
         category: "security".to_string(),
-        tags: vec!["auth".to_string(), "jwt".to_string(), "oauth".to_string(), "security".to_string()],
-        dependencies: vec![SkillDependency { name: "security-tools".to_string(), version: ">=1.0.0".to_string(), optional: false }],
+        tags: vec![
+            "auth".to_string(),
+            "jwt".to_string(),
+            "oauth".to_string(),
+            "security".to_string(),
+        ],
+        dependencies: vec![SkillDependency {
+            name: "security-tools".to_string(),
+            version: ">=1.0.0".to_string(),
+            optional: false,
+        }],
         config_schema: json!({
             "type": "object",
             "properties": {
@@ -609,12 +1130,28 @@ fn create_auth_system_skill() -> SkillDefinition {
                 "providers": { "type": "array", "items": {"type": "string"}, "default": ["email", "google", "github"] }
             }
         }),
-        execution: SkillExecution { runtime: "node".to_string(), entry_point: "src/index.js".to_string(), timeout_ms: 240000, memory_limit_mb: 256 },
+        execution: SkillExecution {
+            runtime: "node".to_string(),
+            entry_point: "src/index.js".to_string(),
+            timeout_ms: 240000,
+            memory_limit_mb: 256,
+        },
         permissions: vec![
-            SkillPermission { resource: "filesystem".to_string(), actions: vec!["read".to_string(), "write".to_string()] },
-            SkillPermission { resource: "security".to_string(), actions: vec!["configure".to_string()] },
+            SkillPermission {
+                resource: "filesystem".to_string(),
+                actions: vec!["read".to_string(), "write".to_string()],
+            },
+            SkillPermission {
+                resource: "security".to_string(),
+                actions: vec!["configure".to_string()],
+            },
         ],
-        marketplace: MarketplaceInfo { price: 14.99, category: "Security Tools".to_string(), screenshots: vec![], documentation: "docs/README.md".to_string() },
+        marketplace: MarketplaceInfo {
+            price: 14.99,
+            category: "Security Tools".to_string(),
+            screenshots: vec![],
+            documentation: "docs/README.md".to_string(),
+        },
     }
 }
 
@@ -626,8 +1163,17 @@ fn create_logging_monitoring_skill() -> SkillDefinition {
         description: "Set up logging, metrics, and monitoring".to_string(),
         author: "ZylCode Team".to_string(),
         category: "devops".to_string(),
-        tags: vec!["logging".to_string(), "monitoring".to_string(), "observability".to_string(), "metrics".to_string()],
-        dependencies: vec![SkillDependency { name: "devops-tools".to_string(), version: ">=1.0.0".to_string(), optional: false }],
+        tags: vec![
+            "logging".to_string(),
+            "monitoring".to_string(),
+            "observability".to_string(),
+            "metrics".to_string(),
+        ],
+        dependencies: vec![SkillDependency {
+            name: "devops-tools".to_string(),
+            version: ">=1.0.0".to_string(),
+            optional: false,
+        }],
         config_schema: json!({
             "type": "object",
             "properties": {
@@ -635,12 +1181,28 @@ fn create_logging_monitoring_skill() -> SkillDefinition {
                 "log_level": { "type": "string", "enum": ["debug", "info", "warn", "error"], "default": "info" }
             }
         }),
-        execution: SkillExecution { runtime: "node".to_string(), entry_point: "src/index.js".to_string(), timeout_ms: 180000, memory_limit_mb: 256 },
+        execution: SkillExecution {
+            runtime: "node".to_string(),
+            entry_point: "src/index.js".to_string(),
+            timeout_ms: 180000,
+            memory_limit_mb: 256,
+        },
         permissions: vec![
-            SkillPermission { resource: "filesystem".to_string(), actions: vec!["read".to_string(), "write".to_string()] },
-            SkillPermission { resource: "monitoring".to_string(), actions: vec!["configure".to_string()] },
+            SkillPermission {
+                resource: "filesystem".to_string(),
+                actions: vec!["read".to_string(), "write".to_string()],
+            },
+            SkillPermission {
+                resource: "monitoring".to_string(),
+                actions: vec!["configure".to_string()],
+            },
         ],
-        marketplace: MarketplaceInfo { price: 9.99, category: "DevOps Tools".to_string(), screenshots: vec![], documentation: "docs/README.md".to_string() },
+        marketplace: MarketplaceInfo {
+            price: 9.99,
+            category: "DevOps Tools".to_string(),
+            screenshots: vec![],
+            documentation: "docs/README.md".to_string(),
+        },
     }
 }
 
@@ -652,8 +1214,16 @@ fn create_file_converter_skill() -> SkillDefinition {
         description: "Convert files between different formats".to_string(),
         author: "ZylCode Team".to_string(),
         category: "productivity".to_string(),
-        tags: vec!["converter".to_string(), "file".to_string(), "format".to_string()],
-        dependencies: vec![SkillDependency { name: "file-tools".to_string(), version: ">=1.0.0".to_string(), optional: false }],
+        tags: vec![
+            "converter".to_string(),
+            "file".to_string(),
+            "format".to_string(),
+        ],
+        dependencies: vec![SkillDependency {
+            name: "file-tools".to_string(),
+            version: ">=1.0.0".to_string(),
+            optional: false,
+        }],
         config_schema: json!({
             "type": "object",
             "properties": {
@@ -661,11 +1231,22 @@ fn create_file_converter_skill() -> SkillDefinition {
                 "target_format": { "type": "string", "enum": ["json", "csv", "xml", "yaml", "markdown", "pdf"], "default": "csv" }
             }
         }),
-        execution: SkillExecution { runtime: "node".to_string(), entry_point: "src/index.js".to_string(), timeout_ms: 60000, memory_limit_mb: 256 },
-        permissions: vec![
-            SkillPermission { resource: "filesystem".to_string(), actions: vec!["read".to_string(), "write".to_string()] },
-        ],
-        marketplace: MarketplaceInfo { price: 0.0, category: "Productivity Tools".to_string(), screenshots: vec![], documentation: "docs/README.md".to_string() },
+        execution: SkillExecution {
+            runtime: "node".to_string(),
+            entry_point: "src/index.js".to_string(),
+            timeout_ms: 60000,
+            memory_limit_mb: 256,
+        },
+        permissions: vec![SkillPermission {
+            resource: "filesystem".to_string(),
+            actions: vec!["read".to_string(), "write".to_string()],
+        }],
+        marketplace: MarketplaceInfo {
+            price: 0.0,
+            category: "Productivity Tools".to_string(),
+            screenshots: vec![],
+            documentation: "docs/README.md".to_string(),
+        },
     }
 }
 
@@ -677,8 +1258,16 @@ fn create_code_translator_skill() -> SkillDefinition {
         description: "Translate code between programming languages".to_string(),
         author: "ZylCode Team".to_string(),
         category: "development".to_string(),
-        tags: vec!["translator".to_string(), "conversion".to_string(), "multi-language".to_string()],
-        dependencies: vec![SkillDependency { name: "ai-models".to_string(), version: ">=2.0.0".to_string(), optional: false }],
+        tags: vec![
+            "translator".to_string(),
+            "conversion".to_string(),
+            "multi-language".to_string(),
+        ],
+        dependencies: vec![SkillDependency {
+            name: "ai-models".to_string(),
+            version: ">=2.0.0".to_string(),
+            optional: false,
+        }],
         config_schema: json!({
             "type": "object",
             "properties": {
@@ -686,12 +1275,28 @@ fn create_code_translator_skill() -> SkillDefinition {
                 "target_language": { "type": "string", "enum": ["javascript", "python", "rust", "go", "java", "c++", "typescript"], "default": "python" }
             }
         }),
-        execution: SkillExecution { runtime: "node".to_string(), entry_point: "src/index.js".to_string(), timeout_ms: 300000, memory_limit_mb: 512 },
+        execution: SkillExecution {
+            runtime: "node".to_string(),
+            entry_point: "src/index.js".to_string(),
+            timeout_ms: 300000,
+            memory_limit_mb: 512,
+        },
         permissions: vec![
-            SkillPermission { resource: "filesystem".to_string(), actions: vec!["read".to_string(), "write".to_string()] },
-            SkillPermission { resource: "ai-models".to_string(), actions: vec!["execute".to_string()] },
+            SkillPermission {
+                resource: "filesystem".to_string(),
+                actions: vec!["read".to_string(), "write".to_string()],
+            },
+            SkillPermission {
+                resource: "ai-models".to_string(),
+                actions: vec!["execute".to_string()],
+            },
         ],
-        marketplace: MarketplaceInfo { price: 9.99, category: "Development Tools".to_string(), screenshots: vec![], documentation: "docs/README.md".to_string() },
+        marketplace: MarketplaceInfo {
+            price: 9.99,
+            category: "Development Tools".to_string(),
+            screenshots: vec![],
+            documentation: "docs/README.md".to_string(),
+        },
     }
 }
 
@@ -703,8 +1308,16 @@ fn create_technical_writer_skill() -> SkillDefinition {
         description: "Generate technical documentation and guides".to_string(),
         author: "ZylCode Team".to_string(),
         category: "documentation".to_string(),
-        tags: vec!["technical-writing".to_string(), "documentation".to_string(), "guides".to_string()],
-        dependencies: vec![SkillDependency { name: "ai-models".to_string(), version: ">=2.0.0".to_string(), optional: false }],
+        tags: vec![
+            "technical-writing".to_string(),
+            "documentation".to_string(),
+            "guides".to_string(),
+        ],
+        dependencies: vec![SkillDependency {
+            name: "ai-models".to_string(),
+            version: ">=2.0.0".to_string(),
+            optional: false,
+        }],
         config_schema: json!({
             "type": "object",
             "properties": {
@@ -712,11 +1325,27 @@ fn create_technical_writer_skill() -> SkillDefinition {
                 "audience": { "type": "string", "enum": ["developer", "end-user", "admin", "architect"], "default": "developer" }
             }
         }),
-        execution: SkillExecution { runtime: "node".to_string(), entry_point: "src/index.js".to_string(), timeout_ms: 240000, memory_limit_mb: 256 },
+        execution: SkillExecution {
+            runtime: "node".to_string(),
+            entry_point: "src/index.js".to_string(),
+            timeout_ms: 240000,
+            memory_limit_mb: 256,
+        },
         permissions: vec![
-            SkillPermission { resource: "filesystem".to_string(), actions: vec!["read".to_string(), "write".to_string()] },
-            SkillPermission { resource: "ai-models".to_string(), actions: vec!["execute".to_string()] },
+            SkillPermission {
+                resource: "filesystem".to_string(),
+                actions: vec!["read".to_string(), "write".to_string()],
+            },
+            SkillPermission {
+                resource: "ai-models".to_string(),
+                actions: vec!["execute".to_string()],
+            },
         ],
-        marketplace: MarketplaceInfo { price: 4.99, category: "Documentation Tools".to_string(), screenshots: vec![], documentation: "docs/README.md".to_string() },
+        marketplace: MarketplaceInfo {
+            price: 4.99,
+            category: "Documentation Tools".to_string(),
+            screenshots: vec![],
+            documentation: "docs/README.md".to_string(),
+        },
     }
 }

@@ -37,25 +37,6 @@ fn arb_reported_kind() -> impl Strategy<Value = String> {
     ]
 }
 
-fn arb_content_for_kind(kind: &str) -> impl Strategy<Value = String> {
-    match kind {
-        "rs" => Just("fn main() { println!(\"hello\"); }".to_string()),
-        "tsx" => {
-            Just("import React from 'react'; export const App: FC = () => <div />;".to_string())
-        }
-        "jsx" => Just("import React from 'react'; export const App = () => <div />;".to_string()),
-        "ts" => Just("import { useState } from 'react'; export const App: FC = () => {};".to_string()),
-        "js" => Just("import React from 'react'; export const App = () => {};".to_string()),
-        "json" => Just(r#"{"name":"test","version":"1.0.0"}"#.to_string()),
-        "md" => {
-            Just("# Theorem: correctness\n\nThis obligation must be proved by the model.".to_string())
-        }
-        "lean" => Just("theorem hello : 1 + 1 = 2 := by\n  simp".to_string()),
-        _ => Just("some random content with no keywords".to_string()),
-    }
-    .boxed()
-}
-
 fn kind_for_ext(ext: &str) -> &'static str {
     match ext {
         "rs" => "RustModule",
@@ -67,7 +48,7 @@ fn kind_for_ext(ext: &str) -> &'static str {
 }
 
 fn kind_matches_ext(kind: &str, ext: &str) -> bool {
-    let kind_lower = kind.to_ascii_lowercase().replace('_', "").replace('-', "");
+    let kind_lower = kind.to_ascii_lowercase().replace(['_', '-'], "");
     let expected = kind_for_ext(ext);
     let expected_lower = expected.to_ascii_lowercase();
     kind_lower == expected_lower
@@ -116,7 +97,7 @@ proptest! {
         ],
     ) {
         let path = "src/lib.rs";
-        let corrected = validate_artifact_kind(path, "fn helper() {}", &reported);
+        let corrected = validate_artifact_kind(path, "fn helper() {}", reported);
         // .rs extension → always RustModule, regardless of what the LLM claimed.
         prop_assert_eq!(
             corrected.as_str(),
@@ -137,7 +118,7 @@ proptest! {
         ],
     ) {
         let path = "plugin-manifest.json";
-        let corrected = validate_artifact_kind(path, r#"{"name":"test"}"#, &reported);
+        let corrected = validate_artifact_kind(path, r#"{"name":"test"}"#, reported);
         // .json extension → always PluginManifest, regardless of what the LLM claimed.
         prop_assert_eq!(
             corrected.as_str(),
@@ -195,7 +176,7 @@ proptest! {
         let corrected = validate_artifact_kind(&path, "content", &reported);
         let expected = kind_for_ext(&ext);
         if expected != "unknown" {
-            let corrected_norm = corrected.to_ascii_lowercase().replace('_', "").replace('-', "");
+            let corrected_norm = corrected.to_ascii_lowercase().replace(['_', '-'], "");
             let expected_norm = expected.to_ascii_lowercase();
             prop_assert_eq!(
                 corrected_norm, expected_norm,

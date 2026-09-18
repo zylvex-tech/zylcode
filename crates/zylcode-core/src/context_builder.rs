@@ -1,5 +1,5 @@
 use anyhow::Result;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use walkdir::WalkDir;
 use crate::agent_protocol::AgentContext;
 
@@ -20,7 +20,7 @@ impl ContextBuilder {
     }
     
     /// Build context for the agent
-    pub async fn build(&self, user_goal: &str, recent_files: &[PathBuf]) -> Result<AgentContext> {
+    pub async fn build(&self, user_goal: &str, _recent_files: &[PathBuf]) -> Result<AgentContext> {
         let file_tree = self.get_file_tree()?;
         let relevant_files = self.find_relevant_files(user_goal, &file_tree).await?;
         let git_status = self.get_git_status().await.ok();
@@ -82,14 +82,15 @@ impl ContextBuilder {
         for file in file_tree {
             let file_lower = file.to_lowercase();
             
-            // Check if file matches keywords in goal
-            if goal_lower.contains("test") && file_lower.contains("test") {
-                relevant.push(file.clone());
-            } else if goal_lower.contains("readme") && file_lower.contains("readme") {
-                relevant.push(file.clone());
-            } else if goal_lower.contains("config") && file_lower.contains("config") {
-                relevant.push(file.clone());
-            } else if goal_lower.contains("src") && file_lower.contains("src") {
+            // Check if file matches keywords in goal. All four arms of the
+            // previous `else if` chain had the identical body, so the chain is
+            // exactly equivalent to a single disjunction — and a disjunction
+            // cannot push the same file more than once.
+            let matches_goal = (goal_lower.contains("test") && file_lower.contains("test"))
+                || (goal_lower.contains("readme") && file_lower.contains("readme"))
+                || (goal_lower.contains("config") && file_lower.contains("config"))
+                || (goal_lower.contains("src") && file_lower.contains("src"));
+            if matches_goal {
                 relevant.push(file.clone());
             }
         }

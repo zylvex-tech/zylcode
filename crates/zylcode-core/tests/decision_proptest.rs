@@ -15,7 +15,7 @@ proptest! {
         Just("ReactComponent"),
         Just("react_component"),
     ]) {
-        prop_assert_eq!(classify_verification_rung(&kind), VerificationRung::Rung1);
+        prop_assert_eq!(classify_verification_rung(kind), VerificationRung::Rung1);
     }
 
     #[test]
@@ -25,7 +25,7 @@ proptest! {
         Just("McpManifest"),
         Just("mcp_manifest"),
     ]) {
-        prop_assert_eq!(classify_verification_rung(&kind), VerificationRung::Rung1);
+        prop_assert_eq!(classify_verification_rung(kind), VerificationRung::Rung1);
     }
 
     #[test]
@@ -35,7 +35,7 @@ proptest! {
         Just("RustCrate"),
         Just("rust_crate"),
     ]) {
-        prop_assert_eq!(classify_verification_rung(&kind), VerificationRung::Rung2);
+        prop_assert_eq!(classify_verification_rung(kind), VerificationRung::Rung2);
     }
 
     #[test]
@@ -45,7 +45,7 @@ proptest! {
         Just("FormalProof"),
         Just("formal_proof"),
     ]) {
-        prop_assert_eq!(classify_verification_rung(&kind), VerificationRung::Rung3);
+        prop_assert_eq!(classify_verification_rung(kind), VerificationRung::Rung3);
     }
 }
 
@@ -186,11 +186,6 @@ fn arb_rule() -> impl Strategy<Value = PermissionRule> {
             agent_pattern,
             tool_pattern,
         })
-}
-
-/// Strategy: generate (agent_id, tool_id) pair.
-fn arb_ids() -> impl Strategy<Value = (String, String)> {
-    ("[a-zA-Z0-9_]{1,30}", "[a-zA-Z0-9_]{1,30}")
 }
 
 // ---------------------------------------------------------------------------

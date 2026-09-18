@@ -202,13 +202,17 @@ impl IntentPlanner {
             || prompt_lc.contains("module")
             || prompt_lc.contains("function");
 
-        let needs_plugin = prompt_lc.contains("plugin") || prompt_lc.contains("extension") || prompt_lc.contains("manifest");
+        let needs_plugin = prompt_lc.contains("plugin")
+            || prompt_lc.contains("extension")
+            || prompt_lc.contains("manifest");
 
         if needs_ui {
             steps.push(PlanStep {
                 index: idx,
                 title: "Generate UI component".to_string(),
-                instruction: "Produce a React component artifact (UiComponent) that satisfies the intent.".to_string(),
+                instruction:
+                    "Produce a React component artifact (UiComponent) that satisfies the intent."
+                        .to_string(),
                 required_tools: vec!["artifact:react".to_string()],
                 requires_verification: true,
             });
@@ -219,7 +223,9 @@ impl IntentPlanner {
             steps.push(PlanStep {
                 index: idx,
                 title: "Generate Rust module".to_string(),
-                instruction: "Produce a Rust module artifact (RustModule) with public API and unit tests.".to_string(),
+                instruction:
+                    "Produce a Rust module artifact (RustModule) with public API and unit tests."
+                        .to_string(),
                 required_tools: vec!["artifact:rust".to_string()],
                 requires_verification: true,
             });
@@ -230,7 +236,9 @@ impl IntentPlanner {
             steps.push(PlanStep {
                 index: idx,
                 title: "Generate plugin manifest".to_string(),
-                instruction: "Produce a PluginManifest artifact containing id, version, and capabilities.".to_string(),
+                instruction:
+                    "Produce a PluginManifest artifact containing id, version, and capabilities."
+                        .to_string(),
                 required_tools: vec!["artifact:manifest".to_string()],
                 requires_verification: true,
             });
@@ -255,7 +263,11 @@ impl IntentPlanner {
                 title: "Wire MCP bridge capabilities".to_string(),
                 instruction: format!(
                     "Incorporate available MCP bridges ({}) into the solution where applicable.",
-                    bridges.iter().map(|b| b.id.as_str()).collect::<Vec<_>>().join(", ")
+                    bridges
+                        .iter()
+                        .map(|b| b.id.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
                 ),
                 required_tools: bridges.iter().map(|b| format!("mcp:{}", b.id)).collect(),
                 requires_verification: false,
@@ -266,7 +278,8 @@ impl IntentPlanner {
         steps.push(PlanStep {
             index: steps.len() as u32 + 1,
             title: "Formal verification".to_string(),
-            instruction: "Run verify_logic over all generated artifacts and surface proof metrics.".to_string(),
+            instruction: "Run verify_logic over all generated artifacts and surface proof metrics."
+                .to_string(),
             required_tools: vec!["verify:logic".to_string()],
             requires_verification: false,
         });

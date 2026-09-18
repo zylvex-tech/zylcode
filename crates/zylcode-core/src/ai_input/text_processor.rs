@@ -9,7 +9,10 @@ use super::context_manager::ContextManager;
 
 /// Text processor for natural language processing
 pub struct TextProcessor {
-    context_manager: Arc<RwLock<ContextManager>>,
+    /// Injected context handle. `process()` receives the context it needs as an
+    /// argument, so this stored handle is never read. Kept because `new()` is a
+    /// public entry point that already accepts it — class B (unfinished).
+    _context_manager: Arc<RwLock<ContextManager>>,
     intent_patterns: HashMap<String, Regex>,
     entity_patterns: HashMap<EntityType, Regex>,
     stats: RwLock<TextProcessorStats>,
@@ -100,7 +103,7 @@ impl TextProcessor {
         );
 
         Ok(Self {
-            context_manager,
+            _context_manager: context_manager,
             intent_patterns,
             entity_patterns,
             stats: RwLock::new(TextProcessorStats::default()),
@@ -108,7 +111,7 @@ impl TextProcessor {
     }
 
     /// Process text input
-    pub async fn process(&self, text: &str, context: &InputContext) -> Result<ProcessedText> {
+    pub async fn process(&self, text: &str, _context: &InputContext) -> Result<ProcessedText> {
         let start = std::time::Instant::now();
         
         // Extract intent

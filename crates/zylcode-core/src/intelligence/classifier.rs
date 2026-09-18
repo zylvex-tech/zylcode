@@ -41,7 +41,9 @@ pub fn classify_language(path: &Path) -> Language {
 
 /// Classify a file's role in the repository.
 pub fn classify_role(path: &Path, _content: Option<&str>, _package_name: Option<&str>) -> FileRole {
-    let path_str = path.to_string_lossy().to_lowercase();
+    // Normalise separators so the `/segment/` substring checks below also match
+    // on Windows, where paths arrive with backslashes.
+    let path_str = path.to_string_lossy().replace('\\', "/").to_lowercase();
     let name = path
         .file_name()
         .and_then(|n| n.to_str())
@@ -218,7 +220,12 @@ fn is_config_file(name: &str, path_str: &str) -> bool {
 
 /// Check if a path should be excluded from scanning.
 pub fn should_exclude(path: &Path) -> bool {
-    let path_str = path.to_string_lossy();
+    // Normalise separators before matching: on Windows, WalkDir yields
+    // backslash paths, and every exclusion substring below uses forward
+    // slashes. Without this, `target/`, `node_modules/` and `.git/` are never
+    // excluded on Windows and the scanner descends into build output — which
+    // is what made the Phase 2A indexing benchmark fail on re-execution.
+    let path_str = path.to_string_lossy().replace('\\', "/");
 
     // Standard exclusions
     let excluded = [

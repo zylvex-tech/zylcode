@@ -9,11 +9,24 @@ pub struct ContextManager {
     max_history_size: usize,
 }
 
+/// A point-in-time record of the input context.
+///
+/// The history is currently append-only: entries are written on every
+/// `update_context` / `clear_context`, and only the *count* is ever read (via
+/// `ContextStats::context_history_size`). The payload is therefore stored but
+/// never consumed — class B (unfinished). Fields keep their values; they are
+/// `_`-prefixed to record that no reader exists yet.
 #[derive(Debug, Clone)]
 struct ContextSnapshot {
-    context: InputContext,
-    timestamp: DateTime<Utc>,
-    trigger: String,
+    _context: InputContext,
+    _timestamp: DateTime<Utc>,
+    _trigger: String,
+}
+
+impl Default for ContextManager {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ContextManager {
@@ -35,9 +48,9 @@ impl ContextManager {
     pub fn update_context(&mut self, new_context: InputContext) {
         // Save current context to history
         self.context_history.push(ContextSnapshot {
-            context: self.current_context.clone(),
-            timestamp: Utc::now(),
-            trigger: "context_update".to_string(),
+            _context: self.current_context.clone(),
+            _timestamp: Utc::now(),
+            _trigger: "context_update".to_string(),
         });
 
         // Trim history if needed
@@ -110,9 +123,9 @@ impl ContextManager {
     pub fn clear_context(&mut self) {
         // Save current context to history before clearing
         self.context_history.push(ContextSnapshot {
-            context: self.current_context.clone(),
-            timestamp: Utc::now(),
-            trigger: "context_clear".to_string(),
+            _context: self.current_context.clone(),
+            _timestamp: Utc::now(),
+            _trigger: "context_clear".to_string(),
         });
 
         // Reset to default
@@ -155,8 +168,10 @@ mod tests {
         assert_eq!(context.timezone, "UTC");
         
         // Test update
-        let mut new_context = InputContext::default();
-        new_context.language = "fr".to_string();
+        let new_context = InputContext {
+            language: "fr".to_string(),
+            ..InputContext::default()
+        };
         manager.update_context(new_context);
         
         let context = manager.get_current_context();

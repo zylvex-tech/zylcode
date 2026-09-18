@@ -1,7 +1,7 @@
 use anyhow::Result;
 use serde_json::Value;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 use tempfile::NamedTempFile;
 use tokio::sync::RwLock;
@@ -340,7 +340,9 @@ tools:
 
     let registry = Arc::new(ToolRegistry::new());
     let cfg = McpConfigFile::from_path(temp_file.path()).unwrap();
-    let count = zylcode_mcp::register_from_config(&registry, cfg).await.unwrap();
+    let count = zylcode_mcp::register_from_config(&registry, cfg)
+        .await
+        .unwrap();
     assert_eq!(count, 1);
 
     let tools = registry.list().await;
@@ -402,7 +404,9 @@ tools:
 
     let new_cfg = McpConfigFile::from_path(temp_file.path()).unwrap();
     registry.clear().await;
-    let count = zylcode_mcp::register_from_config(&registry, new_cfg).await.unwrap();
+    let count = zylcode_mcp::register_from_config(&registry, new_cfg)
+        .await
+        .unwrap();
     assert_eq!(count, 2);
 
     let tools = registry.list().await;
@@ -541,9 +545,7 @@ async fn cancellation_token_propagates() {
         retry_backoff: Duration::from_millis(10),
     };
 
-    let handle = tokio::spawn(async move {
-        execute_with_recovery(tool, Value::Null, opts).await
-    });
+    let handle = tokio::spawn(async move { execute_with_recovery(tool, Value::Null, opts).await });
 
     // Cancel after 100ms
     tokio::time::sleep(Duration::from_millis(100)).await;
@@ -554,6 +556,35 @@ async fn cancellation_token_propagates() {
     assert!(result.is_err() || matches!(result, Ok(Err(_))));
 }
 
+/// A minimal `Tool` that echoes its own id.
+///
+/// Used to exercise registry concurrency without depending on any real
+/// executor. A Tool double is the right instrument here: the property under
+/// test is the registry, not executor behaviour.
+#[derive(Debug)]
+struct EchoIdTool {
+    id: String,
+}
+
+#[async_trait::async_trait]
+impl Tool for EchoIdTool {
+    fn id(&self) -> &str {
+        &self.id
+    }
+    fn descriptor(&self) -> zylcode_mcp::tool::ToolDescriptor {
+        zylcode_mcp::tool::ToolDescriptor {
+            id: self.id.clone(),
+            transport: "stdio".into(),
+            command: "echo".into(),
+            env_keys: vec![],
+            description: None,
+        }
+    }
+    async fn call(&self, _params: Value) -> Result<Value> {
+        Ok(serde_json::json!({ "tool": self.id }))
+    }
+}
+
 // ============================================================================
 // Concurrent Stress Tests
 // ============================================================================
@@ -562,17 +593,18 @@ async fn cancellation_token_propagates() {
 async fn concurrent_tool_execution_no_crosstalk() {
     let registry = Arc::new(ToolRegistry::new());
 
-    // Register 100 tools
+    // Register 100 distinct ids backed by a test double.
+    //
+    // This previously registered 100 `DynamicTool`s with ids `tool_0..tool_99`.
+    // None of those ids has a real executor, so every call "succeeded" only
+    // because `DynamicTool` returned a simulated echo, and the test asserted
+    // that fabrication (`result.is_ok()`, `val["tool"] == id`).
     for i in 0..100 {
-        let cfg = McpToolConfig {
-            id: format!("tool_{}", i),
-            command: "echo".into(),
-            transport: McpTransport::Stdio,
-            env: Default::default(),
-            enabled: true,
-            description: None,
-        };
-        registry.register(Arc::new(DynamicTool::new(cfg))).await;
+        registry
+            .register(Arc::new(EchoIdTool {
+                id: format!("tool_{i}"),
+            }))
+            .await;
     }
 
     // Concurrent execution of random tools

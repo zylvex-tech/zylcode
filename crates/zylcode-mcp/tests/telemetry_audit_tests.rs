@@ -8,8 +8,7 @@ use tempfile::NamedTempFile;
 use zylcode_mcp::audit::{AuditConfig, AuditLogger, AuditSeverity};
 use zylcode_mcp::executor::{execute_with_recovery_telemetry, ExecuteOptions};
 use zylcode_mcp::telemetry::{Telemetry, TelemetryConfig};
-use zylcode_mcp::tool::{DynamicTool, Tool};
-use zylcode_mcp::config::{McpToolConfig, McpTransport};
+use zylcode_mcp::tool::Tool;
 
 // ============================================================================
 // Test Helpers
@@ -98,14 +97,12 @@ async fn telemetry_tool_invoke_span() {
     };
     let telemetry = Arc::new(Telemetry::init(config).unwrap());
 
-    let tool: Arc<dyn Tool> = Arc::new(DynamicTool::new(McpToolConfig {
+    let tool: Arc<dyn Tool> = Arc::new(TestTool {
         id: "test-tool".into(),
-        command: "echo".into(),
-        transport: McpTransport::Stdio,
-        env: Default::default(),
-        enabled: true,
-        description: None,
-    }));
+        should_fail: Arc::new(AtomicUsize::new(0)),
+        max_failures: 0,
+        delay: Duration::from_millis(0),
+    });
 
     let result = execute_with_recovery_telemetry(
         tool,
@@ -449,14 +446,12 @@ async fn executor_with_audit_only() {
     };
     let audit = Arc::new(AuditLogger::new(audit_config).unwrap());
 
-    let tool: Arc<dyn Tool> = Arc::new(DynamicTool::new(McpToolConfig {
+    let tool: Arc<dyn Tool> = Arc::new(TestTool {
         id: "audit-only-tool".into(),
-        command: "echo".into(),
-        transport: McpTransport::Stdio,
-        env: Default::default(),
-        enabled: true,
-        description: None,
-    }));
+        should_fail: Arc::new(AtomicUsize::new(0)),
+        max_failures: 0,
+        delay: Duration::from_millis(0),
+    });
 
     let result = execute_with_recovery_telemetry(
         tool,
@@ -552,14 +547,12 @@ async fn concurrent_telemetry_spans() {
     for i in 0..10 {
         let telemetry = telemetry.clone();
         handles.push(tokio::spawn(async move {
-            let tool: Arc<dyn Tool> = Arc::new(DynamicTool::new(McpToolConfig {
-                id: format!("concurrent-tool-{}", i),
-                command: "echo".into(),
-                transport: McpTransport::Stdio,
-                env: Default::default(),
-                enabled: true,
-                description: None,
-            }));
+            let tool: Arc<dyn Tool> = Arc::new(TestTool {
+        id: format!("concurrent-tool-{}", i),
+        should_fail: Arc::new(AtomicUsize::new(0)),
+        max_failures: 0,
+        delay: Duration::from_millis(0),
+    });
 
             let _ = execute_with_recovery_telemetry(
                 tool,

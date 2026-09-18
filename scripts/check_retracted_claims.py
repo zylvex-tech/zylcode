@@ -27,8 +27,13 @@ Exit codes:
 Baseline
 --------
 The repository carries a known backlog of pre-existing violations, overwhelmingly
-in untracked legacy reports that are already quarantined by docs/README_INDEX.md.
-Those are recorded in `scripts/retracted_claims_baseline.txt`.
+in legacy reports that are already quarantined by docs/README_INDEX.md. Those are
+recorded in `scripts/retracted_claims_baseline.txt`.
+
+Only **git-tracked** files are scanned. Untracked reports are not published and
+are already quarantined, so including them would make the guard's result depend
+on whose working tree it ran in -- green on a machine that still had them, red on
+a clean checkout. A guard that disagrees with CI trains people to ignore it.
 
 The point of the baseline is that it can only ever SHRINK. A baselined entry that
 no longer reproduces is reported as STALE and fails the run, so the backlog cannot
@@ -43,10 +48,23 @@ not admissible -- see ZYLCODE_AGENT_OPERATING_PROTOCOL.md on evidence.
 from __future__ import annotations
 
 import argparse
-import os
 import re
+import subprocess
 import sys
 from pathlib import Path
+
+# Force UTF-8 output: the report quotes document lines that contain box-drawing
+# characters. On Windows consoles the default cp1252 codec crashes with
+# UnicodeEncodeError while printing the findings, which masks the actual
+# results (and can turn a real failure into an infrastructure error).
+import os
+if sys.stdout.encoding and sys.stdout.encoding.lower() not in ("utf-8", "utf8"):
+    os.environ.setdefault("PYTHONIOENCODING", "utf-8")
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except (AttributeError, OSError):
+        pass
 
 # --------------------------------------------------------------------------
 # Rule table
@@ -60,12 +78,17 @@ RULES: list[dict] = [
         "label": "156 tools",
         "pattern": re.compile(r"156\s+tools?\b", re.IGNORECASE),
         "retraction_reference": "docs/PHASE1C_COMPLETION_REPORT.md:59",
-        # Measured 2026-09-17:
-        #   grep -c 'ToolDefinition {' crates/zylcode-mcp/src/enhanced_bridge.rs  -> 113
-        #   grep -o 'id: "[a-z0-9._-]*"' ... | sort -u | wc -l                     -> 112
-        #   grep -c 'fn get_.*ToolCategory' ...                                     -> 17
-        #   categories referenced in EnhancedMcpBridge::new()                       -> 16
-        "measured_reality": "112 distinct tool IDs across 16 categories",
+        # Measured 2026-09-17 against the COMMITTED tree:
+        #   grep -oE '^                    id: "[^"]+"' \
+        #       crates/zylcode-mcp/src/enhanced_bridge.rs | sort -u | wc -l   -> 27
+        #   grep -cE '^            name: "[a-z-]+"\.to_string\(\),' \
+        #       crates/zylcode-mcp/src/enhanced_bridge.rs                     -> 8
+        #
+        # The figures previously recorded here (112 IDs / 16 categories, and 113
+        # `ToolDefinition {` sites) were taken from a working tree that carried
+        # the uncommitted `get_more_*_tools()` surface. They were never true of
+        # the repository. See docs/governance/TOOL_CATALOGUE_TRUTH_TABLE.md.
+        "measured_reality": "27 distinct tool IDs across 8 categories",
         "allow_paths": {
             "docs/PHASE1C_COMPLETION_REPORT.md",  # the retraction record itself
         },
@@ -165,15 +188,6 @@ THIRD_PARTY_EXCUSABLE = {"SOC 2", "ISO 27001"}
 QUOTED = re.compile(r"[`\"'].{0,12}(?:156\s*tools?|SOC\s*2|ISO[\s/]*27001).{0,12}[`\"']", re.IGNORECASE)
 
 
-def should_skip_dir(name: str) -> bool:
-    return name in SKIP_DIRS
-
-
-def normalise(path: Path, root: Path) -> str:
-    """POSIX-style path relative to root, for allowlist comparison."""
-    return path.relative_to(root).as_posix()
-
-
 def is_discussion(line: str, window: str, rule: dict) -> bool:
     """True when the line is about the claim's status, not asserting it.
 
@@ -203,49 +217,74 @@ def is_discussion(line: str, window: str, rule: dict) -> bool:
     return False
 
 
+def tracked_files(root: Path) -> list[str]:
+    """POSIX-relative paths of every git-tracked file.
+
+    The guard polices the **repository**, not the developer's working tree.
+
+    Scanning the filesystem instead made the guard environment-specific: it
+    passed on a machine whose dirty tree still held the untracked legacy
+    reports, and failed on a clean checkout, where those files are absent and
+    their baseline entries can never reproduce. A guard that is green locally
+    and red in CI is worse than no guard, because it trains people to ignore it.
+
+    Untracked reports are not published and are already quarantined by
+    docs/README_INDEX.md, so excluding them loses no coverage.
+    """
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(root), "ls-files", "-z"],
+            capture_output=True,
+            check=True,
+        ).stdout
+    except (OSError, subprocess.CalledProcessError) as exc:
+        print(f"ERROR: could not list tracked files: {exc}", file=sys.stderr)
+        raise SystemExit(2) from exc
+    return [p for p in out.decode("utf-8", "replace").split("\0") if p]
+
+
 def scan(root: Path) -> list[tuple[str, int, str, dict]]:
     """Return (relpath, lineno, line, rule) for every non-allowlisted hit."""
     hits: list[tuple[str, int, str, dict]] = []
 
-    for dirpath, dirnames, filenames in os.walk(root):
-        # Prune in place so os.walk does not descend.
-        dirnames[:] = [d for d in dirnames if not should_skip_dir(d)]
+    for rel in tracked_files(root):
+        if Path(rel).suffix.lower() not in SCAN_SUFFIXES:
+            continue
 
-        for fname in filenames:
-            fpath = Path(dirpath) / fname
-            if fpath.suffix.lower() not in SCAN_SUFFIXES:
-                continue
+        # Never scan our own data files: the baseline contains every claim
+        # string by construction, and the guard's own source documents them.
+        if rel in SELF_PATHS:
+            continue
 
-            rel = normalise(fpath, root)
+        # A tracked file may still live under a skipped directory
+        # (e.g. docs/governance/superseded/), which policy quarantines.
+        if any(part in SKIP_DIRS for part in Path(rel).parts):
+            continue
 
-            # Never scan our own data files: the baseline contains every claim
-            # string by construction, and the guard's own source documents them.
-            if rel in SELF_PATHS:
-                continue
+        fpath = root / rel
+        try:
+            text = fpath.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
 
-            try:
-                text = fpath.read_text(encoding="utf-8", errors="replace")
-            except OSError:
-                continue
+        lines = text.splitlines()
 
-            lines = text.splitlines()
+        for idx, line in enumerate(lines):
+            for rule in RULES:
+                if rel in rule["allow_paths"]:
+                    break
+                if not rule["pattern"].search(line):
+                    continue
 
-            for idx, line in enumerate(lines):
-                for rule in RULES:
-                    if rel in rule["allow_paths"]:
-                        break
-                    if not rule["pattern"].search(line):
-                        continue
+                # Build a small context block: 3 lines either side.
+                lo = max(0, idx - 3)
+                hi = min(len(lines), idx + 4)
+                window = "\n".join(lines[lo:hi])
 
-                    # Build a small context block: 3 lines either side.
-                    lo = max(0, idx - 3)
-                    hi = min(len(lines), idx + 4)
-                    window = "\n".join(lines[lo:hi])
+                if is_discussion(line, window, rule):
+                    continue
 
-                    if is_discussion(line, window, rule):
-                        continue
-
-                    hits.append((rel, idx + 1, line.strip(), rule))
+                hits.append((rel, idx + 1, line.strip(), rule))
 
     return hits
 

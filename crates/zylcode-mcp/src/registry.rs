@@ -1,7 +1,9 @@
+use serde_json::json;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
+use crate::real_tools::{RiskLevel, ToolSchema};
 use crate::tool::{Tool, ToolDescriptor};
 
 #[derive(Default)]
@@ -59,6 +61,34 @@ impl ToolRegistry {
     pub async fn clear(&self) {
         self.tools.write().await.clear();
     }
+    /// List tool schemas for the model
+    pub async fn list_schemas(&self) -> Vec<ToolSchema> {
+        let g = self.tools.read().await;
+        g.values()
+            .map(|t| {
+                let desc = t.descriptor();
+                let risk = match desc.id.as_str() {
+                    id if id.starts_with("fs.read") => RiskLevel::Read,
+                    id if id.starts_with("fs.") => RiskLevel::Write,
+                    id if id.starts_with("shell.") => RiskLevel::Execute,
+                    id if id.starts_with("git.") => RiskLevel::GitWrite,
+                    id if id.starts_with("search.") => RiskLevel::Read,
+                    _ => RiskLevel::Execute,
+                };
+
+                ToolSchema {
+                    id: desc.id.clone(),
+                    description: desc.description.clone().unwrap_or_else(|| desc.command.clone()),
+                    input_schema: json!({
+                        "type": "object",
+                        "properties": {}
+                    }),
+                    risk_class: risk,
+                    available: true,
+                }
+            })
+            .collect()
+    }
 }
 
 #[cfg(test)]
@@ -83,4 +113,5 @@ mod tests {
         let list = reg.list().await;
         assert_eq!(list[0].id, "a");
     }
+
 }

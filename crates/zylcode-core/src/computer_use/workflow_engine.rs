@@ -47,37 +47,47 @@ impl WorkflowEngine {
     /// Execute workflow
     pub async fn execute_workflow(&self, workflow_id: &str) -> Result<WorkflowResult> {
         let start = std::time::Instant::now();
-        
-        // Get workflow
-        let mut workflows = self.workflows.write().unwrap();
-        let workflow = workflows.get_mut(workflow_id)
-            .ok_or_else(|| anyhow::anyhow!("Workflow not found: {}", workflow_id))?;
-        
-        // Update status
-        workflow.status = WorkflowStatus::Running;
-        workflow.updated_at = Utc::now();
-        
+
+        // Take the workflow under a short-lived write guard. The guard must not
+        // be held across the `sleep` below: a `std::sync::RwLockWriteGuard` is
+        // not `Send`, and holding one across an await point can deadlock the
+        // runtime. Mark it Running, take a copy, and release the lock.
+        let mut workflow = {
+            let mut workflows = self.workflows.write().unwrap();
+            let workflow = workflows
+                .get_mut(workflow_id)
+                .ok_or_else(|| anyhow::anyhow!("Workflow not found: {}", workflow_id))?;
+            workflow.status = WorkflowStatus::Running;
+            workflow.updated_at = Utc::now();
+            workflow.clone()
+        };
+
         // Simulate workflow execution
         let steps_executed = workflow.definition.steps.len();
         let mut output = HashMap::new();
-        let mut errors = Vec::new();
-        
+        let errors = Vec::new();
+
         // Execute each step
         for step in &workflow.definition.steps {
             // Simulate step execution
             tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-            
+
             // Update current step
             workflow.current_step = Some(step.id.clone());
-            
+
             // Simulate step result
             output.insert(format!("step_{}_result", step.id), "success".to_string());
         }
-        
-        // Update workflow status
+
+        // Update workflow status and persist the result back under a fresh,
+        // non-awaited guard.
         workflow.status = WorkflowStatus::Completed;
         workflow.updated_at = Utc::now();
-        
+        {
+            let mut workflows = self.workflows.write().unwrap();
+            workflows.insert(workflow.id.clone(), workflow);
+        }
+
         // Update stats
         let duration = start.elapsed().as_millis() as u64;
         {
@@ -121,7 +131,7 @@ impl WorkflowEngine {
     }
 
     /// Schedule workflow
-    pub async fn schedule_workflow(&self, workflow_id: &str, schedule: Schedule) -> Result<()> {
+    pub async fn schedule_workflow(&self, workflow_id: &str, _schedule: Schedule) -> Result<()> {
         // In a real implementation, this would schedule the workflow
         // For now, we just validate the workflow exists
         let workflows = self.workflows.read().unwrap();

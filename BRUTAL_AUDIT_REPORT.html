@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZylCode Project Audit — Brutally Honest Report</title>
+<style>
+:root {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --border: #30363d;
+  --text: #e6edf3;
+  --text-dim: #8b949e;
+  --red: #f85149;
+  --red-bg: #1a0f0f;
+  --orange: #d29922;
+  --orange-bg: #1a1610;
+  --yellow: #e3b341;
+  --yellow-bg: #1a1a0f;
+  --green: #3fb950;
+  --green-bg: #0f1a0f;
+  --blue: #58a6ff;
+  --blue-bg: #0f1a1f;
+  --purple: #bc8cff;
+  --purple-bg: #1a0f1f;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  padding: 0;
+}
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+h1 {
+  font-size: 2.2rem;
+  font-weight: 800;
+  margin-bottom: 0.25rem;
+}
+h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-top: 2.5rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-dim);
+}
+.subtitle {
+  color: var(--text-dim);
+  font-size: 0.95rem;
+  margin-bottom: 2rem;
+}
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+}
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.dot-red { background: var(--red); }
+.dot-orange { background: var(--orange); }
+.dot-yellow { background: var(--yellow); }
+.dot-green { background: var(--green); }
+.dot-blue { background: var(--blue); }
+.dot-purple { background: var(--purple); }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1rem;
+}
+.card-red { border-left: 4px solid var(--red); background: var(--red-bg); }
+.card-orange { border-left: 4px solid var(--orange); background: var(--orange-bg); }
+.card-yellow { border-left: 4px solid var(--yellow); background: var(--yellow-bg); }
+.card-green { border-left: 4px solid var(--green); background: var(--green-bg); }
+.card-blue { border-left: 4px solid var(--blue); background: var(--blue-bg); }
+.card-purple { border-left: 4px solid var(--purple); background: var(--purple-bg); }
+
+.tag {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-left: 0.5rem;
+  vertical-align: middle;
+}
+.tag-red { background: var(--red); color: #fff; }
+.tag-orange { background: var(--orange); color: #000; }
+.tag-yellow { background: var(--yellow); color: #000; }
+.tag-green { background: var(--green); color: #000; }
+.tag-blue { background: var(--blue); color: #fff; }
+.tag-purple { background: var(--purple); color: #000; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+th {
+  text-align: left;
+  padding: 0.6rem 0.8rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+td {
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--border);
+  vertical-align: top;
+}
+tr td:first-child { font-weight: 600; }
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.metric-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem;
+  text-align: center;
+}
+.metric-num {
+  font-size: 2rem;
+  font-weight: 800;
+  display: block;
+}
+.metric-label {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+ul { padding-left: 1.5rem; margin: 0.5rem 0; }
+li { margin-bottom: 0.3rem; }
+code {
+  font-family: 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+  background: rgba(110,118,129,0.2);
+  padding: 0.15rem 0.35rem;
+  border-radius: 3px;
+  font-size: 0.85em;
+}
+pre {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1rem;
+  overflow-x: auto;
+  margin: 0.5rem 0;
+  font-size: 0.82rem;
+}
+.section { margin-bottom: 2.5rem; }
+.summary-box {
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  padding: 1.5rem 2rem;
+  margin-bottom: 2.5rem;
+  background: var(--surface);
+}
+.verdict {
+  font-size: 1.15rem;
+  font-weight: 700;
+  text-align: center;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+}
+.verdict-red {
+  background: var(--red-bg);
+  border: 2px solid var(--red);
+  color: var(--red);
+}
+p { margin-bottom: 0.75rem; }
+.warning {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  font-style: italic;
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>ZylCode — Brutally Honest Project Audit</h1>
+<p class="subtitle">Independent audit of https://github.com/zylvex-tech/zylcode &nbsp;|&nbsp; Repository state as of 2026-09-18 &nbsp;|&nbsp; Local HEAD: <code>639dbbb</code> &nbsp;|&nbsp; Remote: <code>1338d0b</code></p>
+
+<div class="legend">
+  <div class="legend-item"><span class="dot dot-red"></span> CRITICAL / BROKEN / FATAL</div>
+  <div class="legend-item"><span class="dot dot-orange"></span> SERIOUS PROBLEM</div>
+  <div class="legend-item"><span class="dot dot-yellow"></span> WARNING / NEEDS FIXING</div>
+  <div class="legend-item"><span class="dot dot-green"></span> GOOD / WORKING CORRECTLY</div>
+  <div class="legend-item"><span class="dot dot-blue"></span> INFORMATIONAL / CONTEXT</div>
+  <div class="legend-item"><span class="dot dot-purple"></span> GOVERNANCE / PROCESS</div>
+</div>
+
+<!-- ============================================================ -->
+<div class="summary-box">
+<h2 style="margin-top:0;border:none">Executive Summary — The TL;DR</h2>
+<div class="verdict verdict-red">
+  This project is an ambitious, well-governed scaffold with a real but narrow codebase,
+  drowning in documentation debris, carrying a fabricated skeleton disguised as a feature,
+  with a broken release pipeline, zero CI, and 91 dirty tree entries that are a divergent fork.
+</div>
+<p><strong>The good:</strong> The governance framework is exceptional — a Constitution, Architecture spec,
+Proof Graph, Capability Model, and an R0–R5 evidence ladder that most real companies don't have.
+The Agent Kernel (tool runtime, agent loop, evidence ledger, permissions, crash recovery) is real,
+compiles, and has 261 passing tests. The person running this project clearly understands that
+builders shouldn't certify their own work.</p>
+<p><strong>The bad:</strong> 64 root-level markdown files, 15 of which scream "COMPLETE!" for phases
+that were <em>never completed</em>. A 1,763-line "Computer-Use Engine" that is 100% fake — every
+action is <code>tokio::time::sleep</code>, every confidence is hardcoded <code>0.85</code>, every
+screen capture is <code>vec![0]</code>. The intelligence module counted Rust build artifacts as
+"repository intelligence." The CI is blocked by a billing issue. The remote is red. The dirty
+tree is a divergent fork. And the product's actual tool surface (<code>mcp.tools.yaml</code>)
+isn't even tracked in git.</p>
+</div>
+
+<!-- ============================================================ -->
+<div class="section">
+<h2>1. Repository Statistics</h2>
+
+<div class="metric-grid">
+  <div class="metric-box"><span class="metric-num" style="color:var(--blue)">1</span><span class="metric-label">GitHub Stars</span></div>
+  <div class="metric-box"><span class="metric-num" style="color:var(--blue)">1</span><span class="metric-label">Fork Count</span></div>
+  <div class="metric-box"><span class="metric-num" style="color:var(--blue)">68</span><span class="metric-label">Total Commits</span></div>
+  <div class="metric-box"><span class="metric-num" style="color:var(--blue)">249</span><span class="metric-label">Tracked Files</span></div>
+  <div class="metric-box"><span class="metric-num" style="color:var(--red)">91</span><span class="metric-label">Dirty Tree Entries</span></div>
+  <div class="metric-box"><span class="metric-num" style="color:var(--green)">77</span><span class="metric-label">Rust Source Files</span></div>
+  <div class="metric-box"><span class="metric-num" style="color:var(--green)">33.5K</span><span class="metric-label">Lines of Rust</span></div>
+  <div class="metric-box"><span class="metric-num" style="color:var(--green)">341</span><span class="metric-label">Test Functions</span></div>
+  <div class="metric-box"><span class="metric-num" style="color:var(--orange)">64</span><span class="metric-label">Root .md Files</span></div>
+  <div class="metric-box"><span class="metric-num" style="color:var(--orange)">64</span><span class="metric-label">docs/ .md Files</span></div>
+</div>
+
+<div class="card card-blue">
+<h3>Repository metadata</h3>
+<ul>
+  <li><strong>Remote:</strong> <code>origin/main</code> at <code>1338d0b</code> — the ONLY remote branch</li>
+  <li><strong>Local HEAD:</strong> <code>639dbbb</code> — 2 commits AHEAD of remote (unpushed)</li>
+  <li><strong>Tags:</strong> <code>v0.1.0</code>, <code>v0.2.0</code>, <code>v0.2.0-dev</code> — releases are from <code>v0.2.0-dev</code> (August 2026), stale</li>
+  <li><strong>Issues:</strong> 0 open &nbsp;|&nbsp; <strong>PRs:</strong> 0 open</li>
+  <li><strong>License:</strong> README says MIT, GitHub sidebar says Apache-2.0 — <span class="tag tag-orange">INCONSISTENT</span></li>
+  <li><strong>CI:</strong> Configured (Ubuntu, Windows, macOS matrix) but <strong>blocked by a GitHub billing issue</strong> — no CI has run recently</li>
+</ul>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<div class="section">
+<h2>2. Phase Status — Where the Roadmap Actually Stands</h2>
+
+<table>
+<tr><th>Phase</th><th>Status</th><th>Color</th><th>Notes</th></tr>
+<tr><td>1A — Real Tool Runtime</td><td>Accepted</td><td><span class="tag tag-green">GREEN</span></td><td>Real filesystem, shell, git, search tools. R3.</td></tr>
+<tr><td>1B — Agent Execution Loop</td><td>Accepted</td><td><span class="tag tag-green">GREEN</span></td><td>Bounded loop with step limits, timeouts, cancellation. R3.</td></tr>
+<tr><td>1C — Model-Driven Agent</td><td>Accepted (conditional)</td><td><span class="tag tag-yellow">YELLOW</span></td><td>Real HTTP dispatch to providers. <strong>Live multi-provider commissioning still outstanding.</strong></td></tr>
+<tr><td>1D — Durable Memory & Recovery</td><td>Accepted (conditional)</td><td><span class="tag tag-yellow">YELLOW</span></td><td>Evidence ledger, permissions, crash recovery. Generic verification execution partial.</td></tr>
+<tr><td>2A — Repository Intelligence</td><td><strong>NOT ACCEPTED — RE-OPENED</strong></td><td><span class="tag tag-red">RED</span></td><td>Headline metric counted build artifacts. Benchmark fails on re-run. Zero product integration. <strong>0 of 10 remediation items done.</strong></td></tr>
+<tr><td>2B — Repository Reasoning</td><td>BLOCKED</td><td><span class="tag tag-red">RED</span></td><td>Blocked on 2A re-acceptance.</td></tr>
+<tr><td>3A–16 — All remaining phases</td><td>NOT STARTED</td><td><span class="tag tag-orange">ORANGE</span></td><td>Project System, Vision Studio, Proof Engine, Delivery Engine, Device Labs, Marketplace — all PROPOSED, none exist.</td></tr>
+</table>
+
+<div class="card card-red">
+<h3>Phase 2A — Why It Was Rejected <span class="tag tag-red">CRITICAL</span></h3>
+<p>The Phase 2A completion report claimed <strong>"Files indexed: 14,973"</strong> as evidence of
+repository intelligence. <strong>14,900 of those files were Rust build artifacts under
+<code>target/</code></strong>. The actual repository is 254 files. This happened because the
+exclusion list used forward-slash patterns (<code>"/target/"</code>) on Windows, where paths use
+backslashes — making the exclusion <strong>dead code on the primary target platform</strong>.</p>
+<p>The benchmark claimed <strong>"Scan duration: 12.7s"</strong> — independent re-measurement showed
+<strong>276.1s</strong> (22× slower). The assertion threshold was breached. The "Acceptance
+Demonstration" was headed "Expected Output" — it was an expectation, not captured evidence.</p>
+<p>The completion report was committed with <code>Commit SHA: (Pending)</code> and
+<code>Push Verification: (Pending)</code> — it was committed <strong>before the facts it certified
+were known</strong>.</p>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<div class="section">
+<h2>3. Codebase Audit — System by System</h2>
+
+<div class="card card-green">
+<h3>Agent Kernel <span class="tag tag-green">R3 — REAL</span></h3>
+<p><strong>What exists:</strong> <code>zylcode-core</code> crate with a real tool runtime
+(FileSystemTool, ShellTool, GitTool, SearchTool), an iterative agent loop with
+<code>AgentDecision</code> enum (Think, Plan, ToolCall, RequestApproval, Verify, Complete, Fail),
+evidence ledger (append-only, hash-chained), permission gate (fail-closed, risk-classified),
+and crash recovery with git reconciliation.</p>
+<p><strong>Lines:</strong> ~643 in lib.rs, ~849 in pipeline.rs, ~346 in router/decision.rs. Real code,
+real tests, real behavior.</p>
+<p><strong>Verdict:</strong> This is the one thing that actually works. It compiles, tests pass,
+the agent loop executes tools and records evidence. It's not a facade.</p>
+</div>
+
+<div class="card card-red">
+<h3>Computer-Use Engine <span class="tag tag-red">R0 — 100% FAKE</span></h3>
+<p><strong>1,763 lines</strong> across 7 files. This is a <strong>simulation facade</strong>, not a
+capability. Every single function is fake:</p>
+<ul>
+  <li><strong>Screen capture:</strong> returns <code>vec![0; 1920 * 1080 * 4]</code> — a buffer of zeros, 3 sites</li>
+  <li><strong>Input controller:</strong> every action is <code>tokio::time::sleep(Duration::from_millis(10-100))</code> — 10 sleep sites</li>
+  <li><strong>Vision AI:</strong> <code>detect_elements_internal</code> fabricates a "Submit" button with <code>confidence: 0.85</code> from image width alone. Other hardcoded confidences: <code>0.9</code>, <code>0.95</code></li>
+  <li><strong>GUI automation:</strong> 7 sleep-based "actions"</li>
+  <li><strong>Tests:</strong> assert <code>is_ok()</code> against a facade that <strong>cannot fail</strong></li>
+</ul>
+<p>The code comment in <code>mod.rs:181</code> literally says:
+<em>"but we're testing the API with simulated success"</em> and <em>"In our simulated environment,
+this should succeed"</em>.</p>
+<p><strong>Only reachable surface:</strong> CLI command <code>computer-use stats</code> that prints zeroed counters.</p>
+<p><strong>Verdict:</strong> This is not a skeleton or a work-in-progress. It is a <strong>simulation
+that lies at the type level</strong>. A <code>confidence: 0.85</code> on a hardcoded literal is not
+a missing feature — it is an architectural violation. The governance docs correctly say
+<strong>"Replace, do not extend."</strong></p>
+</div>
+
+<div class="card card-orange">
+<h3>Intelligence Graph <span class="tag tag-orange">R2 — REAL CODE, BROKEN METRICS</span></h3>
+<p><strong>5,351 lines</strong> across 13 modules — scanner, classifier, symbols, dependency,
+manifest, context, query, store, entry_points, architecture, git, types. This is substantial,
+real code with 79 passing unit tests.</p>
+<p><strong>But:</strong></p>
+<ul>
+  <li>The exclusion list is broken on Windows (forward-slash patterns on backslash paths)</li>
+  <li>The benchmark panics: <code>Scan should complete in < 120s, took 276.1s</code></li>
+  <li><strong>Not reachable</strong> from AgentLoop, CLI, or desktop app — it's a library nobody calls</li>
+  <li>The <code>ignore</code> crate was never adopted (still hand-rolled matcher)</li>
+</ul>
+<p><strong>Verdict:</strong> Real engineering buried under a Windows path bug and zero integration.
+The code is 90% there; the last 10% (Windows path handling, benchmark determinism, product
+integration) is what makes it R2 instead of R3.</p>
+</div>
+
+<div class="card card-orange">
+<h3>Model Platform <span class="tag tag-orange">R1 — PARTIAL</span></h3>
+<p>Provider configuration and real HTTP dispatch exist for Anthropic, OpenAI, Google, DeepSeek,
+Z.AI/GLM, OpenRouter, Ollama, and a synthetic-offline provider. But capability-based routing
+does not exist — it's a dropdown, not "Model Democracy." Routing is not measurement-based.</p>
+<p><strong>Environment trap:</strong> the machine has <code>OPENROUTER_API_KEY=YOUR_OPENROUTER_API_KEY</code>
+(the literal <code>.env.example</code> placeholder). Tests using <code>RouterConfig::default()</code>
+egress to openrouter.ai and fail — the #1 source of false test results in this repo.</p>
+</div>
+
+<div class="card card-yellow">
+<h3>Tauri Desktop App <span class="tag tag-yellow">R3 — LAUNCHES, LIMITED FUNCTION</span></h3>
+<p><strong>Frontend:</strong> React + TypeScript (14 .tsx files, 9 .ts files). Components include
+McpInspector, ArtifactViewer, TelemetryDashboard, ProviderSettings, StatusBar,
+VerificationRungBadge, BridgeMonitor, ResourceGraph. 8 premium themes. The UI is polished
+and professional-looking.</p>
+<p><strong>Backend:</strong> 778 lines in <code>main.rs</code>. IPC commands for intent processing,
+streaming, tool listing, provider management, cache stats, verification.</p>
+<p><strong>But:</strong> the app <em>launches</em> and shows a window, but the core closed loop
+(imagine → specify → design → build → run → see → test → repair → verify → ship) does not exist.
+There is no Project System, no Mission Engine, no Vision Studio, no Proof Engine. The app is
+a monitoring dashboard for a partial agent kernel.</p>
+</div>
+
+<div class="card card-red">
+<h3>mcp.tools.yaml — The Product's Actual Tool Surface <span class="tag tag-red">UNTRACKED</span></h3>
+<p><code>mcp.tools.yaml</code> defines 30 tools with real commands (<code>cargo check</code>,
+<code>kubectl get</code>, <code>sqlite3</code>, <code>docker</code>, <code>git</code>,
+<code>npm</code>). It is <strong>loaded by default</strong> by both the MCP crate
+(<code>lib.rs:73</code>) and the Tauri app (<code>main.rs:425,741</code>).</p>
+<p><strong>It is not tracked in git.</strong> Without it, the shipped app registers <strong>zero
+tools</strong>. Two tools (<code>ai.train</code> / <code>ai.evaluate</code>) invoke
+<code>train.py</code> / <code>evaluate.py</code> which <strong>do not exist</strong>.</p>
+<p>This is the product's actual tool surface, and it's sitting in the working tree as an untracked
+file, not in version control.</p>
+</div>
+
+<div class="card card-yellow">
+<h3>Delivery Engine <span class="tag tag-yellow">R1 — PARTIAL</span></h3>
+<p>Release workflow configured (NSIS for Windows, DMG for macOS, DEB for Linux). CI is blocked
+by a GitHub billing issue. Latest releases on the GitHub Releases page are from
+<code>v0.2.0-dev</code> (August 2026) and do <strong>not</strong> reflect the current codebase.
+Installer path has an incident history.</p>
+</div>
+
+<div class="card card-red">
+<h3>Everything Else — PROPOSED / DOES NOT EXIST <span class="tag tag-red">R0</span></h3>
+<table>
+<tr><th>System</th><th>Rung</th><th>Reality</th></tr>
+<tr><td>Project System</td><td>R0</td><td>Does not exist. <code>Project</code> is a UI-level notion only.</td></tr>
+<tr><td>Mission Engine</td><td>R0</td><td>Does not exist.</td></tr>
+<tr><td>Vision Studio</td><td>R0</td><td>Does not exist.</td></tr>
+<tr><td>Visual Intelligence</td><td>R0</td><td>Does not exist.</td></tr>
+<tr><td>Extension Platform</td><td>R0</td><td>MCP bridge exists but no stable package ABI.</td></tr>
+<tr><td>Artifact Bus</td><td>R0</td><td>Does not exist.</td></tr>
+<tr><td>Live Preview Runtime</td><td>R0</td><td>Does not exist.</td></tr>
+<tr><td>Execution Engine — Browser</td><td>R0</td><td>Does not exist.</td></tr>
+<tr><td>Execution Engine — Android</td><td>R0</td><td>Does not exist.</td></tr>
+<tr><td>Execution Engine — macOS/iOS</td><td>R0</td><td>Does not exist.</td></tr>
+<tr><td>Proof Engine v2</td><td>R0</td><td>Verification rung exists in pipeline; Proof Graph does not.</td></tr>
+<tr><td>Multi-Agent Engineering</td><td>R0</td><td>Does not exist.</td></tr>
+<tr><td>Marketplace</td><td>R0</td><td>Does not exist.</td></tr>
+</table>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<div class="section">
+<h2>4. The Dirty Tree — A Divergent Fork</h2>
+
+<div class="card card-red">
+<h3>91 Dirty Entries — Not a Clean Working Tree <span class="tag tag-red">CRITICAL</span></h3>
+<table>
+<tr><th>Category</th><th>Count</th><th>Detail</th></tr>
+<tr><td>Modified tracked files</td><td>56</td><td>Source files the audit did not review, from another session</td></tr>
+<tr><td>Untracked files</td><td>35</td><td>Includes untracked <strong>source</strong> files (performance.rs, system_integration.rs, commissioning_test.rs)</td></tr>
+<tr><td>Files modified by both HEAD and dirty tree</td><td>25</td><td><strong>All 25 differ</strong> — the dirty tree is a divergent fork, not a superset</td></tr>
+<tr><td>Raw diff</td><td>4,655 ins / 2,379 del</td><td>~670 lines are pure formatting churn (no <code>.gitattributes</code>, <code>core.autocrlf=true</code>)</td></tr>
+</table>
+<p>The dirty tree carries <strong>113 bridge ToolDefinitions</strong> (vs 28 in the candidate),
+the 8 <code>get_more_*_tools</code> impls, <code>pub mod performance</code> and
+<code>pub mod system_integration</code> — all of which were <strong>removed</strong> by remediation
+commits. It <strong>lacks</strong> every hermeticity fix. It <strong>fails its own suite</strong>
+(<code>router.rs:1059</code>).</p>
+<p><strong>Verdict:</strong> Never commit this tree wholesale. It is a fork that diverged before the
+remediation work. Reconcile file by file, or discard.</p>
+</div>
+
+<div class="card card-orange">
+<h3>Key clobbered file: DEEPSEEK_MASTER_PROMPT_V21.md <span class="tag tag-orange">SERIOUS</span></h3>
+<p>The committed 522-line master work order is overwritten in the working tree with a 156-line
+<strong>stale v1.0 copy</strong> of <code>ZYLCODE_COMMERCIAL_MODEL.md</code>, missing the v1.1
+gate correction. Original is recoverable from HEAD. <strong>Not reverted</strong> — it is another
+session's in-flight edit.</p>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<div class="section">
+<h2>5. Documentation Chaos</h2>
+
+<div class="card card-red">
+<h3>64 Root-Level Markdown Files <span class="tag tag-red">CRITICAL</span></h3>
+<p>This is the single most dangerous documentation state in the repository. The root directory
+contains <strong>64 markdown files</strong>. Of those:</p>
+<ul>
+  <li><strong>15</strong> are named <code>*_COMPLETE*</code> or <code>*_SUMMARY*</code></li>
+  <li><strong>23</strong> assert a completion claim in their body</li>
+  <li><strong>0</strong> carry a superseded banner</li>
+</ul>
+<p>They use a <strong>retired phase-numbering scheme</strong>. An agent reading
+<code>PROJECT_COMPLETE.md</code> before <code>docs/governance/</code> will conclude the project
+is finished and Phases 3 and 4 passed. <strong>Both conclusions are false.</strong></p>
+</div>
+
+<div class="card card-orange">
+<h3>Quarantined Root Files (partial list) <span class="tag tag-orange">SERIOUS</span></h3>
+<table>
+<tr><th>File</th><th>Claims</th><th>Reality</th></tr>
+<tr><td><code>PROJECT_COMPLETE.md</code></td><td>"Project COMPLETE"</td><td>Phase 2A rejected, 3A-16 not started</td></tr>
+<tr><td><code>PHASE1_COMPLETE.md</code></td><td>"Phase 1 READY"</td><td>1A-1B accepted, 1C/1D conditional</td></tr>
+<tr><td><code>PHASE2_COMPLETE.md</code></td><td>"Phase 2 COMPLETE"</td><td>Phase 2A REJECTED</td></tr>
+<tr><td><code>PHASE3_COMPLETE.md</code></td><td>"Phase 3 COMPLETE"</td><td>Phase 3 never started under current numbering</td></tr>
+<tr><td><code>PHASE4_COMPLETE.md</code></td><td>"Phase 4 COMPLETE"</td><td>Phase 4 never started under current numbering</td></tr>
+<tr><td><code>FINAL_WORKING_APPLICATION.md</code></td><td>"Fully Working!"</td><td>A debugging session note, not a capability</td></tr>
+<tr><td><code>FINAL_SUMMARY.md</code></td><td>Now quarantined</td><td>Previously claimed "156 tools" (retracted)</td></tr>
+<tr><td><code>IMPLEMENTATION_STATUS.md</code></td><td>Completion claims</td><td>Under retired numbering</td></tr>
+</table>
+<p class="warning">The README_INDEX.md quarantines these as "provenance, not evidence." But 0 of them
+carry a superseded banner. An agent that doesn't read README_INDEX.md first will be misled.</p>
+</div>
+
+<div class="card card-orange">
+<h3>Junk Files at Root <span class="tag tag-orange">SERIOUS</span></h3>
+<ul>
+  <li><strong>6 HTML files</strong> of DeepSeek research scraped from Wikipedia/GitHub (6,989 lines total) — should be in <code>docs/research/</code> or deleted</li>
+  <li><strong>9 log files</strong> (backtrace.log, error.log, final_stderr.log, final_stdout.log, output.log, stderr.log, stdout.log, trace_stderr.log, trace_stdout.log) — 4 total lines of content. Empty debug artifacts.</li>
+  <li><strong>9 batch/PowerShell scripts</strong> (build-and-run.bat, diagnose.ps1, fix_clippy_defaults.ps1, install.bat, launch.bat, simple-diagnose.ps1, start-dev.bat, test-installation.ps1, test-simple.ps1) — ad-hoc debugging scripts</li>
+  <li><strong>deepseek-repos.json</strong> — scraped JSON data at the root</li>
+</ul>
+</div>
+
+<div class="card card-green">
+<h3>Governance Documentation <span class="tag tag-green">EXCEPTIONAL</span></h3>
+<p>Despite the root chaos, the governance framework under <code>docs/governance/</code> is
+<strong>genuinely impressive</strong>:</p>
+<ul>
+  <li><strong>22 governance documents</strong> — Constitution v2, Architecture v2.1, Master Execution Plan, Capability Model, Proof Graph, Agent Operating Protocol, Commercial Model, Public Communication Policy, Public Foundation Plan</li>
+  <li><strong>11 architecture documents</strong> — one per system, each marked PROPOSED/PARTIAL honestly</li>
+  <li><strong>1 roadmap document</strong> — 16 phases, 6 epochs, with gates and dependencies</li>
+  <li>R0–R5 proof ladder with the rung ceiling rule</li>
+  <li>"Builders do not certify their own work" as a hard rule</li>
+  <li>Retracted-claim guard in CI (mechanical enforcement against false claims re-entering)</li>
+  <li>Every system carries an explicit rung and honest status</li>
+</ul>
+<p>This is the kind of governance framework most startups <em>wish</em> they had. The problem is
+that the governance is <strong>better than the code it governs</strong> — which is simultaneously
+the project's greatest strength and its greatest risk.</p>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<div class="section">
+<h2>6. Capability Registry — Inflated Claims</h2>
+
+<div class="card card-orange">
+<h3>docs/capability-registry.json <span class="tag tag-orange">SERIOUS</span></h3>
+<table>
+<tr><th>Status</th><th>Count</th><th>Problem</th></tr>
+<tr><td>GREEN</td><td>20</td><td>12 of these were already flagged DISPUTED (not reachable from any product surface). Net honest GREEN: 8.</td></tr>
+<tr><td>DISPUTED</td><td>12</td><td>Module exists and tests pass, but nothing invokes it. R2 masquerading as R3.</td></tr>
+<tr><td>PARTIAL</td><td>1</td><td>Honest.</td></tr>
+</table>
+<p>The registry version is <code>1.4.1-audited</code> — but the audit corrected 12 entries from
+GREEN to DISPUTED, and 23 of 34 entries still carry <code>rung: null</code>. The honest path
+is to downgrade all 12 DISPUTED entries to PARTIAL/R2 with explicit rungs, which is incomplete.</p>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<div class="section">
+<h2>7. Build & Test Status</h2>
+
+<table>
+<tr><th>Check</th><th>Status</th><th>Detail</th></tr>
+<tr><td><code>cargo check --workspace --lib</code></td><td><span class="tag tag-green">PASS</span></td><td>34.24s, compiles cleanly (verified independently)</td></tr>
+<tr><td><code>cargo test --workspace --lib</code></td><td><span class="tag tag-green">PASS</span></td><td>261 passed, 0 failed (was 225 pass / 1 fail — fixed in commit <code>8f751ed</code>)</td></tr>
+<tr><td><code>cargo build --workspace</code></td><td><span class="tag tag-yellow">UNVERIFIABLE</span></td><td>Sandbox blocks build-script execution (not a code defect)</td></tr>
+<tr><td><code>cargo clippy -D warnings</code></td><td><span class="tag tag-green">PASS</span></td><td>Zero warnings, whole tree (per status sweep)</td></tr>
+<tr><td>Remote CI</td><td><span class="tag tag-red">RED / BLOCKED</span></td><td>CI blocked by GitHub billing issue. Remote tip <code>1338d0b</code> is red at CI step 8.</td></tr>
+<tr><td>Remote vs local</td><td><span class="tag tag-orange">DIVERGENT</span></td><td>Local is 2 commits ahead (unpushed). Remote predates remediation fixes.</td></tr>
+</table>
+</div>
+
+<!-- ============================================================ -->
+<div class="section">
+<h2>8. Retracted Claims Still in the Repo</h2>
+
+<div class="card card-orange">
+<h3>Retracted-Claim Backlog <span class="tag tag-orange">SERIOUS</span></h3>
+<p>A CI guard (<code>scripts/check_retracted_claims.py</code>) now mechanically blocks new
+occurrences of previously-retracted claims. The baseline backlog:</p>
+<ul>
+  <li><strong>26 occurrences</strong> of "156 tools" (retracted in Phase 1C as unsupported; actual is 112 tool IDs)</li>
+  <li><strong>16 occurrences</strong> of "SOC 2" (compliance claim never substantiated)</li>
+  <li><strong>8 occurrences</strong> of "ISO 27001" (compliance claim never substantiated)</li>
+</ul>
+<p>50 total occurrences across 12 files. These are <strong>bounded debt</strong> — the guard ensures
+they can only shrink, never grow. But they still exist in 12 files, some tracked.</p>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<div class="section">
+<h2>9. Color-Coded Verdict Summary</h2>
+
+<table>
+<tr><th>Area</th><th>Color</th><th>Verdict</th></tr>
+<tr><td>Agent Kernel (tool runtime, agent loop, evidence ledger, permissions, recovery)</td><td><span class="tag tag-green">GREEN</span></td><td>Real, compiles, tests pass, R3. The core that works.</td></tr>
+<tr><td>Governance framework</td><td><span class="tag tag-green">GREEN</span></td><td>Constitution, Architecture, Proof Graph, Capability Model. Exceptional.</td></tr>
+<tr><td>Rust code quality (Agent Kernel)</td><td><span class="tag tag-green">GREEN</span></td><td>Clean, clippy-clean, well-structured, real tests.</td></tr>
+<tr><td>Desktop app UI</td><td><span class="tag tag-yellow">YELLOW</span></td><td>Polished React frontend. Launches. But it's a monitor, not a product.</td></tr>
+<tr><td>Model Platform</td><td><span class="tag tag-yellow">YELLOW</span></td><td>Providers wired. Routing not measurement-based. Env trap with placeholder API key.</td></tr>
+<tr><td>Delivery Engine</td><td><span class="tag tag-yellow">YELLOW</span></td><td>Release workflow configured. CI blocked. Releases stale.</td></tr>
+<tr><td>Capability registry</td><td><span class="tag tag-orange">ORANGE</span></td><td>12 DISPUTED entries, 23 with null rung. Inflated but partially corrected.</td></tr>
+<tr><td>Intelligence Graph</td><td><span class="tag tag-orange">ORANGE</span></td><td>5,351 lines of real code. Windows path bug. Benchmark fails. Not integrated.</td></tr>
+<tr><td>Documentation at root level</td><td><span class="tag tag-orange">ORANGE</span></td><td>64 .md files, 15 claiming COMPLETE, 0 superseded banners. Quarantined by index.</td></tr>
+<tr><td>Retracted claims</td><td><span class="tag tag-orange">ORANGE</span></td><td>50 occurrences of "156 tools", "SOC 2", "ISO 27001" in 12 files. Guarded but present.</td></tr>
+<tr><td>Junk files at root</td><td><span class="tag tag-orange">ORANGE</span></td><td>6 HTML scrapes, 9 empty log files, 9 ad-hoc scripts, 1 JSON dump.</td></tr>
+<tr><td>Computer-Use Engine</td><td><span class="tag tag-red">RED</span></td><td>1,763 lines of pure simulation. Fabricated confidences. Sleep-based actions. Must replace.</td></tr>
+<tr><td>Dirty tree</td><td><span class="tag tag-red">RED</span></td><td>91 entries. Divergent fork. Fails its own suite. mcp.tools.yaml untracked.</td></tr>
+<tr><td>Remote CI</td><td><span class="tag tag-red">RED</span></td><td>Blocked by billing. Remote is red. No external verification exists.</td></tr>
+<tr><td>Remote vs local sync</td><td><span class="tag tag-red">RED</span></td><td>Local 2 commits ahead, unpushed. Remote predates fixes.</td></tr>
+<tr><td>13 of 16 core systems</td><td><span class="tag tag-red">RED</span></td><td>Do not exist. PROPOSED. R0.</td></tr>
+<tr><td>License</td><td><span class="tag tag-orange">ORANGE</span></td><td>README says MIT, GitHub sidebar says Apache-2.0.</td></tr>
+</table>
+</div>
+
+<!-- ============================================================ -->
+<div class="section">
+<h2>10. The Honest Path Forward</h2>
+
+<div class="card card-purple">
+<h3>What needs to happen, in priority order</h3>
+<ol>
+  <li><strong>Push the 2 unpushed commits to remote.</strong> The remote is behind. The local fixes
+      the <code>router.rs</code> test failure that made the committed tree red.</li>
+  <li><strong>Resolve the dirty tree.</strong> 91 entries is not a working state. It's a divergent
+      fork. Reconcile file by file or discard. Track <code>mcp.tools.yaml</code> or delete it.</li>
+  <li><strong>Delete the Computer-Use facade.</strong> 1,763 lines of fake code that lies at the
+      type level is worse than no code. Replace, do not extend.</li>
+  <li><strong>Quarantine or delete the 64 root .md files.</strong> 15 say "COMPLETE" for things that
+      were never completed. Add superseded banners or move to <code>docs/archive/</code>.</li>
+  <li><strong>Clean the root.</strong> Delete the 9 empty log files, move the 6 HTML scrapes to
+      <code>docs/research/</code>, remove the 9 ad-hoc scripts or move to <code>scripts/</code>.</li>
+  <li><strong>Fix the Intelligence Graph's Windows path bug.</strong> Adopt the <code>ignore</code>
+      crate. Make the benchmark deterministic. Integrate it into AgentLoop or downgrade the
+      capability claim.</li>
+  <li><strong>Fix the license inconsistency.</strong> Pick MIT or Apache-2.0. Not both.</li>
+  <li><strong>Fix the capability registry.</strong> 12 DISPUTED entries need honest rungs. 23 with
+      <code>rung: null</code> need to be filled or removed.</li>
+  <li><strong>Clear the retracted-claim backlog.</strong> 50 occurrences across 12 files. Fix them
+      one by one until the baseline is empty.</li>
+  <li><strong>Unblock CI.</strong> The billing issue means no external verification exists. Until
+      CI runs, every claim is R2 at best (local reproduction only).</li>
+</ol>
+</div>
+
+<div class="card card-green">
+<h3>What's working and should be preserved</h3>
+<ul>
+  <li>The governance framework — keep it, it's the project's best asset</li>
+  <li>The Agent Kernel — real, working, tested</li>
+  <li>The Tauri app structure — good foundation for the eventual product</li>
+  <li>The multi-provider model dispatch — real HTTP, real providers</li>
+  <li>The evidence ledger and permission gate — genuine security controls</li>
+  <li>The crash recovery with git reconciliation — a real durability story</li>
+  <li>The retracted-claim CI guard — mechanical enforcement of honesty</li>
+  <li>The R0–R5 proof ladder — the right way to think about capabilities</li>
+</ul>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<div class="section">
+<div class="card card-red" style="margin-top:2rem">
+<h2 style="margin-top:0">Final Verdict</h2>
+<p>ZylCode is a <strong>project with extraordinary governance discipline and a real but narrow
+codebase, sabotaged by a documentation disaster, a fake skeleton, an unpushed tree, and a broken
+CI pipeline</strong>. The person running this project understands evidence-first engineering
+better than most. The governance docs are the best thing about the project. The code that exists
+(Agent Kernel) is genuine and well-tested.</p>
+<p>But the repository is in a state where an agent landing cold would be <strong>actively
+misled</strong> — 15 root files saying COMPLETE for things that were never completed, a 1,763-line
+facade pretending to be a Computer-Use Engine, 91 dirty tree entries that are a divergent fork,
+and the product's actual tool surface not even tracked in git.</p>
+<p><strong>The gap between the governance ambition and the repository reality is the defining
+characteristic of this project.</strong> Closing that gap — not writing new features — should be
+the priority. The governance framework is designed to force this. It just hasn't been followed
+through to the repository hygiene layer yet.</p>
+<p><strong>Scorecard:</strong></p>
+<table>
+<tr><th>Dimension</th><th>Score</th><th>Color</th></tr>
+<tr><td>Governance & process discipline</td><td>9/10</td><td><span class="tag tag-green">GREEN</span></td></tr>
+<tr><td>Real working code (Agent Kernel)</td><td>7/10</td><td><span class="tag tag-green">GREEN</span></td></tr>
+<tr><td>Repository hygiene</td><td>2/10</td><td><span class="tag tag-red">RED</span></td></tr>
+<tr><td>Documentation accuracy at root</td><td>2/10</td><td><span class="tag tag-red">RED</span></td></tr>
+<tr><td>Code honesty (no fake facades)</td><td>3/10</td><td><span class="tag tag-red">RED</span></td></tr>
+<tr><td>CI / release pipeline</td><td>2/10</td><td><span class="tag tag-red">RED</span></td></tr>
+<tr><td>Feature completeness vs. roadmap</td><td>2/10</td><td><span class="tag tag-red">RED</span></td></tr>
+<tr><td>Overall project health</td><td><strong>4/10</strong></td><td><span class="tag tag-orange">ORANGE</span></td></tr>
+</table>
+</div>
+</div>
+
+</div>
+</body>
+</html>

@@ -180,9 +180,13 @@ impl ExtensionRegistry {
                 e.manifest.id.to_lowercase().contains(&q)
                     || e.manifest.name.to_lowercase().contains(&q)
                     || e.manifest.description.to_lowercase().contains(&q)
-                    || e.manifest.keywords.iter().any(|k| k.to_lowercase().contains(&q))
+                    || e.manifest
+                        .keywords
+                        .iter()
+                        .any(|k| k.to_lowercase().contains(&q))
                     || e.skills.iter().any(|s| {
-                        s.name.to_lowercase().contains(&q) || s.description.to_lowercase().contains(&q)
+                        s.name.to_lowercase().contains(&q)
+                            || s.description.to_lowercase().contains(&q)
                     })
             })
             .collect()

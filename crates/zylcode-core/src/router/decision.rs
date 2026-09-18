@@ -108,10 +108,16 @@ pub fn classify_verification_rung(artifact_kind: &str) -> VerificationRung {
 pub fn verification_rung_description(rung: &VerificationRung) -> &'static str {
     match rung {
         VerificationRung::Rung0 => "No verification. The artifact is unverified.",
-        VerificationRung::Rung1 => "Static analysis. The artifact has been validated by static checks.",
+        VerificationRung::Rung1 => {
+            "Static analysis. The artifact has been validated by static checks."
+        }
         VerificationRung::Rung2 => "Formal proof. The artifact has been formally verified.",
-        VerificationRung::Rung3 => "Full verification. The artifact is formally proven and reviewed.",
-        VerificationRung::Rung4 => "Maximum verification. The artifact is formally proven, reviewed, and audited.",
+        VerificationRung::Rung3 => {
+            "Full verification. The artifact is formally proven and reviewed."
+        }
+        VerificationRung::Rung4 => {
+            "Maximum verification. The artifact is formally proven, reviewed, and audited."
+        }
     }
 }
 
@@ -163,11 +169,12 @@ impl Decision {
     pub fn summary(&self) -> String {
         match self {
             Decision::Allow { granted_by } => format!("Allowed ({granted_by})"),
-            Decision::DenyNoRule {
-                agent_id,
-                tool_id,
-            } => format!("Denied: no rule for agent={agent_id} tool={tool_id}"),
-            Decision::DenyExplicit { blocked_by } => format!("Denied: explicit block ({blocked_by})"),
+            Decision::DenyNoRule { agent_id, tool_id } => {
+                format!("Denied: no rule for agent={agent_id} tool={tool_id}")
+            }
+            Decision::DenyExplicit { blocked_by } => {
+                format!("Denied: explicit block ({blocked_by})")
+            }
             Decision::DenySession { reason } => format!("Denied: session {reason}"),
             Decision::DenyRateLimited { retry_after_secs } => {
                 format!("Denied: rate-limited (retry in {retry_after_secs}s)")

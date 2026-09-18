@@ -7,7 +7,11 @@ use super::text_processor::TextProcessor;
 
 /// Voice processor for speech-to-text and voice analysis
 pub struct VoiceProcessor {
-    text_processor: Arc<TextProcessor>,
+    /// Injected text processor. Voice processing currently returns its own
+    /// simulated transcript and never delegates to it, so the handle is stored
+    /// but never read. Kept because `new()` is a public entry point that
+    /// already accepts it — class B (unfinished).
+    _text_processor: Arc<TextProcessor>,
     command_registry: RwLock<Vec<VoiceCommand>>,
     stats: RwLock<VoiceProcessorStats>,
 }
@@ -22,39 +26,38 @@ struct VoiceProcessorStats {
 impl VoiceProcessor {
     /// Create a new voice processor
     pub async fn new(text_processor: Arc<TextProcessor>) -> Result<Self> {
-        let mut command_registry = Vec::new();
-        
-        // Register default voice commands
-        command_registry.push(VoiceCommand {
-            trigger: "hey zylcode".to_string(),
-            action: "activate".to_string(),
-            parameters: HashMap::new(),
-            description: "Activate ZylCode assistant".to_string(),
-        });
-        
-        command_registry.push(VoiceCommand {
-            trigger: "create a new".to_string(),
-            action: "code_generation".to_string(),
-            parameters: HashMap::new(),
-            description: "Start code generation".to_string(),
-        });
-        
-        command_registry.push(VoiceCommand {
-            trigger: "fix the bug".to_string(),
-            action: "debugging".to_string(),
-            parameters: HashMap::new(),
-            description: "Start debugging".to_string(),
-        });
-        
-        command_registry.push(VoiceCommand {
-            trigger: "run tests".to_string(),
-            action: "testing".to_string(),
-            parameters: HashMap::new(),
-            description: "Run tests".to_string(),
-        });
+        // Register default voice commands. Built as a single literal rather
+        // than `Vec::new()` followed by four `push` calls (clippy
+        // `vec_init_then_push`); the resulting value is identical.
+        let command_registry = vec![
+            VoiceCommand {
+                trigger: "hey zylcode".to_string(),
+                action: "activate".to_string(),
+                parameters: HashMap::new(),
+                description: "Activate ZylCode assistant".to_string(),
+            },
+            VoiceCommand {
+                trigger: "create a new".to_string(),
+                action: "code_generation".to_string(),
+                parameters: HashMap::new(),
+                description: "Start code generation".to_string(),
+            },
+            VoiceCommand {
+                trigger: "fix the bug".to_string(),
+                action: "debugging".to_string(),
+                parameters: HashMap::new(),
+                description: "Start debugging".to_string(),
+            },
+            VoiceCommand {
+                trigger: "run tests".to_string(),
+                action: "testing".to_string(),
+                parameters: HashMap::new(),
+                description: "Run tests".to_string(),
+            },
+        ];
 
         Ok(Self {
-            text_processor,
+            _text_processor: text_processor,
             command_registry: RwLock::new(command_registry),
             stats: RwLock::new(VoiceProcessorStats::default()),
         })
@@ -180,19 +183,15 @@ impl VoiceProcessor {
     }
 
     /// Analyze voice characteristics
-    async fn analyze_voice(&self, audio: &AudioBuffer) -> Result<VoiceAnalysis> {
-        // Simulate voice analysis
-        let tone = if audio.duration_ms < 2000 {
-            Tone::Neutral
-        } else {
-            Tone::Neutral
-        };
-        
-        let emotion = if audio.duration_ms < 2000 {
-            Emotion::Neutral
-        } else {
-            Emotion::Neutral
-        };
+    async fn analyze_voice(&self, _audio: &AudioBuffer) -> Result<VoiceAnalysis> {
+        // Simulate voice analysis.
+        //
+        // Both branches of the previous `if audio.duration_ms < 2000` checks
+        // returned the same value (`Tone::Neutral` / `Emotion::Neutral`), so the
+        // condition was dead. Flattened to the value it always produced;
+        // introducing a real duration heuristic is a separate change.
+        let tone = Tone::Neutral;
+        let emotion = Emotion::Neutral;
         
         let speaking_rate = 150.0; // words per minute
         let volume = 0.7; // 0.0 to 1.0

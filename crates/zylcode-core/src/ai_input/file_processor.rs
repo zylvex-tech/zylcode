@@ -102,7 +102,7 @@ impl FileProcessor {
         let summary = format!(
             "Document file with {} words. Format: {}",
             word_count,
-            file.name.split('.').last().unwrap_or("unknown")
+            file.name.split('.').next_back().unwrap_or("unknown")
         );
         
         Ok((summary, None, None, Some(word_count)))
@@ -121,7 +121,7 @@ impl FileProcessor {
 
     /// Detect programming language from filename
     fn detect_language(&self, filename: &str) -> Option<String> {
-        let extension = filename.split('.').last()?.to_lowercase();
+        let extension = filename.split('.').next_back()?.to_lowercase();
         
         match extension.as_str() {
             "js" | "jsx" | "mjs" | "cjs" => Some("JavaScript".to_string()),

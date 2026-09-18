@@ -61,7 +61,12 @@ impl Telemetry {
     }
 
     /// Create a new tool invoke span.
-    pub fn tool_invoke_span(&self, tool_id: &str, transport: &str, caller_id: Option<&str>) -> Span {
+    pub fn tool_invoke_span(
+        &self,
+        tool_id: &str,
+        transport: &str,
+        caller_id: Option<&str>,
+    ) -> Span {
         let span = span!(
             Level::INFO,
             "mcp.tool.invoke",

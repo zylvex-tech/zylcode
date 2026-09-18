@@ -16,24 +16,24 @@ pub struct EnhancedPluginMarketplace {
 
 /// Revenue manager for handling payments and subscriptions
 pub struct RevenueManager {
-    payment_gateway: PaymentGateway,
+    _payment_gateway: PaymentGateway,
     subscription_manager: SubscriptionManager,
     revenue_tracker: RevenueTracker,
-    payout_manager: PayoutManager,
+    _payout_manager: PayoutManager,
     recommendation_engine: Arc<RecommendationEngine>,
 }
 
 /// Payment gateway
 pub struct PaymentGateway {
-    provider: String,
-    api_key: String,
-    sandbox_mode: bool,
+    _provider: String,
+    _api_key: String,
+    _sandbox_mode: bool,
 }
 
 /// Subscription manager
 pub struct SubscriptionManager {
     subscriptions: RwLock<HashMap<String, Subscription>>,
-    plans: RwLock<HashMap<String, SubscriptionPlan>>,
+    _plans: RwLock<HashMap<String, SubscriptionPlan>>,
 }
 
 /// Subscription
@@ -80,7 +80,7 @@ pub enum SubscriptionInterval {
 /// Revenue tracker
 pub struct RevenueTracker {
     transactions: RwLock<Vec<Transaction>>,
-    revenue_by_period: RwLock<HashMap<String, f64>>,
+    _revenue_by_period: RwLock<HashMap<String, f64>>,
 }
 
 /// Transaction
@@ -106,8 +106,8 @@ pub enum TransactionStatus {
 
 /// Payout manager
 pub struct PayoutManager {
-    payouts: RwLock<Vec<Payout>>,
-    payout_schedule: PayoutSchedule,
+    _payouts: RwLock<Vec<Payout>>,
+    _payout_schedule: PayoutSchedule,
 }
 
 /// Payout
@@ -148,9 +148,9 @@ pub enum PayoutFrequency {
 
 /// Recommendation engine
 pub struct RecommendationEngine {
-    user_preferences: RwLock<HashMap<String, UserPreferences>>,
-    plugin_similarities: RwLock<HashMap<String, Vec<String>>>,
-    collaborative_filtering: CollaborativeFiltering,
+    _user_preferences: RwLock<HashMap<String, UserPreferences>>,
+    _plugin_similarities: RwLock<HashMap<String, Vec<String>>>,
+    _collaborative_filtering: CollaborativeFiltering,
 }
 
 /// User preferences
@@ -165,8 +165,8 @@ pub struct UserPreferences {
 
 /// Collaborative filtering
 pub struct CollaborativeFiltering {
-    user_item_matrix: RwLock<HashMap<String, HashMap<String, f64>>>,
-    item_similarity: RwLock<HashMap<String, HashMap<String, f64>>>,
+    _user_item_matrix: RwLock<HashMap<String, HashMap<String, f64>>>,
+    _item_similarity: RwLock<HashMap<String, HashMap<String, f64>>>,
 }
 
 /// Marketplace analytics
@@ -450,8 +450,8 @@ impl EnhancedPluginMarketplace {
     }
 
     /// Get recommendations
-    pub async fn get_recommendations(&self, user_id: &str) -> Result<Vec<PluginDefinition>> {
-        self.revenue_manager.get_recommendations(user_id).await
+    pub async fn get_recommendations(&self, _user_id: &str) -> Result<Vec<PluginDefinition>> {
+        self.revenue_manager.get_recommendations(_user_id).await
     }
 
     /// Get analytics report
@@ -511,14 +511,20 @@ pub struct PaymentResult {
     pub timestamp: chrono::DateTime<chrono::Utc>,
 }
 
+impl Default for RevenueManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RevenueManager {
     /// Create a new revenue manager
     pub fn new() -> Self {
         Self {
-            payment_gateway: PaymentGateway::new(),
+            _payment_gateway: PaymentGateway::new(),
             subscription_manager: SubscriptionManager::new(),
             revenue_tracker: RevenueTracker::new(),
-            payout_manager: PayoutManager::new(),
+            _payout_manager: PayoutManager::new(),
             recommendation_engine: Arc::new(RecommendationEngine::new()),
         }
     }
@@ -557,8 +563,14 @@ impl RevenueManager {
     }
 
     /// Get recommendations
-    pub async fn get_recommendations(&self, user_id: &str) -> Result<Vec<PluginDefinition>> {
-        self.recommendation_engine.get_recommendations(user_id).await
+    pub async fn get_recommendations(&self, _user_id: &str) -> Result<Vec<PluginDefinition>> {
+        self.recommendation_engine.get_recommendations(_user_id).await
+    }
+}
+
+impl Default for PaymentGateway {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -566,10 +578,16 @@ impl PaymentGateway {
     /// Create a new payment gateway
     pub fn new() -> Self {
         Self {
-            provider: "stripe".to_string(),
-            api_key: "sk_test_...".to_string(),
-            sandbox_mode: true,
+            _provider: "stripe".to_string(),
+            _api_key: "sk_test_...".to_string(),
+            _sandbox_mode: true,
         }
+    }
+}
+
+impl Default for SubscriptionManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -578,17 +596,22 @@ impl SubscriptionManager {
     pub fn new() -> Self {
         Self {
             subscriptions: RwLock::new(HashMap::new()),
-            plans: RwLock::new(HashMap::new()),
+            _plans: RwLock::new(HashMap::new()),
         }
     }
 }
 
+impl Default for RevenueTracker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 impl RevenueTracker {
     /// Create a new revenue tracker
     pub fn new() -> Self {
         Self {
             transactions: RwLock::new(Vec::new()),
-            revenue_by_period: RwLock::new(HashMap::new()),
+            _revenue_by_period: RwLock::new(HashMap::new()),
         }
     }
 
@@ -600,12 +623,18 @@ impl RevenueTracker {
     }
 }
 
+impl Default for PayoutManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PayoutManager {
     /// Create a new payout manager
     pub fn new() -> Self {
         Self {
-            payouts: RwLock::new(Vec::new()),
-            payout_schedule: PayoutSchedule {
+            _payouts: RwLock::new(Vec::new()),
+            _payout_schedule: PayoutSchedule {
                 frequency: PayoutFrequency::Monthly,
                 minimum_amount: 50.0,
                 currency: "USD".to_string(),
@@ -614,20 +643,31 @@ impl PayoutManager {
     }
 }
 
+impl Default for RecommendationEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 impl RecommendationEngine {
     /// Create a new recommendation engine
     pub fn new() -> Self {
         Self {
-            user_preferences: RwLock::new(HashMap::new()),
-            plugin_similarities: RwLock::new(HashMap::new()),
-            collaborative_filtering: CollaborativeFiltering::new(),
+            _user_preferences: RwLock::new(HashMap::new()),
+            _plugin_similarities: RwLock::new(HashMap::new()),
+            _collaborative_filtering: CollaborativeFiltering::new(),
         }
     }
 
     /// Get recommendations
-    pub async fn get_recommendations(&self, user_id: &str) -> Result<Vec<PluginDefinition>> {
+    pub async fn get_recommendations(&self, _user_id: &str) -> Result<Vec<PluginDefinition>> {
         // Get recommendations (simulated)
         Ok(vec![])
+    }
+}
+
+impl Default for CollaborativeFiltering {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -635,9 +675,15 @@ impl CollaborativeFiltering {
     /// Create a new collaborative filtering
     pub fn new() -> Self {
         Self {
-            user_item_matrix: RwLock::new(HashMap::new()),
-            item_similarity: RwLock::new(HashMap::new()),
+            _user_item_matrix: RwLock::new(HashMap::new()),
+            _item_similarity: RwLock::new(HashMap::new()),
         }
+    }
+}
+
+impl Default for MarketplaceAnalytics {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

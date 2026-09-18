@@ -7,7 +7,7 @@ use notify::{Watcher, RecursiveMode, Event, EventKind};
 use std::sync::mpsc::channel;
 use std::time::Duration;
 
-use crate::enhanced_bridge::{EnhancedMcpBridge, ToolCategory, ToolDefinition};
+use crate::enhanced_bridge::{EnhancedMcpBridge, ToolDefinition};
 use crate::registry::ToolRegistry;
 
 /// Hot-reload manager for dynamic tool registration
@@ -203,6 +203,12 @@ pub struct ErrorStats {
     pub last_error_time: Option<chrono::DateTime<chrono::Utc>>,
 }
 
+impl Default for ToolAnalytics {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ToolAnalytics {
     /// Create a new tool analytics system
     pub fn new() -> Self {
@@ -321,19 +327,37 @@ impl EnhancedMcpBridgeWithHotReload {
 
     /// Initialize with 150+ tools
     pub async fn initialize_with_enhanced_tools(&self) -> Result<usize> {
-        let count = self.bridge.initialize_with_builtin_tools().await?;
-        
-        // Add additional tools to reach 150+
-        let additional_tools = self.get_additional_tools();
-        for tool in additional_tools {
-            // Register additional tools
-            tracing::info!("Registering additional tool: {}", tool.name);
+        // Only tools with a real executor are registered. The "additional
+        // tools" below are definitions with no executor: they are preserved as
+        // catalogue metadata and deliberately NOT counted as registered.
+        //
+        // The previous implementation logged each of them and then returned
+        // `count + 50`, inventing fifty registrations that never happened, in
+        // order to satisfy `assert!(count >= 150)`. A fabricated count is the
+        // same defect as a fabricated success — it makes an unverifiable claim
+        // look like a measurement.
+        let registered = self.bridge.initialize_with_builtin_tools().await?;
+
+        for tool in self.get_additional_tools() {
+            debug_assert!(
+                crate::real_tools::get_real_tool(&tool.id).is_none(),
+                "`{}` has a real executor and should be registered, not skipped",
+                tool.id
+            );
+            tracing::debug!(
+                tool = %tool.id,
+                "definition-only; preserved as catalogue metadata, not registered"
+            );
         }
-        
-        Ok(count + 50) // Adding 50 additional tools
+
+        Ok(registered)
     }
 
     /// Get additional tools to reach 150+
+    ///
+    /// NOTE: the doc comment above is the historical claim. These definitions
+    /// have no executors, so they are metadata only and do not contribute to
+    /// any registered count. See `docs/governance/TOOL_CATALOGUE_TRUTH_TABLE.md`.
     fn get_additional_tools(&self) -> Vec<ToolDefinition> {
         vec![
             // AI/ML Tools
@@ -567,11 +591,56 @@ mod tests {
         assert_eq!(errors.total_errors, 1);
     }
 
+    /// Replaces `assert!(count >= 150)`.
+    ///
+    /// That assertion was satisfiable only because the implementation
+    /// fabricated fifty registrations. The invariant that actually matters is
+    /// that the reported count equals what is registered, and that everything
+    /// registered has a real executor.
     #[tokio::test]
-    async fn test_enhanced_bridge() {
+    async fn enhanced_tools_count_reflects_real_registrations() {
         let bridge = EnhancedMcpBridgeWithHotReload::new().await.unwrap();
-        let count = bridge.initialize_with_enhanced_tools().await.unwrap();
-        
-        assert!(count >= 150);
+        let reported = bridge.initialize_with_enhanced_tools().await.unwrap();
+
+        let actual = bridge.bridge.registered_ids().await;
+        assert_eq!(
+            reported,
+            actual.len(),
+            "reported {reported} registrations but {} are actually registered",
+            actual.len()
+        );
+        assert_eq!(bridge.bridge.tool_count().await, reported);
+
+        for id in &actual {
+            assert!(
+                crate::real_tools::get_real_tool(id).is_some(),
+                "`{id}` is registered without a real executor"
+            );
+        }
+    }
+
+    /// The historical `count + 50` fabrication must not return.
+    #[tokio::test]
+    async fn enhanced_tools_count_is_not_inflated() {
+        let bridge = EnhancedMcpBridgeWithHotReload::new().await.unwrap();
+        let reported = bridge.initialize_with_enhanced_tools().await.unwrap();
+
+        let additional = bridge.get_additional_tools();
+        assert!(!additional.is_empty(), "the historical claim listed additional tools");
+
+        // None of these has an executor, so none may be counted. This is the
+        // exact claim the old `count + 50` fabricated.
+        for tool in &additional {
+            assert!(
+                crate::real_tools::get_real_tool(&tool.id).is_none(),
+                "`{}` unexpectedly has an executor; it should be registered and counted",
+                tool.id
+            );
+        }
+        assert_eq!(
+            reported,
+            bridge.bridge.registered_ids().await.len(),
+            "the count must be the number of real registrations, not a padded figure"
+        );
     }
 }

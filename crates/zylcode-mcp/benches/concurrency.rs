@@ -1,9 +1,9 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
-use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 use tokio::runtime::Runtime;
-use zylcode_mcp::registry::ToolRegistry;
 use zylcode_mcp::config::{McpToolConfig, McpTransport};
+use zylcode_mcp::registry::ToolRegistry;
 use zylcode_mcp::tool::DynamicTool;
 
 fn bench_tool_registry_register(c: &mut Criterion) {
@@ -196,42 +196,38 @@ fn bench_tool_registry_concurrent_write(c: &mut Criterion) {
             let n = *num_tools;
             let conc = *concurrency;
             let rt_clone = rt;
-            group.bench_with_input(
-                BenchmarkId::new(bench_id, 0),
-                &(),
-                |b, _| {
-                    b.iter_custom(|iters| {
-                        let start = std::time::Instant::now();
-                        for _ in 0..iters {
-                            rt_clone.block_on(async {
-                                let mut handles = vec![];
+            group.bench_with_input(BenchmarkId::new(bench_id, 0), &(), |b, _| {
+                b.iter_custom(|iters| {
+                    let start = std::time::Instant::now();
+                    for _ in 0..iters {
+                        rt_clone.block_on(async {
+                            let mut handles = vec![];
+                            let reg = reg.clone();
+                            for thread in 0..conc {
                                 let reg = reg.clone();
-                                for thread in 0..conc {
-                                    let reg = reg.clone();
-                                    handles.push(tokio::spawn(async move {
-                                        for i in 0..n {
-                                            let cfg = McpToolConfig {
-                                                id: format!("tool_{}_{}", thread, i),
-                                                command: "echo".into(),
-                                                transport: McpTransport::Stdio,
-                                                env: Default::default(),
-                                                enabled: true,
-                                                description: None,
-                                            };
-                                            reg.register(Arc::new(DynamicTool::new(cfg))).await;
-                                        }
-                                    }));
-                                }
-                                for h in handles {
-                                    let _ = h.await;
-                                }
-                                reg.clear().await;
-                            });
-                        }
-                        start.elapsed()
-                    })
-                },
-            );
+                                handles.push(tokio::spawn(async move {
+                                    for i in 0..n {
+                                        let cfg = McpToolConfig {
+                                            id: format!("tool_{}_{}", thread, i),
+                                            command: "echo".into(),
+                                            transport: McpTransport::Stdio,
+                                            env: Default::default(),
+                                            enabled: true,
+                                            description: None,
+                                        };
+                                        reg.register(Arc::new(DynamicTool::new(cfg))).await;
+                                    }
+                                }));
+                            }
+                            for h in handles {
+                                let _ = h.await;
+                            }
+                            reg.clear().await;
+                        });
+                    }
+                    start.elapsed()
+                })
+            });
         }
     }
     group.finish();
@@ -265,46 +261,42 @@ fn bench_tool_registry_mixed_workload(c: &mut Criterion) {
             let n = *num_tools;
             let conc = *concurrency;
             let rt_clone = rt;
-            group.bench_with_input(
-                BenchmarkId::new(bench_id, 0),
-                &(),
-                |b, _| {
-                    b.iter_custom(|iters| {
-                        let start = std::time::Instant::now();
-                        for _ in 0..iters {
-                            rt_clone.block_on(async {
-                                let mut handles = vec![];
+            group.bench_with_input(BenchmarkId::new(bench_id, 0), &(), |b, _| {
+                b.iter_custom(|iters| {
+                    let start = std::time::Instant::now();
+                    for _ in 0..iters {
+                        rt_clone.block_on(async {
+                            let mut handles = vec![];
+                            let reg = reg.clone();
+                            for thread in 0..conc {
                                 let reg = reg.clone();
-                                for thread in 0..conc {
-                                    let reg = reg.clone();
-                                    handles.push(tokio::spawn(async move {
-                                        // 70% reads, 30% writes
-                                        for i in 0..n {
-                                            if i % 10 < 7 {
-                                                let _ = reg.get(&format!("tool_{}", i % n)).await;
-                                            } else {
-                                                let cfg = McpToolConfig {
-                                                    id: format!("new_tool_{}_{}", thread, i),
-                                                    command: "echo".into(),
-                                                    transport: McpTransport::Stdio,
-                                                    env: Default::default(),
-                                                    enabled: true,
-                                                    description: None,
-                                                };
-                                                reg.register(Arc::new(DynamicTool::new(cfg))).await;
-                                            }
+                                handles.push(tokio::spawn(async move {
+                                    // 70% reads, 30% writes
+                                    for i in 0..n {
+                                        if i % 10 < 7 {
+                                            let _ = reg.get(&format!("tool_{}", i % n)).await;
+                                        } else {
+                                            let cfg = McpToolConfig {
+                                                id: format!("new_tool_{}_{}", thread, i),
+                                                command: "echo".into(),
+                                                transport: McpTransport::Stdio,
+                                                env: Default::default(),
+                                                enabled: true,
+                                                description: None,
+                                            };
+                                            reg.register(Arc::new(DynamicTool::new(cfg))).await;
                                         }
-                                    }));
-                                }
-                                for h in handles {
-                                    let _ = h.await;
-                                }
-                            });
-                        }
-                        start.elapsed()
-                    })
-                },
-            );
+                                    }
+                                }));
+                            }
+                            for h in handles {
+                                let _ = h.await;
+                            }
+                        });
+                    }
+                    start.elapsed()
+                })
+            });
         }
     }
     group.finish();

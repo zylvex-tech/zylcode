@@ -46,7 +46,7 @@ function AppContent() {
 
   const { deltas, done, mcpCalls, isStreaming } = useStreamSubscription(true);
 
-  // Phase 3.2: artifact stream parser hook
+  // artifact stream parser hook (track: ARTIFACT-STREAM)
   const {
     files,
     activeTab,

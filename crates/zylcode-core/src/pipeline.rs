@@ -162,7 +162,10 @@ impl ArtifactPipeline {
 
         // 3) Parse artifacts
         let artifacts = Self::parse_artifacts(&raw);
-        info!(count = artifacts.len(), "artifacts parsed from LLM response");
+        info!(
+            count = artifacts.len(),
+            "artifacts parsed from LLM response"
+        );
 
         if artifacts.is_empty() {
             warn!("no artifacts extracted; returning raw output as fallback");
@@ -198,7 +201,7 @@ impl ArtifactPipeline {
             verification_passed: passed,
             verification_duration_ms: duration_ms,
             verification_checks: checks,
-            max_verification_rung: max_rung.clone(),
+            max_verification_rung: max_rung,
             tokens: self.router.snapshot(),
         };
 
@@ -324,17 +327,21 @@ impl ArtifactPipeline {
             let corrected_kind = validate_artifact_kind(&path, &content, &kind_raw);
 
             let artifact = match corrected_kind.as_str() {
-                "uicomponent" | "UiComponent" | "ui_component" | "reactcomponent" | "react_component" => Artifact::UiComponent {
+                "uicomponent" | "UiComponent" | "ui_component" | "reactcomponent"
+                | "react_component" => Artifact::UiComponent {
                     path,
                     content,
                     language: "tsx".to_string(),
                 },
-                "rustmodule" | "RustModule" | "rust_module" | "rustcrate" | "rust_crate" => Artifact::RustModule {
-                    path,
-                    content,
-                    tests: None,
-                },
-                "pluginmanifest" | "PluginManifest" | "plugin_manifest" | "mcmanifest" | "mcpmanifest" => {
+                "rustmodule" | "RustModule" | "rust_module" | "rustcrate" | "rust_crate" => {
+                    Artifact::RustModule {
+                        path,
+                        content,
+                        tests: None,
+                    }
+                }
+                "pluginmanifest" | "PluginManifest" | "plugin_manifest" | "mcmanifest"
+                | "mcpmanifest" => {
                     let manifest = serde_json::from_str::<serde_json::Value>(&content).ok();
                     Artifact::PluginManifest {
                         path,
@@ -342,7 +349,8 @@ impl ArtifactPipeline {
                         manifest,
                     }
                 }
-                "formalproof" | "FormalProofSpec" | "formal_proof" | "formalproofspec" | "formal_proof_spec" => {
+                "formalproof" | "FormalProofSpec" | "formal_proof" | "formalproofspec"
+                | "formal_proof_spec" => {
                     let obligations = extract_obligations(&content);
                     Artifact::FormalProofSpec {
                         path,
@@ -475,17 +483,25 @@ fn infer_kind_from_content(content: &str) -> Option<&'static str> {
 
 fn looks_like_rust(s: &str) -> bool {
     // Rust keywords / patterns that appear early in a module.
-    s.contains("fn ") || s.contains("pub ") || s.contains("mod ") || s.contains("impl ")
+    s.contains("fn ")
+        || s.contains("pub ")
+        || s.contains("mod ")
+        || s.contains("impl ")
         || s.contains("use ") && s.contains("::")
-        || s.contains("struct ") || s.contains("enum ")
+        || s.contains("struct ")
+        || s.contains("enum ")
 }
 
 fn looks_like_typescript(s: &str) -> bool {
     s.contains("import ") && (s.contains("from ") || s.contains("React"))
         || s.contains("export ") && (s.contains("const ") || s.contains("function "))
-        || s.contains("useState") || s.contains("useEffect")
-        || s.contains(": FC") || s.contains(": React.FC")
-        || s.contains("JSX") || s.contains("<div") || s.contains("<span")
+        || s.contains("useState")
+        || s.contains("useEffect")
+        || s.contains(": FC")
+        || s.contains(": React.FC")
+        || s.contains("JSX")
+        || s.contains("<div")
+        || s.contains("<span")
 }
 
 fn looks_like_json(s: &str) -> bool {
@@ -499,19 +515,26 @@ fn looks_like_json(s: &str) -> bool {
 }
 
 fn looks_like_proof(s: &str) -> bool {
-    s.contains("theorem ") || s.contains("lemma ") || s.contains("forall ")
-        || s.contains("exists ") || s.contains("obligation") || s.contains("proof")
-        || s.contains("axiom ") || s.contains("inductive ")
+    s.contains("theorem ")
+        || s.contains("lemma ")
+        || s.contains("forall ")
+        || s.contains("exists ")
+        || s.contains("obligation")
+        || s.contains("proof")
+        || s.contains("axiom ")
+        || s.contains("inductive ")
 }
 
 /// Normalize kind strings for case-insensitive comparison.
 fn normalize_kind(k: &str) -> String {
-    k.to_ascii_lowercase().replace('_', "").replace('-', "")
+    k.to_ascii_lowercase().replace(['_', '-'], "")
 }
 
 fn default_path_for_kind(kind: &str) -> String {
     match kind {
-        "uicomponent" | "ui_component" | "reactcomponent" => "src/components/Generated.tsx".to_string(),
+        "uicomponent" | "ui_component" | "reactcomponent" => {
+            "src/components/Generated.tsx".to_string()
+        }
         "rustmodule" | "rust_module" | "rustcrate" => "src/generated.rs".to_string(),
         "pluginmanifest" | "plugin_manifest" => "plugin-manifest.json".to_string(),
         "formalproof" | "formal_proof" => "proof/spec.md".to_string(),
@@ -565,9 +588,15 @@ fn parse_code_fences(raw: &str) -> Vec<Artifact> {
     while let Some(start) = memchr::memmem::find(&bytes[pos..], b"```") {
         let abs = pos + start + 3;
         // lang is up to next '\n'
-        let lang_end = memchr::memchr(b'\n', &bytes[abs..]).map(|o| abs + o).unwrap_or(bytes.len());
+        let lang_end = memchr::memchr(b'\n', &bytes[abs..])
+            .map(|o| abs + o)
+            .unwrap_or(bytes.len());
         let lang = raw[abs..lang_end].trim().to_lowercase();
-        let code_start = if lang_end < bytes.len() { lang_end + 1 } else { lang_end };
+        let code_start = if lang_end < bytes.len() {
+            lang_end + 1
+        } else {
+            lang_end
+        };
         let close_rel = match memchr::memmem::find(&bytes[code_start..], b"```") {
             Some(o) => o,
             None => break,
@@ -722,11 +751,7 @@ mod tests {
     #[test]
     fn validate_kind_unknown_extension_trusts_llm() {
         // No extension signal and ambiguous content — trust LLM report.
-        let result = validate_artifact_kind(
-            "artifact",
-            "some ambiguous text",
-            "RustModule",
-        );
+        let result = validate_artifact_kind("artifact", "some ambiguous text", "RustModule");
         assert_eq!(result, "RustModule");
     }
 

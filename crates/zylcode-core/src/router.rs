@@ -14,11 +14,25 @@ use tracing::{info, warn};
 use crate::cache::{mock_embed, VectorCacheStore};
 pub use cache::SpeculativeCache;
 
+/// Test-only spy: counts every attempt to send an HTTP request to a model
+/// provider. Used to prove that synthetic/offline dispatch performs zero
+/// network egress — an assertion that cannot be satisfied by "it happened to
+/// fail and fell back".
+#[cfg(test)]
+pub(crate) static NETWORK_EGRESS_COUNT: AtomicU64 = AtomicU64::new(0);
+
+
 // ---------------------------------------------------------------------------
 // Model provider
 // ---------------------------------------------------------------------------
 
 /// Supported upstream model providers (legacy enum, kept for backward compat).
+///
+/// `SyntheticOffline` is a **first-class provider**, not a degradation path.
+/// Selecting it is an explicit statement that this router must not egress.
+/// Its behaviour is fixed at construction time: it reads no API key (config or
+/// environment) and issues no HTTP request, so ambient credentials such as
+/// `OPENROUTER_API_KEY` cannot change what it returns.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ModelProvider {
@@ -26,6 +40,7 @@ pub enum ModelProvider {
     DeepSeek,
     Anthropic,
     LocalOllama,
+    SyntheticOffline,
 }
 
 impl std::fmt::Display for ModelProvider {
@@ -35,6 +50,7 @@ impl std::fmt::Display for ModelProvider {
             Self::DeepSeek => write!(f, "deepseek"),
             Self::Anthropic => write!(f, "anthropic"),
             Self::LocalOllama => write!(f, "ollama"),
+            Self::SyntheticOffline => write!(f, "synthetic-offline"),
         }
     }
 }
@@ -47,6 +63,8 @@ impl ModelProvider {
             Self::DeepSeek => "https://api.deepseek.com/v1",
             Self::Anthropic => "https://api.anthropic.com",
             Self::LocalOllama => "http://localhost:11434",
+            // No endpoint — synthetic dispatch never builds a URL.
+            Self::SyntheticOffline => "",
         }
     }
 
@@ -55,6 +73,8 @@ impl ModelProvider {
         match self {
             Self::LocalOllama => "/api/chat",
             Self::Anthropic => "/v1/messages",
+            // No endpoint — synthetic dispatch never builds a URL.
+            Self::SyntheticOffline => "",
             _ => "/chat/completions",
         }
     }
@@ -330,7 +350,15 @@ impl RouterConfig {
     }
 
     /// Resolve the API key for a provider, checking config then env as fallback.
+    ///
+    /// `ModelProvider::SyntheticOffline` is credential-free **by construction**:
+    /// it is short-circuited before the config map is consulted and before any
+    /// environment variable is read, so neither a configured key nor an ambient
+    /// `OPENROUTER_API_KEY` can influence it.
     pub fn api_key(&self, provider: &ModelProvider) -> Option<String> {
+        if *provider == ModelProvider::SyntheticOffline {
+            return None;
+        }
         if let Some(k) = self.api_keys.get(&provider.to_string()) {
             if !k.is_empty() {
                 return Some(k.clone());
@@ -342,6 +370,7 @@ impl RouterConfig {
             ModelProvider::DeepSeek => "DEEPSEEK_API_KEY",
             ModelProvider::Anthropic => "ANTHROPIC_API_KEY",
             ModelProvider::LocalOllama => return None,
+            ModelProvider::SyntheticOffline => return None,
         };
         std::env::var(env_key).ok().filter(|v| !v.is_empty())
     }
@@ -623,11 +652,48 @@ impl TokenRouter {
         // differences don't collide). Record saved tokens on hit.
         let primary_model = self.config.primary_model.clone();
         let cache_key = SpeculativeCache::hash_key(prompt, system, &primary_model);
+
         if let Some(cached) = self.cache.get(cache_key) {
             let saved = (cached.len() / 4) as u64;
             self.metrics.record_saved(saved);
             info!(cache_hit = true, saved_tokens = saved, provider = %self.config.primary_provider, "speculative cache hit");
             return Ok(cached);
+        }
+
+        // ------------------------------------------------------------------
+        // Explicit synthetic provider — honoured unconditionally.
+        // ------------------------------------------------------------------
+        // `ModelProvider::SyntheticOffline` is an explicit provider selection,
+        // not a degradation. When it is the primary provider it is honoured
+        // *before* any API key is read, before the persistent vector cache is
+        // consulted, and before any HTTP request is built. Ambient credentials
+        // (`OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`, ...) and stale on-disk
+        // state therefore cannot change this path: the returned payload is a
+        // pure function of the prompt and system text.
+        //
+        // Position is deliberate: *after* the in-memory speculative cache probe
+        // (so repeat prompts still hit the cache and record saved tokens) and
+        // *before* the on-disk vector cache (so no persisted state can satisfy
+        // the request).
+        if self.config.primary_provider == ModelProvider::SyntheticOffline {
+            let synthetic = Self::synthetic_response(prompt, system);
+            let inp = ((prompt.len() + system.len()) / 4) as u64;
+            let out = (synthetic.len() / 4) as u64;
+            self.metrics.record_usage(inp, out);
+            self.cache.insert(cache_key, synthetic.clone());
+            if let Some(vstore) = &self.vector_cache {
+                let emb = mock_embed(prompt, 32);
+                if let Err(e) = vstore.insert_entry(prompt, &synthetic, &emb) {
+                    tracing::warn!(error = %e, "vector cache insert failed for explicit synthetic response");
+                }
+            }
+            info!(
+                provider = "synthetic-offline",
+                input_tokens = inp,
+                output_tokens = out,
+                "dispatched prompt via explicit synthetic provider"
+            );
+            return Ok(synthetic);
         }
 
         // VECTOR-CACHE: vector cache similarity retrieval (offline-capable, before remote egress)
@@ -827,6 +893,15 @@ impl TokenRouter {
         prompt: &str,
         system: &str,
     ) -> Result<String> {
+        // Explicit synthetic provider: return the deterministic offline payload
+        // without reading a credential and without building or sending a
+        // request. This is the second line of defence — `dispatch_prompt`
+        // already short-circuits, but a synthetic provider must never be able
+        // to reach the network even if reached directly.
+        if *provider == ModelProvider::SyntheticOffline {
+            return Ok(Self::synthetic_response(prompt, system));
+        }
+
         // Apply adaptive trimming again per-provider (idempotent, cheap).
         let (prompt_owned, system_owned) = trim_to_window(
             prompt,
@@ -889,6 +964,10 @@ impl TokenRouter {
                 .header("HTTP-Referer", "https://zylcode.dev")
                 .header("X-Title", "ZylCode");
         }
+
+        // Test-only spy: record that we are about to egress to a provider.
+        #[cfg(test)]
+        NETWORK_EGRESS_COUNT.fetch_add(1, Ordering::SeqCst);
 
         let resp = req.send().await.context("HTTP request failed")?;
         let status = resp.status();
@@ -1026,6 +1105,17 @@ mod tests {
     use super::*;
     use crate::agent_protocol::AgentDecision;
 
+    /// Serialises tests that (a) mutate process-global provider environment
+    /// variables, or (b) assert on the process-global `NETWORK_EGRESS_COUNT`
+    /// spy. `cargo test` runs tests on multiple threads within one process, so
+    /// without this lock a counter delta could be attributed to the wrong test
+    /// and an env-mutating test could be observed by another.
+    ///
+    /// A `tokio::sync::Mutex` is used deliberately: these are `async` tests and
+    /// the guard is intentionally held across await points, which a
+    /// `std::sync::Mutex` guard must never be.
+    static DISPATCH_MUTEX: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
     #[test]
     fn default_router_config_has_sensible_models() {
         let cfg = RouterConfig::default();
@@ -1046,17 +1136,41 @@ mod tests {
         );
     }
 
-    #[tokio::test]
-    async fn synthetic_offline_dispatch_returns_parseable_payload() {
-        let cfg = RouterConfig::default();
+    /// Build a router whose primary provider is the explicit synthetic
+    /// provider. No credentials are configured and no network is reachable.
+    fn synthetic_router() -> TokenRouter {
+        let cfg = RouterConfig {
+            primary_provider: ModelProvider::SyntheticOffline,
+            fallback_provider: ModelProvider::SyntheticOffline,
+            ..RouterConfig::default()
+        };
         // Hermetic: no persistent vector cache. Using `new()` here made the result depend
         // on whatever `./vector_cache.db` existed on the machine — a stale entry would
         // satisfy the prompt and the test would pass without exercising this path at all.
-        let router = TokenRouter::without_vector_cache(cfg).unwrap();
+        TokenRouter::without_vector_cache(cfg).unwrap()
+    }
+
+    #[tokio::test]
+    async fn synthetic_offline_dispatch_returns_parseable_payload() {
+        let _guard = DISPATCH_MUTEX.lock().await;
+        let router = synthetic_router();
+
+        let egress_before = NETWORK_EGRESS_COUNT.load(Ordering::SeqCst);
         let text = router
             .dispatch_prompt("build a counter", "you are a code generator")
             .await
             .unwrap();
+        let egress_after = NETWORK_EGRESS_COUNT.load(Ordering::SeqCst);
+
+        // The synthetic provider must be reached *without* attempting any HTTP
+        // request. Asserting this is what makes the test hermetic: the previous
+        // version of this test used the default provider chain and therefore
+        // made a real call to openrouter.ai and localhost:11434 on every run,
+        // passing only because both failed and the code degraded to synthetic.
+        assert_eq!(
+            egress_after, egress_before,
+            "synthetic provider must not perform network egress"
+        );
 
         // The synthetic offline path must emit a payload that the agent protocol can
         // actually consume. The contract is AgentDecision JSON (see `agent.rs`, which
@@ -1072,6 +1186,158 @@ mod tests {
             "synthetic offline dispatch must complete the turn, got: {decision:?}"
         );
         assert!(text.contains("build a counter"));
+
+        // Determinism: the payload is a pure function of (prompt, system).
+        assert_eq!(
+            text,
+            TokenRouter::synthetic_response("build a counter", "you are a code generator"),
+            "synthetic provider output must be deterministic"
+        );
+    }
+
+    /// FALSIFICATION — ambient credentials must not be able to change the
+    /// synthetic provider's behaviour.
+    ///
+    /// Three classes of value are injected into the process environment:
+    ///   * a placeholder copied from `.env.example` (`YOUR_OPENROUTER_API_KEY`),
+    ///   * non-empty garbage,
+    ///   * a syntactically valid OpenRouter key.
+    ///
+    /// Under the old design any one of these made `offline_fast` false and
+    /// pushed the router onto the live network path. Under the repaired design
+    /// the payload and the egress count must be identical in all three cases.
+    #[tokio::test]
+    async fn synthetic_offline_is_immune_to_ambient_api_keys() {
+        // Env mutation is process-global; serialise against the sibling test.
+        let _guard = DISPATCH_MUTEX.lock().await;
+
+        const CASES: [&str; 3] = [
+            "YOUR_OPENROUTER_API_KEY",
+            "some-non-empty-garbage",
+            // Credential-shaped filler: long, constant, and obviously not a real
+            // key. It must be non-empty and distinct from the other cases, but
+            // deliberately carries no provider prefix and no hex body, so the
+            // repository never contains a string matching secret-scanner or
+            // push-protection patterns. The router treats any non-empty ambient
+            // value identically (that is the point of this test), so the filler
+            // loses nothing.
+            "placeholder-credential-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        ];
+
+        let expected = TokenRouter::synthetic_response("build a counter", "sys");
+
+        // Save the ambient values once and restore them at the end. Removing
+        // them instead would leak state into sibling tests: this environment
+        // ships `OPENROUTER_API_KEY=YOUR_OPENROUTER_API_KEY`, and clearing it
+        // would change the behaviour of anything that dispatches with the
+        // default provider chain.
+        const VARS: [&str; 3] = ["OPENROUTER_API_KEY", "ANTHROPIC_API_KEY", "DEEPSEEK_API_KEY"];
+        let saved: Vec<(&str, Option<String>)> = VARS
+            .iter()
+            .map(|k| (*k, std::env::var(k).ok()))
+            .collect();
+
+        for case in CASES {
+            for k in VARS {
+                std::env::set_var(k, case);
+            }
+
+            let router = synthetic_router();
+            let egress_before = NETWORK_EGRESS_COUNT.load(Ordering::SeqCst);
+            let text = router.dispatch_prompt("build a counter", "sys").await.unwrap();
+            let egress_after = NETWORK_EGRESS_COUNT.load(Ordering::SeqCst);
+
+            assert_eq!(
+                egress_after, egress_before,
+                "ambient key {case:?} must not cause network egress"
+            );
+            assert_eq!(
+                text, expected,
+                "ambient key {case:?} must not change the synthetic payload"
+            );
+        }
+
+        for (k, v) in saved {
+            match v {
+                Some(v) => std::env::set_var(k, v),
+                None => std::env::remove_var(k),
+            }
+        }
+    }
+
+    /// FALSIFICATION — a configured credential (not just an env var) must not
+    /// be able to reach the synthetic provider, and `api_key()` must return
+    /// `None` for it even when every other provider has a key configured.
+    #[test]
+    fn synthetic_offline_has_no_api_key_and_no_endpoint() {
+        let mut cfg = RouterConfig::default();
+        cfg.api_keys
+            .insert("synthetic-offline".to_string(), "sk-should-be-ignored".to_string());
+        cfg.base_url_overrides.insert(
+            "synthetic-offline".to_string(),
+            "https://should-never-be-contacted.example".to_string(),
+        );
+
+        assert_eq!(
+            cfg.api_key(&ModelProvider::SyntheticOffline),
+            None,
+            "SyntheticOffline must never resolve an API key"
+        );
+        assert_eq!(
+            ModelProvider::SyntheticOffline.default_base_url(),
+            "",
+            "SyntheticOffline must have no endpoint"
+        );
+        assert_eq!(
+            ModelProvider::SyntheticOffline.completions_path(),
+            "",
+            "SyntheticOffline must have no request path"
+        );
+        assert_eq!(ModelProvider::SyntheticOffline.to_string(), "synthetic-offline");
+    }
+
+    /// FALSIFICATION — a *different* provider with no credentials still
+    /// degrades to synthetic, i.e. the explicit provider did not accidentally
+    /// become the only way to stay offline. This preserves the legacy
+    /// behaviour the default chain relied on.
+    #[tokio::test]
+    async fn non_synthetic_provider_without_keys_still_degrades_offline() {
+        // Serialised: this test depends on the *absence* of ambient credentials,
+        // and a sibling test deliberately sets them.
+        let _guard = DISPATCH_MUTEX.lock().await;
+
+        let saved: Vec<(&str, Option<String>)> = ["OPENROUTER_API_KEY", "ANTHROPIC_API_KEY"]
+            .iter()
+            .map(|k| (*k, std::env::var(k).ok()))
+            .collect();
+        for (k, _) in &saved {
+            std::env::remove_var(k);
+        }
+
+        let cfg = RouterConfig {
+            primary_provider: ModelProvider::OpenRouter,
+            fallback_provider: ModelProvider::Anthropic,
+            ..RouterConfig::default()
+        };
+        let router = TokenRouter::without_vector_cache(cfg).unwrap();
+        // Both providers require keys and none are configured -> the pre-existing
+        // fast path degrades to synthetic, again without touching the network.
+        let egress_before = NETWORK_EGRESS_COUNT.load(Ordering::SeqCst);
+        let text = router.dispatch_prompt("hello", "sys").await.unwrap();
+        let egress_after = NETWORK_EGRESS_COUNT.load(Ordering::SeqCst);
+
+        for (k, v) in saved {
+            match v {
+                Some(v) => std::env::set_var(k, v),
+                None => std::env::remove_var(k),
+            }
+        }
+
+        assert_eq!(
+            egress_after, egress_before,
+            "credential-free chain must not attempt egress"
+        );
+        assert_eq!(text, TokenRouter::synthetic_response("hello", "sys"));
     }
 
     #[test]
@@ -1105,7 +1371,17 @@ mod tests {
 
     #[tokio::test]
     async fn speculative_cache_hit_returns_cached() {
-        let cfg = RouterConfig::default();
+        let _guard = DISPATCH_MUTEX.lock().await;
+        // This test is about the speculative cache, not about any provider.
+        // It previously used `RouterConfig::default()`, which egressed to
+        // openrouter.ai and localhost:11434 on every run and depended on both
+        // failing. The explicit synthetic provider makes the test a pure
+        // function of the cache under test.
+        let cfg = RouterConfig {
+            primary_provider: ModelProvider::SyntheticOffline,
+            fallback_provider: ModelProvider::SyntheticOffline,
+            ..RouterConfig::default()
+        };
         let cache =
             std::sync::Arc::new(SpeculativeCache::new(8, std::time::Duration::from_secs(60)));
         let router = TokenRouter::with_cache(cfg, cache.clone()).unwrap();

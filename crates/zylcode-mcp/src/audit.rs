@@ -468,7 +468,8 @@ impl AuditLogger {
         let secs = now.as_secs();
         let nanos = now.subsec_nanos();
         // Simple RFC3339 format
-        format!("{:04}-{:02}-{:02}T{:02}:{:02}:{:02}.{:09}Z",
+        format!(
+            "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}.{:09}Z",
             1970 + (secs / 31536000),
             ((secs % 31536000) / 2592000) + 1,
             ((secs % 2592000) / 86400) + 1,
@@ -506,7 +507,8 @@ impl AuditLogger {
                 chain_hash: String::new(),
                 ..entry.clone()
             })?;
-            let expected_hash = AuditLoggerInner::compute_chain_hash_static(&previous_hash, &entry_json);
+            let expected_hash =
+                AuditLoggerInner::compute_chain_hash_static(&previous_hash, &entry_json);
 
             if entry.chain_hash != expected_hash {
                 broken_indices.push(line_num);
@@ -552,7 +554,8 @@ impl AuditLoggerInner {
         // On Windows, we can't write to /dev/null, so use a temp file instead
         #[cfg(target_os = "windows")]
         {
-            let temp_file = std::env::temp_dir().join(format!("audit_null_{}.tmp", std::process::id()));
+            let temp_file =
+                std::env::temp_dir().join(format!("audit_null_{}.tmp", std::process::id()));
             self.writer = BufWriter::new(File::create(&temp_file)?);
         }
         #[cfg(not(target_os = "windows"))]
@@ -599,8 +602,12 @@ mod tests {
         };
         let logger = AuditLogger::new(config).unwrap();
 
-        logger.log_tool_invoke("test-tool", "stdio", Some("caller-1"), b"input", None, None).unwrap();
-        logger.log_tool_result("test-tool", "stdio", b"output", 100, None).unwrap();
+        logger
+            .log_tool_invoke("test-tool", "stdio", Some("caller-1"), b"input", None, None)
+            .unwrap();
+        logger
+            .log_tool_result("test-tool", "stdio", b"output", 100, None)
+            .unwrap();
 
         // Verify chain
         let broken = logger.verify_chain(temp_file.path()).unwrap();
@@ -616,8 +623,12 @@ mod tests {
         };
         let logger = AuditLogger::new(config).unwrap();
 
-        logger.log_tool_invoke("tool1", "stdio", None, b"in", None, None).unwrap();
-        logger.log_tool_result("tool1", "stdio", b"out", 50, None).unwrap();
+        logger
+            .log_tool_invoke("tool1", "stdio", None, b"in", None, None)
+            .unwrap();
+        logger
+            .log_tool_result("tool1", "stdio", b"out", 50, None)
+            .unwrap();
 
         // Manually corrupt the file
         let mut content = std::fs::read_to_string(temp_file.path()).unwrap();
@@ -642,7 +653,16 @@ mod tests {
 
         // Write enough to trigger rotation
         for i in 0..50 {
-            logger.log_tool_invoke(&format!("tool{}", i), "stdio", None, &b"x".repeat(100), None, None).unwrap();
+            logger
+                .log_tool_invoke(
+                    &format!("tool{}", i),
+                    "stdio",
+                    None,
+                    &b"x".repeat(100),
+                    None,
+                    None,
+                )
+                .unwrap();
         }
 
         // Should have rotated
@@ -653,7 +673,10 @@ mod tests {
     fn audit_hash_payload() {
         let hash = AuditLogger::hash_payload(b"test input");
         assert_eq!(hash.len(), 64); // SHA-256 hex = 64 chars
-        assert_eq!(hash, "9dfe6f15d1ab73af898739394fd22fd72a03db01834582f24bb2e1c66c7aaeae");
+        assert_eq!(
+            hash,
+            "9dfe6f15d1ab73af898739394fd22fd72a03db01834582f24bb2e1c66c7aaeae"
+        );
     }
 
     #[test]

@@ -110,6 +110,12 @@ pub struct UIComponent {
     pub props: Value,
 }
 
+impl Default for PluginMarketplace {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PluginMarketplace {
     pub fn new() -> Self {
         Self {
@@ -131,7 +137,10 @@ impl PluginMarketplace {
             total_plugins += 1;
         }
 
-        tracing::info!("Initialized plugin marketplace with {} pre-shipped plugins", total_plugins);
+        tracing::info!(
+            "Initialized plugin marketplace with {} pre-shipped plugins",
+            total_plugins
+        );
         Ok(total_plugins)
     }
 
@@ -139,14 +148,14 @@ impl PluginMarketplace {
     pub async fn register_plugin(&self, plugin: Arc<dyn Plugin>) {
         let id = plugin.id().to_string();
         let category = plugin.definition().category.clone();
-        
+
         // Add to plugins map
         self.plugins.write().await.insert(id.clone(), plugin);
-        
+
         // Add to category
         let mut categories = self.plugin_categories.write().await;
         categories.entry(category).or_insert_with(Vec::new).push(id);
-        
+
         // Update stats
         let mut stats = self.marketplace_stats.write().await;
         stats.total_plugins += 1;
@@ -154,7 +163,12 @@ impl PluginMarketplace {
 
     /// Install a plugin
     pub async fn install_plugin(&self, plugin_id: &str, config: Value) -> Result<()> {
-        let plugin = self.plugins.read().await.get(plugin_id).cloned()
+        let plugin = self
+            .plugins
+            .read()
+            .await
+            .get(plugin_id)
+            .cloned()
             .ok_or_else(|| anyhow::anyhow!("Plugin not found: {}", plugin_id))?;
 
         // Activate plugin
@@ -169,7 +183,10 @@ impl PluginMarketplace {
             config,
         };
 
-        self.installed_plugins.write().await.insert(plugin_id.to_string(), installed);
+        self.installed_plugins
+            .write()
+            .await
+            .insert(plugin_id.to_string(), installed);
 
         // Update stats
         let mut stats = self.marketplace_stats.write().await;
@@ -181,7 +198,12 @@ impl PluginMarketplace {
 
     /// Uninstall a plugin
     pub async fn uninstall_plugin(&self, plugin_id: &str) -> Result<()> {
-        let plugin = self.plugins.read().await.get(plugin_id).cloned()
+        let plugin = self
+            .plugins
+            .read()
+            .await
+            .get(plugin_id)
+            .cloned()
             .ok_or_else(|| anyhow::anyhow!("Plugin not found: {}", plugin_id))?;
 
         // Deactivate plugin
@@ -201,12 +223,18 @@ impl PluginMarketplace {
         command: &str,
         params: Value,
     ) -> Result<Value> {
-        let plugin = self.plugins.read().await.get(plugin_id).cloned()
+        let plugin = self
+            .plugins
+            .read()
+            .await
+            .get(plugin_id)
+            .cloned()
             .ok_or_else(|| anyhow::anyhow!("Plugin not found: {}", plugin_id))?;
 
         // Check if plugin is installed and enabled
         let installed = self.installed_plugins.read().await;
-        let installation = installed.get(plugin_id)
+        let installation = installed
+            .get(plugin_id)
             .ok_or_else(|| anyhow::anyhow!("Plugin not installed: {}", plugin_id))?;
 
         if !installation.enabled {
@@ -219,7 +247,12 @@ impl PluginMarketplace {
 
     /// Get plugin UI components
     pub async fn get_plugin_ui_components(&self, plugin_id: &str) -> Result<Vec<UIComponent>> {
-        let plugin = self.plugins.read().await.get(plugin_id).cloned()
+        let plugin = self
+            .plugins
+            .read()
+            .await
+            .get(plugin_id)
+            .cloned()
             .ok_or_else(|| anyhow::anyhow!("Plugin not found: {}", plugin_id))?;
 
         Ok(plugin.get_ui_components().await)
@@ -227,7 +260,9 @@ impl PluginMarketplace {
 
     /// List plugins by category
     pub async fn list_plugins_by_category(&self, category: &str) -> Vec<String> {
-        self.plugin_categories.read().await
+        self.plugin_categories
+            .read()
+            .await
             .get(category)
             .cloned()
             .unwrap_or_default()
@@ -235,18 +270,33 @@ impl PluginMarketplace {
 
     /// List all categories
     pub async fn list_categories(&self) -> Vec<String> {
-        self.plugin_categories.read().await.keys().cloned().collect()
+        self.plugin_categories
+            .read()
+            .await
+            .keys()
+            .cloned()
+            .collect()
     }
 
     /// Get installed plugins
     pub async fn get_installed_plugins(&self) -> Vec<InstalledPlugin> {
-        self.installed_plugins.read().await.values().cloned().collect()
+        self.installed_plugins
+            .read()
+            .await
+            .values()
+            .cloned()
+            .collect()
     }
 
     /// Get marketplace stats
     pub async fn get_stats(&self) -> (u64, u64, f64, u64) {
         let stats = self.marketplace_stats.read().await;
-        (stats.total_plugins, stats.total_installations, stats.total_revenue, stats.active_users)
+        (
+            stats.total_plugins,
+            stats.total_installations,
+            stats.total_revenue,
+            stats.active_users,
+        )
     }
 
     /// Search plugins
@@ -308,12 +358,12 @@ impl Plugin for PreShippedPlugin {
     async fn execute(&self, command: &str, params: Value) -> Result<Value> {
         // Simulate plugin command execution
         let start = std::time::Instant::now();
-        
+
         // Simulate processing time
         tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
-        
+
         let duration = start.elapsed().as_millis() as u64;
-        
+
         Ok(serde_json::json!({
             "plugin": self.definition.id,
             "command": command,
@@ -352,7 +402,11 @@ impl Plugin for PreShippedPlugin {
     }
 
     async fn on_config_change(&self, config: Value) -> Result<()> {
-        tracing::info!("Config changed for plugin {}: {:?}", self.definition.id, config);
+        tracing::info!(
+            "Config changed for plugin {}: {:?}",
+            self.definition.id,
+            config
+        );
         Ok(())
     }
 }
@@ -364,10 +418,13 @@ mod tests {
     #[tokio::test]
     async fn test_plugin_marketplace() {
         let marketplace = PluginMarketplace::new();
-        let count = marketplace.initialize_with_preshipped_plugins().await.unwrap();
-        
+        let count = marketplace
+            .initialize_with_preshipped_plugins()
+            .await
+            .unwrap();
+
         assert!(count > 0);
-        
+
         let categories = marketplace.list_categories().await;
         assert!(categories.contains(&"ai-models".to_string()));
         assert!(categories.contains(&"productivity".to_string()));
@@ -377,14 +434,20 @@ mod tests {
     #[tokio::test]
     async fn test_plugin_installation() {
         let marketplace = PluginMarketplace::new();
-        marketplace.initialize_with_preshipped_plugins().await.unwrap();
-        
+        marketplace
+            .initialize_with_preshipped_plugins()
+            .await
+            .unwrap();
+
         let config = serde_json::json!({
             "default_model": "gpt-4"
         });
-        
-        marketplace.install_plugin("ai-model-provider", config).await.unwrap();
-        
+
+        marketplace
+            .install_plugin("ai-model-provider", config)
+            .await
+            .unwrap();
+
         let installed = marketplace.get_installed_plugins().await;
         assert_eq!(installed.len(), 1);
         assert_eq!(installed[0].plugin_id, "ai-model-provider");
@@ -393,22 +456,27 @@ mod tests {
     #[tokio::test]
     async fn test_plugin_execution() {
         let marketplace = PluginMarketplace::new();
-        marketplace.initialize_with_preshipped_plugins().await.unwrap();
-        
+        marketplace
+            .initialize_with_preshipped_plugins()
+            .await
+            .unwrap();
+
         let config = serde_json::json!({});
-        marketplace.install_plugin("git-integration", config).await.unwrap();
-        
+        marketplace
+            .install_plugin("git-integration", config)
+            .await
+            .unwrap();
+
         let params = serde_json::json!({
             "message": "test commit",
             "files": ["src/main.rs"]
         });
-        
-        let result = marketplace.execute_plugin_command(
-            "git-integration",
-            "commit",
-            params,
-        ).await.unwrap();
-        
+
+        let result = marketplace
+            .execute_plugin_command("git-integration", "commit", params)
+            .await
+            .unwrap();
+
         assert_eq!(result["plugin"], "git-integration");
         assert_eq!(result["result"]["success"], true);
     }

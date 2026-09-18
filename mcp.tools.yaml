@@ -1,0 +1,159 @@
+# ZylCode MCP tool configuration
+#
+# REGENERATED from the canonical catalogue.
+#   source : crates/zylcode-mcp/src/tool_catalogue.rs (Catalogue::canonical)
+#   review : docs/governance/MCP_TOOLS_YAML_DISPOSITION.md
+#
+# INVARIANT
+#   { ids under `tools:` }  ==  { id | get_real_tool(id).is_some() }
+#
+#   Every id listed under `tools:` has a real executor. An id without one fails
+#   closed at call time (ToolError::NotImplemented) and must not appear there.
+#   Definitions whose executor is not implemented are preserved under
+#   `proposed:` — that key is not read by the loader.
+#
+# THE `command` FIELD
+#   Retained only because McpToolConfig requires it. It is NOT used to dispatch:
+#   each executor is bound to its operation by tool id and refuses a
+#   caller-supplied program or subcommand. See the commit
+#   "security(tool-dispatch): bind tool IDs to permitted operations".
+#
+# Loading: crates/zylcode-mcp/src/lib.rs:73 (env ZYLCODE_MCP_CONFIG, else this
+# file), called from apps/zylcode-desktop/src-tauri/src/main.rs:433 and :727.
+
+watch: true
+
+tools:
+  # ---------------------------------------------------------------- filesystem
+  - id: "fs.read"
+    command: "builtin"
+    transport: "stdio"
+    enabled: true
+    description: "Read a file's contents"
+
+  - id: "fs.write"
+    command: "builtin"
+    transport: "stdio"
+    enabled: true
+    description: "Write a file's contents"
+
+  - id: "fs.list"
+    command: "builtin"
+    transport: "stdio"
+    enabled: true
+    description: "List a directory"
+
+  # ------------------------------------------------------------------- search
+  - id: "search.find"
+    command: "builtin"
+    transport: "stdio"
+    enabled: true
+    description: "Find files by name pattern"
+
+  - id: "search.grep"
+    command: "builtin"
+    transport: "stdio"
+    enabled: true
+    description: "Search file contents by pattern"
+
+  # ---------------------------------------------------------------------- git
+  - id: "git.status"
+    command: "builtin"
+    transport: "stdio"
+    enabled: true
+    description: "Show working-tree status. Bound to `git status` only."
+
+  - id: "git.diff"
+    command: "builtin"
+    transport: "stdio"
+    enabled: true
+    description: "Show changes. Bound to `git diff` only."
+
+  - id: "git.commit"
+    command: "builtin"
+    transport: "stdio"
+    enabled: true
+    description: "Create a commit. Bound to `git commit` only; cannot push, reset, clean, checkout, rebase or reconfigure."
+
+  # -------------------------------------------------------------------- shell
+  - id: "npm.run"
+    command: "builtin"
+    transport: "stdio"
+    enabled: true
+    description: "Run an npm script. Bound to `npm run` only."
+
+  - id: "cargo.test"
+    command: "builtin"
+    transport: "stdio"
+    enabled: true
+    description: "Run the Cargo test suite. Bound to `cargo test` only."
+
+  - id: "shell.echo"
+    command: "builtin"
+    transport: "stdio"
+    enabled: true
+    description: "Echo text. Bound to the `echo` program only."
+
+  # The one deliberate escape hatch: unbound, highest risk. A permission gate
+  # should treat this differently from every other entry above.
+  - id: "shell.execute"
+    command: "builtin"
+    transport: "stdio"
+    enabled: true
+    description: "Execute an arbitrary program. Unbound escape hatch; requires the strongest permission gate."
+
+# ---------------------------------------------------------------------------
+# NOT LOADED. Definitions preserved for their parameter schemas.
+#
+# These 21 ids have no executor. They are recorded here rather than under
+# `tools:` because listing them as executable would be a false claim: before
+# this consolidation a DynamicTool with no executor returned a simulated
+# success, so they appeared to work. That path is gone.
+#
+# To promote one: implement a bound executor in real_tools.rs, add it to
+# get_real_tool, add a spec to EXECUTABLE_SPECS in tool_catalogue.rs, and only
+# then move it up to `tools:`.
+# ---------------------------------------------------------------------------
+proposed:
+  - id: "git.push"
+    reason: "no executor; a push is a remote write and needs its own risk class and gate"
+  - id: "git.pull"
+    reason: "no executor; a pull mutates the working tree"
+  - id: "npm.install"
+    reason: "no executor; installs arbitrary packages, executes lifecycle scripts"
+  - id: "docker.build"
+    reason: "no executor"
+  - id: "docker.run"
+    reason: "no executor; container execution boundary not defined"
+  - id: "k8s.get"
+    reason: "no executor"
+  - id: "k8s.apply"
+    reason: "no executor; cluster write"
+  - id: "db.query"
+    reason: "no executor; credentials and tenancy not defined"
+  - id: "code.analyze"
+    reason: "no executor; overlaps cargo.test and the CLI"
+  - id: "code.format"
+    reason: "no executor"
+  - id: "code.lint"
+    reason: "no executor"
+  - id: "test.run"
+    reason: "no executor; overlaps cargo.test"
+  - id: "test.single"
+    reason: "no executor; overlaps cargo.test"
+  - id: "build.debug"
+    reason: "no executor"
+  - id: "build.release"
+    reason: "no executor; a release build is a publishing step"
+  - id: "perf.bench"
+    reason: "no executor; overlaps `cargo bench`"
+  - id: "docs.generate"
+    reason: "no executor; overlaps `cargo doc`"
+  - id: "security.scan"
+    reason: "no executor; overlaps `cargo audit`"
+  - id: "slack.send"
+    reason: "no executor; network egress to a third party"
+  - id: "ai.train"
+    reason: "no executor, and its configured command invokes train.py, which does not exist"
+  - id: "ai.evaluate"
+    reason: "no executor, and its configured command invokes evaluate.py, which does not exist"

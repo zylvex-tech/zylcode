@@ -9,7 +9,12 @@ use super::text_processor::ProcessedText;
 
 /// Intent engine for classifying and routing intents
 pub struct IntentEngine {
-    context_manager: Arc<RwLock<ContextManager>>,
+    /// Injected context handle. Classification is currently pattern-only and
+    /// does not yet consult conversation context, so this is stored but never
+    /// read. Kept (rather than removed) because `new()` is a public entry point
+    /// that already accepts it — see Gate-0 clippy remediation, class B
+    /// (unfinished, not obsolete).
+    _context_manager: Arc<RwLock<ContextManager>>,
     intent_classifiers: HashMap<IntentCategory, IntentClassifier>,
     stats: RwLock<IntentEngineStats>,
 }
@@ -24,7 +29,11 @@ struct IntentEngineStats {
 struct IntentClassifier {
     category: IntentCategory,
     patterns: Vec<IntentPattern>,
-    confidence_threshold: f64,
+    /// Per-category confidence floor. Every classifier is constructed with
+    /// `0.5` and no call site reads it yet — the scoring path applies its own
+    /// constants. Class B (unfinished): the field is the intended home for the
+    /// threshold, so it is preserved rather than deleted.
+    _confidence_threshold: f64,
 }
 
 /// Intent pattern
@@ -56,7 +65,7 @@ impl IntentEngine {
                         confidence_boost: 0.2,
                     },
                 ],
-                confidence_threshold: 0.5,
+                _confidence_threshold: 0.5,
             },
         );
         
@@ -77,7 +86,7 @@ impl IntentEngine {
                         confidence_boost: 0.2,
                     },
                 ],
-                confidence_threshold: 0.5,
+                _confidence_threshold: 0.5,
             },
         );
         
@@ -98,7 +107,7 @@ impl IntentEngine {
                         confidence_boost: 0.2,
                     },
                 ],
-                confidence_threshold: 0.5,
+                _confidence_threshold: 0.5,
             },
         );
         
@@ -119,7 +128,7 @@ impl IntentEngine {
                         confidence_boost: 0.2,
                     },
                 ],
-                confidence_threshold: 0.5,
+                _confidence_threshold: 0.5,
             },
         );
         
@@ -140,12 +149,12 @@ impl IntentEngine {
                         confidence_boost: 0.2,
                     },
                 ],
-                confidence_threshold: 0.5,
+                _confidence_threshold: 0.5,
             },
         );
 
         Ok(Self {
-            context_manager,
+            _context_manager: context_manager,
             intent_classifiers,
             stats: RwLock::new(IntentEngineStats::default()),
         })
@@ -163,7 +172,7 @@ impl IntentEngine {
         };
         
         // Try each classifier
-        for (_category, classifier) in &self.intent_classifiers {
+        for classifier in self.intent_classifiers.values() {
             let intent = self.classify_with_classifier(&processed_text.content, classifier).await?;
             if intent.confidence > best_intent.confidence {
                 best_intent = intent;
@@ -259,49 +268,37 @@ impl IntentEngine {
     /// Classify intent from file input
     pub async fn classify_file_intent(&self, file: ProcessedFile) -> Result<Intent> {
         let start = std::time::Instant::now();
-        
-        let mut best_intent = Intent {
-            name: "unknown".to_string(),
-            category: IntentCategory::Unknown,
-            confidence: 0.0,
-            parameters: HashMap::new(),
+
+        // Every arm of the match below (including the `_` catch-all) produces a
+        // value, so the previous "initialise to Unknown then overwrite" form
+        // had a dead initial assignment. Binding the match result directly is
+        // behaviour-identical and makes the exhaustiveness explicit.
+        let best_intent = match file.file_type {
+            FileType::Code => Intent {
+                name: "code_analysis".to_string(),
+                category: IntentCategory::CodeReview,
+                confidence: 0.8,
+                parameters: HashMap::new(),
+            },
+            FileType::Document => Intent {
+                name: "document_analysis".to_string(),
+                category: IntentCategory::Documentation,
+                confidence: 0.8,
+                parameters: HashMap::new(),
+            },
+            FileType::Configuration => Intent {
+                name: "configuration_analysis".to_string(),
+                category: IntentCategory::Unknown,
+                confidence: 0.7,
+                parameters: HashMap::new(),
+            },
+            _ => Intent {
+                name: "file_analysis".to_string(),
+                category: IntentCategory::Unknown,
+                confidence: 0.6,
+                parameters: HashMap::new(),
+            },
         };
-        
-        // Analyze file content for intent
-        match file.file_type {
-            FileType::Code => {
-                best_intent = Intent {
-                    name: "code_analysis".to_string(),
-                    category: IntentCategory::CodeReview,
-                    confidence: 0.8,
-                    parameters: HashMap::new(),
-                };
-            }
-            FileType::Document => {
-                best_intent = Intent {
-                    name: "document_analysis".to_string(),
-                    category: IntentCategory::Documentation,
-                    confidence: 0.8,
-                    parameters: HashMap::new(),
-                };
-            }
-            FileType::Configuration => {
-                best_intent = Intent {
-                    name: "configuration_analysis".to_string(),
-                    category: IntentCategory::Unknown,
-                    confidence: 0.7,
-                    parameters: HashMap::new(),
-                };
-            }
-            _ => {
-                best_intent = Intent {
-                    name: "file_analysis".to_string(),
-                    category: IntentCategory::Unknown,
-                    confidence: 0.6,
-                    parameters: HashMap::new(),
-                };
-            }
-        }
         
         // Update stats
         let duration = start.elapsed().as_millis() as u64;

@@ -1,22 +1,22 @@
-pub mod text_processor;
-pub mod voice_processor;
-pub mod vision_processor;
+pub mod context_manager;
 pub mod file_processor;
 pub mod intent_engine;
-pub mod context_manager;
+pub mod text_processor;
 pub mod types;
+pub mod vision_processor;
+pub mod voice_processor;
 
+use anyhow::Result;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use anyhow::Result;
 
-use self::text_processor::TextProcessor;
-use self::voice_processor::VoiceProcessor;
-use self::vision_processor::VisionProcessor;
+use self::context_manager::ContextManager;
 use self::file_processor::FileProcessor;
 use self::intent_engine::IntentEngine;
-use self::context_manager::ContextManager;
+use self::text_processor::TextProcessor;
 pub use self::types::*;
+use self::vision_processor::VisionProcessor;
+use self::voice_processor::VoiceProcessor;
 
 /// AI Input System - Multi-modal input processing
 pub struct AIInputSystem {
@@ -51,8 +51,11 @@ impl AIInputSystem {
     /// Process text input
     pub async fn process_text(&self, text: &str, context: InputContext) -> Result<ProcessedInput> {
         let processed_text = self.text_processor.process(text, &context).await?;
-        let intent = self.intent_engine.classify_intent(processed_text.clone()).await?;
-        
+        let intent = self
+            .intent_engine
+            .classify_intent(processed_text.clone())
+            .await?;
+
         Ok(ProcessedInput {
             input_type: InputType::Text,
             content: processed_text.content.clone(),
@@ -65,11 +68,21 @@ impl AIInputSystem {
     }
 
     /// Process voice input
-    pub async fn process_voice(&self, audio: AudioBuffer, context: InputContext) -> Result<ProcessedInput> {
+    pub async fn process_voice(
+        &self,
+        audio: AudioBuffer,
+        context: InputContext,
+    ) -> Result<ProcessedInput> {
         let processed_voice = self.voice_processor.process_audio(audio).await?;
-        let processed_text = self.text_processor.process(&processed_voice.text, &context).await?;
-        let intent = self.intent_engine.classify_intent(processed_text.clone()).await?;
-        
+        let processed_text = self
+            .text_processor
+            .process(&processed_voice.text, &context)
+            .await?;
+        let intent = self
+            .intent_engine
+            .classify_intent(processed_text.clone())
+            .await?;
+
         Ok(ProcessedInput {
             input_type: InputType::Voice,
             content: processed_text.content.clone(),
@@ -82,10 +95,17 @@ impl AIInputSystem {
     }
 
     /// Process vision input
-    pub async fn process_vision(&self, image: ImageBuffer, context: InputContext) -> Result<ProcessedInput> {
+    pub async fn process_vision(
+        &self,
+        image: ImageBuffer,
+        context: InputContext,
+    ) -> Result<ProcessedInput> {
         let processed_vision = self.vision_processor.analyze_image(image).await?;
-        let intent = self.intent_engine.classify_vision_intent(processed_vision.clone()).await?;
-        
+        let intent = self
+            .intent_engine
+            .classify_vision_intent(processed_vision.clone())
+            .await?;
+
         Ok(ProcessedInput {
             input_type: InputType::Vision,
             content: processed_vision.description.clone(),
@@ -100,8 +120,11 @@ impl AIInputSystem {
     /// Process file input
     pub async fn process_file(&self, file: File, context: InputContext) -> Result<ProcessedInput> {
         let processed_file = self.file_processor.process_file(file).await?;
-        let intent = self.intent_engine.classify_file_intent(processed_file.clone()).await?;
-        
+        let intent = self
+            .intent_engine
+            .classify_file_intent(processed_file.clone())
+            .await?;
+
         Ok(ProcessedInput {
             input_type: InputType::File,
             content: processed_file.summary.clone(),
@@ -164,8 +187,11 @@ mod tests {
     async fn test_text_processing() {
         let system = AIInputSystem::new().await.unwrap();
         let context = InputContext::default();
-        
-        let result = system.process_text("Create a new React component", context).await.unwrap();
+
+        let result = system
+            .process_text("Create a new React component", context)
+            .await
+            .unwrap();
         assert_eq!(result.input_type, InputType::Text);
         assert!(result.confidence > 0.0);
     }

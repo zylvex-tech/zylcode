@@ -1,4 +1,4 @@
-//! Phase 8.2 — Local Model Cache & Vector Indexing Engine.
+//! Local Model Cache & Vector Indexing Engine (track: VECTOR-CACHE).
 //!
 //! Lightweight SQLite-backed vector cache with cosine-similarity retrieval.
 //! Offline-first: prompt vectors are hashed deterministically when no remote
@@ -71,7 +71,11 @@ pub fn mock_embed(text: &str, dim: usize) -> Vec<f32> {
         vec[idx] += (pair[0] as f32 + pair[1] as f32) * 0.005;
     }
     // L2 normalize
-    let mag = vec.iter().map(|x| f64::from(*x) * f64::from(*x)).sum::<f64>().sqrt() as f32;
+    let mag = vec
+        .iter()
+        .map(|x| f64::from(*x) * f64::from(*x))
+        .sum::<f64>()
+        .sqrt() as f32;
     if mag > 0.0 {
         for v in &mut vec {
             *v /= mag;
@@ -193,7 +197,11 @@ impl VectorCacheStore {
     }
 
     /// Scan stored vectors and return top match if >= threshold.
-    pub fn find_similar(&self, query_embedding: &[f32], threshold: f32) -> Result<Option<VectorEntry>> {
+    pub fn find_similar(
+        &self,
+        query_embedding: &[f32],
+        threshold: f32,
+    ) -> Result<Option<VectorEntry>> {
         let conn = self.connect()?;
         let mut stmt = conn
             .prepare("SELECT id, prompt_hash, prompt_text, response_text, embedding_blob, created_at FROM vector_cache")
@@ -228,7 +236,10 @@ impl VectorCacheStore {
                     embedding_vector: vec,
                     created_at: ca,
                 };
-                if best.as_ref().map_or(true, |(best_score, _)| score > *best_score) {
+                if best
+                    .as_ref()
+                    .map_or(true, |(best_score, _)| score > *best_score)
+                {
                     best = Some((score, entry));
                 }
             }
@@ -307,7 +318,11 @@ mod tests {
         let a = mock_embed("hello world", 16);
         let b = mock_embed("hello world", 16);
         assert_eq!(a, b);
-        let mag: f64 = a.iter().map(|x| f64::from(*x) * f64::from(*x)).sum::<f64>().sqrt();
+        let mag: f64 = a
+            .iter()
+            .map(|x| f64::from(*x) * f64::from(*x))
+            .sum::<f64>()
+            .sqrt();
         assert!((mag - 1.0).abs() < 1e-5);
         assert!((cosine_similarity(&a, &b) - 1.0).abs() < 1e-5);
     }
@@ -317,7 +332,9 @@ mod tests {
         let dir = tempdir().unwrap();
         let store = VectorCacheStore::new(dir.path().join("vec.db")).unwrap();
         let emb = mock_embed("build a todo app", 32);
-        store.insert_entry("build a todo app", "<response>ok</response>", &emb).unwrap();
+        store
+            .insert_entry("build a todo app", "<response>ok</response>", &emb)
+            .unwrap();
         let q = mock_embed("build a todo app", 32);
         let hit = store.find_similar(&q, 0.88).unwrap().expect("should hit");
         assert_eq!(hit.prompt_text, "build a todo app");

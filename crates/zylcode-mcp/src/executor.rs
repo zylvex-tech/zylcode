@@ -96,12 +96,14 @@ async fn execute_with_recovery_inner(
     loop {
         attempt += 1;
         let attempt_start = Instant::now();
-        
+
         info!(tool = %id, attempt, "executing tool");
 
         // Create retry span for attempts > 1
         let retry_span = if attempt > 1 {
-            telemetry.as_ref().map(|t| t.retry_span(&id, attempt, opts.max_retries))
+            telemetry
+                .as_ref()
+                .map(|t| t.retry_span(&id, attempt, opts.max_retries))
         } else {
             None
         };
@@ -109,7 +111,12 @@ async fn execute_with_recovery_inner(
         // Audit retry attempt
         if attempt > 1 {
             if let Some(audit_logger) = &audit {
-                let _ = audit_logger.log_retry(&id, attempt, opts.max_retries, "retrying after transient failure");
+                let _ = audit_logger.log_retry(
+                    &id,
+                    attempt,
+                    opts.max_retries,
+                    "retrying after transient failure",
+                );
             }
         }
 
@@ -134,7 +141,13 @@ async fn execute_with_recovery_inner(
                 // Audit log success
                 if let Some(audit_logger) = &audit {
                     let output_bytes = serde_json::to_vec(&val).unwrap_or_default();
-                    let _ = audit_logger.log_tool_result(&id, &transport, &output_bytes, total_duration.as_millis() as u64, None);
+                    let _ = audit_logger.log_tool_result(
+                        &id,
+                        &transport,
+                        &output_bytes,
+                        total_duration.as_millis() as u64,
+                        None,
+                    );
                 }
 
                 return Ok(val);
@@ -142,7 +155,7 @@ async fn execute_with_recovery_inner(
             Ok(Err(e)) => {
                 let _duration = attempt_start.elapsed();
                 let transient = is_transient(&e);
-                
+
                 // Record error on telemetry span
                 if let Some(span) = &retry_span {
                     record_error_on_span(span, &e);
@@ -153,10 +166,11 @@ async fn execute_with_recovery_inner(
 
                 if transient && attempt <= opts.max_retries {
                     warn!(tool = %id, attempt, error = %e, "transient tool error, retrying");
-                    
+
                     // Audit log retry
                     if let Some(audit_logger) = &audit {
-                        let _ = audit_logger.log_retry(&id, attempt, opts.max_retries, &e.to_string());
+                        let _ =
+                            audit_logger.log_retry(&id, attempt, opts.max_retries, &e.to_string());
                     }
 
                     tokio::time::sleep(opts.retry_backoff * attempt).await;
@@ -164,7 +178,7 @@ async fn execute_with_recovery_inner(
                 }
 
                 let total_duration = start_time.elapsed();
-                
+
                 // Record error on main span
                 if let Some(span) = &tool_span {
                     record_error_on_span(span, &e);
@@ -173,7 +187,13 @@ async fn execute_with_recovery_inner(
 
                 // Audit log failure
                 if let Some(audit_logger) = &audit {
-                    let _ = audit_logger.log_tool_result(&id, &transport, &[], total_duration.as_millis() as u64, Some(&e.to_string()));
+                    let _ = audit_logger.log_tool_result(
+                        &id,
+                        &transport,
+                        &[],
+                        total_duration.as_millis() as u64,
+                        Some(&e.to_string()),
+                    );
                 }
 
                 error!(tool = %id, attempt, error = %e, transient, "tool failed");
@@ -182,7 +202,7 @@ async fn execute_with_recovery_inner(
             Err(_elapsed) => {
                 let _duration = attempt_start.elapsed();
                 let e = anyhow::anyhow!("tool {id} timed out after {:?}", opts.timeout);
-                
+
                 // Record timeout error
                 if let Some(span) = &retry_span {
                     record_error_on_span(span, &e);
@@ -193,9 +213,10 @@ async fn execute_with_recovery_inner(
 
                 if attempt <= opts.max_retries {
                     warn!(tool = %id, attempt, error = %e, "tool timeout, retrying");
-                    
+
                     if let Some(audit_logger) = &audit {
-                        let _ = audit_logger.log_retry(&id, attempt, opts.max_retries, &e.to_string());
+                        let _ =
+                            audit_logger.log_retry(&id, attempt, opts.max_retries, &e.to_string());
                     }
 
                     tokio::time::sleep(opts.retry_backoff * attempt).await;
@@ -203,7 +224,7 @@ async fn execute_with_recovery_inner(
                 }
 
                 let total_duration = start_time.elapsed();
-                
+
                 // Record error on main span
                 if let Some(span) = &tool_span {
                     record_error_on_span(span, &e);
@@ -212,7 +233,13 @@ async fn execute_with_recovery_inner(
 
                 // Audit log timeout failure
                 if let Some(audit_logger) = &audit {
-                    let _ = audit_logger.log_tool_result(&id, &transport, &[], total_duration.as_millis() as u64, Some(&e.to_string()));
+                    let _ = audit_logger.log_tool_result(
+                        &id,
+                        &transport,
+                        &[],
+                        total_duration.as_millis() as u64,
+                        Some(&e.to_string()),
+                    );
                 }
 
                 error!(tool = %id, attempt, error = %e, "tool timed out");
@@ -273,18 +300,41 @@ mod tests {
 
     #[tokio::test]
     async fn succeeds_without_retry_for_stable_tool() {
-        let cfg = McpToolConfig {
+        // A Tool double that always succeeds.
+        //
+        // This previously used a `DynamicTool` with id "stable" and no executor,
+        // and asserted `v["tool"] == "stable"` - a value that came from the
+        // simulated echo. The call "succeeded" without executing anything.
+        // `DynamicTool` now fails closed when no executor exists, so a stable
+        // tool must be a real (test) implementation.
+        let t: Arc<dyn Tool> = Arc::new(FlakyTool {
             id: "stable".into(),
-            command: "echo".into(),
+            fails: 0,
+            counter: AtomicUsize::new(0),
+        });
+        let v = execute_with_recovery(t, serde_json::json!({"a": 1}), ExecuteOptions::default())
+            .await
+            .unwrap();
+        assert_eq!(v["ok"], true);
+    }
+
+    /// A tool with no executor surfaces an error through the retry wrapper.
+    #[tokio::test]
+    async fn unsupported_tool_fails_through_recovery() {
+        let cfg = McpToolConfig {
+            id: "demo".into(),
+            command: "npx demo".into(),
             transport: McpTransport::Stdio,
             env: Default::default(),
             enabled: true,
             description: None,
         };
         let t: Arc<dyn Tool> = Arc::new(DynamicTool::new(cfg));
-        let v = execute_with_recovery(t, serde_json::json!({"a":1}), ExecuteOptions::default())
-            .await
-            .unwrap();
-        assert_eq!(v["tool"], "stable");
+        let outcome =
+            execute_with_recovery(t, serde_json::json!({"a": 1}), ExecuteOptions::default()).await;
+        assert!(
+            outcome.is_err(),
+            "an unsupported tool must not succeed through the recovery wrapper"
+        );
     }
 }

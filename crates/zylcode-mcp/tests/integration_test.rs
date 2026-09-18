@@ -1,273 +1,346 @@
-use anyhow::Result;
-use serde_json::Value;
+//! Cross-system integration tests for `zylcode-mcp`.
+//!
+//! # Why this file was rewritten
+//!
+//! It previously declared `#[tokio::main] async fn main()` and no `#[test]`
+//! functions. `cargo test` compiles integration files with the test harness,
+//! which takes over `main` and registers nothing:
+//!
+//! ```text
+//! $ cargo test -p zylcode-mcp --test integration_test -- --list
+//! 0 tests, 0 benchmarks
+//! ```
+//!
+//! Every assertion in it — including `tool_count >= 100` and
+//! `dev_tools.len() >= 25` — had therefore never executed. An assertion that
+//! cannot fire is worse than a failing one: it looks like coverage and
+//! enforces nothing.
+//!
+//! The assertions below are semantic invariants, not quantity targets. Tool
+//! quantity is not a correctness invariant; see
+//! `docs/governance/TOOL_CATALOGUE_TRUTH_TABLE.md`.
+
 use std::collections::HashMap;
-use zylcode_mcp::{
-    EnhancedMcpBridge, SkillsSystem, PluginMarketplace,
-    ExecutionContext,
-};
 
-/// Comprehensive integration test for Phase 1 implementation
-#[tokio::main]
-async fn main() -> Result<()> {
-    // Initialize tracing
-    tracing_subscriber::fmt()
-        .with_env_filter("info")
-        .init();
+use zylcode_mcp::skills_system::ExecutionContext;
+use zylcode_mcp::{EnhancedMcpBridge, PluginMarketplace, SkillsSystem};
 
-    tracing::info!("Starting Phase 1 Integration Test");
-
-    // Test 1: Enhanced MCP Bridge with 100+ tools
-    test_enhanced_mcp_bridge().await?;
-
-    // Test 2: Skills System
-    test_skills_system().await?;
-
-    // Test 3: Plugin Marketplace
-    test_plugin_marketplace().await?;
-
-    // Test 4: Integration between systems
-    test_system_integration().await?;
-
-    tracing::info!("Phase 1 Integration Test completed successfully!");
-    Ok(())
-}
-
-/// Test Enhanced MCP Bridge with 100+ tools
-async fn test_enhanced_mcp_bridge() -> Result<()> {
-    tracing::info!("Testing Enhanced MCP Bridge...");
-
-    let bridge = EnhancedMcpBridge::new();
-    let tool_count = bridge.initialize_with_builtin_tools().await?;
-
-    tracing::info!("Initialized MCP bridge with {} tools", tool_count);
-    assert!(tool_count >= 100, "Expected at least 100 tools, got {}", tool_count);
-
-    // Test tool categories
-    let categories = bridge.get_categories().await;
-    tracing::info!("Tool categories: {:?}", categories);
-    assert!(categories.len() >= 8, "Expected at least 8 categories");
-
-    // Test development tools
-    let dev_tools = bridge.get_tools_in_category("development").await;
-    assert!(dev_tools.is_some(), "Development category should exist");
-    let dev_tools = dev_tools.unwrap();
-    tracing::info!("Development tools: {} tools", dev_tools.len());
-    assert!(dev_tools.len() >= 25, "Expected at least 25 development tools");
-
-    // Test tool execution
-    let params = serde_json::json!({
-        "message": "test commit",
-        "files": ["src/main.rs"]
-    });
-
-    let result = bridge.execute_tool("git.commit", params).await?;
-    tracing::info!("Git commit result: {:?}", result);
-    assert_eq!(result["tool"], "git.commit");
-    assert_eq!(result["result"]["success"], true);
-
-    // Test AI/ML tools
-    let ai_params = serde_json::json!({
-        "prompt": "Write a function to sort an array",
-        "model": "gpt-4"
-    });
-
-    let ai_result = bridge.execute_tool("openai.complete", ai_params).await?;
-    tracing::info!("OpenAI completion result: {:?}", ai_result);
-    assert_eq!(ai_result["tool"], "openai.complete");
-
-    // Test execution stats
-    let (total, successful, failed, duration) = bridge.get_stats().await;
-    tracing::info!("Execution stats: total={}, successful={}, failed={}, duration={}ms", 
-        total, successful, failed, duration);
-    assert!(total >= 2, "Expected at least 2 tool executions");
-
-    tracing::info!("Enhanced MCP Bridge test passed!");
-    Ok(())
-}
-
-/// Test Skills System
-async fn test_skills_system() -> Result<()> {
-    tracing::info!("Testing Skills System...");
-
-    let system = SkillsSystem::new();
-    let skill_count = system.initialize_with_builtin_skills().await?;
-
-    tracing::info!("Initialized skills system with {} skills", skill_count);
-    assert!(skill_count >= 5, "Expected at least 5 skills");
-
-    // Test skill categories
-    let categories = system.list_categories().await;
-    tracing::info!("Skill categories: {:?}", categories);
-    assert!(categories.contains(&"development".to_string()));
-    assert!(categories.contains(&"ai-ml".to_string()));
-    assert!(categories.contains(&"security".to_string()));
-
-    // Test skill execution
-    let input = serde_json::json!({
-        "files": ["src/main.rs"],
-        "options": {"auto_fix": false}
-    });
-
-    let context = ExecutionContext {
+fn execution_context() -> ExecutionContext {
+    ExecutionContext {
         user_id: Some("user123".to_string()),
         project_id: Some("project456".to_string()),
         permissions: vec!["filesystem.read".to_string()],
         environment: HashMap::new(),
-    };
-
-    let result = system.execute_skill("code-review", input, context).await?;
-    tracing::info!("Code review result: {:?}", result);
-    assert_eq!(result["skill"], "code-review");
-    assert_eq!(result["result"]["success"], true);
-
-    // Test skill definition
-    let definition = system.get_skill_definition("code-review").await;
-    assert!(definition.is_some(), "Code review skill should exist");
-    let definition = definition.unwrap();
-    tracing::info!("Code review skill: {} v{}", definition.name, definition.version);
-    assert_eq!(definition.name, "Code Review");
-
-    // Test execution history
-    let history = system.get_execution_history(10).await;
-    tracing::info!("Execution history: {} records", history.len());
-    assert!(history.len() >= 1, "Expected at least 1 execution record");
-
-    tracing::info!("Skills System test passed!");
-    Ok(())
+    }
 }
 
-/// Test Plugin Marketplace
-async fn test_plugin_marketplace() -> Result<()> {
-    tracing::info!("Testing Plugin Marketplace...");
+// ---------------------------------------------------------------------------
+// Enhanced MCP Bridge — catalogue / executor correspondence
+// ---------------------------------------------------------------------------
 
-    let marketplace = PluginMarketplace::new();
-    let plugin_count = marketplace.initialize_with_preshipped_plugins().await?;
+/// Every tool the bridge registers must have a real executor.
+#[tokio::test]
+async fn bridge_registers_only_tools_with_real_executors() {
+    let bridge = EnhancedMcpBridge::new();
+    let registered = bridge.initialize_with_builtin_tools().await.unwrap();
 
-    tracing::info!("Initialized plugin marketplace with {} plugins", plugin_count);
-    assert!(plugin_count >= 5, "Expected at least 5 plugins");
+    assert_eq!(bridge.tool_count().await, registered);
 
-    // Test plugin categories
-    let categories = marketplace.list_categories().await;
-    tracing::info!("Plugin categories: {:?}", categories);
-    assert!(categories.contains(&"ai-models".to_string()));
-    assert!(categories.contains(&"productivity".to_string()));
-    assert!(categories.contains(&"development".to_string()));
+    let ids = bridge.registered_ids().await;
+    assert_eq!(ids.len(), registered, "count must match the registry");
+    for id in &ids {
+        assert!(
+            zylcode_mcp::get_real_tool(id).is_some(),
+            "`{id}` is registered but has no real executor"
+        );
+    }
+}
 
-    // Test plugin installation
-    let config = serde_json::json!({
-        "default_model": "gpt-4"
+/// Definition-only entries are preserved as metadata and are never registered.
+#[tokio::test]
+async fn bridge_keeps_definitions_as_metadata_only() {
+    let bridge = EnhancedMcpBridge::new();
+    bridge.initialize_with_builtin_tools().await.unwrap();
+
+    let registered: std::collections::HashSet<String> =
+        bridge.registered_ids().await.into_iter().collect();
+
+    let definitions = bridge.all_definitions();
+    assert!(
+        !definitions.is_empty(),
+        "parameter schemas must be preserved as metadata"
+    );
+
+    for definition in &definitions {
+        let has_executor = zylcode_mcp::get_real_tool(&definition.id).is_some();
+        assert_eq!(
+            registered.contains(&definition.id),
+            has_executor,
+            "`{}`: registered={} but has_executor={}",
+            definition.id,
+            registered.contains(&definition.id),
+            has_executor
+        );
+        assert!(
+            definition.parameters.is_object(),
+            "`{}` lost its parameter schema",
+            definition.id
+        );
+    }
+}
+
+/// Nothing reports success for work it did not perform.
+#[tokio::test]
+async fn bridge_never_fabricates_success_for_unsupported_tools() {
+    let bridge = EnhancedMcpBridge::new();
+    bridge.initialize_with_builtin_tools().await.unwrap();
+
+    for id in ["openai.complete", "docker.build", "kubernetes.deploy", "eslint.lint"] {
+        let outcome = bridge
+            .execute_tool(id, serde_json::json!({ "prompt": "anything" }))
+            .await;
+        assert!(
+            outcome.is_err(),
+            "`{id}` has no executor and must fail closed, not report success"
+        );
+    }
+}
+
+/// Unknown ids fail closed.
+#[tokio::test]
+async fn bridge_unknown_tool_id_fails_closed() {
+    let bridge = EnhancedMcpBridge::new();
+    bridge.initialize_with_builtin_tools().await.unwrap();
+    assert!(
+        bridge
+            .execute_tool("no.such.tool", serde_json::json!({}))
+            .await
+            .is_err()
+    );
+}
+
+/// A real, read-only execution actually reads a file.
+///
+/// `git.commit` is deliberately *not* exercised here: it would create a real
+/// commit in the working repository. Binding behaviour is covered by the
+/// adversarial tests below and in `real_tools::tests`.
+#[tokio::test]
+async fn bridge_executes_a_real_read_only_tool() {
+    let bridge = EnhancedMcpBridge::new();
+    bridge.initialize_with_builtin_tools().await.unwrap();
+
+    let result = bridge
+        .execute_tool("fs.read", serde_json::json!({ "path": "Cargo.toml" }))
+        .await
+        .expect("fs.read has a real executor");
+
+    assert_eq!(result["tool"], "fs.read");
+    assert_eq!(result["executed"], true);
+    let content = result["output"]["content"]
+        .as_str()
+        .expect("fs.read returns file content");
+    assert!(
+        content.contains("[package]"),
+        "fs.read must return the real file, got: {content:.80}"
+    );
+}
+
+/// The dispatch binding holds through the bridge: `git.commit` cannot push.
+///
+/// A permissive gate is used deliberately. The gate is consulted *before* the
+/// executor, so the restrictive default would mask the binding violation with a
+/// permission denial. Both refusals are correct; this test is about the binding.
+#[tokio::test]
+async fn bridge_git_commit_cannot_execute_push() {
+    let bridge =
+        EnhancedMcpBridge::with_runtime(zylcode_mcp::ToolRuntime::permissive_without_evidence());
+    bridge.initialize_with_builtin_tools().await.unwrap();
+
+    let err = bridge
+        .execute_tool("git.commit", serde_json::json!({ "subcommand": "push" }))
+        .await
+        .expect_err("git.commit must not run git push");
+    assert!(
+        err.to_string().contains("may not perform"),
+        "expected a binding refusal, got: {err}"
+    );
+}
+
+/// The default gate refuses an unapproved write-class tool.
+#[tokio::test]
+async fn bridge_default_gate_refuses_unapproved_write() {
+    let bridge = EnhancedMcpBridge::new();
+    bridge.initialize_with_builtin_tools().await.unwrap();
+
+    let err = bridge
+        .execute_tool("git.commit", serde_json::json!({ "message": "must not run" }))
+        .await
+        .expect_err("an unapproved GitWrite tool must not run");
+    assert!(
+        err.to_string().contains("permission denied"),
+        "expected a permission refusal, got: {err}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Skills System
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn skills_system_initialises_and_executes() {
+    let system = SkillsSystem::new();
+    let skill_count = system.initialize_with_builtin_skills().await.unwrap();
+    assert!(skill_count > 0, "expected the builtin skills to load");
+
+    let categories = system.list_categories().await;
+    for expected in ["development", "ai-ml", "security"] {
+        assert!(
+            categories.contains(&expected.to_string()),
+            "missing skill category `{expected}`"
+        );
+    }
+
+    let input = serde_json::json!({
+        "files": ["src/main.rs"],
+        "options": {"auto_fix": false}
     });
+    let result = system
+        .execute_skill("code-review", input, execution_context())
+        .await
+        .unwrap();
+    assert_eq!(result["skill"], "code-review");
 
-    marketplace.install_plugin("ai-model-provider", config).await?;
-    tracing::info!("Installed ai-model-provider plugin");
+    let definition = system
+        .get_skill_definition("code-review")
+        .await
+        .expect("code-review skill is defined");
+    assert_eq!(definition.name, "Code Review");
+
+    let history = system.get_execution_history(10).await;
+    assert!(
+        !history.is_empty(),
+        "executing a skill must record history"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Plugin Marketplace
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn plugin_marketplace_installs_and_executes() {
+    let marketplace = PluginMarketplace::new();
+    let plugin_count = marketplace
+        .initialize_with_preshipped_plugins()
+        .await
+        .unwrap();
+    assert!(plugin_count > 0, "expected the preshipped plugins to load");
+
+    let categories = marketplace.list_categories().await;
+    for expected in ["ai-models", "productivity", "development"] {
+        assert!(
+            categories.contains(&expected.to_string()),
+            "missing plugin category `{expected}`"
+        );
+    }
+
+    marketplace
+        .install_plugin("ai-model-provider", serde_json::json!({ "default_model": "gpt-4" }))
+        .await
+        .unwrap();
 
     let installed = marketplace.get_installed_plugins().await;
     assert_eq!(installed.len(), 1);
     assert_eq!(installed[0].plugin_id, "ai-model-provider");
 
-    // Test plugin execution
-    let params = serde_json::json!({
-        "prompt": "Explain quantum computing",
-        "model": "gpt-4"
-    });
-
-    let result = marketplace.execute_plugin_command(
-        "ai-model-provider",
-        "complete",
-        params,
-    ).await?;
-
-    tracing::info!("AI model provider result: {:?}", result);
+    let result = marketplace
+        .execute_plugin_command(
+            "ai-model-provider",
+            "complete",
+            serde_json::json!({ "prompt": "Explain quantum computing", "model": "gpt-4" }),
+        )
+        .await
+        .unwrap();
     assert_eq!(result["plugin"], "ai-model-provider");
-    assert_eq!(result["result"]["success"], true);
 
-    // Test plugin search
     let search_results = marketplace.search_plugins("git").await;
-    tracing::info!("Search results for 'git': {} plugins", search_results.len());
-    assert!(search_results.len() >= 1, "Expected at least 1 git-related plugin");
+    assert!(!search_results.is_empty(), "expected a git-related plugin");
 
-    // Test marketplace stats
-    let (total_plugins, total_installations, revenue, active_users) = marketplace.get_stats().await;
-    tracing::info!("Marketplace stats: plugins={}, installations={}, revenue=${}, users={}", 
-        total_plugins, total_installations, revenue, active_users);
-    assert!(total_plugins >= 5, "Expected at least 5 total plugins");
-
-    tracing::info!("Plugin Marketplace test passed!");
-    Ok(())
+    let (total_plugins, _installations, _revenue, _users) = marketplace.get_stats().await;
+    assert!(total_plugins > 0);
 }
 
-/// Test integration between systems
-async fn test_system_integration() -> Result<()> {
-    tracing::info!("Testing System Integration...");
+// ---------------------------------------------------------------------------
+// Cross-system
+// ---------------------------------------------------------------------------
 
-    // Initialize all systems
+#[tokio::test]
+async fn systems_compose_without_fabricated_success() {
     let bridge = EnhancedMcpBridge::new();
     let skills = SkillsSystem::new();
     let marketplace = PluginMarketplace::new();
 
-    let bridge_count = bridge.initialize_with_builtin_tools().await?;
-    let skills_count = skills.initialize_with_builtin_skills().await?;
-    let marketplace_count = marketplace.initialize_with_preshipped_plugins().await?;
+    let bridge_count = bridge.initialize_with_builtin_tools().await.unwrap();
+    let skills_count = skills.initialize_with_builtin_skills().await.unwrap();
+    let marketplace_count = marketplace
+        .initialize_with_preshipped_plugins()
+        .await
+        .unwrap();
 
-    tracing::info!("Initialized systems: bridge={} tools, {} skills, {} plugins",
-        bridge_count, skills_count, marketplace_count);
+    assert_eq!(bridge.tool_count().await, bridge_count);
+    assert!(skills_count > 0);
+    assert!(marketplace_count > 0);
 
-    // Test cross-system workflow
-    tracing::info!("Testing cross-system workflow...");
+    // 1. A real read through the tool registry.
+    bridge
+        .execute_tool("fs.read", serde_json::json!({ "path": "Cargo.toml" }))
+        .await
+        .expect("fs.read executes for real");
 
-    // 1. Use MCP bridge to analyze code
-    let analysis_params = serde_json::json!({
-        "files": ["src/main.rs"],
-        "analysis_type": "complexity"
-    });
+    // 2. A definition-only tool fails closed rather than inventing a result.
+    assert!(
+        bridge
+            .execute_tool("eslint.lint", serde_json::json!({ "files": ["src/main.rs"] }))
+            .await
+            .is_err(),
+        "a definition-only tool must not fabricate a result"
+    );
 
-    let analysis_result = bridge.execute_tool("eslint.lint", analysis_params).await?;
-    tracing::info!("Code analysis result: {:?}", analysis_result);
+    // 3. The skills system composes with the same execution context.
+    let review = skills
+        .execute_skill(
+            "code-review",
+            serde_json::json!({ "files": ["src/main.rs"], "options": {"auto_fix": false} }),
+            execution_context(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(review["skill"], "code-review");
 
-    // 2. Use skills system to review code
-    let review_input = serde_json::json!({
-        "files": ["src/main.rs"],
-        "options": {"auto_fix": false}
-    });
+    // 4. The marketplace composes on top of that result.
+    marketplace
+        .install_plugin("ai-model-provider", serde_json::json!({ "default_model": "gpt-4" }))
+        .await
+        .unwrap();
+    let suggestion = marketplace
+        .execute_plugin_command(
+            "ai-model-provider",
+            "suggest",
+            serde_json::json!({ "prompt": "Suggest improvements", "context": review }),
+        )
+        .await
+        .unwrap();
+    assert_eq!(suggestion["plugin"], "ai-model-provider");
 
-    let review_context = ExecutionContext {
-        user_id: Some("user123".to_string()),
-        project_id: Some("project456".to_string()),
-        permissions: vec!["filesystem.read".to_string()],
-        environment: HashMap::new(),
-    };
+    // 5. Execution statistics reflect real attempts.
+    let (total, successful, _failed, _duration) = bridge.get_stats().await;
+    assert!(total >= 2, "expected the bridge to record its calls");
+    assert!(
+        successful >= 1,
+        "the successful read must be counted as a success"
+    );
 
-    let review_result = skills.execute_skill("code-review", review_input, review_context).await?;
-    tracing::info!("Code review result: {:?}", review_result);
-
-    // 3. Use plugin marketplace to get AI assistance
-    let ai_params = serde_json::json!({
-        "prompt": "Suggest improvements for this code",
-        "context": review_result
-    });
-
-    let ai_result = marketplace.execute_plugin_command(
-        "ai-model-provider",
-        "suggest",
-        ai_params,
-    ).await?;
-
-    tracing::info!("AI suggestion result: {:?}", ai_result);
-
-    // Test system statistics
-    let (bridge_total, bridge_successful, bridge_failed, bridge_duration) = bridge.get_stats().await;
-    let (marketplace_plugins, marketplace_installations, marketplace_revenue, marketplace_users) = marketplace.get_stats().await;
-
-    tracing::info!("System Statistics:");
-    tracing::info!("  MCP Bridge: {} total calls, {} successful, {} failed, {}ms total", 
-        bridge_total, bridge_successful, bridge_failed, bridge_duration);
-    tracing::info!("  Marketplace: {} plugins, {} installations, ${} revenue, {} users",
-        marketplace_plugins, marketplace_installations, marketplace_revenue, marketplace_users);
-
-    // Verify all systems are working
-    assert!(bridge_total >= 2, "Expected at least 2 bridge calls");
-    assert!(marketplace_installations >= 1, "Expected at least 1 plugin installation");
-
-    tracing::info!("System Integration test passed!");
-    Ok(())
+    let (plugins, installations, _revenue, _users) = marketplace.get_stats().await;
+    assert!(plugins > 0);
+    assert!(installations >= 1);
 }

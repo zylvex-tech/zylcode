@@ -644,7 +644,7 @@ struct BenchmarkItem {
 
 /// Summary report produced by the benchmark command.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct BenchmarkReport {
+pub struct BenchmarkReport {
     /// Workspace root directory.
     workspace: String,
     /// ISO-8601 UTC timestamp.
@@ -667,9 +667,8 @@ struct BenchmarkReport {
     error: Option<String>,
 }
 
-/// Walk the workspace, classify every artifact file, measure timing, and produce
-/// a `BenchmarkReport`.
-async fn run_benchmark(args: BenchmarkArgs) -> anyhow::Result<()> {
+/// Generate a benchmark report by scanning the workspace.
+pub async fn generate_benchmark_report(args: BenchmarkArgs) -> anyhow::Result<BenchmarkReport> {
     let workspace = args.workspace.clone();
     if !workspace.exists() {
         anyhow::bail!(
@@ -752,7 +751,7 @@ async fn run_benchmark(args: BenchmarkArgs) -> anyhow::Result<()> {
 
     let scan_duration_ms = start.elapsed().as_millis() as u64;
 
-    let report = BenchmarkReport {
+    Ok(BenchmarkReport {
         workspace: workspace.to_string_lossy().to_string(),
         timestamp: chrono::Utc::now().to_rfc3339(),
         files_scanned,
@@ -763,41 +762,53 @@ async fn run_benchmark(args: BenchmarkArgs) -> anyhow::Result<()> {
         scan_duration_ms,
         success: true,
         error: None,
-    };
+    })
+}
 
-    match args.output_format {
+/// Format a benchmark report as human-readable text.
+pub fn format_benchmark_text(report: &BenchmarkReport) -> String {
+    let mut lines = Vec::new();
+    lines.push(format!("Benchmark report for {}", report.workspace));
+    lines.push(format!(
+        "Scanned {} files, found {} artifacts",
+        report.files_scanned, report.artifacts_found
+    ));
+    lines.push(format!("Scan duration: {}ms", report.scan_duration_ms));
+    lines.push(String::new());
+    if report.rung_counts.is_empty() {
+        lines.push("No artifacts found.".to_string());
+    } else {
+        lines.push("Verification rungs:".to_string());
+        let mut sorted_rungs: Vec<_> = report.rung_counts.iter().collect();
+        sorted_rungs.sort_by_key(|(k, _)| k.as_str());
+        for (rung, count) in sorted_rungs {
+            lines.push(format!("  {rung}: {count}"));
+        }
+        lines.push(String::new());
+        lines.push("Artifact kinds:".to_string());
+        let mut sorted_kinds: Vec<_> = report.kind_counts.iter().collect();
+        sorted_kinds.sort_by_key(|(k, _)| k.as_str());
+        for (kind, count) in sorted_kinds {
+            lines.push(format!("  {kind}: {count}"));
+        }
+    }
+    lines.join("\n")
+}
+
+/// Walk the workspace, classify every artifact file, measure timing, and print
+/// the report in the requested format.
+async fn run_benchmark(args: BenchmarkArgs) -> anyhow::Result<()> {
+    let output_format = args.output_format;
+    let report = generate_benchmark_report(args).await?;
+    match output_format {
         OutputFormat::Json => {
             let json = serde_json::to_string_pretty(&report)?;
             println!("{json}");
         }
         OutputFormat::Text => {
-            println!("Benchmark report for {}", workspace.to_string_lossy());
-            println!(
-                "Scanned {} files, found {} artifacts",
-                files_scanned, artifacts_found
-            );
-            println!("Scan duration: {}ms", scan_duration_ms);
-            println!();
-            if report.rung_counts.is_empty() {
-                println!("No artifacts found.");
-            } else {
-                println!("Verification rungs:");
-                let mut sorted_rungs: Vec<_> = report.rung_counts.iter().collect();
-                sorted_rungs.sort_by_key(|(k, _)| k.as_str());
-                for (rung, count) in sorted_rungs {
-                    println!("  {rung}: {count}");
-                }
-                println!();
-                println!("Artifact kinds:");
-                let mut sorted_kinds: Vec<_> = report.kind_counts.iter().collect();
-                sorted_kinds.sort_by_key(|(k, _)| k.as_str());
-                for (kind, count) in sorted_kinds {
-                    println!("  {kind}: {count}");
-                }
-            }
+            println!("{}", format_benchmark_text(&report));
         }
     }
-
     Ok(())
 }
 
@@ -1205,38 +1216,19 @@ mod tests {
     }
 
     // -----------------------------------------------------------------------
-    // run_benchmark integration tests (subprocess + tempdir)
+    // run_benchmark integration tests (library API — hermetic, no subprocess)
     // -----------------------------------------------------------------------
 
-    /// Helper: run the benchmark binary and capture its stdout as a string.
-    fn run_benchmark_binary(args: &[&str]) -> String {
-        let exe = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../target/debug/zylcode-core-cli");
-        let output = std::process::Command::new(exe)
-            .args(args)
-            .output()
-            .expect("failed to execute benchmark binary");
-        assert!(
-            output.status.success(),
-            "benchmark binary failed: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-        String::from_utf8(output.stdout).expect("stdout was not valid UTF-8")
-    }
-
-    #[test]
-    fn run_benchmark_empty_workspace_json() {
+    #[tokio::test]
+    async fn run_benchmark_empty_workspace_json() {
         let dir = tempfile::tempdir().unwrap();
         let ws = dir.path().join("workspace");
         std::fs::create_dir_all(&ws).unwrap();
-        let out = run_benchmark_binary(&[
-            "benchmark",
-            "--workspace",
-            ws.to_str().unwrap(),
-            "--format",
-            "json",
-        ]);
-        let report: BenchmarkReport = serde_json::from_str(&out).unwrap();
+        let report = generate_benchmark_report(BenchmarkArgs {
+            workspace: ws,
+            output_format: OutputFormat::Json,
+            verbose: false,
+        }).await.unwrap();
         assert!(report.success);
         assert_eq!(report.artifacts_found, 0);
         assert!(report.items.is_empty());
@@ -1245,20 +1237,17 @@ mod tests {
         assert!(report.error.is_none());
     }
 
-    #[test]
-    fn run_benchmark_with_rust_file() {
+    #[tokio::test]
+    async fn run_benchmark_with_rust_file() {
         let dir = tempfile::tempdir().unwrap();
         let ws = dir.path().join("workspace");
         std::fs::create_dir_all(&ws).unwrap();
         std::fs::write(ws.join("lib.rs"), "pub fn hello() -> i32 { 42 }").unwrap();
-        let out = run_benchmark_binary(&[
-            "benchmark",
-            "--workspace",
-            ws.to_str().unwrap(),
-            "--format",
-            "json",
-        ]);
-        let report: BenchmarkReport = serde_json::from_str(&out).unwrap();
+        let report = generate_benchmark_report(BenchmarkArgs {
+            workspace: ws,
+            output_format: OutputFormat::Json,
+            verbose: false,
+        }).await.unwrap();
         assert!(report.success);
         assert_eq!(report.artifacts_found, 1);
         assert_eq!(report.items.len(), 1);
@@ -1270,80 +1259,68 @@ mod tests {
         assert_eq!(report.rung_counts.get("Props"), Some(&1));
     }
 
-    #[test]
-    fn run_benchmark_with_markdown_file() {
+    #[tokio::test]
+    async fn run_benchmark_with_markdown_file() {
         let dir = tempfile::tempdir().unwrap();
         let ws = dir.path().join("workspace");
         std::fs::create_dir_all(&ws).unwrap();
         std::fs::write(ws.join("README.md"), "# Hello").unwrap();
-        let out = run_benchmark_binary(&[
-            "benchmark",
-            "--workspace",
-            ws.to_str().unwrap(),
-            "--format",
-            "json",
-        ]);
-        let report: BenchmarkReport = serde_json::from_str(&out).unwrap();
+        let report = generate_benchmark_report(BenchmarkArgs {
+            workspace: ws,
+            output_format: OutputFormat::Json,
+            verbose: false,
+        }).await.unwrap();
         assert!(report.success);
         assert_eq!(report.artifacts_found, 1);
         assert_eq!(report.items[0].kind, "FormalProofSpec");
         assert_eq!(report.items[0].rung, "Spec");
     }
 
-    #[test]
-    fn run_benchmark_with_json_file() {
+    #[tokio::test]
+    async fn run_benchmark_with_json_file() {
         let dir = tempfile::tempdir().unwrap();
         let ws = dir.path().join("workspace");
         std::fs::create_dir_all(&ws).unwrap();
         std::fs::write(ws.join("manifest.json"), r#"{"name":"test"}"#).unwrap();
-        let out = run_benchmark_binary(&[
-            "benchmark",
-            "--workspace",
-            ws.to_str().unwrap(),
-            "--format",
-            "json",
-        ]);
-        let report: BenchmarkReport = serde_json::from_str(&out).unwrap();
+        let report = generate_benchmark_report(BenchmarkArgs {
+            workspace: ws,
+            output_format: OutputFormat::Json,
+            verbose: false,
+        }).await.unwrap();
         assert!(report.success);
         assert_eq!(report.artifacts_found, 1);
         assert_eq!(report.items[0].kind, "PluginManifest");
         assert_eq!(report.items[0].rung, "Lint");
     }
 
-    #[test]
-    fn run_benchmark_with_tsx_file() {
+    #[tokio::test]
+    async fn run_benchmark_with_tsx_file() {
         let dir = tempfile::tempdir().unwrap();
         let ws = dir.path().join("workspace");
         std::fs::create_dir_all(&ws).unwrap();
         std::fs::write(ws.join("App.tsx"), "export default () => <div/>").unwrap();
-        let out = run_benchmark_binary(&[
-            "benchmark",
-            "--workspace",
-            ws.to_str().unwrap(),
-            "--format",
-            "json",
-        ]);
-        let report: BenchmarkReport = serde_json::from_str(&out).unwrap();
+        let report = generate_benchmark_report(BenchmarkArgs {
+            workspace: ws,
+            output_format: OutputFormat::Json,
+            verbose: false,
+        }).await.unwrap();
         assert!(report.success);
         assert_eq!(report.artifacts_found, 1);
         assert_eq!(report.items[0].kind, "UiComponent");
         assert_eq!(report.items[0].rung, "Lint");
     }
 
-    #[test]
-    fn run_benchmark_zylcode_source_detection() {
+    #[tokio::test]
+    async fn run_benchmark_zylcode_source_detection() {
         let dir = tempfile::tempdir().unwrap();
         let ws = dir.path().join("workspace");
         std::fs::create_dir_all(&ws).unwrap();
         std::fs::write(ws.join("zylcode.config.json"), r#"{"version":"1.0"}"#).unwrap();
-        let out = run_benchmark_binary(&[
-            "benchmark",
-            "--workspace",
-            ws.to_str().unwrap(),
-            "--format",
-            "json",
-        ]);
-        let report: BenchmarkReport = serde_json::from_str(&out).unwrap();
+        let report = generate_benchmark_report(BenchmarkArgs {
+            workspace: ws,
+            output_format: OutputFormat::Json,
+            verbose: false,
+        }).await.unwrap();
         assert!(report.success);
         assert_eq!(report.artifacts_found, 1);
         assert_eq!(report.items[0].source, "zylcode");
@@ -1351,53 +1328,39 @@ mod tests {
 
     #[test]
     fn run_benchmark_text_output_format() {
-        let dir = tempfile::tempdir().unwrap();
-        let ws = dir.path().join("workspace");
-        std::fs::create_dir_all(&ws).unwrap();
-        std::fs::write(ws.join("main.rs"), "fn main() {}").unwrap();
-        let out = run_benchmark_binary(&[
-            "benchmark",
-            "--workspace",
-            ws.to_str().unwrap(),
-            "--format",
-            "text",
-        ]);
+        let report = BenchmarkReport {
+            workspace: "/ws".to_string(),
+            timestamp: chrono::Utc::now().to_rfc3339(),
+            files_scanned: 1,
+            artifacts_found: 1,
+            rung_counts: [("Props".to_string(), 1)].into_iter().collect(),
+            kind_counts: [("RustModule".to_string(), 1)].into_iter().collect(),
+            items: vec![],
+            scan_duration_ms: 5,
+            success: true,
+            error: None,
+        };
+        let out = format_benchmark_text(&report);
         assert!(out.contains("Scanned"), "should contain 'Scanned'");
         assert!(out.contains("artifacts"), "should contain 'artifacts'");
-        assert!(
-            out.contains("Verification rungs"),
-            "should show rung breakdown"
-        );
+        assert!(out.contains("Verification rungs"), "should show rung breakdown");
         assert!(out.contains("Props"), "should list Props rung");
     }
 
-    #[test]
-    fn run_benchmark_nonexistent_workspace() {
-        let exe = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../target/debug/zylcode-core-cli");
-        let output = std::process::Command::new(exe)
-            .args([
-                "benchmark",
-                "--workspace",
-                "/nonexistent/path/xyz",
-                "--format",
-                "json",
-            ])
-            .output()
-            .expect("failed to execute");
-        assert!(
-            !output.status.success(),
-            "should fail for nonexistent workspace"
-        );
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        assert!(
-            stderr.contains("does not exist"),
-            "stderr should mention 'does not exist': {stderr}"
-        );
+    #[tokio::test]
+    async fn run_benchmark_nonexistent_workspace() {
+        let result = generate_benchmark_report(BenchmarkArgs {
+            workspace: std::path::PathBuf::from("/nonexistent/path/xyz"),
+            output_format: OutputFormat::Json,
+            verbose: false,
+        }).await;
+        assert!(result.is_err(), "should fail for nonexistent workspace");
+        let msg = result.unwrap_err().to_string();
+        assert!(msg.contains("does not exist"), "error should mention 'does not exist': {msg}");
     }
 
-    #[test]
-    fn run_benchmark_nested_directories() {
+    #[tokio::test]
+    async fn run_benchmark_nested_directories() {
         let dir = tempfile::tempdir().unwrap();
         let ws = dir.path().join("workspace");
         std::fs::create_dir_all(&ws).unwrap();
@@ -1411,35 +1374,29 @@ mod tests {
         std::fs::write(sub.join("utils.rs"), "pub fn helper() {}").unwrap();
         std::fs::write(sub.join("styles.json"), r#"{"bg":"blue"}"#).unwrap();
 
-        let out = run_benchmark_binary(&[
-            "benchmark",
-            "--workspace",
-            ws.to_str().unwrap(),
-            "--format",
-            "json",
-        ]);
-        let report: BenchmarkReport = serde_json::from_str(&out).unwrap();
+        let report = generate_benchmark_report(BenchmarkArgs {
+            workspace: ws,
+            output_format: OutputFormat::Json,
+            verbose: false,
+        }).await.unwrap();
         assert!(report.success);
         assert_eq!(report.artifacts_found, 3);
         assert_eq!(report.files_scanned, 3);
     }
 
-    #[test]
-    fn run_benchmark_skips_non_artifact_files() {
+    #[tokio::test]
+    async fn run_benchmark_skips_non_artifact_files() {
         let dir = tempfile::tempdir().unwrap();
         let ws = dir.path().join("workspace");
         std::fs::create_dir_all(&ws).unwrap();
         std::fs::write(ws.join("image.png"), b"\x89PNG").unwrap();
         std::fs::write(ws.join("data.bin"), b"\x00\x01\x02").unwrap();
 
-        let out = run_benchmark_binary(&[
-            "benchmark",
-            "--workspace",
-            ws.to_str().unwrap(),
-            "--format",
-            "json",
-        ]);
-        let report: BenchmarkReport = serde_json::from_str(&out).unwrap();
+        let report = generate_benchmark_report(BenchmarkArgs {
+            workspace: ws,
+            output_format: OutputFormat::Json,
+            verbose: false,
+        }).await.unwrap();
         assert!(report.success);
         assert!(report.artifacts_found < report.files_scanned);
     }
@@ -1497,11 +1454,10 @@ mod tests {
         }
     }
 
-    /// Direct-call diagnostic test: replicates run_benchmark()'s scan logic directly
-    /// using walkdir + validate_artifact_kind + infer_source, without subprocess or
-    /// stdout capture. If this passes but subprocess tests fail, the bug is in
-    /// run_benchmark_binary(). If this also fails with artifacts_found=0, the bug
-    /// is in the scan logic itself.
+    /// Direct-call diagnostic test: replicates the scan logic directly using
+    /// walkdir + validate_artifact_kind + infer_source, without any subprocess or
+    /// stdout capture. Retained as a low-level probe of the classification
+    /// primitives that `generate_benchmark_report()` composes.
     #[test]
     fn diagnostic_run_benchmark_direct_call() {
         use tempfile::tempdir;

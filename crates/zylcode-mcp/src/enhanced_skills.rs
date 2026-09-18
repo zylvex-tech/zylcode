@@ -5,7 +5,7 @@ use anyhow::Result;
 use chrono::Utc;
 use uuid::Uuid;
 
-use crate::skills_system::{SkillsSystem, SkillDefinition, ExecutionContext, ExecutionRecord, SkillExecution, MarketplaceInfo};
+use crate::skills_system::{SkillsSystem, SkillDefinition, SkillExecution, MarketplaceInfo};
 
 /// Enhanced Skills System with composition and marketplace
 pub struct EnhancedSkillsSystem {
@@ -17,8 +17,8 @@ pub struct EnhancedSkillsSystem {
 
 /// Composition engine for chaining skills
 pub struct CompositionEngine {
-    rules: RwLock<Vec<CompositionRule>>,
-    templates: RwLock<HashMap<String, CompositionTemplate>>,
+    _rules: RwLock<Vec<CompositionRule>>,
+    _templates: RwLock<HashMap<String, CompositionTemplate>>,
 }
 
 /// Composition rule
@@ -114,7 +114,7 @@ pub struct Review {
 /// Revenue tracker
 pub struct RevenueTracker {
     transactions: RwLock<Vec<Transaction>>,
-    payouts: RwLock<Vec<Payout>>,
+    _payouts: RwLock<Vec<Payout>>,
 }
 
 /// Transaction
@@ -366,12 +366,18 @@ impl EnhancedSkillsSystem {
     }
 }
 
+impl Default for CompositionEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CompositionEngine {
     /// Create a new composition engine
     pub fn new() -> Self {
         Self {
-            rules: RwLock::new(Vec::new()),
-            templates: RwLock::new(HashMap::new()),
+            _rules: RwLock::new(Vec::new()),
+            _templates: RwLock::new(HashMap::new()),
         }
     }
 
@@ -396,7 +402,7 @@ impl CompositionEngine {
     pub async fn execute_composition(&self, composition: ComposedSkill) -> Result<CompositionResult> {
         let start = std::time::Instant::now();
         let mut skills_executed = Vec::new();
-        let mut errors = Vec::new();
+        let errors = Vec::new();
         
         for skill_id in &composition.execution_order {
             // Execute skill (simulated)
@@ -416,6 +422,11 @@ impl CompositionEngine {
     }
 }
 
+impl Default for SkillsMarketplace {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 impl SkillsMarketplace {
     /// Create a new skills marketplace
     pub fn new() -> Self {
@@ -470,12 +481,17 @@ impl SkillsMarketplace {
     }
 }
 
+impl Default for RevenueTracker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 impl RevenueTracker {
     /// Create a new revenue tracker
     pub fn new() -> Self {
         Self {
             transactions: RwLock::new(Vec::new()),
-            payouts: RwLock::new(Vec::new()),
+            _payouts: RwLock::new(Vec::new()),
         }
     }
 
@@ -505,6 +521,12 @@ pub struct RevenueReport {
     pub total_revenue: f64,
     pub total_transactions: usize,
     pub currency: String,
+}
+
+impl Default for SkillsAnalytics {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl SkillsAnalytics {
