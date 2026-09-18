@@ -23,8 +23,15 @@ There were **five** parallel versions of the project. Measured this session:
 **As of this session, all five are reconciled into one:** `main` **is** the source of
 truth, locally and on the remote. It contains the dirty tree (committed in coherent
 groups), the remediation chain (merged; chain wins the 22 overlapping files), the
-recovery commit (via the chain), and every doc commit. Final state:
-`origin/main = fbbb4fd`, verified by `git ls-remote` (LAW 6).
+recovery commit (via the chain), and every doc commit.
+
+`origin/main` is the authoritative remote source of truth. The integration tree first
+reached the remote at `6e93c43d` (Gate-0 squash); subsequent governance/documentation
+corrections followed. The current authoritative SHA is whatever
+`git ls-remote origin refs/heads/main` returns — determine it at read time. A document
+committed at SHA X cannot reliably name "the final repository SHA" inside its own
+content, because naming it creates another commit; this document therefore records
+**events** (first push, verifications) and never a current-state SHA.
 
 Provenance is preserved: the pre-merge dirty-tree variants remain reachable in the
 granular history (see §4, "Delivery form and provenance"); nothing was discarded, only
@@ -100,8 +107,18 @@ reproduction on a fresh clone is the remaining step to R4 (P1.1 below).
 
 ### P1 — Make main GREEN in the governance sense (highest value now)
 
-1. **Fresh-clone reproduction** (R4 for Gate-0): clone → `cargo check/test/clippy` →
-   attach raw output to `TOOL_CATALOGUE_TRUTH_TABLE.md` §9.
+1. **Fresh-clone reproduction** (R4 for Gate-0) — **EXECUTED 2026-09-18, PASS** — see
+   `P1_1_FRESH_CLONE_REPRODUCTION_REPORT.md`: on a brand-new clone of the remote HEAD,
+   with ambient provider credentials present, the full battery reproduced (417/0
+   tests, clippy `-D warnings` clean, guard 11/0, frozen frontend install + build
+   green, all-features check green), and the Windows scanner exclusion is proven by
+   planted trap files against 16,686 contaminating files in `target/` +
+   `node_modules/` (330 entries scanned / 284 indexed / 1,545 symbols / 462.99 ms;
+   0 trap hits). Recorded discrepancies: stale doc SHA (D1, fixed by this edit),
+   stale ci.yml comment (D2), Recall@10 run-to-run variance 0.58→0.43 (D3, future
+   fix: deterministic query ordering), corpus delta 344→330 (D4), CI
+   BLOCKED_EXTERNAL (D5). **Rung promotion to R4 is the independent auditor's
+   decision, not the builder's.**
 2. **Phase 2A re-acceptance audit** (agent H role): the 10-item remediation order +
    G3 gate, now testable against a fixed, green base. Until accepted, 2A stays
    RE-OPENED.
@@ -158,9 +175,10 @@ succeeded.
 
 - **`origin/main` = `6e93c43d`** at first success (verified via `ls-remote`): one
   squash commit on top of the previous remote base `1338d0b`, whose tree is exactly
-  the verified integrated tree. Local `main` was reset onto this lineage so local and
-  remote share history; the doc-correcting commit lifted it to `fbbb4fd`, also
-  push-verified.
+  the  verified integrated tree. Local `main` was reset onto this lineage so local and
+  remote share history; subsequent documentation corrections advanced it further —
+  each push was verified by `ls-remote` at the time it happened, and none is
+  hard-coded here as a current-state SHA.
 - **Granular history preserved locally** at `local/granular-integration` (44 commits,
   tip `e540ad8`). It cannot be pushed as-is: its *history* still contains the old
   fixture strings (push protection evaluates every pushed commit — falsified: the
