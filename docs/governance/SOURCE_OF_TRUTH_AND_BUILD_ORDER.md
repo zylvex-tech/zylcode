@@ -70,11 +70,15 @@ reproduction on a fresh clone is the remaining step to R4.
 ### P0.5 — First owner actions on the remote
 
 1. **Apply the withheld ci.yml comment fix** (2 lines: guard rationale figure
-   `112` → `27`) from `local/granular-integration` — needs a token with
-   `workflow` scope.
-2. **Push the granular history** (41 commits, `local/granular-integration`) or
-   tag the squash commit for provenance.
-3. **Rotate/inject a `workflow`-scoped token** so future CI changes are pushable.
+   `112` → `27`) — comment-only, no behaviour; take it from
+   `local/granular-integration`.
+2. **Push or archive the granular history** (`local/granular-integration`, tip
+   `e540ad8`) — requires rewriting the old router.rs fixture strings out of its
+   history (push protection evaluates every pushed commit) or using the
+   per-secret unblock URLs from the rejection messages.
+3. **Observe CI on GitHub** — the stored credential is valid for the API (the
+   earlier "invalid GITHUB_TOKEN" finding applied to a different env token);
+   read the run triggered by `6e93c43d` and record the verdict here.
 
 ### P1 — Make main GREEN in the governance sense (highest value now)
 
@@ -88,35 +92,54 @@ reproduction on a fresh clone is the remaining step to R4.
 
 ---
 
-## 5. Push record (2026-09-18)
+## 5. Push record (2026-09-18) — root cause falsified twice, then found
 
-The integrated tree could not be pushed as granular history: the credential in
-use is an OAuth token **without the `workflow` scope**, and GitHub declines any
-push containing commits whose diff touches `.github/workflows/` (falsified:
-a branch whose commits never touch workflows pushed fine; a branch containing
-the merge — whose diff includes a 2-line ci.yml *comment* correction — was
-rejected; a revert commit also touching ci.yml was likewise rejected).
+The integrated tree could not be pushed as granular history. Two hypotheses were
+tested and rejected before the cause was identified:
 
-Resolution, content-preserving:
+1. ~~Branch protection on `main`~~ — **falsified**: a brand-new branch with the
+   same commits was rejected too.
+2. ~~Missing `workflow` scope blocking the ci.yml delta~~ — **falsified**: a
+   squash commit whose diff touches no workflow file was still rejected.
 
-- The verified tree was pushed to `main` as **one squash commit** on top of the
-  remote base `1338d0b`. Its diff touches no workflow file, so it passes the
-  rule. The granular history (41 commits) is preserved locally on
-  `local/granular-integration` and can be pushed later by any credential with
-  the `workflow` scope.
+**Actual cause: GitHub Push Protection.** The full rejection message (initially
+hidden by output truncation) names an "OpenRouter API Key" finding at
+`crates/zylcode-core/src/router.rs:1217` — the hermeticity test's own fixture
+(`sk-or-v1-` + 64 hex digits), written by the remediation chain to prove the
+router is immune to ambient key values. It is not a real credential, but the
+scanner pattern-matches the shape regardless.
+
+**Root fix, not bypass:** the fixture was reshaped to
+`placeholder-credential-…` — still non-empty, constant, credential-like, and
+distinct, but with no provider prefix and no hex body, so no repository string
+can match scanner patterns. The test's semantics are unchanged and the router
+lib suite still passes (29/0). Push then succeeded.
+
+### Delivery form and provenance
+
+- **`origin/main` = `6e93c43d`** (verified via `ls-remote`): one squash commit
+  on top of the previous remote base `1338d0b`, whose tree is exactly the
+  verified integrated tree. Local `main` was reset to this lineage so local and
+  remote share history.
+- **Granular history preserved locally** at `local/granular-integration`
+  (44 commits, tip `e540ad8`). It cannot be pushed as-is: its *history* still
+  contains the old fixture strings (push protection evaluates every pushed
+  commit — falsified: the archive push was rejected naming router.rs lines
+  1213/1217/1223). Pushing it requires a history rewrite of the fixture or the
+  per-secret unblock URL.
 - **Withheld from the remote:** the chain's 2-line ci.yml comment correction
-  (`112 tool IDs` → `27 tool IDs` in the guard rationale). It is the first P1
-  owner action below; any maintainer with a scoped token can apply it from
-  `local/granular-integration`.
-- Stale CI note: the remote's ci.yml still carries the `112` figure in a
-  comment only — no behaviour. The retracted-claims guard does not scan YAML
-  comments for that pattern.
+  (`112 tool IDs` → `27 tool IDs` in the guard rationale). Not because workflow
+  pushes are impossible — that hypothesis was never re-tested after the true
+  cause was found — but because the local tree carries the old ci.yml. Apply
+  from `local/granular-integration` with a scoped token; it is a 2-line comment
+  edit with no behavioural effect.
 
 ### P1 — Make main GREEN in the governance sense (highest value now)
 
 1. **Fresh-clone reproduction** (R4 for Gate-0): clone → `cargo check/test/clippy` →
    attach raw output to `TOOL_CATALOGUE_TRUTH_TABLE.md` §9.
-2. **Observe CI on GitHub** (needs a valid token — still NOT OBSERVABLE, LAW 7).
+2. **Observe CI on GitHub** — the stored credential reads the API; check the run
+   for `6e93c43d` and record the verdict (previously NOT OBSERVABLE, LAW 7).
 3. **Phase 2A re-acceptance audit** (agent H role): the 10-item remediation order +
    G3 gate, now testable against a fixed base. Until accepted, 2A stays RE-OPENED.
 4. **R3 commissioning slice** per `R3_COMMISSIONING_PLAN.md` — the 7 read-only tools
