@@ -128,7 +128,16 @@
       "status_before_audit": "GREEN",
       "rung": "R2",
       "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
-      "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6. METRIC DEFECT: 'indexes 14,973 files' counted target/ build output. Measured: 15,064 indexed of which 14,900 are under target/ (98.9%). The repository is 254 files (git ls-files = 193). Root cause: should_exclude() matches forward-slash patterns against Windows backslash paths, so the exclusion list is dead code on the primary target platform. Also: benchmark asserts only file_count() > 50, and the reported scan time (12.7s) does not reproduce (276.1s measured, assertion FAILS)."
+      "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6. METRIC DEFECT: 'indexes 14,973 files' counted target/ build output. Measured: 15,064 indexed of which 14,900 are under target/ (98.9%). The repository is 254 files (git ls-files = 193). Root cause: should_exclude() matches forward-slash patterns against Windows backslash paths, so the exclusion list is dead code on the primary target platform. Also: benchmark asserts only file_count() > 50, and the reported scan time (12.7s) does not reproduce (276.1s measured, assertion FAILS).",
+      "p12_rebaseline": {
+        "date": "2026-09-19",
+        "rung": "R2",
+        "status_now": "DISPUTED",
+        "evidence": "Windows exclusion fixed and asserted by planted trap files in the committed benchmark; 286 files / 1552 symbols indexed on HEAD (excludes target/, node_modules/, .git, worktrees)",
+        "note": "Windows path-normalization defect fixed (root cause of the audit's 98.9% build-output finding). Still R2: no product surface of its own; consumed via repo-intelligence retrieval.",
+        "dispute_history_preserved": true,
+        "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
+      }
     },
     "manifest_intelligence": {
       "status": "DISPUTED",
@@ -137,7 +146,16 @@
       "status_before_audit": "GREEN",
       "rung": "R2",
       "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
-      "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6."
+      "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6.",
+      "p12_rebaseline": {
+        "date": "2026-09-19",
+        "rung": "R2",
+        "status_now": "DISPUTED",
+        "evidence": "Package.root relativized (absolute-path defect fixed); npm/cargo dedup now by manifest so the desktop frontend package is no longer swallowed; 6 packages / 18 entry points discovered on HEAD",
+        "note": "Still R2 (library); reachable through repo-context CLI.",
+        "dispute_history_preserved": true,
+        "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
+      }
     },
     "rust_symbol_index": {
       "status": "DISPUTED",
@@ -146,7 +164,16 @@
       "status_before_audit": "GREEN",
       "rung": "R2",
       "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
-      "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6."
+      "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6.",
+      "p12_rebaseline": {
+        "date": "2026-09-19",
+        "rung": "R2",
+        "status_now": "DISPUTED",
+        "evidence": "1552 symbols extracted on HEAD; feeds deterministic retrieval (P@10=0.48, R@10=1.00 across 20 queries, 10/10 identical runs)",
+        "note": "Still R2 (library); reachable through repo-context CLI.",
+        "dispute_history_preserved": true,
+        "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
+      }
     },
     "typescript_symbol_index": {
       "status": "DISPUTED",
@@ -155,7 +182,16 @@
       "status_before_audit": "GREEN",
       "rung": "R2",
       "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
-      "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6."
+      "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6.",
+      "p12_rebaseline": {
+        "date": "2026-09-19",
+        "rung": "R2",
+        "status_now": "DISPUTED",
+        "evidence": "Unchanged extraction; exercised through the same deterministic benchmark corpus",
+        "note": "Still R2 (library).",
+        "dispute_history_preserved": true,
+        "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
+      }
     },
     "package_dependency_graph": {
       "status": "DISPUTED",
@@ -164,7 +200,16 @@
       "status_before_audit": "GREEN",
       "rung": "R2",
       "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
-      "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6."
+      "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6.",
+      "p12_rebaseline": {
+        "date": "2026-09-19",
+        "rung": "R2",
+        "status_now": "DISPUTED",
+        "evidence": "dependents_of('zylcode-core') returns exactly [zylcode-cli, zylcode-desktop] at runtime (Q6: P@10=1.00 R@10=1.00); graph signals wired into retrieval with intent gating",
+        "note": "Still R2 (library); reachable through repo-context CLI.",
+        "dispute_history_preserved": true,
+        "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
+      }
     },
     "git_change_graph": {
       "status": "DISPUTED",
@@ -173,7 +218,16 @@
       "status_before_audit": "GREEN",
       "rung": "R2",
       "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
-      "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6."
+      "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6.",
+      "p12_rebaseline": {
+        "date": "2026-09-19",
+        "rung": "R2",
+        "status_now": "DISPUTED",
+        "evidence": "Now also feeds co-change mining (files changed together, <=12-file commits, Source/Test roles) — Q8's agent.rs/ledger.rs surfaced via coupling that exists at commit 6f564ac",
+        "note": "Still R2 (library); reachable through repo-context CLI.",
+        "dispute_history_preserved": true,
+        "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
+      }
     },
     "architecture_fingerprint": {
       "status": "DISPUTED",
@@ -182,7 +236,16 @@
       "status_before_audit": "GREEN",
       "rung": "R2",
       "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
-      "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6."
+      "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6.",
+      "p12_rebaseline": {
+        "date": "2026-09-19",
+        "rung": "R2",
+        "status_now": "DISPUTED",
+        "evidence": "Generated deterministically in the canonical build_repo_query pipeline; entry points relativized",
+        "note": "Still R2 (library).",
+        "dispute_history_preserved": true,
+        "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
+      }
     },
     "incremental_indexing": {
       "status": "DISPUTED",
@@ -191,7 +254,16 @@
       "status_before_audit": "PARTIAL",
       "rung": "R2",
       "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
-      "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6."
+      "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6.",
+      "p12_rebaseline": {
+        "date": "2026-09-19",
+        "rung": "R2",
+        "status_now": "DISPUTED",
+        "evidence": "Unchanged; per-invocation indexing (~10-12s) remains the limitation, recorded in the P1.2 evidence package",
+        "note": "Still PARTIAL in substance; no persisted cache yet.",
+        "dispute_history_preserved": true,
+        "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
+      }
     },
     "repository_query_api": {
       "status": "DISPUTED",
@@ -200,7 +272,16 @@
       "status_before_audit": "GREEN",
       "rung": "R2",
       "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
-      "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6."
+      "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6.",
+      "p12_rebaseline": {
+        "date": "2026-09-19",
+        "rung": "R3",
+        "status_now": "GREEN",
+        "evidence": "Product surface zylcode repo-context \"<task>\" committed (crates/zylcode-cli); raw invocation transcript committed at docs/governance/evidence/repo_context_transcript.txt; single canonical pipeline build_repo_query shared by CLI + AgentLoop + benchmark",
+        "note": "The audit's 'no product entry point' finding is remediated: named CLI surface + committed transcript = R3 per ZYLCODE_PROOF_GRAPH 2.1. Builder evidence; acceptance is the auditor's.",
+        "dispute_history_preserved": true,
+        "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
+      }
     },
     "context_retrieval": {
       "status": "DISPUTED",
@@ -209,7 +290,16 @@
       "status_before_audit": "GREEN",
       "rung": "R2",
       "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
-      "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6."
+      "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6.",
+      "p12_rebaseline": {
+        "date": "2026-09-19",
+        "rung": "R3",
+        "status_now": "GREEN",
+        "evidence": "20-query known-answer benchmark: P@10=0.48, R@10=1.00; deterministic across 10 consecutive cross-process runs (1 unique SHA-256 of full query dumps); root causes of P1.1 variance fixed (HashMap iteration, stable-sort ties, absolute-path inputs)",
+        "note": "Product-reachable via repo-context CLI and AgentLoop seam (ContextBuilder integration test committed). Builder evidence; acceptance is the auditor's.",
+        "dispute_history_preserved": true,
+        "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
+      }
     },
     "repository_benchmark": {
       "status": "DISPUTED",
@@ -218,19 +308,47 @@
       "status_before_audit": "GREEN",
       "rung": "R2",
       "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
-      "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6."
+      "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6.",
+      "p12_rebaseline": {
+        "date": "2026-09-19",
+        "rung": "R2",
+        "status_now": "DISPUTED",
+        "evidence": "Expanded 10 -> 20 known-answer queries (all fact-verified); thresholds raised to P@10>=0.30, R@10>=0.80 (observed 0.48/1.00); in-process determinism assertion added; thresholds were strengthened, never loosened",
+        "note": "R2: a committed test harness; determinism proof recorded in evidence section 4.",
+        "dispute_history_preserved": true,
+        "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
+      }
+    },
+    "agent_context_gathering": {
+      "status": "GREEN",
+      "rung": "R3",
+      "evidence": "ContextBuilder::build ranks files through the real intelligence pipeline (same as CLI/benchmark); committed discriminating test context_builder_uses_intelligence_ranking (agent.rs reachable only via co-change evidence)",
+      "details": "AgentLoop::gather_context consumes the ranked files; legacy keyword heuristic retained only as fallback",
+      "limitations": "Live-model end-to-end agent turn not captured in P1.2; per-invocation re-index ~10s",
+      "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md section 10"
+    },
+    "tool_system_executable": {
+      "status": "PARTIAL",
+      "rung": "R2",
+      "evidence": "27 catalogued definitions / 12 real executors; R3_COMMISSIONING_PLAN slice not yet executed",
+      "details": "Truth-table baseline 0 REAL / 27 SIMULATED / 27 UNREACHABLE stands until the read/write commissioning slice produces all eleven evidence fields",
+      "evidence_doc": "docs/governance/TOOL_CATALOGUE_TRUTH_TABLE.md"
+    },
+    "benchmark_determinism": {
+      "status": "GREEN",
+      "rung": "R3",
+      "evidence": "10 consecutive cross-process runs byte-identical (1 unique SHA-256 of full stable output incl. per-query dumps)",
+      "details": "Per-HEAD determinism contract: git-history inputs change legitimately with HEAD",
+      "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md section 4"
     }
   },
   "summary": {
-    "total": 34,
-    "green": 20,
-    "disputed": 12,
-    "external_blocker": 1,
-    "functional": 0,
-    "partial": 1,
-    "stub": 0,
-    "absent": 0,
-    "note": "total is now computed from the registry (was hand-written and wrong). 'green' counts only non-disputed GREEN entries; disputed entries are excluded because their GREEN status is not accepted. Disputed entries previously reported as GREEN: 11."
+    "total": 37,
+    "GREEN": 22,
+    "EXTERNAL_BLOCKER": 1,
+    "PARTIAL": 2,
+    "DISPUTED": 12,
+    "note": "Counts computed from entry statuses. p12_rebaseline blocks added 2026-09-19 carry builder evidence for the disputed Phase 2A entries without erasing dispute history; GREEN on repository_query_api/context_retrieval/agent_context_gathering/benchmark_determinism is builder-claimed R3 evidence pending independent acceptance."
   },
   "audit": {
     "status": "UNDER CORRECTION",
@@ -243,5 +361,29 @@
       "summary.total claimed 35; the registry contains 34 entries",
       "Phase 2A completion report claimed 12 new capabilities; 11 are present"
     ]
+  },
+  "p12_update": {
+    "date": "2026-09-19",
+    "by": "P1.2 Phase 2A re-acceptance preparation (builder; not acceptance authority)",
+    "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md",
+    "changed_entries": [
+      "architecture_fingerprint",
+      "context_retrieval",
+      "git_change_graph",
+      "incremental_indexing",
+      "manifest_intelligence",
+      "package_dependency_graph",
+      "repository_benchmark",
+      "repository_query_api",
+      "repository_scanner",
+      "rust_symbol_index",
+      "typescript_symbol_index"
+    ],
+    "new_entries": [
+      "agent_context_gathering",
+      "benchmark_determinism",
+      "tool_system_executable"
+    ],
+    "rule": "No dispute field erased; no R4 claimed anywhere; Phase 2A remains RE-OPENED."
   }
 }

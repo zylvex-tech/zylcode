@@ -81,7 +81,8 @@ jobs:
         # Enforces that claims already measured, found unsupported, and removed
         # do not silently re-enter the repository. See README_INDEX.md §7.
         # Canonical case: "156 tools" was retracted in Phase 1C and reappeared;
-        # the measured figure is 112 tool IDs across 16 categories.
+        # the measured figure is 27 tool IDs (EnhancedMcpBridge::all_definitions,
+        # verified 2026-09-19 against the committed catalogue source).
         # Adding a rule requires both a retraction reference and a measurement.
 
       - name: Frontend typecheck + build (zylcode-desktop)

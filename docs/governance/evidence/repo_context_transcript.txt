@@ -1,0 +1,41 @@
+task: Which files would likely need inspection to modify crash recovery?
+indexed: 286 files, 1550 symbols, 6 packages, 18 entry points (10461 ms)
+top results:
+   2.31 [file] crates/zylcode-core/tests/e2e_crash_recovery.rs :: path token 'crash'; path token 'recovery'; defines 2 symbol(s) matching task terms; changes together with 'crates/zylcode-core/tests/crash_recovery.rs' in git history
+   2.14 [file] crates/zylcode-core/tests/crash_recovery.rs :: path token 'crash'; path token 'recovery'; defines 1 symbol(s) matching task terms; changes together with 'crates/zylcode-core/tests/e2e_crash_recovery.rs' in git history
+   1.87 [symbol] crates::zylcode-core::tests::e2e_crash_recovery::test_e2e_crash_recovery :: symbol 'test_e2e_crash_recovery' contains 'crash'; symbol 'test_e2e_crash_recovery' contains 'recovery'; path token 'crash'; path token 'recovery'
+   1.19 [symbol] crates::zylcode-core::tests::crash_recovery::test_crash_window_1_pre_execution :: symbol 'test_crash_window_1_pre_execution' contains 'crash'; path token 'crash'; path token 'recovery'
+   1.19 [symbol] crates::zylcode-core::tests::crash_recovery::test_crash_window_2_post_side_effect :: symbol 'test_crash_window_2_post_side_effect' contains 'crash'; path token 'crash'; path token 'recovery'
+   1.19 [symbol] crates::zylcode-core::tests::crash_recovery::test_crash_window_3_post_evidence :: symbol 'test_crash_window_3_post_evidence' contains 'crash'; path token 'crash'; path token 'recovery'
+   1.11 [symbol] crates::zylcode-core::tests::e2e_crash_recovery::test_checkpoint_recovery_continuation :: symbol 'test_checkpoint_recovery_continuation' contains 'recovery'; path token 'crash'; path token 'recovery'
+   0.97 [file] crates/zylcode-core/src/agent.rs :: defines 1 symbol(s) matching task terms; changes together with 'crates/zylcode-core/tests/crash_recovery.rs' in git history
+   0.80 [file] crates/zylcode-core/src/ledger.rs :: changes together with 'crates/zylcode-core/tests/crash_recovery.rs' in git history
+   0.80 [file] crates/zylcode-core/src/memory_ledger.rs :: changes together with 'crates/zylcode-core/tests/crash_recovery.rs' in git history
+---
+task: What is the desktop application's frontend entry point?
+indexed: 286 files, 1550 symbols, 6 packages, 18 entry points (11031 ms)
+top results:
+   2.30 [entry_point] apps/zylcode-desktop/index.html :: discovered entry point; path contains 'desktop'
+   2.30 [entry_point] apps/zylcode-desktop/src-tauri/build.rs :: discovered entry point; path contains 'desktop'
+   2.30 [entry_point] apps/zylcode-desktop/src-tauri/src/main.rs :: discovered entry point; path contains 'desktop'
+   2.30 [entry_point] apps/zylcode-desktop/src/App.tsx :: discovered entry point; path contains 'desktop'
+   2.30 [entry_point] apps/zylcode-desktop/src/main.tsx :: discovered entry point; path contains 'desktop'
+   2.00 [entry_point] crates/zylcode-cli/src/main.rs :: discovered entry point
+   2.00 [entry_point] crates/zylcode-core/src/bin/zylcode-core-cli/main.rs :: discovered entry point
+   2.00 [entry_point] crates/zylcode-core/tests/agent_loop_e2e.rs :: discovered entry point
+   2.00 [entry_point] crates/zylcode-core/tests/commissioning_test.rs :: discovered entry point
+   2.00 [entry_point] crates/zylcode-core/tests/crash_recovery.rs :: discovered entry point
+---
+task: How does the agent loop persist its ledger?
+indexed: 286 files, 1550 symbols, 6 packages, 18 entry points (12094 ms)
+top results:
+   2.28 [file] crates/zylcode-core/tests/agent_loop_e2e.rs :: path token 'agent'; path token 'loop'; defines 2 symbol(s) matching task terms; recently changed; changes together with 'crates/zylcode-core/src/agent.rs' in git history
+   1.89 [file] crates/zylcode-core/src/memory_ledger.rs :: path token 'ledger'; defines 3 symbol(s) matching task terms; changes together with 'crates/zylcode-core/src/agent.rs' in git history
+   1.89 [file] crates/zylcode-core/src/sqlite_ledger.rs :: path token 'ledger'; defines 3 symbol(s) matching task terms; changes together with 'crates/zylcode-core/src/agent.rs' in git history
+   1.85 [file] crates/zylcode-core/src/agent.rs :: path token 'agent'; defines 3 symbol(s) matching task terms; changes together with 'crates/zylcode-core/src/ledger.rs' in git history
+   1.82 [symbol] crates::zylcode-core::tests::agent_loop_e2e::test_agent_loop_end_to_end :: symbol 'test_agent_loop_end_to_end' contains 'agent'; symbol 'test_agent_loop_end_to_end' contains 'loop'; path token 'agent'; path token 'loop'; recently changed file
+   1.82 [symbol] crates::zylcode-core::tests::agent_loop_e2e::test_agent_loop_with_tool_execution :: symbol 'test_agent_loop_with_tool_execution' contains 'agent'; symbol 'test_agent_loop_with_tool_execution' contains 'loop'; path token 'agent'; path token 'loop'; recently changed file
+   1.68 [file] crates/zylcode-core/src/ledger.rs :: path token 'ledger'; defines 2 symbol(s) matching task terms; changes together with 'crates/zylcode-core/src/agent.rs' in git history
+   1.55 [symbol] crates::zylcode-core::src::agent::AgentLoop :: symbol 'AgentLoop' contains 'agent'; symbol 'AgentLoop' contains 'loop'; path token 'agent'
+   1.53 [symbol] crates::zylcode-core::src::ledger::LedgerStore :: symbol 'LedgerStore' contains 'ledger'; symbol 'LedgerStore' contains 'store'; path token 'ledger'
+   1.53 [symbol] crates::zylcode-core::src::memory_ledger::LedgerStore :: symbol 'LedgerStore' contains 'ledger'; symbol 'LedgerStore' contains 'store'; path token 'ledger'

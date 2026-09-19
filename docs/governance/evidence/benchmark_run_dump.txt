@@ -1,0 +1,268 @@
+Files indexed: 286
+Packages: 6
+QUERY: Which crate contains AgentLoop?
+    crates::zylcode-core::src::agent::AgentLoop | 3.276
+    crates::zylcode-core::src::intelligence::symbols::AgentLoop | 3.088
+    crates/zylcode-core/src/agent.rs | 2.686
+    crates/zylcode-core/tests/agent_loop_e2e.rs | 2.284
+    crates::zylcode-core::tests::agent_loop_e2e::test_agent_loop_end_to_end | 1.825
+    crates::zylcode-core::tests::agent_loop_e2e::test_agent_loop_with_tool_execution | 1.825
+    crates/zylcode-core/src/intelligence/symbols.rs | 1.384
+    crates::zylcode-core::tests::agent_loop_e2e::test_observation_loop | 1.198
+    crates::zylcode-core::tests::agent_loop_e2e::test_repair_loop | 1.198
+    crates::zylcode-core::src::agent_protocol::AgentContext | 0.865
+QUERY: Where is LedgerStore defined?
+    crates::zylcode-core::src::ledger::LedgerStore | 2.975
+    crates::zylcode-core::src::memory_ledger::LedgerStore | 2.975
+    crates::zylcode-core::src::sqlite_ledger::LedgerStore | 2.975
+    crates::zylcode-core::src::intelligence::symbols::LedgerStore | 2.768
+    crates/zylcode-core/src/ledger.rs | 2.556
+    crates/zylcode-core/src/memory_ledger.rs | 2.556
+    crates/zylcode-core/src/sqlite_ledger.rs | 2.556
+    crates::zylcode-core::src::memory_ledger::MemoryLedgerStore | 2.292
+    crates::zylcode-core::src::sqlite_ledger::SqliteLedgerStore | 2.292
+    crates/zylcode-core/src/intelligence/symbols.rs | 1.204
+QUERY: Which implementations of LedgerStore exist?
+    crates::zylcode-core::src::ledger::LedgerStore | 2.975
+    crates::zylcode-core::src::memory_ledger::LedgerStore | 2.975
+    crates::zylcode-core::src::sqlite_ledger::LedgerStore | 2.975
+    crates::zylcode-core::src::intelligence::symbols::LedgerStore | 2.768
+    crates/zylcode-core/src/ledger.rs | 2.556
+    crates/zylcode-core/src/memory_ledger.rs | 2.556
+    crates/zylcode-core/src/sqlite_ledger.rs | 2.556
+    crates::zylcode-core::src::memory_ledger::MemoryLedgerStore | 2.292
+    crates::zylcode-core::src::sqlite_ledger::SqliteLedgerStore | 2.292
+    crates/zylcode-core/src/intelligence/symbols.rs | 1.204
+QUERY: Which code persists SessionCheckpoint?
+    crates::zylcode-core::src::ledger::SessionCheckpoint | 3.379
+    crates/zylcode-core/src/ledger.rs | 1.679
+    crates::zylcode-core::src::agent::AgentLoop::save_checkpoint | 1.533
+    crates::zylcode-core::src::memory_ledger::LedgerStore::save_checkpoint | 1.533
+    crates::zylcode-core::src::sqlite_ledger::LedgerStore::save_checkpoint | 1.533
+    crates::zylcode-core::src::agent::AgentLoop::session | 1.442
+    crates/zylcode-core/src/agent.rs | 1.256
+    crates::zylcode-core::src::router::TokenMetrics::record_saved | 0.863
+    crates::zylcode-core::src::intelligence::store::RepoStore | 0.827
+    crates::zylcode-core::src::intelligence::store::RepoStore::store_architecture | 0.827
+QUERY: Which tests exercise crash recovery?
+    crates/zylcode-core/tests/e2e_crash_recovery.rs | 3.460
+    crates/zylcode-core/tests/crash_recovery.rs | 3.291
+    crates::zylcode-core::tests::e2e_crash_recovery::test_e2e_crash_recovery | 1.999
+    crates/zylcode-core/src/agent.rs | 1.475
+    crates::zylcode-core::tests::crash_recovery::test_crash_window_1_pre_execution | 1.322
+    crates::zylcode-core::tests::crash_recovery::test_crash_window_2_post_side_effect | 1.322
+    crates::zylcode-core::tests::crash_recovery::test_crash_window_3_post_evidence | 1.322
+    crates::zylcode-core::tests::e2e_crash_recovery::test_checkpoint_recovery_continuation | 1.240
+    crates/zylcode-core/tests/agent_loop_e2e.rs | 1.202
+    crates/zylcode-core/tests/commissioning_test.rs | 1.202
+QUERY: What depends on zylcode-core?
+    FULL apps/zylcode-desktop/src-tauri/src/main.rs | 1.550 | recently changed; package 'zylcode-desktop' depends on a package named in the task
+    FULL apps/zylcode-desktop/src-tauri/tauri.conf.json | 1.550 | recently changed; package 'zylcode-desktop' depends on a package named in the task
+    FULL apps/zylcode-desktop/src/App.tsx | 1.550 | recently changed; package 'zylcode-desktop' depends on a package named in the task
+    FULL crates/zylcode-cli/src/main.rs | 1.550 | recently changed; package 'zylcode-cli' depends on a package named in the task
+    FULL apps/zylcode-desktop/index.html | 1.500 | package 'zylcode-desktop' depends on a package named in the task
+    FULL apps/zylcode-desktop/package.json | 1.500 | package 'zylcode-desktop' depends on a package named in the task
+    FULL apps/zylcode-desktop/postcss.config.js | 1.500 | package 'zylcode-desktop' depends on a package named in the task
+    FULL apps/zylcode-desktop/src-tauri/Cargo.toml | 1.500 | package 'zylcode-desktop' depends on a package named in the task
+    FULL apps/zylcode-desktop/src-tauri/build.rs | 1.500 | package 'zylcode-desktop' depends on a package named in the task
+    FULL apps/zylcode-desktop/src-tauri/capabilities/default.json | 1.500 | package 'zylcode-desktop' depends on a package named in the task
+    FULL apps/zylcode-desktop/src-tauri/gen/schemas/acl-manifests.json | 1.500 | package 'zylcode-desktop' depends on a package named in the task
+    FULL apps/zylcode-desktop/src-tauri/gen/schemas/capabilities.json | 1.500 | package 'zylcode-desktop' depends on a package named in the task
+    FULL apps/zylcode-desktop/src-tauri/gen/schemas/desktop-schema.json | 1.500 | package 'zylcode-desktop' depends on a package named in the task
+    FULL apps/zylcode-desktop/src-tauri/gen/schemas/windows-schema.json | 1.500 | package 'zylcode-desktop' depends on a package named in the task
+    FULL apps/zylcode-desktop/src-tauri/icons/128x128.png | 1.500 | package 'zylcode-desktop' depends on a package named in the task
+    FULL apps/zylcode-desktop/src-tauri/icons/128x128@2x.png | 1.500 | package 'zylcode-desktop' depends on a package named in the task
+    FULL apps/zylcode-desktop/src-tauri/icons/32x32.png | 1.500 | package 'zylcode-desktop' depends on a package named in the task
+    FULL apps/zylcode-desktop/src-tauri/icons/icon.icns | 1.500 | package 'zylcode-desktop' depends on a package named in the task
+    FULL apps/zylcode-desktop/src-tauri/icons/icon.ico | 1.500 | package 'zylcode-desktop' depends on a package named in the task
+    FULL apps/zylcode-desktop/src-tauri/icons/icon.png | 1.500 | package 'zylcode-desktop' depends on a package named in the task
+    apps/zylcode-desktop/src-tauri/src/main.rs | 1.550
+    apps/zylcode-desktop/src-tauri/tauri.conf.json | 1.550
+    apps/zylcode-desktop/src/App.tsx | 1.550
+    crates/zylcode-cli/src/main.rs | 1.550
+    apps/zylcode-desktop/index.html | 1.500
+    apps/zylcode-desktop/package.json | 1.500
+    apps/zylcode-desktop/postcss.config.js | 1.500
+    apps/zylcode-desktop/src-tauri/Cargo.toml | 1.500
+    apps/zylcode-desktop/src-tauri/build.rs | 1.500
+    apps/zylcode-desktop/src-tauri/capabilities/default.json | 1.500
+QUERY: What is the desktop application's frontend entry point?
+    apps/zylcode-desktop/index.html | 2.300
+    apps/zylcode-desktop/src-tauri/build.rs | 2.300
+    apps/zylcode-desktop/src-tauri/src/main.rs | 2.300
+    apps/zylcode-desktop/src/App.tsx | 2.300
+    apps/zylcode-desktop/src/main.tsx | 2.300
+    crates/zylcode-cli/src/main.rs | 2.000
+    crates/zylcode-core/src/bin/zylcode-core-cli/main.rs | 2.000
+    crates/zylcode-core/tests/agent_loop_e2e.rs | 2.000
+    crates/zylcode-core/tests/commissioning_test.rs | 2.000
+    crates/zylcode-core/tests/crash_recovery.rs | 2.000
+QUERY: Which files would likely need inspection to modify crash recovery?
+    crates/zylcode-core/tests/e2e_crash_recovery.rs | 2.308
+    crates/zylcode-core/tests/crash_recovery.rs | 2.139
+    crates::zylcode-core::tests::e2e_crash_recovery::test_e2e_crash_recovery | 1.867
+    crates::zylcode-core::tests::crash_recovery::test_crash_window_1_pre_execution | 1.190
+    crates::zylcode-core::tests::crash_recovery::test_crash_window_2_post_side_effect | 1.190
+    crates::zylcode-core::tests::crash_recovery::test_crash_window_3_post_evidence | 1.190
+    crates::zylcode-core::tests::e2e_crash_recovery::test_checkpoint_recovery_continuation | 1.108
+    crates/zylcode-core/src/agent.rs | 0.969
+    crates/zylcode-core/src/ledger.rs | 0.800
+    crates/zylcode-core/src/memory_ledger.rs | 0.800
+QUERY: Which manifest defines rusqlite for zylcode-core?
+    crates/zylcode-core/src/intelligence/manifest.rs | 1.282
+    zylcode-core | 1.000
+    crates::zylcode-core::src::marketplace::PluginManifest | 0.902
+    crates/zylcode-core/src/marketplace.rs | 0.863
+    PARALLEL_EXECUTION_MANIFEST.md | 0.732
+    zylcode | 0.700
+    crates/zylcode-core/benches/router_cache.rs | 0.650
+    crates/zylcode-core/src/agent_protocol.rs | 0.650
+    crates/zylcode-core/src/ai_input/context_manager.rs | 0.650
+    crates/zylcode-core/src/ai_input/file_processor.rs | 0.650
+QUERY: What commands build and test the relevant components?
+    cargo build | 2.200
+    cargo build --bin zylcode | 2.200
+    cargo build --bin zylcode-core-cli | 2.200
+    cargo test | 2.200
+    pnpm pnpm --filter zylcode-desktop build | 2.200
+    pnpm tsc && vite build | 2.200
+    cargo bench | 2.000
+    pnpm eslint src --ext .ts,.tsx | 2.000
+    pnpm pnpm -r lint | 2.000
+    crates::zylcode-cli::src::main::Commands | 1.388
+QUERY: Where is the scanner configured with max depth and max file size?
+    crates::zylcode-mcp::src::audit::default_max_size | 1.833
+    crates::zylcode-mcp::src::audit::default_max_files | 1.318
+    crates::zylcode-core::src::intelligence::scanner::ScannerConfig | 1.108
+    crates::zylcode-core::src::ai_input::types::File | 0.970
+    crates::zylcode-mcp::src::builtin_skills::create_security_scanner_skill | 0.902
+    crates/zylcode-core/src/intelligence/scanner.rs | 0.895
+    crates::zylcode-core::src::router::default_max_retries | 0.833
+    crates::zylcode-mcp::tests::fault_injection::retry_backoff_max_retries_respected | 0.833
+    crates::zylcode-mcp::tests::fault_injection::sse_permanent_failure_after_max_retries | 0.833
+    crates/zylcode-core/src/router.rs | 0.704
+QUERY: Where are symbols extracted from Rust source files?
+    crates::zylcode-core::src::intelligence::symbols::extract_rust_symbols | 1.822
+    crates/zylcode-core/src/intelligence/symbols.rs | 0.966
+    crates::zylcode-core::src::cli::infer_source | 0.957
+    crates::zylcode-core::src::pipeline::looks_like_rust | 0.957
+    crates::zylcode-core::src::intelligence::symbols::extract_symbols | 0.916
+    crates::zylcode-core::src::intelligence::symbols::extract_ts_symbols | 0.916
+    crates::zylcode-core::src::intelligence::symbols::find_symbols_by_name | 0.916
+    crates::zylcode-core::src::intelligence::symbols::symbols_in_file | 0.916
+    docs/governance/SOURCE_OF_TRUTH_AND_BUILD_ORDER.md | 0.775
+    crates::zylcode-core::src::intelligence::query::RepoQuery::symbols_in_file | 0.704
+QUERY: How does the agent loop persist its ledger?
+    crates/zylcode-core/tests/agent_loop_e2e.rs | 2.284
+    crates/zylcode-core/src/memory_ledger.rs | 1.887
+    crates/zylcode-core/src/sqlite_ledger.rs | 1.887
+    crates/zylcode-core/src/agent.rs | 1.846
+    crates::zylcode-core::tests::agent_loop_e2e::test_agent_loop_end_to_end | 1.825
+    crates::zylcode-core::tests::agent_loop_e2e::test_agent_loop_with_tool_execution | 1.825
+    crates/zylcode-core/src/ledger.rs | 1.684
+    crates::zylcode-core::src::agent::AgentLoop | 1.554
+    crates::zylcode-core::src::ledger::LedgerStore | 1.533
+    crates::zylcode-core::src::memory_ledger::LedgerStore | 1.533
+QUERY: What implements the tool executor for MCP tool calls?
+    crates/zylcode-mcp/src/tool.rs | 1.527
+    crates/zylcode-mcp/tests/telemetry_audit_tests.rs | 1.414
+    crates::zylcode-mcp::tests::integration_test::bridge_registers_only_tools_with_real_executors | 1.363
+    crates/zylcode-mcp/src/enhanced_bridge.rs | 1.337
+    crates/zylcode-mcp/src/real_tools.rs | 1.328
+    crates/zylcode-mcp/tests/fault_injection.rs | 1.218
+    crates/zylcode-mcp/src/executor.rs | 1.058
+    crates::zylcode-mcp::src::config::McpToolConfig | 1.056
+    crates::zylcode-mcp::src::tool::Tool | 1.044
+    crates::zylcode-mcp::tests::telemetry_audit_tests::executor_failure_audit_log | 0.976
+QUERY: Where is the Tauri desktop application's backend entry point?
+    apps/zylcode-desktop/src-tauri/build.rs | 2.600
+    apps/zylcode-desktop/src-tauri/src/main.rs | 2.600
+    apps/zylcode-desktop/index.html | 2.300
+    apps/zylcode-desktop/src/App.tsx | 2.300
+    apps/zylcode-desktop/src/main.tsx | 2.300
+    crates/zylcode-cli/src/main.rs | 2.000
+    crates/zylcode-core/src/bin/zylcode-core-cli/main.rs | 2.000
+    crates/zylcode-core/tests/agent_loop_e2e.rs | 2.000
+    crates/zylcode-core/tests/commissioning_test.rs | 2.000
+    crates/zylcode-core/tests/crash_recovery.rs | 2.000
+QUERY: Which tests exercise crash recovery?
+    crates/zylcode-core/tests/e2e_crash_recovery.rs | 3.460
+    crates/zylcode-core/tests/crash_recovery.rs | 3.291
+    crates::zylcode-core::tests::e2e_crash_recovery::test_e2e_crash_recovery | 1.999
+    crates/zylcode-core/src/agent.rs | 1.475
+    crates::zylcode-core::tests::crash_recovery::test_crash_window_1_pre_execution | 1.322
+    crates::zylcode-core::tests::crash_recovery::test_crash_window_2_post_side_effect | 1.322
+    crates::zylcode-core::tests::crash_recovery::test_crash_window_3_post_evidence | 1.322
+    crates::zylcode-core::tests::e2e_crash_recovery::test_checkpoint_recovery_continuation | 1.240
+    crates/zylcode-core/tests/agent_loop_e2e.rs | 1.202
+    crates/zylcode-core/tests/commissioning_test.rs | 1.202
+QUERY: What is the context builder for constructing agent prompts?
+    crates/zylcode-core/src/context_builder.rs | 2.775
+    crates::zylcode-core::src::context_builder::ContextBuilder | 1.743
+    crates/zylcode-core/src/agent_protocol.rs | 1.645
+    crates/zylcode-core/src/agent.rs | 1.595
+    crates/zylcode-core/tests/agent_loop_e2e.rs | 1.509
+    crates::zylcode-core::src::agent_protocol::AgentContext | 1.409
+    crates::zylcode-core::src::context_builder::ContextBuilder::build | 0.998
+    crates/zylcode-core/src/router.rs | 0.986
+    crates/zylcode-mcp/src/real_tools.rs | 0.986
+    crates::zylcode-core::src::agent_protocol::AgentDecision | 0.865
+QUERY: What does zylcode-cli depend on?
+    crates/zylcode-cli/src/main.rs | 1.231
+    zylcode-cli | 1.000
+    crates::zylcode-mcp::src::plugin_marketplace::PluginDependency | 0.705
+    crates::zylcode-mcp::src::skills_system::SkillDependency | 0.705
+    zylcode | 0.700
+    crates::zylcode-core::src::intelligence::dependency::DependencyGraph | 0.655
+    crates::zylcode-core::src::intelligence::dependency::DependencyGraph::dependencies_of | 0.655
+    crates::zylcode-core::src::intelligence::dependency::DependencyGraph::dependents_of | 0.655
+    crates::zylcode-core::src::intelligence::dependency::DependencyGraph::external_dependencies_of | 0.655
+    crates::zylcode-core::src::intelligence::dependency::DependencyGraph::transitive_dependencies_of | 0.655
+QUERY: What are zylcode-cli's dependencies?
+    crates/zylcode-cli/src/main.rs | 1.231
+    crates::zylcode-core::src::intelligence::dependency::DependencyGraph::dependencies_of | 0.813
+    crates::zylcode-core::src::intelligence::dependency::DependencyGraph::external_dependencies_of | 0.813
+    crates::zylcode-core::src::intelligence::dependency::DependencyGraph::transitive_dependencies_of | 0.813
+    crates::zylcode-core::src::intelligence::query::RepoQuery::dependencies_of | 0.813
+    zylcode | 0.700
+    zylcode-cli | 0.700
+    crates::zylcode-cli::src::main::Cli | 0.631
+    crates/zylcode-cli/Cargo.toml | 0.600
+    package.json | 0.600
+QUERY: Where is the frontend App component of the desktop app?
+    apps/zylcode-desktop/index.html | 1.500
+    apps/zylcode-desktop/src-tauri/build.rs | 1.500
+    apps/zylcode-desktop/src-tauri/src/main.rs | 1.500
+    apps/zylcode-desktop/src/App.tsx | 1.500
+    apps/zylcode-desktop/src/main.tsx | 1.500
+    crates::zylcode-mcp::src::builtin_skills::create_frontend_builder_skill | 1.050
+    apps/zylcode-desktop/src/App.tsx | 1.037
+    crates::zylcode-mcp::src::plugin_marketplace::Plugin::get_ui_components | 0.902
+    crates::zylcode-mcp::src::plugin_marketplace::PluginMarketplace::get_plugin_ui_components | 0.902
+    crates::zylcode-mcp::src::plugin_marketplace::UIComponent | 0.902
+Files indexed: 286
+Symbols indexed: 1552
+Packages: 6
+Entry points: 18
+  Q1: Package identification: P@10=1.00 R@10=1.00 (20 results)
+  Q2: Symbol definition location: P@10=0.30 R@10=1.00 (20 results)
+  Q3: Trait implementations: P@10=0.60 R@10=1.00 (20 results)
+  Q4: Symbol usage: P@10=0.40 R@10=1.00 (20 results)
+  Q5: Test file discovery: P@10=0.70 R@10=1.00 (20 results)
+  Q6: Reverse dependency: P@10=1.00 R@10=1.00 (20 results)
+  Q7: Entry point discovery: P@10=0.20 R@10=1.00 (20 results)
+  Q8: Relevant context retrieval: P@10=1.00 R@10=1.00 (20 results)
+  Q9: Manifest intelligence: P@10=0.80 R@10=1.00 (20 results)
+  Q10: Build command discovery: P@10=0.50 R@10=1.00 (20 results)
+  Q11: Configuration location: P@10=0.30 R@10=1.00 (20 results)
+  Q12: Implementation location: P@10=0.10 R@10=1.00 (20 results)
+  Q13: Symbol lookup: P@10=0.20 R@10=1.00 (20 results)
+  Q14: Implementation location: P@10=0.10 R@10=1.00 (20 results)
+  Q15: Entry point: P@10=0.30 R@10=1.00 (20 results)
+  Q16: Tests for a capability: P@10=0.70 R@10=1.00 (20 results)
+  Q17: Architecture location: P@10=0.30 R@10=1.00 (20 results)
+  Q18: Dependency relationship: P@10=0.50 R@10=1.00 (20 results)
+  Q19: Dependency relationship (forward): P@10=0.40 R@10=1.00 (12 results)
+  Q20: Frontend/backend integration: P@10=0.20 R@10=1.00 (20 results)
+Average Precision@10: 0.48
+Average Recall@10: 1.00
