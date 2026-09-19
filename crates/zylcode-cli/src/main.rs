@@ -45,6 +45,11 @@ enum Commands {
 
     /// Inspect or drive the Computer Use System.
     ComputerUse(ComputerUseArgs),
+
+    /// Retrieve repository-relevant context for a task using Repository
+    /// Intelligence (scanner, symbols, packages, dependency graph, entry
+    /// points, git history).
+    RepoContext { task: Vec<String> },
 }
 
 // ---------------------------------------------------------------------------
@@ -378,6 +383,45 @@ async fn handle_computer_use(engine: &ZylCodeEngine, args: ComputerUseArgs) -> R
 }
 
 // ---------------------------------------------------------------------------
+// repo-context
+// ---------------------------------------------------------------------------
+
+/// Handle `zylcode repo-context <task...>`: index the workspace with the real
+/// Repository Intelligence pipeline and return ranked context for the task.
+/// This is the product-reachable entry point for Phase 2A capability.
+fn handle_repo_context(workspace: &str, task_words: &[String]) -> Result<()> {
+    if task_words.is_empty() {
+        anyhow::bail!("usage: zylcode repo-context <task description...>");
+    }
+    let task = task_words.join(" ");
+    let started = std::time::Instant::now();
+
+    // Canonicalize: package/entry-point discovery requires an absolute root
+    // (a relative "." yields zero packages on Windows path joins).
+    let root = std::path::Path::new(workspace)
+        .canonicalize()
+        .map_err(|e| anyhow::anyhow!("cannot resolve workspace '{}': {e}", workspace))?;
+    let query = zylcode_core::intelligence::query::build_repo_query(&root)?;
+    let results = query.relevant_context(&task);
+
+    let elapsed = started.elapsed();
+    println!("task: {task}");
+    println!(
+        "indexed: {} files, {} symbols, {} packages, {} entry points ({:.0} ms)",
+        query.file_count(),
+        query.symbol_count(),
+        query.package_count(),
+        query.entry_points().len(),
+        elapsed.as_secs_f64() * 1000.0
+    );
+    println!("top results:");
+    for r in results.iter().take(10) {
+        println!("  {:5.2} [{}] {} :: {}", r.relevance, r.resource_type, r.resource, r.reason);
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
 // Entry point
 // ---------------------------------------------------------------------------
 
@@ -396,7 +440,7 @@ async fn main() -> Result<()> {
         .init();
 
     let engine = ZylCodeEngine::new(EngineConfig {
-        workspace_root: cli.workspace,
+        workspace_root: cli.workspace.clone(),
         verbose: cli.verbose,
         extra: Default::default(),
     });
@@ -407,6 +451,7 @@ async fn main() -> Result<()> {
         Commands::Marketplace(args) => handle_marketplace(&engine, args).await,
         Commands::AiInput(args) => handle_ai_input(&engine, args).await,
         Commands::ComputerUse(args) => handle_computer_use(&engine, args).await,
+        Commands::RepoContext { task } => handle_repo_context(&cli.workspace, &task),
     };
 
     if let Err(err) = &result {

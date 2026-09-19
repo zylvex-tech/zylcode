@@ -22,7 +22,16 @@ impl ContextBuilder {
     /// Build context for the agent
     pub async fn build(&self, user_goal: &str, _recent_files: &[PathBuf]) -> Result<AgentContext> {
         let file_tree = self.get_file_tree()?;
-        let relevant_files = self.find_relevant_files(user_goal, &file_tree).await?;
+        // P1.2 integration: rank relevant files with the real Repository
+        // Intelligence pipeline (the same one the benchmark and the
+        // `repo-context` CLI surface use), so the AgentLoop's gathered
+        // context reflects proven retrieval quality. Falls back to the
+        // legacy keyword heuristic when indexing is unavailable or yields
+        // nothing, keeping the agent functional outside a workable repo.
+        let relevant_files = match self.find_relevant_files_intelligent(user_goal) {
+            Ok(files) if !files.is_empty() => files,
+            _ => self.find_relevant_files(user_goal, &file_tree).await?,
+        };
         let git_status = self.get_git_status().await.ok();
         
         Ok(AgentContext {
@@ -132,5 +141,64 @@ impl ContextBuilder {
         } else {
             Ok(content)
         }
+    }
+
+    /// Rank files for the task with the real Repository Intelligence
+    /// pipeline (P1.2). Returns file ids (repo-relative paths) ordered by
+    /// retrieval relevance, capped at the builder's file budget.
+    fn find_relevant_files_intelligent(&self, task: &str) -> Result<Vec<String>> {
+        let query = crate::intelligence::query::build_repo_query(&self.workspace_root)?;
+        let results = query.relevant_context(task);
+        Ok(results
+            .iter()
+            .filter(|r| r.resource_type == "file")
+            .take(10)
+            .map(|r| r.resource.clone())
+            .collect())
+    }
+}
+
+#[cfg(test)]
+mod intelligence_integration_tests {
+    use super::*;
+
+    /// P1.2 integration proof: ContextBuilder::build must consume the real
+    /// Repository Intelligence implementation, not duplicate search logic.
+    /// The proof: with the workspace rooted at the ZylCode repository
+    /// itself, the ranked files must include the crash-recovery test files
+    /// for a crash-recovery task — a result the legacy keyword heuristic
+    /// (test/readme/config/src substring matching) cannot produce for this
+    /// phrasing, and that the benchmark proves comes from the intelligence
+    /// pipeline.
+    #[tokio::test]
+    async fn context_builder_uses_intelligence_ranking() {
+        // Locate the repository root relative to this crate.
+        let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("..")
+            .canonicalize()
+            .expect("repo root");
+        let builder = ContextBuilder::new(root.clone());
+
+        let ctx = builder
+            .build(
+                "Which files would likely need inspection to modify crash recovery?",
+                &[],
+            )
+            .await
+            .expect("context build");
+
+        assert!(
+            ctx.relevant_files
+                .iter()
+                .any(|f| f.contains("crash_recovery")),
+            "intelligence-ranked relevant_files must contain crash_recovery; got {:?}",
+            ctx.relevant_files
+        );
+        assert!(
+            ctx.relevant_files.iter().any(|f| f.contains("agent.rs")),
+            "co-change evidence must surface agent.rs; got {:?}",
+            ctx.relevant_files
+        );
     }
 }

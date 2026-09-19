@@ -5,9 +5,15 @@
 
 use crate::intelligence::context::ContextRetriever;
 use crate::intelligence::dependency::DependencyGraph;
+use crate::intelligence::manifest::{discover_packages, resolve_internal_deps};
+use crate::intelligence::scanner::{scan_repository, ScannerConfig};
+use crate::intelligence::symbols::extract_symbols;
 use crate::intelligence::types::{
-    ArchitecturalFingerprint, ContextResult, EntryPoint, FileNode, GitCommit, Package, Symbol,
+    ArchitecturalFingerprint, ContextResult, EntryPoint, FileNode, GitCommit, Language, Package,
+    Symbol,
 };
+use anyhow::Result;
+use std::path::Path;
 
 /// Repository Intelligence query interface.
 pub struct RepoQuery {
@@ -275,6 +281,57 @@ impl RepoQuery {
     pub fn package_count(&self) -> usize {
         self.packages.len()
     }
+}
+
+/// Build a complete `RepoQuery` for a repository root (P1.2 product
+/// surface). This is the single canonical indexing pipeline — scanner,
+/// package discovery, dependency graph, entry points, architectural
+/// fingerprint, and git history — shared by every product consumer
+/// (CLI, future AgentLoop/ContextBuilder integration) so retrieval quality
+/// proven in the benchmark is the quality the product delivers.
+///
+/// Git history is optional: indexing succeeds without a git repository,
+/// losing recency and co-change signals but not core retrieval.
+pub fn build_repo_query(root: &Path) -> Result<RepoQuery> {
+    let config = ScannerConfig {
+        max_depth: 10,
+        max_file_size: 512 * 1024,
+        follow_symlinks: false,
+    };
+    let scan_result = scan_repository(root, &config)?;
+
+    let mut packages = discover_packages(root)?;
+    resolve_internal_deps(&mut packages);
+
+    let mut all_symbols = Vec::new();
+    for file in &scan_result.files {
+        if file.language == Language::Rust {
+            if let Ok(content) = std::fs::read_to_string(&file.path) {
+                all_symbols.extend(extract_symbols(
+                    &file.id,
+                    &file.path,
+                    &content,
+                    &file.language,
+                ));
+            }
+        }
+    }
+
+    let dep_graph = DependencyGraph::from_packages(&packages);
+    let entry_points = crate::intelligence::entry_points::discover_entry_points(root, &packages)?;
+    let architecture = crate::intelligence::architecture::generate_fingerprint(root, &packages)?;
+    let git_commits = crate::intelligence::git::get_recent_commits_with_files(root, 40)
+        .unwrap_or_default();
+
+    Ok(RepoQuery::new(
+        scan_result.files,
+        all_symbols,
+        packages,
+        dep_graph,
+        entry_points,
+        architecture,
+        git_commits,
+    ))
 }
 
 #[cfg(test)]
