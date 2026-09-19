@@ -91,9 +91,11 @@ reproduction on a fresh clone is the remaining step to R4 (P1.1 below).
 
 ### P0.5 — Owner actions outstanding on the remote
 
-1. **Apply the withheld ci.yml comment fix** (2 lines: guard rationale figure
-   `112` → `27`) — comment-only, no behaviour; take it from
-   `local/granular-integration`.
+1. ~~**Apply the withheld ci.yml comment fix**~~ — **DONE in P1.2 (2026-09-19)**:
+   applied on `track/p12-2a-reacceptance` after re-measuring the canonical
+   figure from source (`EnhancedMcpBridge::all_definitions()` = 27 tool IDs);
+   comment-only, no behaviour change. See
+   `PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md` §15-16.
 2. **Push or archive the granular history** (`local/granular-integration`, tip
    `e540ad8`) — requires rewriting the old router.rs fixture strings out of its
    history (push protection evaluates every pushed commit) or using the per-secret
@@ -119,6 +121,17 @@ reproduction on a fresh clone is the remaining step to R4 (P1.1 below).
    fix: deterministic query ordering), corpus delta 344→330 (D4), CI
    BLOCKED_EXTERNAL (D5). **Rung promotion to R4 is the independent auditor's
    decision, not the builder's.**
+1.5. **P1.2 — Phase 2A re-acceptance preparation** — **EXECUTED 2026-09-19** — see
+   `PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md`: benchmark made deterministic
+   (10/10 byte-identical cross-process runs; root causes: HashMap iteration,
+   stable-sort ties, absolute-path model inputs), known-answer set expanded to
+   20 fact-verified queries (P@10=0.48, R@10=1.00), product surface
+   `zylcode repo-context` commissioned with committed transcript,
+   ContextBuilder/AgentLoop seam integrated with a discriminating test,
+   capability registry rebaselined with dispute history preserved. Builder
+   recommendation: READY_FOR_INDEPENDENT_PHASE_2A_AUDIT. **Phase 2A remains
+   RE-OPENED; acceptance is the auditor's.**
+
 2. **Phase 2A re-acceptance audit** (agent H role): the 10-item remediation order +
    G3 gate, now testable against a fixed, green base. Until accepted, 2A stays
    RE-OPENED.
@@ -184,9 +197,8 @@ succeeded.
   fixture strings (push protection evaluates every pushed commit — falsified: the
   archive push was rejected naming router.rs lines 1213/1217/1223). Pushing it
   requires a history rewrite of the fixture or the per-secret unblock URLs.
-- **Withheld from the remote:** the chain's 2-line ci.yml comment correction
-  (`112 tool IDs` → `27 tool IDs` in the guard rationale) — a comment-only edit with
-  no behavioural effect, listed as P0.5.1 above.
+- ~~**Withheld from the remote:** the chain's 2-line ci.yml comment correction~~ —
+  applied in P1.2 (2026-09-19) with the figure re-measured from source; see P0.5.1.
 
 ---
 
