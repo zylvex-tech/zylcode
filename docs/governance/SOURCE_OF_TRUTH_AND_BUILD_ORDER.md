@@ -131,6 +131,26 @@ reproduction on a fresh clone is the remaining step to R4 (P1.1 below).
    capability registry rebaselined with dispute history preserved. Builder
    recommendation: READY_FOR_INDEPENDENT_PHASE_2A_AUDIT. **Phase 2A remains
    RE-OPENED; acceptance is the auditor's.**
+1.6. **P1.3 — Product Convergence (desktop UX foundation)** — **EXECUTED
+   2026-09-19** — per `docs/product/ZYLCODE_PRODUCT_ARCHITECTURE_V3.md`
+   (proposed model, subject to governance reconciliation). Implemented: the
+   Home/project workspace shell with left-nav, context dock and status strip;
+   the Mission Composer over the real intent pipeline (no fake selectors);
+   relocation of MCP/Provider/stream harness surfaces into Developer Tools →
+   Diagnostics; the environment-aware runtime bridge (TAURI_DESKTOP /
+   BROWSER_PREVIEW / TEST / UNKNOWN) so browser preview renders controlled
+   "Desktop runtime required" states — the raw `Cannot read properties of
+   undefined (reading 'invoke')` error class is gone (zero raw Tauri imports
+   outside the bridge; verified live, clean console); the Evidence Center and
+   Proof Inspector render only real mission data with `NOT CAPTURED` otherwise;
+   the Forge domain (CapabilityPack manifest v1 strict parser with secret scan,
+   21-category taxonomy, evidence-earned trust labels) and marketplace shell
+   with concept packs marked NOT INSTALLED. Explicitly NOT implemented by this
+   unit: commercial/payment backend, real marketplace packs, demo engine
+   (PROPOSED), Design Studio, Vision Studio, multi-agent, Android/iOS — shell
+   existence is not capability. Battery: cargo fmt (workspace-wide format
+   applied), check, clippy `-D warnings`, tests 418/0, guard 11/0, frontend
+   tsc/build green, 48/48 new vitest suites. **Phase 2A remains RE-OPENED.**
 
 2. **Phase 2A re-acceptance audit** (agent H role): the 10-item remediation order +
    G3 gate, now testable against a fixed, green base. Until accepted, 2A stays
