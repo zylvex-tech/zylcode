@@ -1,5 +1,21 @@
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+// ---------------------------------------------------------------------------
+// ZylCode event layer — environment-aware (Product Architecture v3 §11)
+//
+// Outside the Tauri desktop runtime, NO Tauri event IPC is touched: the
+// listeners below resolve to no-ops and the hook reports the environment so
+// UI can render controlled states ("Desktop runtime required") instead of
+// raw exceptions. Exception details, when they do occur in the desktop
+// runtime, go to the diagnostics sink in lib/runtime.ts.
+// ---------------------------------------------------------------------------
+
 import { useEffect, useRef, useState, useCallback } from "react";
+import {
+  detectEnvironment,
+  isDesktopRuntime,
+  recordDiagnostic,
+  type RuntimeEnvironment,
+} from "./runtime";
+import type { UnlistenFn } from "@tauri-apps/api/event";
 
 // ---------------------------------------------------------------------------
 // Types — match Tauri emits in src-tauri/src/main.rs
@@ -28,6 +44,13 @@ export type IntentDone = {
 };
 
 // ---------------------------------------------------------------------------
+// Environment — detected once per process
+// ---------------------------------------------------------------------------
+
+export const ENVIRONMENT: RuntimeEnvironment = detectEnvironment();
+export const IS_DESKTOP = isDesktopRuntime(ENVIRONMENT);
+
+// ---------------------------------------------------------------------------
 // Low-level listeners with backlog buffering
 // ---------------------------------------------------------------------------
 
@@ -47,32 +70,60 @@ export function drainBacklog<T>(event: string): T[] {
   return arr;
 }
 
-export async function onIntentChunk(cb: (e: StreamDelta) => void): Promise<UnlistenFn> {
-  return listen<StreamDelta>("intent:chunk", (ev) => {
-    pushBacklog("intent:chunk", ev.payload);
-    cb(ev.payload);
-  });
+const noopUnlisten: UnlistenFn = () => {};
+
+/**
+ * Subscribe to a Tauri event safely. Outside the desktop runtime this
+ * resolves immediately to a no-op unlistener — `listen` is never called, so
+ * no "Cannot read properties of undefined" exceptions ever occur.
+ */
+async function listenWhenSafe<T>(
+  event: string,
+  handler: (payload: T) => void,
+): Promise<UnlistenFn> {
+  if (!IS_DESKTOP) return noopUnlisten;
+  try {
+    const { listen } = await import("@tauri-apps/api/event");
+    return await listen<T>(event, (ev) => handler(ev.payload));
+  } catch (e) {
+    recordDiagnostic(`events.listen:${event}`, String(e));
+    return noopUnlisten;
+  }
 }
 
-export async function onIntentDone(cb: (e: IntentDone) => void): Promise<UnlistenFn> {
-  return listen<IntentDone>("intent:done", (ev) => {
-    pushBacklog("intent:done", ev.payload);
-    cb(ev.payload);
-  });
+function bufferedHandler<T>(event: string, cb: (e: T) => void) {
+  return (payload: T) => {
+    pushBacklog(event, payload);
+    cb(payload);
+  };
 }
 
-export async function onStreamDelta(cb: (e: StreamDelta) => void): Promise<UnlistenFn> {
-  return listen<StreamDelta>("zylcode://stream-delta", (ev) => {
-    pushBacklog("zylcode://stream-delta", ev.payload);
-    cb(ev.payload);
-  });
+export function onIntentChunk(cb: (e: StreamDelta) => void): Promise<UnlistenFn> {
+  return listenWhenSafe<StreamDelta>(
+    "intent:chunk",
+    bufferedHandler("intent:chunk", cb),
+  );
 }
 
-export async function onMcpToolCall(cb: (e: McpToolCall) => void): Promise<UnlistenFn> {
-  return listen<McpToolCall>("zylcode://mcp-tool-call", (ev) => {
-    pushBacklog("zylcode://mcp-tool-call", ev.payload);
-    cb(ev.payload);
-  });
+export function onIntentDone(cb: (e: IntentDone) => void): Promise<UnlistenFn> {
+  return listenWhenSafe<IntentDone>(
+    "intent:done",
+    bufferedHandler("intent:done", cb),
+  );
+}
+
+export function onStreamDelta(cb: (e: StreamDelta) => void): Promise<UnlistenFn> {
+  return listenWhenSafe<StreamDelta>(
+    "zylcode://stream-delta",
+    bufferedHandler("zylcode://stream-delta", cb),
+  );
+}
+
+export function onMcpToolCall(cb: (e: McpToolCall) => void): Promise<UnlistenFn> {
+  return listenWhenSafe<McpToolCall>(
+    "zylcode://mcp-tool-call",
+    bufferedHandler("zylcode://mcp-tool-call", cb),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -100,7 +151,7 @@ export function useStreamSubscription(enabled = true) {
   }, []);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || !IS_DESKTOP) return;
     let cancelled = false;
 
     // Drain backlog from before mount (e.g. immediate synthetic emit)
@@ -125,14 +176,17 @@ export function useStreamSubscription(enabled = true) {
           isStreaming: !payload.done,
         }));
       });
-      const u2 = await listen<StreamDelta>("zylcode://stream-delta", (ev) => {
-        if (cancelled) return;
-        setState((s) => ({
-          ...s,
-          deltas: [...s.deltas, ev.payload],
-          isStreaming: !ev.payload.done,
-        }));
-      });
+      const u2 = await listenWhenSafe<StreamDelta>(
+        "zylcode://stream-delta",
+        (payload) => {
+          if (cancelled) return;
+          setState((s) => ({
+            ...s,
+            deltas: [...s.deltas, payload],
+            isStreaming: !payload.done,
+          }));
+        },
+      );
       const u3 = await onMcpToolCall((payload) => {
         if (cancelled) return;
         setState((s) => ({ ...s, mcpCalls: [...s.mcpCalls, payload] }));
@@ -151,5 +205,5 @@ export function useStreamSubscription(enabled = true) {
     };
   }, [enabled]);
 
-  return { ...state, reset };
+  return { ...state, reset, environment: ENVIRONMENT, isDesktop: IS_DESKTOP };
 }

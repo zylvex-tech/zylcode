@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { detectEnvironment, safeInvoke } from "../lib/runtime";
 
 type TokenSnapshot = {
   input_tokens: number;
@@ -14,20 +14,24 @@ export default function TokenMetricsWidget({ refreshKey }: { refreshKey?: number
 
   useEffect(() => {
     let cancelled = false;
-    invoke<TokenSnapshot>("token_metrics")
-      .then((v) => {
-        if (!cancelled) setSnap(v);
-      })
-      .catch((e) => {
-        if (!cancelled) setErr(String(e));
-      });
+    // Environment-aware: outside the desktop runtime this resolves to a
+    // controlled failure instead of firing Tauri IPC and throwing.
+    safeInvoke<TokenSnapshot>(detectEnvironment(), "token_metrics").then((r) => {
+      if (cancelled) return;
+      if (r.ok) setSnap(r.data);
+      else setErr(r.reason);
+    });
     return () => {
       cancelled = true;
     };
   }, [refreshKey]);
 
   if (err) {
-    return <span className="text-xs text-red-400" title={err}>metrics: error</span>;
+    return (
+      <span className="text-xs text-text-muted" title={err}>
+        metrics: n/a
+      </span>
+    );
   }
   if (!snap) {
     return <span className="text-xs text-zyl-muted">metrics…</span>;
