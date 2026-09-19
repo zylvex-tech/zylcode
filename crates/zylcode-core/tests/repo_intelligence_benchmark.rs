@@ -54,10 +54,12 @@ fn index_zylcode() -> RepoQuery {
     let dep_graph = DependencyGraph::from_packages(&packages);
 
     // Discover entry points
-    let entry_points = discover_entry_points(&root, &packages).expect("entry point discovery failed");
+    let entry_points =
+        discover_entry_points(&root, &packages).expect("entry point discovery failed");
 
     // Generate architectural fingerprint
-    let architecture = generate_fingerprint(&root, &packages).expect("architecture fingerprint failed");
+    let architecture =
+        generate_fingerprint(&root, &packages).expect("architecture fingerprint failed");
 
     // Get git commits (may fail if git not available)
     // 40 commits: co-change mining needs enough history for functional
@@ -259,12 +261,17 @@ fn benchmark_repository_intelligence() {
             .take(10)
             .map(|r| format!("    {} | {:.3}", r.resource, r.relevance))
             .collect::<Vec<_>>()
-            .join("
-");
+            .join(
+                "
+",
+            );
         println!("QUERY: {}", case.question);
         if case.question.contains("depends on") {
             for r in results.iter().take(20) {
-                println!("    FULL {} | {:.3} | {}", r.resource, r.relevance, r.reason);
+                println!(
+                    "    FULL {} | {:.3} | {}",
+                    r.resource, r.relevance, r.reason
+                );
             }
         }
         println!("  expected: {:?}", case.expected_resources);

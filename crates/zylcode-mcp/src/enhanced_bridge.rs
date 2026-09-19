@@ -103,14 +103,17 @@ impl EnhancedMcpBridge {
             let entry = catalogue
                 .get(id)
                 .expect("an executable id is always present in the catalogue");
-            let tool = BuiltinTool::with_runtime(ToolDefinition {
-                id: entry.id.clone(),
-                name: entry.id.clone(),
-                description: entry.description.clone(),
-                category: "executable".to_string(),
-                parameters: entry.input_schema.clone(),
-                required_permissions: Vec::new(),
-            }, self.runtime.clone());
+            let tool = BuiltinTool::with_runtime(
+                ToolDefinition {
+                    id: entry.id.clone(),
+                    name: entry.id.clone(),
+                    description: entry.description.clone(),
+                    category: "executable".to_string(),
+                    parameters: entry.input_schema.clone(),
+                    required_permissions: Vec::new(),
+                },
+                self.runtime.clone(),
+            );
             self.registry.register(std::sync::Arc::new(tool)).await;
             ids.push(entry.id.clone());
             registered += 1;
@@ -659,7 +662,7 @@ impl EnhancedMcpBridge {
     /// Execute a tool by ID
     pub async fn execute_tool(&self, tool_id: &str, params: Value) -> Result<Value> {
         let start = Instant::now();
-        
+
         // Update stats
         {
             let mut stats = self.execution_stats.write().await;
@@ -667,18 +670,21 @@ impl EnhancedMcpBridge {
         }
 
         // Get tool from registry
-        let tool = self.registry.get(tool_id).await
+        let tool = self
+            .registry
+            .get(tool_id)
+            .await
             .ok_or_else(|| anyhow::anyhow!("Tool not found: {}", tool_id))?;
 
         // Execute tool
         let result = tool.call(params).await;
-        
+
         // Update stats based on result
         {
             let mut stats = self.execution_stats.write().await;
             let duration = start.elapsed().as_millis() as u64;
             stats.total_duration_ms += duration;
-            
+
             match &result {
                 Ok(_) => stats.successful_calls += 1,
                 Err(_) => stats.failed_calls += 1,
@@ -715,7 +721,12 @@ impl EnhancedMcpBridge {
     /// Get execution statistics
     pub async fn get_stats(&self) -> (u64, u64, u64, u64) {
         let stats = self.execution_stats.read().await;
-        (stats.total_calls, stats.successful_calls, stats.failed_calls, stats.total_duration_ms)
+        (
+            stats.total_calls,
+            stats.successful_calls,
+            stats.failed_calls,
+            stats.total_duration_ms,
+        )
     }
 
     /// List all available tools
@@ -739,7 +750,10 @@ struct BuiltinTool {
 
 impl BuiltinTool {
     fn with_runtime(definition: ToolDefinition, runtime: crate::evidence::ToolRuntime) -> Self {
-        Self { definition, runtime }
+        Self {
+            definition,
+            runtime,
+        }
     }
 }
 
@@ -808,7 +822,11 @@ mod tests {
     async fn registered_ids(bridge: &EnhancedMcpBridge) -> std::collections::HashSet<String> {
         let mut set = std::collections::HashSet::new();
         for category in bridge.get_categories().await {
-            for id in bridge.get_tools_in_category(&category).await.unwrap_or_default() {
+            for id in bridge
+                .get_tools_in_category(&category)
+                .await
+                .unwrap_or_default()
+            {
                 set.insert(id);
             }
         }
@@ -882,12 +900,10 @@ mod tests {
     async fn unknown_tool_id_fails_closed() {
         let bridge = EnhancedMcpBridge::new();
         bridge.initialize_with_builtin_tools().await.unwrap();
-        assert!(
-            bridge
-                .execute_tool("no.such.tool", serde_json::json!({}))
-                .await
-                .is_err()
-        );
+        assert!(bridge
+            .execute_tool("no.such.tool", serde_json::json!({}))
+            .await
+            .is_err());
     }
 
     /// A cross-operation substitution fails through the bridge too.
@@ -919,7 +935,10 @@ mod tests {
 
         // `git.commit` is GitWrite: refused without approval.
         let err = bridge
-            .execute_tool("git.commit", serde_json::json!({ "message": "must not run" }))
+            .execute_tool(
+                "git.commit",
+                serde_json::json!({ "message": "must not run" }),
+            )
             .await
             .expect_err("an unapproved GitWrite tool must not run");
         assert!(err.to_string().contains("permission denied"), "{err}");

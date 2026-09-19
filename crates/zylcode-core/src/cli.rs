@@ -1228,7 +1228,9 @@ mod tests {
             workspace: ws,
             output_format: OutputFormat::Json,
             verbose: false,
-        }).await.unwrap();
+        })
+        .await
+        .unwrap();
         assert!(report.success);
         assert_eq!(report.artifacts_found, 0);
         assert!(report.items.is_empty());
@@ -1247,7 +1249,9 @@ mod tests {
             workspace: ws,
             output_format: OutputFormat::Json,
             verbose: false,
-        }).await.unwrap();
+        })
+        .await
+        .unwrap();
         assert!(report.success);
         assert_eq!(report.artifacts_found, 1);
         assert_eq!(report.items.len(), 1);
@@ -1269,7 +1273,9 @@ mod tests {
             workspace: ws,
             output_format: OutputFormat::Json,
             verbose: false,
-        }).await.unwrap();
+        })
+        .await
+        .unwrap();
         assert!(report.success);
         assert_eq!(report.artifacts_found, 1);
         assert_eq!(report.items[0].kind, "FormalProofSpec");
@@ -1286,7 +1292,9 @@ mod tests {
             workspace: ws,
             output_format: OutputFormat::Json,
             verbose: false,
-        }).await.unwrap();
+        })
+        .await
+        .unwrap();
         assert!(report.success);
         assert_eq!(report.artifacts_found, 1);
         assert_eq!(report.items[0].kind, "PluginManifest");
@@ -1303,7 +1311,9 @@ mod tests {
             workspace: ws,
             output_format: OutputFormat::Json,
             verbose: false,
-        }).await.unwrap();
+        })
+        .await
+        .unwrap();
         assert!(report.success);
         assert_eq!(report.artifacts_found, 1);
         assert_eq!(report.items[0].kind, "UiComponent");
@@ -1320,7 +1330,9 @@ mod tests {
             workspace: ws,
             output_format: OutputFormat::Json,
             verbose: false,
-        }).await.unwrap();
+        })
+        .await
+        .unwrap();
         assert!(report.success);
         assert_eq!(report.artifacts_found, 1);
         assert_eq!(report.items[0].source, "zylcode");
@@ -1343,7 +1355,10 @@ mod tests {
         let out = format_benchmark_text(&report);
         assert!(out.contains("Scanned"), "should contain 'Scanned'");
         assert!(out.contains("artifacts"), "should contain 'artifacts'");
-        assert!(out.contains("Verification rungs"), "should show rung breakdown");
+        assert!(
+            out.contains("Verification rungs"),
+            "should show rung breakdown"
+        );
         assert!(out.contains("Props"), "should list Props rung");
     }
 
@@ -1353,10 +1368,14 @@ mod tests {
             workspace: std::path::PathBuf::from("/nonexistent/path/xyz"),
             output_format: OutputFormat::Json,
             verbose: false,
-        }).await;
+        })
+        .await;
         assert!(result.is_err(), "should fail for nonexistent workspace");
         let msg = result.unwrap_err().to_string();
-        assert!(msg.contains("does not exist"), "error should mention 'does not exist': {msg}");
+        assert!(
+            msg.contains("does not exist"),
+            "error should mention 'does not exist': {msg}"
+        );
     }
 
     #[tokio::test]
@@ -1378,7 +1397,9 @@ mod tests {
             workspace: ws,
             output_format: OutputFormat::Json,
             verbose: false,
-        }).await.unwrap();
+        })
+        .await
+        .unwrap();
         assert!(report.success);
         assert_eq!(report.artifacts_found, 3);
         assert_eq!(report.files_scanned, 3);
@@ -1396,7 +1417,9 @@ mod tests {
             workspace: ws,
             output_format: OutputFormat::Json,
             verbose: false,
-        }).await.unwrap();
+        })
+        .await
+        .unwrap();
         assert!(report.success);
         assert!(report.artifacts_found < report.files_scanned);
     }

@@ -2,7 +2,10 @@
 
 use anyhow::Result;
 use serde_json::Value;
-use std::sync::{Arc, atomic::{AtomicUsize, Ordering}};
+use std::sync::{
+    atomic::{AtomicUsize, Ordering},
+    Arc,
+};
 use std::time::Duration;
 use tempfile::NamedTempFile;
 use zylcode_mcp::audit::{AuditConfig, AuditLogger, AuditSeverity};
@@ -111,7 +114,8 @@ async fn telemetry_tool_invoke_span() {
         Some(telemetry.clone()),
         None,
         Some("test-caller".into()),
-    ).await;
+    )
+    .await;
 
     assert!(result.is_ok());
     telemetry.shutdown().await.unwrap();
@@ -147,12 +151,13 @@ async fn telemetry_retry_spans() {
         Some(telemetry.clone()),
         None,
         Some("retry-caller".into()),
-    ).await;
+    )
+    .await;
 
     assert!(result.is_ok());
     let val = result.unwrap();
     assert_eq!(val["attempt"], 3); // 0-indexed, so 3rd attempt
-    
+
     telemetry.shutdown().await.unwrap();
 }
 
@@ -186,7 +191,8 @@ async fn telemetry_sse_transient_retry() {
         Some(telemetry.clone()),
         None,
         None,
-    ).await;
+    )
+    .await;
 
     assert!(result.is_ok());
     telemetry.shutdown().await.unwrap();
@@ -208,11 +214,22 @@ fn audit_logger_tool_invoke_and_result() {
     let logger = AuditLogger::new(config).unwrap();
 
     // Log tool invoke
-    logger.log_tool_invoke("test-tool", "stdio", Some("caller-1"), b"input data", None, None).unwrap();
-    
+    logger
+        .log_tool_invoke(
+            "test-tool",
+            "stdio",
+            Some("caller-1"),
+            b"input data",
+            None,
+            None,
+        )
+        .unwrap();
+
     // Log tool result
-    logger.log_tool_result("test-tool", "stdio", b"output data", 100, None).unwrap();
-    
+    logger
+        .log_tool_result("test-tool", "stdio", b"output data", 100, None)
+        .unwrap();
+
     // Verify chain integrity
     let broken = logger.verify_chain(temp_file.path()).unwrap();
     assert!(broken.is_empty(), "Audit chain should be intact");
@@ -228,10 +245,18 @@ fn audit_logger_retry_and_error() {
     };
     let logger = AuditLogger::new(config).unwrap();
 
-    logger.log_tool_invoke("retry-tool", "stdio", None, b"in", None, None).unwrap();
-    logger.log_retry("retry-tool", 1, 3, "transient error").unwrap();
-    logger.log_retry("retry-tool", 2, 3, "another error").unwrap();
-    logger.log_tool_result("retry-tool", "stdio", b"success", 50, None).unwrap();
+    logger
+        .log_tool_invoke("retry-tool", "stdio", None, b"in", None, None)
+        .unwrap();
+    logger
+        .log_retry("retry-tool", 1, 3, "transient error")
+        .unwrap();
+    logger
+        .log_retry("retry-tool", 2, 3, "another error")
+        .unwrap();
+    logger
+        .log_tool_result("retry-tool", "stdio", b"success", 50, None)
+        .unwrap();
 
     let broken = logger.verify_chain(temp_file.path()).unwrap();
     assert!(broken.is_empty());
@@ -246,7 +271,9 @@ fn audit_logger_sse_reconnect() {
     };
     let logger = AuditLogger::new(config).unwrap();
 
-    logger.log_transport_reconnect("sse", 1, Some("connection dropped")).unwrap();
+    logger
+        .log_transport_reconnect("sse", 1, Some("connection dropped"))
+        .unwrap();
     logger.log_transport_reconnect("sse", 2, None).unwrap();
 
     let broken = logger.verify_chain(temp_file.path()).unwrap();
@@ -278,7 +305,9 @@ fn audit_logger_config_reload() {
     let logger = AuditLogger::new(config).unwrap();
 
     logger.log_config_reload(10, None).unwrap();
-    logger.log_config_reload(8, Some("validation failed")).unwrap();
+    logger
+        .log_config_reload(8, Some("validation failed"))
+        .unwrap();
 
     let broken = logger.verify_chain(temp_file.path()).unwrap();
     assert!(broken.is_empty());
@@ -296,9 +325,13 @@ fn audit_logger_payload_hash() {
 
     let input = b"test input payload";
     let output = b"test output payload";
-    
-    logger.log_tool_invoke("hash-test", "stdio", None, input, None, None).unwrap();
-    logger.log_tool_result("hash-test", "stdio", output, 10, None).unwrap();
+
+    logger
+        .log_tool_invoke("hash-test", "stdio", None, input, None, None)
+        .unwrap();
+    logger
+        .log_tool_result("hash-test", "stdio", output, 10, None)
+        .unwrap();
 
     let broken = logger.verify_chain(temp_file.path()).unwrap();
     assert!(broken.is_empty());
@@ -314,8 +347,12 @@ fn audit_logger_tamper_detection() {
     };
     let logger = AuditLogger::new(config).unwrap();
 
-    logger.log_tool_invoke("tamper-test", "stdio", None, b"input", None, None).unwrap();
-    logger.log_tool_result("tamper-test", "stdio", b"output", 50, None).unwrap();
+    logger
+        .log_tool_invoke("tamper-test", "stdio", None, b"input", None, None)
+        .unwrap();
+    logger
+        .log_tool_result("tamper-test", "stdio", b"output", 50, None)
+        .unwrap();
 
     // Read and tamper with the file
     let mut content = std::fs::read_to_string(temp_file.path()).unwrap();
@@ -338,14 +375,16 @@ fn audit_logger_severity_filter() {
     let logger = AuditLogger::new(config).unwrap();
 
     // Info should be filtered out
-    logger.log_tool_invoke("filter-test", "stdio", None, b"in", None, None).unwrap();
-    
+    logger
+        .log_tool_invoke("filter-test", "stdio", None, b"in", None, None)
+        .unwrap();
+
     // Warning should be logged
     logger.log_retry("filter-test", 1, 3, "warning").unwrap();
 
     let broken = logger.verify_chain(temp_file.path()).unwrap();
     assert!(broken.is_empty());
-    
+
     // Verify only one entry (the retry) was written
     let content = std::fs::read_to_string(temp_file.path()).unwrap();
     let lines: Vec<_> = content.lines().collect();
@@ -418,7 +457,8 @@ async fn executor_with_telemetry_and_audit() {
         Some(telemetry.clone()),
         Some(audit.clone()),
         Some("integration-caller".into()),
-    ).await;
+    )
+    .await;
 
     assert!(result.is_ok());
     let val = result.unwrap();
@@ -426,7 +466,10 @@ async fn executor_with_telemetry_and_audit() {
 
     // Verify audit chain
     let broken = audit.verify_chain(temp_file.path()).unwrap();
-    assert!(broken.is_empty(), "Audit chain should be intact after integration test");
+    assert!(
+        broken.is_empty(),
+        "Audit chain should be intact after integration test"
+    );
 
     // Verify log contains expected events
     let content = std::fs::read_to_string(temp_file.path()).unwrap();
@@ -460,7 +503,8 @@ async fn executor_with_audit_only() {
         None, // no telemetry
         Some(audit.clone()),
         Some("audit-caller".into()),
-    ).await;
+    )
+    .await;
 
     assert!(result.is_ok());
 
@@ -500,7 +544,8 @@ async fn executor_failure_audit_log() {
         None,
         Some(audit.clone()),
         None,
-    ).await;
+    )
+    .await;
 
     assert!(result.is_err());
 
@@ -523,7 +568,7 @@ fn audit_hash_payload_consistency() {
     let payload = b"consistent test payload";
     let hash1 = zylcode_mcp::audit::AuditLogger::hash_payload(payload);
     let hash2 = zylcode_mcp::audit::AuditLogger::hash_payload(payload);
-    
+
     assert_eq!(hash1, hash2);
     assert_eq!(hash1.len(), 64); // SHA-256 hex
 }
@@ -548,11 +593,11 @@ async fn concurrent_telemetry_spans() {
         let telemetry = telemetry.clone();
         handles.push(tokio::spawn(async move {
             let tool: Arc<dyn Tool> = Arc::new(TestTool {
-        id: format!("concurrent-tool-{}", i),
-        should_fail: Arc::new(AtomicUsize::new(0)),
-        max_failures: 0,
-        delay: Duration::from_millis(0),
-    });
+                id: format!("concurrent-tool-{}", i),
+                should_fail: Arc::new(AtomicUsize::new(0)),
+                max_failures: 0,
+                delay: Duration::from_millis(0),
+            });
 
             let _ = execute_with_recovery_telemetry(
                 tool,
@@ -561,7 +606,9 @@ async fn concurrent_telemetry_spans() {
                 Some(telemetry),
                 None,
                 None,
-            ).await.unwrap();
+            )
+            .await
+            .unwrap();
         }));
     }
 
@@ -584,8 +631,12 @@ async fn concurrent_audit_logging() {
     for i in 0..20 {
         let logger = logger.clone();
         handles.push(tokio::spawn(async move {
-            logger.log_tool_invoke(&format!("tool-{}", i), "stdio", None, b"input", None, None).unwrap();
-            logger.log_tool_result(&format!("tool-{}", i), "stdio", b"output", 10, None).unwrap();
+            logger
+                .log_tool_invoke(&format!("tool-{}", i), "stdio", None, b"input", None, None)
+                .unwrap();
+            logger
+                .log_tool_result(&format!("tool-{}", i), "stdio", b"output", 10, None)
+                .unwrap();
         }));
     }
 
@@ -596,7 +647,10 @@ async fn concurrent_audit_logging() {
     logger.flush().unwrap();
 
     let broken = logger.verify_chain(temp_file.path()).unwrap();
-    assert!(broken.is_empty(), "Audit chain should be intact under concurrent load");
+    assert!(
+        broken.is_empty(),
+        "Audit chain should be intact under concurrent load"
+    );
 }
 
 // ============================================================================
@@ -616,13 +670,7 @@ fn audit_verification_rung_granted() {
 
     // Log a verification-rung event that was granted
     logger
-        .log_verification_rung(
-            "rung_1",
-            "agent-alpha",
-            "tool-x",
-            "Allow",
-            true,
-        )
+        .log_verification_rung("rung_1", "agent-alpha", "tool-x", "Allow", true)
         .unwrap();
 
     // Verify chain integrity
@@ -631,13 +679,19 @@ fn audit_verification_rung_granted() {
 
     // Verify log content
     let content = std::fs::read_to_string(temp_file.path()).unwrap();
-    assert!(content.contains("verification_rung"), "Should contain event type");
+    assert!(
+        content.contains("verification_rung"),
+        "Should contain event type"
+    );
     assert!(content.contains("rung_1"), "Should contain rung identifier");
     assert!(content.contains("agent-alpha"), "Should contain agent_id");
     assert!(content.contains("tool-x"), "Should contain tool_id");
     assert!(content.contains("Allow"), "Should contain decision");
     // granted=true => Info severity
-    assert!(content.contains("info"), "Granted event should have info severity");
+    assert!(
+        content.contains("info"),
+        "Granted event should have info severity"
+    );
 }
 
 #[test]
@@ -653,13 +707,7 @@ fn audit_verification_rung_denied() {
 
     // Log a verification-rung event that was denied
     logger
-        .log_verification_rung(
-            "rung_2",
-            "agent-beta",
-            "tool-y",
-            "DenyNoRule",
-            false,
-        )
+        .log_verification_rung("rung_2", "agent-beta", "tool-y", "DenyNoRule", false)
         .unwrap();
 
     let broken = logger.verify_chain(temp_file.path()).unwrap();
@@ -672,7 +720,10 @@ fn audit_verification_rung_denied() {
     assert!(content.contains("tool-y"));
     assert!(content.contains("DenyNoRule"));
     // granted=false => Warning severity
-    assert!(content.contains("warning"), "Denied event should have warning severity");
+    assert!(
+        content.contains("warning"),
+        "Denied event should have warning severity"
+    );
 }
 
 #[test]
@@ -701,7 +752,10 @@ fn audit_verification_rung_severity_filtering() {
     let content = std::fs::read_to_string(temp_file.path()).unwrap();
     // Only the denied event should appear
     assert!(content.contains("rung_2"), "Denied event should be logged");
-    assert!(!content.contains("rung_1"), "Granted event should be filtered out");
+    assert!(
+        !content.contains("rung_1"),
+        "Granted event should be filtered out"
+    );
 }
 
 #[test]

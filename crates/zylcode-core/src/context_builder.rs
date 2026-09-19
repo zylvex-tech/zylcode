@@ -1,7 +1,7 @@
+use crate::agent_protocol::AgentContext;
 use anyhow::Result;
 use std::path::PathBuf;
 use walkdir::WalkDir;
-use crate::agent_protocol::AgentContext;
 
 /// Builds context for the agent model
 pub struct ContextBuilder {
@@ -18,7 +18,7 @@ impl ContextBuilder {
             max_file_size: 1024 * 100, // 100KB
         }
     }
-    
+
     /// Build context for the agent
     pub async fn build(&self, user_goal: &str, _recent_files: &[PathBuf]) -> Result<AgentContext> {
         let file_tree = self.get_file_tree()?;
@@ -33,7 +33,7 @@ impl ContextBuilder {
             _ => self.find_relevant_files(user_goal, &file_tree).await?,
         };
         let git_status = self.get_git_status().await.ok();
-        
+
         Ok(AgentContext {
             workspace_root: self.workspace_root.to_string_lossy().to_string(),
             file_tree,
@@ -46,11 +46,11 @@ impl ContextBuilder {
             errors: Vec::new(),
         })
     }
-    
+
     /// Get file tree of workspace
     fn get_file_tree(&self) -> Result<Vec<String>> {
         let mut files = Vec::new();
-        
+
         for entry in WalkDir::new(&self.workspace_root)
             .max_depth(3)
             .into_iter()
@@ -58,39 +58,46 @@ impl ContextBuilder {
         {
             let path = entry.path();
             let relative = path.strip_prefix(&self.workspace_root).unwrap_or(path);
-            
+
             // Skip hidden files and directories
             if relative.to_string_lossy().starts_with('.') {
                 continue;
             }
-            
+
             // Skip node_modules, target, etc.
             let path_str = relative.to_string_lossy();
-            if path_str.contains("node_modules") || path_str.contains("target") || path_str.contains(".git") {
+            if path_str.contains("node_modules")
+                || path_str.contains("target")
+                || path_str.contains(".git")
+            {
                 continue;
             }
-            
+
             if path.is_file() {
                 files.push(relative.to_string_lossy().to_string());
             }
-            
+
             if files.len() >= self.max_files {
                 break;
             }
         }
-        
+
         Ok(files)
     }
-    
+
     /// Find relevant files based on user goal
-    async fn find_relevant_files(&self, user_goal: &str, file_tree: &[String]) -> Result<Vec<String>> {
+    async fn find_relevant_files(
+        &self,
+        user_goal: &str,
+        file_tree: &[String],
+    ) -> Result<Vec<String>> {
         let goal_lower = user_goal.to_lowercase();
         let mut relevant = Vec::new();
-        
+
         // Simple keyword matching
         for file in file_tree {
             let file_lower = file.to_lowercase();
-            
+
             // Check if file matches keywords in goal. All four arms of the
             // previous `else if` chain had the identical body, so the chain is
             // exactly equivalent to a single disjunction — and a disjunction
@@ -103,11 +110,15 @@ impl ContextBuilder {
                 relevant.push(file.clone());
             }
         }
-        
+
         // If no specific matches, include main files
         if relevant.is_empty() {
             for file in file_tree {
-                if file.ends_with(".rs") || file.ends_with(".ts") || file.ends_with(".js") || file.ends_with(".py") {
+                if file.ends_with(".rs")
+                    || file.ends_with(".ts")
+                    || file.ends_with(".js")
+                    || file.ends_with(".py")
+                {
                     relevant.push(file.clone());
                     if relevant.len() >= 10 {
                         break;
@@ -115,10 +126,10 @@ impl ContextBuilder {
                 }
             }
         }
-        
+
         Ok(relevant)
     }
-    
+
     /// Get git status
     async fn get_git_status(&self) -> Result<String> {
         let output = tokio::process::Command::new("git")
@@ -127,15 +138,15 @@ impl ContextBuilder {
             .current_dir(&self.workspace_root)
             .output()
             .await?;
-        
+
         Ok(String::from_utf8_lossy(&output.stdout).to_string())
     }
-    
+
     /// Read file content
     pub async fn read_file(&self, path: &str) -> Result<String> {
         let full_path = self.workspace_root.join(path);
         let content = tokio::fs::read_to_string(&full_path).await?;
-        
+
         if content.len() > self.max_file_size {
             Ok(content[..self.max_file_size].to_string() + "\n... [truncated]")
         } else {

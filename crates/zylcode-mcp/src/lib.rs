@@ -1,5 +1,5 @@
-pub mod audit;
 pub mod actor;
+pub mod audit;
 pub mod builtin_plugins;
 pub mod builtin_skills;
 pub mod config;
@@ -18,23 +18,34 @@ pub mod telemetry;
 pub mod tool;
 pub mod tool_catalogue;
 
+pub use actor::{current_actor, has_actor, with_actor};
 pub use audit::{AuditConfig, AuditEntry, AuditEventType, AuditLogger, AuditSeverity};
 pub use config::{McpConfigFile, McpToolConfig, McpTransport};
 pub use enhanced_bridge::{EnhancedMcpBridge, ToolCategory, ToolDefinition};
-pub use enhanced_plugin_marketplace::{EnhancedPluginMarketplace, RevenueManager, Payment, PaymentResult, MarketplaceAnalyticsReport};
-pub use enhanced_skills::{EnhancedSkillsSystem, CompositionEngine, SkillsMarketplace, SkillsAnalytics, SkillsAnalyticsReport};
-pub use executor::{execute_with_recovery, ExecuteOptions};
-pub use hot_reload::{HotReloadManager, HotReloadConfig, ReloadCallback, ToolAnalytics, AnalyticsReport};
-pub use plugin_marketplace::{PluginMarketplace, PluginDefinition, InstalledPlugin, UIComponent};
-pub use permission::{PermissionDecision, PermissionGate, PermissionPolicy};
+pub use enhanced_plugin_marketplace::{
+    EnhancedPluginMarketplace, MarketplaceAnalyticsReport, Payment, PaymentResult, RevenueManager,
+};
+pub use enhanced_skills::{
+    CompositionEngine, EnhancedSkillsSystem, SkillsAnalytics, SkillsAnalyticsReport,
+    SkillsMarketplace,
+};
 pub use evidence::{EvidenceSink, JsonlEvidenceSink, NullEvidenceSink, ToolRuntime};
-pub use actor::{current_actor, has_actor, with_actor};
-pub use real_tools::{RealTool, ToolContext, ToolResult, ToolEvidence, ToolPermissions, ToolSchema, RiskLevel, FileSystemTool, ShellTool, GitTool, SearchTool, get_real_tool, dispatch, DispatchOutcome, ToolError};
+pub use executor::{execute_with_recovery, ExecuteOptions};
+pub use hot_reload::{
+    AnalyticsReport, HotReloadConfig, HotReloadManager, ReloadCallback, ToolAnalytics,
+};
+pub use permission::{PermissionDecision, PermissionGate, PermissionPolicy};
+pub use plugin_marketplace::{InstalledPlugin, PluginDefinition, PluginMarketplace, UIComponent};
+pub use real_tools::{
+    dispatch, get_real_tool, DispatchOutcome, FileSystemTool, GitTool, RealTool, RiskLevel,
+    SearchTool, ShellTool, ToolContext, ToolError, ToolEvidence, ToolPermissions, ToolResult,
+    ToolSchema,
+};
 pub use registry::ToolRegistry;
-pub use skills_system::{SkillsSystem, SkillDefinition};
-pub use telemetry::{Telemetry, TelemetryConfig, attrs, propagation, span_names};
+pub use skills_system::{SkillDefinition, SkillsSystem};
+pub use telemetry::{attrs, propagation, span_names, Telemetry, TelemetryConfig};
 pub use tool::{DynamicTool, Tool, ToolDescriptor};
-pub use tool_catalogue::{Catalogue, CatalogueMetrics, CapabilityStatus, EvidenceRung, ToolEntry};
+pub use tool_catalogue::{CapabilityStatus, Catalogue, CatalogueMetrics, EvidenceRung, ToolEntry};
 
 use anyhow::Result;
 use std::path::Path;

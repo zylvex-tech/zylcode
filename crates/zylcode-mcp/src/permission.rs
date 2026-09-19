@@ -222,7 +222,12 @@ impl PermissionGate {
         &self.policy
     }
 
-    pub fn decide(&self, tool_id: &str, risk: RiskLevel, context: &ToolContext) -> PermissionDecision {
+    pub fn decide(
+        &self,
+        tool_id: &str,
+        risk: RiskLevel,
+        context: &ToolContext,
+    ) -> PermissionDecision {
         self.policy.decide(tool_id, risk, context)
     }
 }
@@ -291,25 +296,32 @@ mod tests {
 
     #[test]
     fn deny_wins_over_allow_and_over_approval() {
-        let policy = PermissionPolicy::permissive()
-            .deny("shell.execute");
+        let policy = PermissionPolicy::permissive().deny("shell.execute");
         let gate = PermissionGate::new(policy);
         // even with explicit approval
         let decision = gate.decide("shell.execute", RiskLevel::Execute, &ctx(true));
-        assert!(matches!(decision, PermissionDecision::Deny(_)), "{decision:?}");
+        assert!(
+            matches!(decision, PermissionDecision::Deny(_)),
+            "{decision:?}"
+        );
     }
 
     #[test]
     fn deny_wins_even_at_read_risk() {
         let gate = PermissionGate::new(PermissionPolicy::permissive().deny("fs.read"));
         let decision = gate.decide("fs.read", RiskLevel::Read, &ctx(true));
-        assert!(matches!(decision, PermissionDecision::Deny(_)), "{decision:?}");
+        assert!(
+            matches!(decision, PermissionDecision::Deny(_)),
+            "{decision:?}"
+        );
     }
 
     #[test]
     fn allow_list_permits_above_the_threshold_without_approval() {
         let gate = PermissionGate::new(PermissionPolicy::restrictive().allow("cargo.test"));
-        assert!(gate.decide("cargo.test", RiskLevel::Execute, &ctx(false)).is_allow());
+        assert!(gate
+            .decide("cargo.test", RiskLevel::Execute, &ctx(false))
+            .is_allow());
         // and does not leak to a different tool
         assert!(matches!(
             gate.decide("shell.execute", RiskLevel::Execute, &ctx(false)),
@@ -327,7 +339,9 @@ mod tests {
         ));
         // With approval -> permitted. Approval wins over the threshold, but an
         // unconditional denial is expressed with `deny(id)`, which always wins.
-        assert!(gate.decide("fs.read", RiskLevel::Read, &ctx(true)).is_allow());
+        assert!(gate
+            .decide("fs.read", RiskLevel::Read, &ctx(true))
+            .is_allow());
     }
 
     #[test]
@@ -353,10 +367,12 @@ mod tests {
             .decide("shell.execute", RiskLevel::Execute, &ctx(false))
             .evidence_record()
             .starts_with("require_approval: "));
-        assert!(PermissionGate::new(PermissionPolicy::restrictive().deny("fs.read"))
-            .decide("fs.read", RiskLevel::Read, &ctx(false))
-            .evidence_record()
-            .starts_with("deny: "));
+        assert!(
+            PermissionGate::new(PermissionPolicy::restrictive().deny("fs.read"))
+                .decide("fs.read", RiskLevel::Read, &ctx(false))
+                .evidence_record()
+                .starts_with("deny: ")
+        );
     }
 
     #[test]

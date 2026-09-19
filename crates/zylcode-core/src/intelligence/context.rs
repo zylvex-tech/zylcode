@@ -106,8 +106,7 @@ impl ContextRetriever {
         // Deterministic: pairs are canonicalized and stored in a BTreeSet.
         let mut cochange_pairs: BTreeSet<(String, String)> = BTreeSet::new();
         for commit in git_commits {
-            let mut changed: Vec<&str> =
-                commit.files_changed.iter().map(|s| s.as_str()).collect();
+            let mut changed: Vec<&str> = commit.files_changed.iter().map(|s| s.as_str()).collect();
             changed.sort_unstable();
             changed.dedup();
             // Skip mega-commits (bulk renames/docs sweeps): every pair they
@@ -117,8 +116,7 @@ impl ContextRetriever {
             }
             for i in 0..changed.len() {
                 for j in (i + 1)..changed.len() {
-                    cochange_pairs
-                        .insert((changed[i].to_string(), changed[j].to_string()));
+                    cochange_pairs.insert((changed[i].to_string(), changed[j].to_string()));
                 }
             }
         }
@@ -166,10 +164,7 @@ impl ContextRetriever {
             // Windows: Path::join yields backslash separators; file ids use
             // forward slashes. Normalize before prefix-matching (same class of
             // defect as the scanner's should_exclude bug).
-            let root_prefix = format!(
-                "{}/",
-                pkg.root.to_string_lossy().replace('\\', "/")
-            );
+            let root_prefix = format!("{}/", pkg.root.to_string_lossy().replace('\\', "/"));
             for f in files {
                 let fid = f.id.as_str();
                 if fid.starts_with(&root_prefix) {
@@ -221,11 +216,10 @@ impl ContextRetriever {
         // and, fed into the scorer, let files whose paths merely contain
         // "the" (theme.ts) or generic tokens outrank real evidence.
         const STOPWORDS: &[&str] = &[
-            "a", "an", "the", "is", "are", "was", "were", "be", "been", "being",
-            "do", "does", "did", "done", "what", "which", "who", "whose", "where",
-            "when", "why", "how", "for", "of", "in", "on", "to", "with", "and",
-            "or", "not", "its", "this", "that", "these", "those", "from", "by",
-            "at", "as", "into", "about", "can", "could", "should", "would",
+            "a", "an", "the", "is", "are", "was", "were", "be", "been", "being", "do", "does",
+            "did", "done", "what", "which", "who", "whose", "where", "when", "why", "how", "for",
+            "of", "in", "on", "to", "with", "and", "or", "not", "its", "this", "that", "these",
+            "those", "from", "by", "at", "as", "into", "about", "can", "could", "should", "would",
             "will", "it", "his", "her", "their", "our", "your", "my",
         ];
         // camelCase/snake_case splitting (P1.2): the task "Which code persists
@@ -322,23 +316,25 @@ impl ContextRetriever {
                 // Dividing by ln(1 + N) keeps rare words near 1 and common
                 // words near 0, so lexical totals stay below the structural
                 // evidence scores by construction.
-                (((1.0 + total_docs / df as f64).ln()) / (1.0 + total_docs).ln())
-                    .clamp(0.05, 1.0)
+                (((1.0 + total_docs / df as f64).ln()) / (1.0 + total_docs).ln()).clamp(0.05, 1.0)
             }
         };
-        let word_idf: HashMap<String, f64> = task_words
-            .iter()
-            .map(|w| (w.clone(), idf_of(w)))
-            .collect();
+        let word_idf: HashMap<String, f64> =
+            task_words.iter().map(|w| (w.clone(), idf_of(w))).collect();
 
         // Dependency intent: reverse-dependency signals only apply when the
         // task actually asks about dependency direction ("what depends on X"),
         // otherwise tasks that merely mention a package name (e.g. "which
         // manifest defines X for P") get flooded with unrelated dependents.
         let dep_intent = task_words.iter().any(|w| {
-            w.starts_with("depend") || w.starts_with("requir") || w.starts_with("import")
+            w.starts_with("depend")
+                || w.starts_with("requir")
+                || w.starts_with("import")
                 || w.starts_with("consum")
-                || matches!(w.as_str(), "uses" | "used" | "using" | "callers" | "consumers")
+                || matches!(
+                    w.as_str(),
+                    "uses" | "used" | "using" | "callers" | "consumers"
+                )
         });
 
         let mut scored: Vec<(f64, ContextResult)> = Vec::new();
@@ -433,7 +429,9 @@ impl ContextRetriever {
             .filter(|f| {
                 let stem = f.id.rsplit('/').next().unwrap_or("");
                 let stem_tokens = path_tokens(stem);
-                task_words.iter().any(|w| stem_tokens.iter().any(|t| t == w))
+                task_words
+                    .iter()
+                    .any(|w| stem_tokens.iter().any(|t| t == w))
             })
             .map(|f| f.id.clone())
             .collect();
@@ -492,8 +490,7 @@ impl ContextRetriever {
                         .map(|n| idf_of(&n.to_lowercase()))
                         .fold(0.0f64, f64::max);
                     let bonus =
-                        ((0.9 + 0.2 * (matched_names.len() - 1) as f64).min(1.3))
-                            * strongest_idf;
+                        ((0.9 + 0.2 * (matched_names.len() - 1) as f64).min(1.3)) * strongest_idf;
                     score += bonus;
                     for name in &matched_names {
                         reasons.push(format!("defines symbol '{}'", name));
@@ -568,22 +565,15 @@ impl ContextRetriever {
             if impl_role {
                 if let Some(anchor) = anchors.iter().find(|a| {
                     a.as_str() != id.as_str()
-                        && self
-                            .cochange_pairs
-                            .iter()
-                            .any(|(x, y)| {
-                                (x == *a && y == id.as_str())
-                                    || (y == *a && x == id.as_str())
-                            })
+                        && self.cochange_pairs.iter().any(|(x, y)| {
+                            (x == *a && y == id.as_str()) || (y == *a && x == id.as_str())
+                        })
                 }) {
                     // 0.8: must clear the incidental test-symbol band
                     // (0.70-0.73) to reach the top-10, but stay below plain
                     // lexical filename evidence (1.0 x IDF).
                     score += 0.8;
-                    reasons.push(format!(
-                        "changes together with '{}' in git history",
-                        anchor
-                    ));
+                    reasons.push(format!("changes together with '{}' in git history", anchor));
                 }
             }
 
@@ -595,9 +585,10 @@ impl ContextRetriever {
                     score += 0.6;
                     reasons.push(format!("file belongs to package '{}'", pkg_q));
                 } else {
-                    let names_dep: bool = self.package_dep_pairs.iter().any(|(q, dep)| {
-                        q == pkg_q && task_words.iter().any(|w| w == dep)
-                    });
+                    let names_dep: bool = self
+                        .package_dep_pairs
+                        .iter()
+                        .any(|(q, dep)| q == pkg_q && task_words.iter().any(|w| w == dep));
                     if names_dep && dep_intent {
                         // Structural dependency evidence outranks lexical
                         // filename coincidence: when the task names package P,
@@ -612,7 +603,6 @@ impl ContextRetriever {
                     }
                 }
             }
-
 
             if score > 0.1 {
                 scored.push((
@@ -645,9 +635,10 @@ impl ContextRetriever {
 
             // Reverse-dependency match (Q6): the task names package P and this
             // package Q depends on P — Q is a direct answer.
-            let names_dep: bool = self.package_dep_pairs.iter().any(|(q, dep)| {
-                q == pkg_name.as_str() && task_words.iter().any(|w| w == dep)
-            });
+            let names_dep: bool = self
+                .package_dep_pairs
+                .iter()
+                .any(|(q, dep)| q == pkg_name.as_str() && task_words.iter().any(|w| w == dep));
             if names_dep && dep_intent {
                 score += 1.2;
                 reasons.push(format!(
@@ -692,10 +683,12 @@ impl ContextRetriever {
 
         // Build/test commands (Q10): surface commands when the task asks
         // how to build/test, ranked by overlap with package context.
-        if task_words
-            .iter()
-            .any(|w| matches!(w.as_str(), "build" | "builds" | "test" | "tests" | "compile" | "run"))
-        {
+        if task_words.iter().any(|w| {
+            matches!(
+                w.as_str(),
+                "build" | "builds" | "test" | "tests" | "compile" | "run"
+            )
+        }) {
             let mut pkg_names: Vec<&String> = self.package_commands.keys().collect();
             pkg_names.sort();
             let asks_commands = task_lower.contains("command")
@@ -733,15 +726,12 @@ impl ContextRetriever {
         }
 
         // Entry points (Q7): surface when the task asks where execution starts.
-        let asks_entry = task_words
-            .iter()
-            .any(|w| {
-                matches!(
-                    w.as_str(),
-                    "entry" | "entrypoint" | "main" | "starts" | "launch" | "boot" | "frontend"
-                )
-            })
-            || task_lower.contains("entry point");
+        let asks_entry = task_words.iter().any(|w| {
+            matches!(
+                w.as_str(),
+                "entry" | "entrypoint" | "main" | "starts" | "launch" | "boot" | "frontend"
+            )
+        }) || task_lower.contains("entry point");
         if asks_entry {
             let asks_direct = task_lower.contains("entry point");
             for ep in &self.entry_points {
@@ -770,13 +760,11 @@ impl ContextRetriever {
         // Deduplicate resources (e.g. the same command from several packages),
         // keeping the highest score. Built in sorted order, so this is stable.
         let mut seen: HashMap<String, f64> = HashMap::new();
-        scored.retain(|(sc, r)| {
-            match seen.get(&r.resource) {
-                Some(prev) if *prev >= *sc => false,
-                _ => {
-                    seen.insert(r.resource.clone(), *sc);
-                    true
-                }
+        scored.retain(|(sc, r)| match seen.get(&r.resource) {
+            Some(prev) if *prev >= *sc => false,
+            _ => {
+                seen.insert(r.resource.clone(), *sc);
+                true
             }
         });
 

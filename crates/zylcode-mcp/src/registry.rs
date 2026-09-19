@@ -78,7 +78,10 @@ impl ToolRegistry {
 
                 ToolSchema {
                     id: desc.id.clone(),
-                    description: desc.description.clone().unwrap_or_else(|| desc.command.clone()),
+                    description: desc
+                        .description
+                        .clone()
+                        .unwrap_or_else(|| desc.command.clone()),
                     input_schema: json!({
                         "type": "object",
                         "properties": {}
@@ -113,5 +116,4 @@ mod tests {
         let list = reg.list().await;
         assert_eq!(list[0].id, "a");
     }
-
 }

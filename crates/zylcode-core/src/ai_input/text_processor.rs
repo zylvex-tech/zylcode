@@ -1,11 +1,11 @@
-use std::sync::Arc;
-use tokio::sync::RwLock;
 use anyhow::Result;
 use regex::Regex;
 use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
-use super::types::*;
 use super::context_manager::ContextManager;
+use super::types::*;
 
 /// Text processor for natural language processing
 pub struct TextProcessor {
@@ -65,7 +65,8 @@ impl TextProcessor {
         );
         intent_patterns.insert(
             "api".to_string(),
-            Regex::new(r"(?i)(api|endpoint|rest|graphql|grpc|webhook)\s+(for|to|that|which)").unwrap(),
+            Regex::new(r"(?i)(api|endpoint|rest|graphql|grpc|webhook)\s+(for|to|that|which)")
+                .unwrap(),
         );
         intent_patterns.insert(
             "ui".to_string(),
@@ -81,10 +82,7 @@ impl TextProcessor {
             EntityType::FilePath,
             Regex::new(r"(?:[\w\-\.]+/)+[\w\-\.]+|[\w\-\.]+\.(?:js|ts|jsx|tsx|py|rs|go|java|cpp|c|h|html|css|json|yaml|yml|toml|md|txt)").unwrap(),
         );
-        entity_patterns.insert(
-            EntityType::URL,
-            Regex::new(r"https?://[^\s]+").unwrap(),
-        );
+        entity_patterns.insert(EntityType::URL, Regex::new(r"https?://[^\s]+").unwrap());
         entity_patterns.insert(
             EntityType::Email,
             Regex::new(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}").unwrap(),
@@ -113,16 +111,16 @@ impl TextProcessor {
     /// Process text input
     pub async fn process(&self, text: &str, _context: &InputContext) -> Result<ProcessedText> {
         let start = std::time::Instant::now();
-        
+
         // Extract intent
         let intent = self.extract_intent(text).await?;
-        
+
         // Extract entities
         let entities = self.extract_entities(text).await?;
-        
+
         // Calculate confidence
         let confidence = self.calculate_confidence(text, &intent, &entities).await?;
-        
+
         // Update stats
         let duration = start.elapsed().as_millis() as u64;
         {
@@ -197,7 +195,12 @@ impl TextProcessor {
     }
 
     /// Calculate confidence for processed text
-    async fn calculate_confidence(&self, text: &str, intent: &Intent, entities: &[Entity]) -> Result<f64> {
+    async fn calculate_confidence(
+        &self,
+        text: &str,
+        intent: &Intent,
+        entities: &[Entity],
+    ) -> Result<f64> {
         let mut confidence = 0.5; // Base confidence
 
         // Increase confidence based on text length
@@ -233,9 +236,13 @@ impl TextProcessor {
     }
 
     /// Extract parameters from intent
-    async fn extract_intent_parameters(&self, text: &str, pattern: &Regex) -> Result<HashMap<String, String>> {
+    async fn extract_intent_parameters(
+        &self,
+        text: &str,
+        pattern: &Regex,
+    ) -> Result<HashMap<String, String>> {
         let mut parameters = HashMap::new();
-        
+
         if let Some(captures) = pattern.captures(text) {
             for (i, capture) in captures.iter().enumerate() {
                 if let Some(matched) = capture {
@@ -289,8 +296,14 @@ mod tests {
         let context_manager = Arc::new(RwLock::new(ContextManager::new()));
         let processor = TextProcessor::new(context_manager).await.unwrap();
         let context = InputContext::default();
-        
-        let result = processor.process("Create a new React component for user authentication", &context).await.unwrap();
+
+        let result = processor
+            .process(
+                "Create a new React component for user authentication",
+                &context,
+            )
+            .await
+            .unwrap();
         assert_eq!(result.intent.category, IntentCategory::CodeGeneration);
         assert!(result.confidence > 0.0);
     }
@@ -300,8 +313,14 @@ mod tests {
         let context_manager = Arc::new(RwLock::new(ContextManager::new()));
         let processor = TextProcessor::new(context_manager).await.unwrap();
         let context = InputContext::default();
-        
-        let result = processor.process("Fix the bug in src/main.ts using TypeScript and React", &context).await.unwrap();
+
+        let result = processor
+            .process(
+                "Fix the bug in src/main.ts using TypeScript and React",
+                &context,
+            )
+            .await
+            .unwrap();
         assert!(!result.entities.is_empty());
     }
 }

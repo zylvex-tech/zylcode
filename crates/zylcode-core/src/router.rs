@@ -21,7 +21,6 @@ pub use cache::SpeculativeCache;
 #[cfg(test)]
 pub(crate) static NETWORK_EGRESS_COUNT: AtomicU64 = AtomicU64::new(0);
 
-
 // ---------------------------------------------------------------------------
 // Model provider
 // ---------------------------------------------------------------------------
@@ -1231,11 +1230,13 @@ mod tests {
         // ships `OPENROUTER_API_KEY=YOUR_OPENROUTER_API_KEY`, and clearing it
         // would change the behaviour of anything that dispatches with the
         // default provider chain.
-        const VARS: [&str; 3] = ["OPENROUTER_API_KEY", "ANTHROPIC_API_KEY", "DEEPSEEK_API_KEY"];
-        let saved: Vec<(&str, Option<String>)> = VARS
-            .iter()
-            .map(|k| (*k, std::env::var(k).ok()))
-            .collect();
+        const VARS: [&str; 3] = [
+            "OPENROUTER_API_KEY",
+            "ANTHROPIC_API_KEY",
+            "DEEPSEEK_API_KEY",
+        ];
+        let saved: Vec<(&str, Option<String>)> =
+            VARS.iter().map(|k| (*k, std::env::var(k).ok())).collect();
 
         for case in CASES {
             for k in VARS {
@@ -1244,7 +1245,10 @@ mod tests {
 
             let router = synthetic_router();
             let egress_before = NETWORK_EGRESS_COUNT.load(Ordering::SeqCst);
-            let text = router.dispatch_prompt("build a counter", "sys").await.unwrap();
+            let text = router
+                .dispatch_prompt("build a counter", "sys")
+                .await
+                .unwrap();
             let egress_after = NETWORK_EGRESS_COUNT.load(Ordering::SeqCst);
 
             assert_eq!(
@@ -1271,8 +1275,10 @@ mod tests {
     #[test]
     fn synthetic_offline_has_no_api_key_and_no_endpoint() {
         let mut cfg = RouterConfig::default();
-        cfg.api_keys
-            .insert("synthetic-offline".to_string(), "sk-should-be-ignored".to_string());
+        cfg.api_keys.insert(
+            "synthetic-offline".to_string(),
+            "sk-should-be-ignored".to_string(),
+        );
         cfg.base_url_overrides.insert(
             "synthetic-offline".to_string(),
             "https://should-never-be-contacted.example".to_string(),
@@ -1293,7 +1299,10 @@ mod tests {
             "",
             "SyntheticOffline must have no request path"
         );
-        assert_eq!(ModelProvider::SyntheticOffline.to_string(), "synthetic-offline");
+        assert_eq!(
+            ModelProvider::SyntheticOffline.to_string(),
+            "synthetic-offline"
+        );
     }
 
     /// FALSIFICATION — a *different* provider with no credentials still

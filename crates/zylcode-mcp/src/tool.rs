@@ -237,7 +237,7 @@ mod tests {
             .unwrap_or_default()
             .starts_with("allow: "));
     }
-    
+
     #[tokio::test]
     async fn dynamic_tool_real_fs_read() {
         let cfg = McpToolConfig {

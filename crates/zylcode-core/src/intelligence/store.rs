@@ -5,8 +5,8 @@
 //! Separate from the Evidence Ledger (Section 10 requirement).
 
 use crate::intelligence::types::{
-    ArchitecturalFact, DependencyTarget, EntryPoint, FileNode, GitCommit, IndexMetadata, Language, LanguageSupport,
-    Package, Provenance, Symbol, SymbolKind, Visibility,
+    ArchitecturalFact, DependencyTarget, EntryPoint, FileNode, GitCommit, IndexMetadata, Language,
+    LanguageSupport, Package, Provenance, Symbol, SymbolKind, Visibility,
 };
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};

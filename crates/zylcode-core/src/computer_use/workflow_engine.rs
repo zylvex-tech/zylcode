@@ -1,7 +1,7 @@
-use std::sync::RwLock;
-use std::collections::HashMap;
 use anyhow::Result;
 use chrono::Utc;
+use std::collections::HashMap;
+use std::sync::RwLock;
 
 use super::types::*;
 
@@ -37,10 +37,10 @@ impl WorkflowEngine {
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };
-        
+
         let mut workflows = self.workflows.write().unwrap();
         workflows.insert(workflow.id.clone(), workflow.clone());
-        
+
         Ok(workflow)
     }
 
@@ -95,7 +95,7 @@ impl WorkflowEngine {
             stats.executed_count += 1;
             stats.total_execution_time_ms += duration;
         }
-        
+
         Ok(WorkflowResult {
             workflow_id: workflow_id.to_string(),
             status: WorkflowStatus::Completed,
@@ -109,24 +109,26 @@ impl WorkflowEngine {
     /// Pause workflow
     pub async fn pause_workflow(&self, workflow_id: &str) -> Result<()> {
         let mut workflows = self.workflows.write().unwrap();
-        let workflow = workflows.get_mut(workflow_id)
+        let workflow = workflows
+            .get_mut(workflow_id)
             .ok_or_else(|| anyhow::anyhow!("Workflow not found: {}", workflow_id))?;
-        
+
         workflow.status = WorkflowStatus::Paused;
         workflow.updated_at = Utc::now();
-        
+
         Ok(())
     }
 
     /// Resume workflow
     pub async fn resume_workflow(&self, workflow_id: &str) -> Result<()> {
         let mut workflows = self.workflows.write().unwrap();
-        let workflow = workflows.get_mut(workflow_id)
+        let workflow = workflows
+            .get_mut(workflow_id)
             .ok_or_else(|| anyhow::anyhow!("Workflow not found: {}", workflow_id))?;
-        
+
         workflow.status = WorkflowStatus::Running;
         workflow.updated_at = Utc::now();
-        
+
         Ok(())
     }
 
@@ -135,16 +137,18 @@ impl WorkflowEngine {
         // In a real implementation, this would schedule the workflow
         // For now, we just validate the workflow exists
         let workflows = self.workflows.read().unwrap();
-        workflows.get(workflow_id)
+        workflows
+            .get(workflow_id)
             .ok_or_else(|| anyhow::anyhow!("Workflow not found: {}", workflow_id))?;
-        
+
         Ok(())
     }
 
     /// Get workflow
     pub async fn get_workflow(&self, workflow_id: &str) -> Result<Workflow> {
         let workflows = self.workflows.read().unwrap();
-        workflows.get(workflow_id)
+        workflows
+            .get(workflow_id)
             .cloned()
             .ok_or_else(|| anyhow::anyhow!("Workflow not found: {}", workflow_id))
     }
@@ -158,9 +162,10 @@ impl WorkflowEngine {
     /// Delete workflow
     pub async fn delete_workflow(&self, workflow_id: &str) -> Result<()> {
         let mut workflows = self.workflows.write().unwrap();
-        workflows.remove(workflow_id)
+        workflows
+            .remove(workflow_id)
             .ok_or_else(|| anyhow::anyhow!("Workflow not found: {}", workflow_id))?;
-        
+
         Ok(())
     }
 
@@ -177,25 +182,23 @@ mod tests {
     #[tokio::test]
     async fn test_workflow_creation() {
         let engine = WorkflowEngine::new().await.unwrap();
-        
+
         let definition = WorkflowDefinition {
             id: "test_workflow".to_string(),
             name: "Test Workflow".to_string(),
             description: "A test workflow".to_string(),
-            steps: vec![
-                WorkflowStep {
-                    id: "step1".to_string(),
-                    name: "Step 1".to_string(),
-                    step_type: StepType::CaptureScreen,
-                    parameters: HashMap::new(),
-                    conditions: Vec::new(),
-                    on_failure: FailureAction::Stop,
-                },
-            ],
+            steps: vec![WorkflowStep {
+                id: "step1".to_string(),
+                name: "Step 1".to_string(),
+                step_type: StepType::CaptureScreen,
+                parameters: HashMap::new(),
+                conditions: Vec::new(),
+                on_failure: FailureAction::Stop,
+            }],
             variables: HashMap::new(),
             triggers: Vec::new(),
         };
-        
+
         let workflow = engine.create_workflow(definition).await.unwrap();
         assert_eq!(workflow.id, "test_workflow");
         assert!(matches!(workflow.status, WorkflowStatus::Created));
@@ -204,28 +207,26 @@ mod tests {
     #[tokio::test]
     async fn test_workflow_execution() {
         let engine = WorkflowEngine::new().await.unwrap();
-        
+
         let definition = WorkflowDefinition {
             id: "test_workflow".to_string(),
             name: "Test Workflow".to_string(),
             description: "A test workflow".to_string(),
-            steps: vec![
-                WorkflowStep {
-                    id: "step1".to_string(),
-                    name: "Step 1".to_string(),
-                    step_type: StepType::CaptureScreen,
-                    parameters: HashMap::new(),
-                    conditions: Vec::new(),
-                    on_failure: FailureAction::Stop,
-                },
-            ],
+            steps: vec![WorkflowStep {
+                id: "step1".to_string(),
+                name: "Step 1".to_string(),
+                step_type: StepType::CaptureScreen,
+                parameters: HashMap::new(),
+                conditions: Vec::new(),
+                on_failure: FailureAction::Stop,
+            }],
             variables: HashMap::new(),
             triggers: Vec::new(),
         };
-        
+
         engine.create_workflow(definition).await.unwrap();
         let result = engine.execute_workflow("test_workflow").await.unwrap();
-        
+
         assert!(matches!(result.status, WorkflowStatus::Completed));
         assert_eq!(result.steps_executed, 1);
     }

@@ -65,7 +65,7 @@ impl ContextManager {
     /// Add to context history
     pub fn add_to_history(&mut self, input: ProcessedInput) {
         self.current_context.history.push(input);
-        
+
         // Keep only last 50 inputs in history
         if self.current_context.history.len() > 50 {
             self.current_context.history.remove(0);
@@ -80,7 +80,11 @@ impl ContextManager {
     /// Get recent context (last N inputs)
     pub fn get_recent_context(&self, n: usize) -> Vec<ProcessedInput> {
         let history = &self.current_context.history;
-        let start = if history.len() > n { history.len() - n } else { 0 };
+        let start = if history.len() > n {
+            history.len() - n
+        } else {
+            0
+        };
         history[start..].to_vec()
     }
 
@@ -161,26 +165,26 @@ mod tests {
     #[test]
     fn test_context_manager() {
         let mut manager = ContextManager::new();
-        
+
         // Test initial state
         let context = manager.get_current_context();
         assert_eq!(context.language, "en");
         assert_eq!(context.timezone, "UTC");
-        
+
         // Test update
         let new_context = InputContext {
             language: "fr".to_string(),
             ..InputContext::default()
         };
         manager.update_context(new_context);
-        
+
         let context = manager.get_current_context();
         assert_eq!(context.language, "fr");
-        
+
         // Test preferences
         manager.update_preferences("theme".to_string(), "dark".to_string());
         assert_eq!(manager.get_preference("theme"), Some(&"dark".to_string()));
-        
+
         // Test stats
         let stats = manager.get_stats();
         assert_eq!(stats.language, "fr");

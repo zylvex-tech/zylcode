@@ -124,8 +124,8 @@ impl EvidenceSink for JsonlEvidenceSink {
     async fn record(&self, evidence: &ToolEvidence) -> Result<()> {
         use tokio::io::AsyncWriteExt;
 
-        let mut line = serde_json::to_string(evidence)
-            .context("evidence record is not serialisable")?;
+        let mut line =
+            serde_json::to_string(evidence).context("evidence record is not serialisable")?;
         line.push('\n');
 
         // One writer at a time: two concurrent appends must not interleave.
@@ -260,7 +260,9 @@ mod tests {
         let path = dir.path().join("evidence.jsonl");
         let sink = JsonlEvidenceSink::new(&path);
 
-        sink.record(&evidence("git.commit", "allow: ok")).await.unwrap();
+        sink.record(&evidence("git.commit", "allow: ok"))
+            .await
+            .unwrap();
 
         let records = sink.read_all().unwrap();
         assert_eq!(records.len(), 1);
@@ -279,7 +281,9 @@ mod tests {
         let sink = JsonlEvidenceSink::new(&path);
 
         for i in 0..5 {
-            sink.record(&evidence(&format!("tool.{i}"), "allow: ok")).await.unwrap();
+            sink.record(&evidence(&format!("tool.{i}"), "allow: ok"))
+                .await
+                .unwrap();
         }
 
         let records = sink.read_all().unwrap();
@@ -337,7 +341,9 @@ mod tests {
     #[tokio::test]
     async fn null_sink_records_nothing_and_says_so() {
         let sink = NullEvidenceSink;
-        sink.record(&evidence("fs.read", "allow: ok")).await.unwrap();
+        sink.record(&evidence("fs.read", "allow: ok"))
+            .await
+            .unwrap();
         assert!(sink.describe().contains("discards"));
     }
 

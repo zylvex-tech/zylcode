@@ -1,11 +1,13 @@
+use anyhow::Result;
+use chrono::Utc;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use anyhow::Result;
-use chrono::Utc;
 use uuid::Uuid;
 
-use crate::plugin_marketplace::{PluginMarketplace, PluginDefinition, PluginPricing, PluginExecution, PluginMarketplaceInfo};
+use crate::plugin_marketplace::{
+    PluginDefinition, PluginExecution, PluginMarketplace, PluginMarketplaceInfo, PluginPricing,
+};
 
 /// Enhanced Plugin Marketplace with revenue features
 pub struct EnhancedPluginMarketplace {
@@ -211,7 +213,7 @@ impl EnhancedPluginMarketplace {
         let marketplace = PluginMarketplace::new();
         let revenue_manager = Arc::new(RevenueManager::new());
         let analytics = Arc::new(MarketplaceAnalytics::new());
-        
+
         Ok(Self {
             marketplace,
             revenue_manager,
@@ -221,15 +223,18 @@ impl EnhancedPluginMarketplace {
 
     /// Initialize with enhanced plugins
     pub async fn initialize_with_enhanced_plugins(&self) -> Result<usize> {
-        let count = self.marketplace.initialize_with_preshipped_plugins().await?;
-        
+        let count = self
+            .marketplace
+            .initialize_with_preshipped_plugins()
+            .await?;
+
         // Add additional plugins to reach 35+
         let additional_plugins = self.get_additional_plugins();
         for plugin in additional_plugins {
             // Register additional plugins
             tracing::info!("Registering additional plugin: {}", plugin.name);
         }
-        
+
         Ok(count + 10) // Adding 10 additional plugins
     }
 
@@ -533,7 +538,7 @@ impl RevenueManager {
     pub async fn process_payment(&self, payment: Payment) -> Result<PaymentResult> {
         // Process payment (simulated)
         let transaction_id = Uuid::new_v4().to_string();
-        
+
         let transaction = Transaction {
             id: transaction_id.clone(),
             user_id: payment.user_id,
@@ -543,9 +548,9 @@ impl RevenueManager {
             timestamp: Utc::now(),
             status: TransactionStatus::Completed,
         };
-        
+
         self.revenue_tracker.record_transaction(transaction).await?;
-        
+
         Ok(PaymentResult {
             success: true,
             transaction_id,
@@ -564,7 +569,9 @@ impl RevenueManager {
 
     /// Get recommendations
     pub async fn get_recommendations(&self, _user_id: &str) -> Result<Vec<PluginDefinition>> {
-        self.recommendation_engine.get_recommendations(_user_id).await
+        self.recommendation_engine
+            .get_recommendations(_user_id)
+            .await
     }
 }
 
@@ -702,7 +709,7 @@ impl MarketplaceAnalytics {
         let usage_stats = self.usage_stats.read().await.clone();
         let revenue_stats = self.revenue_stats.read().await.clone();
         let user_stats = self.user_stats.read().await.clone();
-        
+
         Ok(MarketplaceAnalyticsReport {
             total_plugins: usage_stats.len(),
             total_revenue: revenue_stats.values().map(|s| s.total_revenue).sum(),
@@ -732,15 +739,18 @@ mod tests {
     #[tokio::test]
     async fn test_enhanced_plugin_marketplace() {
         let marketplace = EnhancedPluginMarketplace::new().await.unwrap();
-        let count = marketplace.initialize_with_enhanced_plugins().await.unwrap();
-        
+        let count = marketplace
+            .initialize_with_enhanced_plugins()
+            .await
+            .unwrap();
+
         assert!(count >= 35);
     }
 
     #[tokio::test]
     async fn test_payment_processing() {
         let marketplace = EnhancedPluginMarketplace::new().await.unwrap();
-        
+
         let payment = Payment {
             user_id: "user1".to_string(),
             plugin_id: "plugin1".to_string(),
@@ -753,7 +763,7 @@ mod tests {
                 name: "Test User".to_string(),
             }),
         };
-        
+
         let result = marketplace.process_payment(payment).await.unwrap();
         assert!(result.success);
     }

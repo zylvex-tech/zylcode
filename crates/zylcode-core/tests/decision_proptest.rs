@@ -164,10 +164,7 @@ fn case_sensitive_no_match() {
 
 #[test]
 fn empty_string_is_rung0() {
-    assert_eq!(
-        classify_verification_rung(""),
-        VerificationRung::Rung0
-    );
+    assert_eq!(classify_verification_rung(""), VerificationRung::Rung0);
 }
 
 // ===========================================================================

@@ -320,8 +320,8 @@ pub fn build_repo_query(root: &Path) -> Result<RepoQuery> {
     let dep_graph = DependencyGraph::from_packages(&packages);
     let entry_points = crate::intelligence::entry_points::discover_entry_points(root, &packages)?;
     let architecture = crate::intelligence::architecture::generate_fingerprint(root, &packages)?;
-    let git_commits = crate::intelligence::git::get_recent_commits_with_files(root, 40)
-        .unwrap_or_default();
+    let git_commits =
+        crate::intelligence::git::get_recent_commits_with_files(root, 40).unwrap_or_default();
 
     Ok(RepoQuery::new(
         scan_result.files,

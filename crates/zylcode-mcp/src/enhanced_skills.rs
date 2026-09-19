@@ -1,11 +1,11 @@
+use anyhow::Result;
+use chrono::Utc;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use anyhow::Result;
-use chrono::Utc;
 use uuid::Uuid;
 
-use crate::skills_system::{SkillsSystem, SkillDefinition, SkillExecution, MarketplaceInfo};
+use crate::skills_system::{MarketplaceInfo, SkillDefinition, SkillExecution, SkillsSystem};
 
 /// Enhanced Skills System with composition and marketplace
 pub struct EnhancedSkillsSystem {
@@ -171,7 +171,7 @@ impl EnhancedSkillsSystem {
         let composition_engine = Arc::new(CompositionEngine::new());
         let marketplace = Arc::new(SkillsMarketplace::new());
         let analytics = Arc::new(SkillsAnalytics::new());
-        
+
         Ok(Self {
             skills_system,
             composition_engine,
@@ -183,14 +183,14 @@ impl EnhancedSkillsSystem {
     /// Initialize with enhanced skills
     pub async fn initialize_with_enhanced_skills(&self) -> Result<usize> {
         let count = self.skills_system.initialize_with_builtin_skills().await?;
-        
+
         // Add additional skills to reach 35+
         let additional_skills = self.get_additional_skills();
         for skill in additional_skills {
             // Register additional skills
             tracing::info!("Registering additional skill: {}", skill.name);
         }
-        
+
         Ok(count + 10) // Adding 10 additional skills
     }
 
@@ -346,8 +346,13 @@ impl EnhancedSkillsSystem {
     }
 
     /// Execute composition
-    pub async fn execute_composition(&self, composition: ComposedSkill) -> Result<CompositionResult> {
-        self.composition_engine.execute_composition(composition).await
+    pub async fn execute_composition(
+        &self,
+        composition: ComposedSkill,
+    ) -> Result<CompositionResult> {
+        self.composition_engine
+            .execute_composition(composition)
+            .await
     }
 
     /// Publish skill to marketplace
@@ -386,7 +391,7 @@ impl CompositionEngine {
         let id = Uuid::new_v4().to_string();
         let name = format!("Composed Skill {}", id);
         let description = format!("Composition of {} skills", skills.len());
-        
+
         Ok(ComposedSkill {
             id,
             name,
@@ -399,19 +404,22 @@ impl CompositionEngine {
     }
 
     /// Execute composition
-    pub async fn execute_composition(&self, composition: ComposedSkill) -> Result<CompositionResult> {
+    pub async fn execute_composition(
+        &self,
+        composition: ComposedSkill,
+    ) -> Result<CompositionResult> {
         let start = std::time::Instant::now();
         let mut skills_executed = Vec::new();
         let errors = Vec::new();
-        
+
         for skill_id in &composition.execution_order {
             // Execute skill (simulated)
             tracing::info!("Executing skill: {}", skill_id);
             skills_executed.push(skill_id.clone());
         }
-        
+
         let execution_time = start.elapsed().as_millis() as u64;
-        
+
         Ok(CompositionResult {
             success: true,
             output: serde_json::json!({}),
@@ -448,14 +456,18 @@ impl SkillsMarketplace {
     /// Search marketplace
     pub async fn search_skills(&self, query: &str) -> Result<Vec<MarketSkill>> {
         let skills = self.skills.read().await;
-        let results: Vec<MarketSkill> = skills.values()
+        let results: Vec<MarketSkill> = skills
+            .values()
             .filter(|skill| {
-                skill.name.to_lowercase().contains(&query.to_lowercase()) ||
-                skill.description.to_lowercase().contains(&query.to_lowercase())
+                skill.name.to_lowercase().contains(&query.to_lowercase())
+                    || skill
+                        .description
+                        .to_lowercase()
+                        .contains(&query.to_lowercase())
             })
             .cloned()
             .collect();
-        
+
         Ok(results)
     }
 
@@ -469,7 +481,8 @@ impl SkillsMarketplace {
     /// Add review
     pub async fn add_review(&self, review: Review) -> Result<()> {
         let mut reviews = self.reviews.write().await;
-        reviews.entry(review.skill_id.clone())
+        reviews
+            .entry(review.skill_id.clone())
             .or_insert_with(Vec::new)
             .push(review);
         Ok(())
@@ -506,7 +519,7 @@ impl RevenueTracker {
     pub async fn get_report(&self) -> Result<RevenueReport> {
         let transactions = self.transactions.read().await;
         let total_revenue: f64 = transactions.iter().map(|t| t.amount).sum();
-        
+
         Ok(RevenueReport {
             total_revenue,
             total_transactions: transactions.len(),
@@ -541,23 +554,26 @@ impl SkillsAnalytics {
     /// Record skill usage
     pub async fn record_usage(&self, skill_id: &str, execution_time_ms: u64, success: bool) {
         let mut stats = self.usage_stats.write().await;
-        let entry = stats.entry(skill_id.to_string()).or_insert_with(|| SkillUsageStats {
-            total_executions: 0,
-            successful_executions: 0,
-            failed_executions: 0,
-            average_execution_time_ms: 0.0,
-            last_used: Utc::now(),
-        });
-        
+        let entry = stats
+            .entry(skill_id.to_string())
+            .or_insert_with(|| SkillUsageStats {
+                total_executions: 0,
+                successful_executions: 0,
+                failed_executions: 0,
+                average_execution_time_ms: 0.0,
+                last_used: Utc::now(),
+            });
+
         entry.total_executions += 1;
         if success {
             entry.successful_executions += 1;
         } else {
             entry.failed_executions += 1;
         }
-        
-        entry.average_execution_time_ms = 
-            (entry.average_execution_time_ms * (entry.total_executions - 1) as f64 + execution_time_ms as f64) 
+
+        entry.average_execution_time_ms = (entry.average_execution_time_ms
+            * (entry.total_executions - 1) as f64
+            + execution_time_ms as f64)
             / entry.total_executions as f64;
         entry.last_used = Utc::now();
     }
@@ -566,16 +582,26 @@ impl SkillsAnalytics {
     pub async fn get_analytics_report(&self) -> Result<SkillsAnalyticsReport> {
         let usage_stats = self.usage_stats.read().await.clone();
         let composition_stats = self.composition_stats.read().await.clone();
-        
+
         Ok(SkillsAnalyticsReport {
             total_skills: usage_stats.len(),
             total_executions: usage_stats.values().map(|s| s.total_executions).sum(),
             total_successful: usage_stats.values().map(|s| s.successful_executions).sum(),
             total_failed: usage_stats.values().map(|s| s.failed_executions).sum(),
             average_success_rate: {
-                let total = usage_stats.values().map(|s| s.total_executions).sum::<u64>() as f64;
-                let successful = usage_stats.values().map(|s| s.successful_executions).sum::<u64>() as f64;
-                if total > 0.0 { successful / total } else { 0.0 }
+                let total = usage_stats
+                    .values()
+                    .map(|s| s.total_executions)
+                    .sum::<u64>() as f64;
+                let successful = usage_stats
+                    .values()
+                    .map(|s| s.successful_executions)
+                    .sum::<u64>() as f64;
+                if total > 0.0 {
+                    successful / total
+                } else {
+                    0.0
+                }
             },
             usage_stats,
             composition_stats,
@@ -603,19 +629,19 @@ mod tests {
     async fn test_enhanced_skills_system() {
         let system = EnhancedSkillsSystem::new().await.unwrap();
         let count = system.initialize_with_enhanced_skills().await.unwrap();
-        
+
         assert!(count >= 35);
     }
 
     #[tokio::test]
     async fn test_skill_composition() {
         let system = EnhancedSkillsSystem::new().await.unwrap();
-        
+
         let skills = vec!["code.review", "test.generator", "doc.generator"];
         let composition = system.compose_skills(skills).await.unwrap();
-        
+
         assert_eq!(composition.skills.len(), 3);
-        
+
         let result = system.execute_composition(composition).await.unwrap();
         assert!(result.success);
     }
@@ -623,7 +649,7 @@ mod tests {
     #[tokio::test]
     async fn test_skills_marketplace() {
         let marketplace = SkillsMarketplace::new();
-        
+
         let skill = MarketSkill {
             id: "test.skill".to_string(),
             name: "Test Skill".to_string(),
@@ -637,9 +663,9 @@ mod tests {
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };
-        
+
         marketplace.publish_skill(skill).await.unwrap();
-        
+
         let results = marketplace.search_skills("test").await.unwrap();
         assert_eq!(results.len(), 1);
     }

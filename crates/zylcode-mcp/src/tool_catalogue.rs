@@ -537,7 +537,11 @@ mod tests {
     #[test]
     fn every_executable_entry_has_a_real_executor() {
         let catalogue = Catalogue::canonical();
-        for entry in catalogue.entries().iter().filter(|e| e.status.is_executable()) {
+        for entry in catalogue
+            .entries()
+            .iter()
+            .filter(|e| e.status.is_executable())
+        {
             assert!(
                 get_real_tool(&entry.id).is_some(),
                 "`{}` is marked Executable but get_real_tool() returns None",
@@ -587,7 +591,11 @@ mod tests {
         let before = ids.len();
         ids.sort_unstable();
         ids.dedup();
-        assert_eq!(before, ids.len(), "duplicate executable id in the catalogue");
+        assert_eq!(
+            before,
+            ids.len(),
+            "duplicate executable id in the catalogue"
+        );
     }
 
     #[test]
@@ -643,7 +651,13 @@ mod tests {
     #[test]
     fn bridge_only_ids_are_definition_only() {
         let catalogue = Catalogue::canonical();
-        for id in ["git.push", "git.pull", "npm.install", "docker.build", "kubernetes.deploy"] {
+        for id in [
+            "git.push",
+            "git.pull",
+            "npm.install",
+            "docker.build",
+            "kubernetes.deploy",
+        ] {
             let entry = catalogue
                 .get(id)
                 .unwrap_or_else(|| panic!("`{id}` should be preserved as metadata"));
@@ -820,14 +834,18 @@ mod tests {
 
         let gate = crate::permission::PermissionGate::restrictive();
         assert!(
-            !gate.decide(&entry.id, entry.risk, &test_context()).is_allow(),
+            !gate
+                .decide(&entry.id, entry.risk, &test_context())
+                .is_allow(),
             "the unbound escape hatch must not run unapproved"
         );
         // An explicit allow-list entry is the stated way to permit it.
         let gate = crate::permission::PermissionGate::new(
             crate::permission::PermissionPolicy::restrictive().allow("shell.execute"),
         );
-        assert!(gate.decide(&entry.id, entry.risk, &test_context()).is_allow());
+        assert!(gate
+            .decide(&entry.id, entry.risk, &test_context())
+            .is_allow());
     }
 
     /// The catalogue's declared binding equals the executor's actual binding.

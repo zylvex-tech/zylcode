@@ -416,7 +416,10 @@ fn handle_repo_context(workspace: &str, task_words: &[String]) -> Result<()> {
     );
     println!("top results:");
     for r in results.iter().take(10) {
-        println!("  {:5.2} [{}] {} :: {}", r.relevance, r.resource_type, r.resource, r.reason);
+        println!(
+            "  {:5.2} [{}] {} :: {}",
+            r.relevance, r.resource_type, r.resource, r.reason
+        );
     }
     Ok(())
 }

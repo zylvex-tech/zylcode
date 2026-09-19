@@ -1,11 +1,11 @@
+use anyhow::Result;
+use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use std::collections::HashMap;
-use anyhow::Result;
 
-use super::types::*;
 use super::context_manager::ContextManager;
 use super::text_processor::ProcessedText;
+use super::types::*;
 
 /// Intent engine for classifying and routing intents
 pub struct IntentEngine {
@@ -47,7 +47,7 @@ impl IntentEngine {
     /// Create a new intent engine
     pub async fn new(context_manager: Arc<RwLock<ContextManager>>) -> Result<Self> {
         let mut intent_classifiers = HashMap::new();
-        
+
         // Code generation classifier
         intent_classifiers.insert(
             IntentCategory::CodeGeneration,
@@ -68,7 +68,7 @@ impl IntentEngine {
                 _confidence_threshold: 0.5,
             },
         );
-        
+
         // Code review classifier
         intent_classifiers.insert(
             IntentCategory::CodeReview,
@@ -89,7 +89,7 @@ impl IntentEngine {
                 _confidence_threshold: 0.5,
             },
         );
-        
+
         // Testing classifier
         intent_classifiers.insert(
             IntentCategory::Testing,
@@ -110,7 +110,7 @@ impl IntentEngine {
                 _confidence_threshold: 0.5,
             },
         );
-        
+
         // Debugging classifier
         intent_classifiers.insert(
             IntentCategory::Debugging,
@@ -131,7 +131,7 @@ impl IntentEngine {
                 _confidence_threshold: 0.5,
             },
         );
-        
+
         // Documentation classifier
         intent_classifiers.insert(
             IntentCategory::Documentation,
@@ -163,22 +163,24 @@ impl IntentEngine {
     /// Classify intent from processed text
     pub async fn classify_intent(&self, processed_text: ProcessedText) -> Result<Intent> {
         let start = std::time::Instant::now();
-        
+
         let mut best_intent = Intent {
             name: "unknown".to_string(),
             category: IntentCategory::Unknown,
             confidence: 0.0,
             parameters: HashMap::new(),
         };
-        
+
         // Try each classifier
         for classifier in self.intent_classifiers.values() {
-            let intent = self.classify_with_classifier(&processed_text.content, classifier).await?;
+            let intent = self
+                .classify_with_classifier(&processed_text.content, classifier)
+                .await?;
             if intent.confidence > best_intent.confidence {
                 best_intent = intent;
             }
         }
-        
+
         // If no specific intent found, use conversation
         if best_intent.confidence < 0.1 {
             best_intent = Intent {
@@ -188,7 +190,7 @@ impl IntentEngine {
                 parameters: HashMap::new(),
             };
         }
-        
+
         // Update stats
         let duration = start.elapsed().as_millis() as u64;
         {
@@ -196,26 +198,29 @@ impl IntentEngine {
             stats.classified_count += 1;
             stats.total_classification_time_ms += duration;
         }
-        
+
         Ok(best_intent)
     }
 
     /// Classify intent from vision input
     pub async fn classify_vision_intent(&self, vision: ProcessedVision) -> Result<Intent> {
         let start = std::time::Instant::now();
-        
+
         let mut best_intent = Intent {
             name: "unknown".to_string(),
             category: IntentCategory::Unknown,
             confidence: 0.0,
             parameters: HashMap::new(),
         };
-        
+
         // Analyze vision content for intent
         let description = &vision.description;
-        
+
         // Check for UI-related intents
-        if description.contains("button") || description.contains("form") || description.contains("input") {
+        if description.contains("button")
+            || description.contains("form")
+            || description.contains("input")
+        {
             best_intent = Intent {
                 name: "ui_interaction".to_string(),
                 category: IntentCategory::UI,
@@ -223,9 +228,12 @@ impl IntentEngine {
                 parameters: HashMap::new(),
             };
         }
-        
+
         // Check for code-related intents
-        if description.contains("code") || description.contains("editor") || description.contains("function") {
+        if description.contains("code")
+            || description.contains("editor")
+            || description.contains("function")
+        {
             best_intent = Intent {
                 name: "code_analysis".to_string(),
                 category: IntentCategory::CodeReview,
@@ -233,9 +241,12 @@ impl IntentEngine {
                 parameters: HashMap::new(),
             };
         }
-        
+
         // Check for error-related intents
-        if description.contains("error") || description.contains("bug") || description.contains("crash") {
+        if description.contains("error")
+            || description.contains("bug")
+            || description.contains("crash")
+        {
             best_intent = Intent {
                 name: "error_detection".to_string(),
                 category: IntentCategory::Debugging,
@@ -243,7 +254,7 @@ impl IntentEngine {
                 parameters: HashMap::new(),
             };
         }
-        
+
         // Default to conversation if no specific intent
         if best_intent.confidence < 0.3 {
             best_intent = Intent {
@@ -253,7 +264,7 @@ impl IntentEngine {
                 parameters: HashMap::new(),
             };
         }
-        
+
         // Update stats
         let duration = start.elapsed().as_millis() as u64;
         {
@@ -261,7 +272,7 @@ impl IntentEngine {
             stats.classified_count += 1;
             stats.total_classification_time_ms += duration;
         }
-        
+
         Ok(best_intent)
     }
 
@@ -299,7 +310,7 @@ impl IntentEngine {
                 parameters: HashMap::new(),
             },
         };
-        
+
         // Update stats
         let duration = start.elapsed().as_millis() as u64;
         {
@@ -307,24 +318,30 @@ impl IntentEngine {
             stats.classified_count += 1;
             stats.total_classification_time_ms += duration;
         }
-        
+
         Ok(best_intent)
     }
 
     /// Classify with specific classifier
-    async fn classify_with_classifier(&self, text: &str, classifier: &IntentClassifier) -> Result<Intent> {
+    async fn classify_with_classifier(
+        &self,
+        text: &str,
+        classifier: &IntentClassifier,
+    ) -> Result<Intent> {
         let mut best_intent = Intent {
             name: "unknown".to_string(),
             category: classifier.category.clone(),
             confidence: 0.0,
             parameters: HashMap::new(),
         };
-        
+
         for pattern in &classifier.patterns {
             if pattern.pattern.is_match(text) {
-                let confidence = self.calculate_pattern_confidence(text, &pattern.pattern).await?;
+                let confidence = self
+                    .calculate_pattern_confidence(text, &pattern.pattern)
+                    .await?;
                 let adjusted_confidence = (confidence + pattern.confidence_boost).min(1.0);
-                
+
                 if adjusted_confidence > best_intent.confidence {
                     best_intent = Intent {
                         name: pattern.intent_name.clone(),
@@ -335,29 +352,37 @@ impl IntentEngine {
                 }
             }
         }
-        
+
         Ok(best_intent)
     }
 
     /// Calculate pattern confidence
-    async fn calculate_pattern_confidence(&self, text: &str, pattern: &regex::Regex) -> Result<f64> {
+    async fn calculate_pattern_confidence(
+        &self,
+        text: &str,
+        pattern: &regex::Regex,
+    ) -> Result<f64> {
         let matches: Vec<_> = pattern.find_iter(text).collect();
         if matches.is_empty() {
             return Ok(0.0);
         }
-        
+
         let match_count = matches.len() as f64;
         let text_length = text.len() as f64;
         let match_length: usize = matches.iter().map(|m| m.len()).sum();
         let match_ratio = match_length as f64 / text_length;
-        
+
         Ok((match_count * 0.3 + match_ratio * 0.7).min(1.0))
     }
 
     /// Extract parameters from text
-    async fn extract_parameters(&self, text: &str, pattern: &regex::Regex) -> Result<HashMap<String, String>> {
+    async fn extract_parameters(
+        &self,
+        text: &str,
+        pattern: &regex::Regex,
+    ) -> Result<HashMap<String, String>> {
         let mut parameters = HashMap::new();
-        
+
         if let Some(captures) = pattern.captures(text) {
             for (i, capture) in captures.iter().enumerate() {
                 if let Some(matched) = capture {
@@ -365,7 +390,7 @@ impl IntentEngine {
                 }
             }
         }
-        
+
         Ok(parameters)
     }
 
@@ -383,12 +408,12 @@ mod tests {
     async fn test_intent_classification() {
         let context_manager = Arc::new(RwLock::new(ContextManager::new()));
         let engine = IntentEngine::new(context_manager).await.unwrap();
-        
+
         // Debug: check if the pattern matches
         let text = "Create a new React component for user authentication";
         let pattern = regex::Regex::new(r"(?i)(create|generate|build|write|make|implement|develop)\s+(a\s+)?(new\s+)?(function|class|component|module|service|api|endpoint|method|interface|type|struct|enum)").unwrap();
         println!("Pattern matches: {}", pattern.is_match(text));
-        
+
         let processed_text = ProcessedText {
             content: text.to_string(),
             intent: Intent {
@@ -401,7 +426,7 @@ mod tests {
             confidence: 0.8,
             processing_time_ms: 10,
         };
-        
+
         let result = engine.classify_intent(processed_text).await.unwrap();
         // Debug: print the result
         println!("Intent result: {:?}", result);
@@ -413,7 +438,7 @@ mod tests {
     async fn test_vision_intent_classification() {
         let context_manager = Arc::new(RwLock::new(ContextManager::new()));
         let engine = IntentEngine::new(context_manager).await.unwrap();
-        
+
         let vision = ProcessedVision {
             description: "A screenshot showing a button and form input".to_string(),
             objects: Vec::new(),
@@ -435,7 +460,7 @@ mod tests {
                 },
             },
         };
-        
+
         let result = engine.classify_vision_intent(vision).await.unwrap();
         assert_eq!(result.category, IntentCategory::UI);
     }

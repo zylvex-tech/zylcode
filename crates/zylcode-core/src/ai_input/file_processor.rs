@@ -24,7 +24,7 @@ impl FileProcessor {
     /// Process file
     pub async fn process_file(&self, file: File) -> Result<ProcessedFile> {
         let start = std::time::Instant::now();
-        
+
         // Analyze file based on type
         let (summary, language, line_count, word_count) = match file.file_type {
             FileType::Code => self.analyze_code(&file).await?,
@@ -32,11 +32,11 @@ impl FileProcessor {
             FileType::Document => self.analyze_document(&file).await?,
             _ => self.analyze_generic(&file).await?,
         };
-        
+
         let entities = self.extract_entities(&file).await?;
         let confidence = self.calculate_confidence(&file).await?;
         let analysis = self.analyze_file(&file).await?;
-        
+
         // Update stats
         let duration = start.elapsed().as_millis() as u64;
         {
@@ -58,15 +58,18 @@ impl FileProcessor {
     }
 
     /// Analyze code file
-    async fn analyze_code(&self, file: &File) -> Result<(String, Option<String>, Option<usize>, Option<usize>)> {
+    async fn analyze_code(
+        &self,
+        file: &File,
+    ) -> Result<(String, Option<String>, Option<usize>, Option<usize>)> {
         let content = String::from_utf8_lossy(&file.content);
         let lines: Vec<&str> = content.lines().collect();
         let line_count = lines.len();
         let word_count = content.split_whitespace().count();
-        
+
         // Detect language from file extension
         let language = self.detect_language(&file.name);
-        
+
         // Generate summary
         let summary = format!(
             "Code file with {} lines and {} words. Language: {}",
@@ -74,55 +77,59 @@ impl FileProcessor {
             word_count,
             language.as_deref().unwrap_or("Unknown")
         );
-        
+
         Ok((summary, language, Some(line_count), Some(word_count)))
     }
 
     /// Analyze text file
-    async fn analyze_text(&self, file: &File) -> Result<(String, Option<String>, Option<usize>, Option<usize>)> {
+    async fn analyze_text(
+        &self,
+        file: &File,
+    ) -> Result<(String, Option<String>, Option<usize>, Option<usize>)> {
         let content = String::from_utf8_lossy(&file.content);
         let lines: Vec<&str> = content.lines().collect();
         let line_count = lines.len();
         let word_count = content.split_whitespace().count();
-        
+
         let summary = format!(
             "Text file with {} lines and {} words",
-            line_count,
-            word_count
+            line_count, word_count
         );
-        
+
         Ok((summary, None, Some(line_count), Some(word_count)))
     }
 
     /// Analyze document file
-    async fn analyze_document(&self, file: &File) -> Result<(String, Option<String>, Option<usize>, Option<usize>)> {
+    async fn analyze_document(
+        &self,
+        file: &File,
+    ) -> Result<(String, Option<String>, Option<usize>, Option<usize>)> {
         let content = String::from_utf8_lossy(&file.content);
         let word_count = content.split_whitespace().count();
-        
+
         let summary = format!(
             "Document file with {} words. Format: {}",
             word_count,
             file.name.split('.').next_back().unwrap_or("unknown")
         );
-        
+
         Ok((summary, None, None, Some(word_count)))
     }
 
     /// Analyze generic file
-    async fn analyze_generic(&self, file: &File) -> Result<(String, Option<String>, Option<usize>, Option<usize>)> {
-        let summary = format!(
-            "File: {} ({} bytes)",
-            file.name,
-            file.size
-        );
-        
+    async fn analyze_generic(
+        &self,
+        file: &File,
+    ) -> Result<(String, Option<String>, Option<usize>, Option<usize>)> {
+        let summary = format!("File: {} ({} bytes)", file.name, file.size);
+
         Ok((summary, None, None, None))
     }
 
     /// Detect programming language from filename
     fn detect_language(&self, filename: &str) -> Option<String> {
         let extension = filename.split('.').next_back()?.to_lowercase();
-        
+
         match extension.as_str() {
             "js" | "jsx" | "mjs" | "cjs" => Some("JavaScript".to_string()),
             "ts" | "tsx" | "mts" | "cts" => Some("TypeScript".to_string()),
@@ -162,9 +169,9 @@ impl FileProcessor {
     /// Extract entities from file
     async fn extract_entities(&self, file: &File) -> Result<Vec<Entity>> {
         let mut entities = Vec::new();
-        
+
         let content = String::from_utf8_lossy(&file.content);
-        
+
         // Extract file paths
         let path_regex = regex::Regex::new(r"(?:[\w\-\.]+/)+[\w\-\.]+").unwrap();
         for mat in path_regex.find_iter(&content) {
@@ -177,7 +184,7 @@ impl FileProcessor {
                 end_pos: mat.end(),
             });
         }
-        
+
         // Extract URLs
         let url_regex = regex::Regex::new(r"https?://[^\s]+").unwrap();
         for mat in url_regex.find_iter(&content) {
@@ -190,9 +197,10 @@ impl FileProcessor {
                 end_pos: mat.end(),
             });
         }
-        
+
         // Extract emails
-        let email_regex = regex::Regex::new(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}").unwrap();
+        let email_regex =
+            regex::Regex::new(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}").unwrap();
         for mat in email_regex.find_iter(&content) {
             entities.push(Entity {
                 name: "email".to_string(),
@@ -203,19 +211,19 @@ impl FileProcessor {
                 end_pos: mat.end(),
             });
         }
-        
+
         Ok(entities)
     }
 
     /// Calculate confidence
     async fn calculate_confidence(&self, file: &File) -> Result<f64> {
         let mut confidence: f64 = 0.7; // Base confidence
-        
+
         // Larger files = higher confidence
         if file.size > 1024 {
             confidence += 0.1;
         }
-        
+
         // Known file types = higher confidence
         match file.file_type {
             FileType::Code | FileType::Text | FileType::Document => {
@@ -223,21 +231,22 @@ impl FileProcessor {
             }
             _ => {}
         }
-        
+
         Ok(confidence.min(1.0))
     }
 
     /// Analyze file for issues and metrics
     async fn analyze_file(&self, file: &File) -> Result<FileAnalysis> {
         let content = String::from_utf8_lossy(&file.content);
-        
+
         // Calculate complexity (simple metric)
-        let complexity = if content.contains("if") || content.contains("for") || content.contains("while") {
-            0.7
-        } else {
-            0.3
-        };
-        
+        let complexity =
+            if content.contains("if") || content.contains("for") || content.contains("while") {
+                0.7
+            } else {
+                0.3
+            };
+
         // Calculate maintainability
         let maintainability = if content.lines().count() < 100 {
             0.8
@@ -246,19 +255,20 @@ impl FileProcessor {
         } else {
             0.4
         };
-        
+
         // Extract dependencies
         let mut dependencies = Vec::new();
-        let import_regex = regex::Regex::new(r#"(?:import|from|require)\s+['"]([^'"]+)['"]"#).unwrap();
+        let import_regex =
+            regex::Regex::new(r#"(?:import|from|require)\s+['"]([^'"]+)['"]"#).unwrap();
         for cap in import_regex.captures_iter(&content) {
             if let Some(dep) = cap.get(1) {
                 dependencies.push(dep.as_str().to_string());
             }
         }
-        
+
         // Detect issues
         let mut issues = Vec::new();
-        
+
         // Check for long lines
         for (i, line) in content.lines().enumerate() {
             if line.len() > 120 {
@@ -271,7 +281,7 @@ impl FileProcessor {
                 });
             }
         }
-        
+
         // Check for TODO/FIXME comments
         let todo_regex = regex::Regex::new(r"(?i)(TODO|FIXME|HACK|XXX)").unwrap();
         for (i, line) in content.lines().enumerate() {
@@ -285,7 +295,7 @@ impl FileProcessor {
                 });
             }
         }
-        
+
         Ok(FileAnalysis {
             complexity,
             maintainability,
@@ -309,7 +319,7 @@ mod tests {
     #[tokio::test]
     async fn test_code_file_processing() {
         let processor = FileProcessor::new().await.unwrap();
-        
+
         let file = File {
             name: "main.rs".to_string(),
             path: "/src/main.rs".to_string(),
@@ -318,7 +328,7 @@ mod tests {
             size: 100,
             metadata: HashMap::new(),
         };
-        
+
         let result = processor.process_file(file).await.unwrap();
         assert_eq!(result.language, Some("Rust".to_string()));
         assert!(result.line_count.is_some());
@@ -328,7 +338,7 @@ mod tests {
     #[tokio::test]
     async fn test_text_file_processing() {
         let processor = FileProcessor::new().await.unwrap();
-        
+
         let file = File {
             name: "README.md".to_string(),
             path: "/README.md".to_string(),
@@ -337,7 +347,7 @@ mod tests {
             size: 100,
             metadata: HashMap::new(),
         };
-        
+
         let result = processor.process_file(file).await.unwrap();
         assert!(result.summary.contains("Text file"));
     }

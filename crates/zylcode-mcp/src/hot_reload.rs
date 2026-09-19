@@ -1,11 +1,11 @@
+use anyhow::Result;
+use notify::{Event, EventKind, RecursiveMode, Watcher};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
-use tokio::sync::RwLock;
-use anyhow::Result;
-use notify::{Watcher, RecursiveMode, Event, EventKind};
 use std::sync::mpsc::channel;
+use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::RwLock;
 
 use crate::enhanced_bridge::{EnhancedMcpBridge, ToolDefinition};
 use crate::registry::ToolRegistry;
@@ -31,7 +31,11 @@ impl Default for HotReloadConfig {
     fn default() -> Self {
         Self {
             watch_directories: vec![PathBuf::from("tools")],
-            file_patterns: vec!["*.json".to_string(), "*.yaml".to_string(), "*.yml".to_string()],
+            file_patterns: vec![
+                "*.json".to_string(),
+                "*.yaml".to_string(),
+                "*.yml".to_string(),
+            ],
             debounce_ms: 500,
             auto_reload: true,
         }
@@ -43,10 +47,7 @@ pub type ReloadCallback = Arc<dyn Fn(&str) + Send + Sync>;
 
 impl HotReloadManager {
     /// Create a new hot-reload manager
-    pub async fn new(
-        config: HotReloadConfig,
-        tool_registry: Arc<ToolRegistry>,
-    ) -> Result<Self> {
+    pub async fn new(config: HotReloadConfig, tool_registry: Arc<ToolRegistry>) -> Result<Self> {
         Ok(Self {
             watchers: RwLock::new(HashMap::new()),
             reload_callbacks: RwLock::new(Vec::new()),
@@ -58,23 +59,23 @@ impl HotReloadManager {
     /// Start watching for file changes
     pub async fn start_watching(&self) -> Result<()> {
         let (tx, rx) = channel();
-        
+
         let mut watcher = notify::recommended_watcher(move |res: Result<Event, notify::Error>| {
             if let Ok(event) = res {
                 let _ = tx.send(event);
             }
         })?;
-        
+
         for dir in &self.config.watch_directories {
             if dir.exists() {
                 watcher.watch(dir, RecursiveMode::Recursive)?;
             }
         }
-        
+
         let callbacks = self.reload_callbacks.read().await.clone();
         let _tool_registry = self.tool_registry.clone();
         let config = self.config.clone();
-        
+
         tokio::spawn(async move {
             loop {
                 match rx.recv() {
@@ -96,10 +97,10 @@ impl HotReloadManager {
                 }
             }
         });
-        
+
         let mut watchers = self.watchers.write().await;
         watchers.insert("main".to_string(), watcher);
-        
+
         Ok(())
     }
 
@@ -123,14 +124,14 @@ impl HotReloadManager {
     /// Reload tools from watched directories
     pub async fn reload_tools(&self) -> Result<Vec<ToolDefinition>> {
         let mut tools = Vec::new();
-        
+
         for dir in &self.config.watch_directories {
             if dir.exists() {
                 let entries = std::fs::read_dir(dir)?;
                 for entry in entries {
                     let entry = entry?;
                     let path = entry.path();
-                    
+
                     if Self::should_reload(&path, &self.config.file_patterns) {
                         match Self::load_tool_from_file(&path).await {
                             Ok(tool) => tools.push(tool),
@@ -142,7 +143,7 @@ impl HotReloadManager {
                 }
             }
         }
-        
+
         Ok(tools)
     }
 
@@ -222,36 +223,42 @@ impl ToolAnalytics {
     /// Record tool usage
     pub async fn record_usage(&self, tool_id: &str, duration: Duration, success: bool) {
         let mut stats = self.usage_stats.write().await;
-        let entry = stats.entry(tool_id.to_string()).or_insert_with(|| UsageStats {
-            total_calls: 0,
-            successful_calls: 0,
-            failed_calls: 0,
-            average_duration_ms: 0.0,
-            last_used: chrono::Utc::now(),
-        });
-        
+        let entry = stats
+            .entry(tool_id.to_string())
+            .or_insert_with(|| UsageStats {
+                total_calls: 0,
+                successful_calls: 0,
+                failed_calls: 0,
+                average_duration_ms: 0.0,
+                last_used: chrono::Utc::now(),
+            });
+
         entry.total_calls += 1;
         if success {
             entry.successful_calls += 1;
         } else {
             entry.failed_calls += 1;
         }
-        
+
         let duration_ms = duration.as_millis() as f64;
-        entry.average_duration_ms = (entry.average_duration_ms * (entry.total_calls - 1) as f64 + duration_ms) / entry.total_calls as f64;
+        entry.average_duration_ms = (entry.average_duration_ms * (entry.total_calls - 1) as f64
+            + duration_ms)
+            / entry.total_calls as f64;
         entry.last_used = chrono::Utc::now();
     }
 
     /// Record tool error
     pub async fn record_error(&self, tool_id: &str, error: &str) {
         let mut errors = self.error_tracking.write().await;
-        let entry = errors.entry(tool_id.to_string()).or_insert_with(|| ErrorStats {
-            total_errors: 0,
-            error_types: HashMap::new(),
-            last_error: None,
-            last_error_time: None,
-        });
-        
+        let entry = errors
+            .entry(tool_id.to_string())
+            .or_insert_with(|| ErrorStats {
+                total_errors: 0,
+                error_types: HashMap::new(),
+                last_error: None,
+                last_error_time: None,
+            });
+
         entry.total_errors += 1;
         *entry.error_types.entry(error.to_string()).or_insert(0) += 1;
         entry.last_error = Some(error.to_string());
@@ -278,7 +285,7 @@ impl ToolAnalytics {
         let usage_stats = self.usage_stats.read().await.clone();
         let performance_metrics = self.performance_metrics.read().await.clone();
         let error_stats = self.error_tracking.read().await.clone();
-        
+
         AnalyticsReport {
             total_tools: usage_stats.len(),
             total_calls: usage_stats.values().map(|s| s.total_calls).sum(),
@@ -286,8 +293,15 @@ impl ToolAnalytics {
             total_failed: usage_stats.values().map(|s| s.failed_calls).sum(),
             average_success_rate: {
                 let total = usage_stats.values().map(|s| s.total_calls).sum::<u64>() as f64;
-                let successful = usage_stats.values().map(|s| s.successful_calls).sum::<u64>() as f64;
-                if total > 0.0 { successful / total } else { 0.0 }
+                let successful = usage_stats
+                    .values()
+                    .map(|s| s.successful_calls)
+                    .sum::<u64>() as f64;
+                if total > 0.0 {
+                    successful / total
+                } else {
+                    0.0
+                }
             },
             usage_stats,
             performance_metrics,
@@ -317,7 +331,7 @@ impl EnhancedMcpBridgeWithHotReload {
         let config = HotReloadConfig::default();
         let hot_reload_manager = Arc::new(HotReloadManager::new(config, tool_registry).await?);
         let analytics = Arc::new(ToolAnalytics::new());
-        
+
         Ok(Self {
             bridge,
             hot_reload_manager,
@@ -401,7 +415,6 @@ impl EnhancedMcpBridgeWithHotReload {
                 parameters: serde_json::json!({}),
                 required_permissions: vec!["ml.deploy".to_string()],
             },
-            
             // Cloud Services
             ToolDefinition {
                 id: "cloud.aws.manage".to_string(),
@@ -443,7 +456,6 @@ impl EnhancedMcpBridgeWithHotReload {
                 parameters: serde_json::json!({}),
                 required_permissions: vec!["cloud.kubernetes".to_string()],
             },
-            
             // DevOps Tools
             ToolDefinition {
                 id: "devops.cicd.manage".to_string(),
@@ -485,7 +497,6 @@ impl EnhancedMcpBridgeWithHotReload {
                 parameters: serde_json::json!({}),
                 required_permissions: vec!["devops.performance".to_string()],
             },
-            
             // Communication Tools
             ToolDefinition {
                 id: "comm.slack.send".to_string(),
@@ -541,22 +552,28 @@ impl EnhancedMcpBridgeWithHotReload {
     }
 
     /// Execute tool with analytics
-    pub async fn execute_tool_with_analytics(&self, tool_id: &str, params: serde_json::Value) -> Result<serde_json::Value> {
+    pub async fn execute_tool_with_analytics(
+        &self,
+        tool_id: &str,
+        params: serde_json::Value,
+    ) -> Result<serde_json::Value> {
         let start = std::time::Instant::now();
-        
+
         // Execute tool
         let result = self.bridge.execute_tool(tool_id, params).await;
-        
+
         let duration = start.elapsed();
         let success = result.is_ok();
-        
+
         // Record analytics
-        self.analytics.record_usage(tool_id, duration, success).await;
-        
+        self.analytics
+            .record_usage(tool_id, duration, success)
+            .await;
+
         if let Err(ref e) = result {
             self.analytics.record_error(tool_id, &e.to_string()).await;
         }
-        
+
         result
     }
 }
@@ -570,23 +587,27 @@ mod tests {
         let tool_registry = Arc::new(ToolRegistry::new());
         let config = HotReloadConfig::default();
         let manager = HotReloadManager::new(config, tool_registry).await.unwrap();
-        
+
         assert_eq!(manager.watcher_count().await, 0);
     }
 
     #[tokio::test]
     async fn test_tool_analytics() {
         let analytics = ToolAnalytics::new();
-        
-        analytics.record_usage("test_tool", Duration::from_millis(100), true).await;
-        analytics.record_usage("test_tool", Duration::from_millis(200), true).await;
+
+        analytics
+            .record_usage("test_tool", Duration::from_millis(100), true)
+            .await;
+        analytics
+            .record_usage("test_tool", Duration::from_millis(200), true)
+            .await;
         analytics.record_error("test_tool", "test error").await;
-        
+
         let stats = analytics.get_usage_stats("test_tool").await.unwrap();
         assert_eq!(stats.total_calls, 2);
         assert_eq!(stats.successful_calls, 2);
         assert_eq!(stats.failed_calls, 0);
-        
+
         let errors = analytics.get_error_stats("test_tool").await.unwrap();
         assert_eq!(errors.total_errors, 1);
     }
@@ -626,7 +647,10 @@ mod tests {
         let reported = bridge.initialize_with_enhanced_tools().await.unwrap();
 
         let additional = bridge.get_additional_tools();
-        assert!(!additional.is_empty(), "the historical claim listed additional tools");
+        assert!(
+            !additional.is_empty(),
+            "the historical claim listed additional tools"
+        );
 
         // None of these has an executor, so none may be counted. This is the
         // exact claim the old `count + 50` fabricated.

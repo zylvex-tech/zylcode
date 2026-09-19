@@ -43,7 +43,11 @@ pub enum ToolError {
     ExecutorUnavailable(String),
     /// The caller asked this tool id to perform an operation it does not
     /// authorise (e.g. `git.commit` asked to run `git push`).
-    OperationNotPermitted { tool_id: String, requested: String, permitted: String },
+    OperationNotPermitted {
+        tool_id: String,
+        requested: String,
+        permitted: String,
+    },
     /// The permission gate refused the invocation. The operation did **not** run.
     PermissionDenied { tool_id: String, reason: String },
     /// The request was malformed (missing or wrong-typed parameters).
@@ -58,7 +62,11 @@ impl std::fmt::Display for ToolError {
                 write!(f, "tool `{id}` is definition-only and has no executor")
             }
             Self::ExecutorUnavailable(id) => write!(f, "executor unavailable for tool `{id}`"),
-            Self::OperationNotPermitted { tool_id, requested, permitted } => write!(
+            Self::OperationNotPermitted {
+                tool_id,
+                requested,
+                permitted,
+            } => write!(
                 f,
                 "tool `{tool_id}` is bound to `{permitted}` and may not perform `{requested}`"
             ),
@@ -256,13 +264,11 @@ impl RealTool for FileSystemTool {
             }
             _ => self.bound_action,
         };
-        
-        let path = params.get("path")
-            .and_then(|v| v.as_str())
-            .unwrap_or(".");
-        
+
+        let path = params.get("path").and_then(|v| v.as_str()).unwrap_or(".");
+
         let full_path = context.working_directory.join(path);
-        
+
         let mut evidence = ToolEvidence::begin(
             &self.id,
             self.risk_level(),
@@ -270,47 +276,43 @@ impl RealTool for FileSystemTool {
             &params,
             context,
         );
-        
+
         let result = match action {
-            "read" => {
-                match fs::read_to_string(&full_path).await {
-                    Ok(content) => {
-                        evidence.stdout = Some(content.clone());
-                        ToolResult {
-                            success: true,
-                            output: serde_json::json!({
-                                "action": "read",
-                                "path": path,
-                                "content": content,
-                                "size": content.len()
-                            }),
-                            evidence: evidence.clone(),
-                            changed_files: Vec::new(),
-                            duration: start.elapsed(),
-                        }
-                    }
-                    Err(e) => {
-                        evidence.stderr = Some(e.to_string());
-                        evidence.exit_status = Some(1);
-                        ToolResult {
-                            success: false,
-                            output: serde_json::json!({
-                                "action": "read",
-                                "path": path,
-                                "error": e.to_string()
-                            }),
-                            evidence: evidence.clone(),
-                            changed_files: Vec::new(),
-                            duration: start.elapsed(),
-                        }
+            "read" => match fs::read_to_string(&full_path).await {
+                Ok(content) => {
+                    evidence.stdout = Some(content.clone());
+                    ToolResult {
+                        success: true,
+                        output: serde_json::json!({
+                            "action": "read",
+                            "path": path,
+                            "content": content,
+                            "size": content.len()
+                        }),
+                        evidence: evidence.clone(),
+                        changed_files: Vec::new(),
+                        duration: start.elapsed(),
                     }
                 }
-            }
+                Err(e) => {
+                    evidence.stderr = Some(e.to_string());
+                    evidence.exit_status = Some(1);
+                    ToolResult {
+                        success: false,
+                        output: serde_json::json!({
+                            "action": "read",
+                            "path": path,
+                            "error": e.to_string()
+                        }),
+                        evidence: evidence.clone(),
+                        changed_files: Vec::new(),
+                        duration: start.elapsed(),
+                    }
+                }
+            },
             "write" => {
-                let content = params.get("content")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("");
-                
+                let content = params.get("content").and_then(|v| v.as_str()).unwrap_or("");
+
                 match fs::write(&full_path, content).await {
                     Ok(_) => {
                         evidence.changed_files.push(full_path.clone());
@@ -343,50 +345,48 @@ impl RealTool for FileSystemTool {
                     }
                 }
             }
-            "list" => {
-                match fs::read_dir(&full_path).await {
-                    Ok(mut entries) => {
-                        let mut files = Vec::new();
-                        while let Some(entry) = entries.next_entry().await? {
-                            let file_name = entry.file_name().to_string_lossy().to_string();
-                            let file_type = entry.file_type().await?;
-                            files.push(serde_json::json!({
-                                "name": file_name,
-                                "is_dir": file_type.is_dir(),
-                                "is_file": file_type.is_file()
-                            }));
-                        }
-                        
-                        evidence.stdout = Some(serde_json::to_string_pretty(&files)?);
-                        ToolResult {
-                            success: true,
-                            output: serde_json::json!({
-                                "action": "list",
-                                "path": path,
-                                "entries": files
-                            }),
-                            evidence: evidence.clone(),
-                            changed_files: Vec::new(),
-                            duration: start.elapsed(),
-                        }
+            "list" => match fs::read_dir(&full_path).await {
+                Ok(mut entries) => {
+                    let mut files = Vec::new();
+                    while let Some(entry) = entries.next_entry().await? {
+                        let file_name = entry.file_name().to_string_lossy().to_string();
+                        let file_type = entry.file_type().await?;
+                        files.push(serde_json::json!({
+                            "name": file_name,
+                            "is_dir": file_type.is_dir(),
+                            "is_file": file_type.is_file()
+                        }));
                     }
-                    Err(e) => {
-                        evidence.stderr = Some(e.to_string());
-                        evidence.exit_status = Some(1);
-                        ToolResult {
-                            success: false,
-                            output: serde_json::json!({
-                                "action": "list",
-                                "path": path,
-                                "error": e.to_string()
-                            }),
-                            evidence: evidence.clone(),
-                            changed_files: Vec::new(),
-                            duration: start.elapsed(),
-                        }
+
+                    evidence.stdout = Some(serde_json::to_string_pretty(&files)?);
+                    ToolResult {
+                        success: true,
+                        output: serde_json::json!({
+                            "action": "list",
+                            "path": path,
+                            "entries": files
+                        }),
+                        evidence: evidence.clone(),
+                        changed_files: Vec::new(),
+                        duration: start.elapsed(),
                     }
                 }
-            }
+                Err(e) => {
+                    evidence.stderr = Some(e.to_string());
+                    evidence.exit_status = Some(1);
+                    ToolResult {
+                        success: false,
+                        output: serde_json::json!({
+                            "action": "list",
+                            "path": path,
+                            "error": e.to_string()
+                        }),
+                        evidence: evidence.clone(),
+                        changed_files: Vec::new(),
+                        duration: start.elapsed(),
+                    }
+                }
+            },
             _ => {
                 evidence.stderr = Some(format!("Unknown action: {}", action));
                 evidence.exit_status = Some(1);
@@ -401,7 +401,7 @@ impl RealTool for FileSystemTool {
                 }
             }
         };
-        
+
         evidence.end_time = Some(chrono::Utc::now());
         Ok(result)
     }
@@ -509,9 +509,7 @@ impl RealTool for ShellTool {
             },
             // An id we do not recognise is refused outright rather than being
             // given unbound (unsafe) semantics.
-            Some("") => {
-                return Err(ToolError::UnsupportedTool(self.id.clone()).into())
-            }
+            Some("") => return Err(ToolError::UnsupportedTool(self.id.clone()).into()),
             Some(bound) => {
                 if let Some(c) = caller_command {
                     if c != bound {
@@ -567,7 +565,7 @@ impl RealTool for ShellTool {
             .map(|s| s.to_string())
             .collect();
         args.extend(caller_args);
-        
+
         let mut evidence = ToolEvidence::begin(
             &self.id,
             self.risk_level(),
@@ -575,7 +573,7 @@ impl RealTool for ShellTool {
             &params,
             context,
         );
-        
+
         // On Windows, built-in commands like 'echo' need to be run via cmd /C
         let mut cmd = if cfg!(target_os = "windows") {
             let mut cmd = Command::new("cmd");
@@ -586,26 +584,26 @@ impl RealTool for ShellTool {
             cmd.args(&args);
             cmd
         };
-        
+
         cmd.current_dir(&context.working_directory)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
-        
+
         // Add environment variables
         for (key, value) in &context.environment {
             cmd.env(key, value);
         }
-        
+
         match tokio::time::timeout(context.timeout, cmd.output()).await {
             Ok(Ok(output)) => {
                 let stdout = String::from_utf8_lossy(&output.stdout).to_string();
                 let stderr = String::from_utf8_lossy(&output.stderr).to_string();
                 let exit_code = output.status.code().unwrap_or(-1);
-                
+
                 evidence.stdout = Some(stdout.clone());
                 evidence.stderr = Some(stderr.clone());
                 evidence.exit_status = Some(exit_code);
-                
+
                 ToolResult {
                     success: output.status.success(),
                     output: serde_json::json!({
@@ -650,7 +648,8 @@ impl RealTool for ShellTool {
                     duration: start.elapsed(),
                 }
             }
-        }.pipe(|mut result| {
+        }
+        .pipe(|mut result| {
             result.evidence.end_time = Some(chrono::Utc::now());
             Ok(result)
         })
@@ -791,7 +790,7 @@ impl RealTool for GitTool {
                 })
                 .unwrap_or_default()
         };
-        
+
         let mut evidence = ToolEvidence::begin(
             &self.id,
             self.risk_level(),
@@ -799,33 +798,33 @@ impl RealTool for GitTool {
             &params,
             context,
         );
-        
+
         let mut cmd = Command::new("git");
         cmd.arg(subcommand)
             .args(&args)
             .current_dir(&context.working_directory)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
-        
+
         match tokio::time::timeout(context.timeout, cmd.output()).await {
             Ok(Ok(output)) => {
                 let stdout = String::from_utf8_lossy(&output.stdout).to_string();
                 let stderr = String::from_utf8_lossy(&output.stderr).to_string();
                 let exit_code = output.status.code().unwrap_or(-1);
-                
+
                 evidence.stdout = Some(stdout.clone());
                 evidence.stderr = Some(stderr.clone());
                 evidence.exit_status = Some(exit_code);
-                
+
                 // Parse changed files from git status/diff
                 let changed_files = if subcommand == "status" || subcommand == "diff" {
                     parse_git_changed_files(&stdout)
                 } else {
                     Vec::new()
                 };
-                
+
                 evidence.changed_files = changed_files.clone();
-                
+
                 ToolResult {
                     success: output.status.success(),
                     output: serde_json::json!({
@@ -871,7 +870,8 @@ impl RealTool for GitTool {
                     duration: start.elapsed(),
                 }
             }
-        }.pipe(|mut result| {
+        }
+        .pipe(|mut result| {
             result.evidence.end_time = Some(chrono::Utc::now());
             Ok(result)
         })
@@ -944,9 +944,7 @@ impl RealTool for SearchTool {
             return Err(ToolError::UnsupportedTool(self.id.clone()).into());
         }
 
-        let pattern = params.get("pattern")
-            .and_then(|v| v.as_str())
-            .unwrap_or("");
+        let pattern = params.get("pattern").and_then(|v| v.as_str()).unwrap_or("");
 
         // Dispatch binding: the id fixes the mode.
         let search_type = match params.get("type").and_then(|v| v.as_str()) {
@@ -960,7 +958,7 @@ impl RealTool for SearchTool {
             }
             _ => self.bound_mode,
         };
-        
+
         let mut evidence = ToolEvidence::begin(
             &self.id,
             self.risk_level(),
@@ -968,7 +966,7 @@ impl RealTool for SearchTool {
             &params,
             context,
         );
-        
+
         let mut cmd = match search_type {
             "filename" => {
                 let mut cmd = Command::new("find");
@@ -1005,17 +1003,17 @@ impl RealTool for SearchTool {
                 });
             }
         };
-        
+
         match tokio::time::timeout(context.timeout, cmd.output()).await {
             Ok(Ok(output)) => {
                 let stdout = String::from_utf8_lossy(&output.stdout).to_string();
                 let stderr = String::from_utf8_lossy(&output.stderr).to_string();
                 let exit_code = output.status.code().unwrap_or(-1);
-                
+
                 evidence.stdout = Some(stdout.clone());
                 evidence.stderr = Some(stderr.clone());
                 evidence.exit_status = Some(exit_code);
-                
+
                 ToolResult {
                     success: output.status.success(),
                     output: serde_json::json!({
@@ -1060,7 +1058,8 @@ impl RealTool for SearchTool {
                     duration: start.elapsed(),
                 }
             }
-        }.pipe(|mut result| {
+        }
+        .pipe(|mut result| {
             result.evidence.end_time = Some(chrono::Utc::now());
             Ok(result)
         })
@@ -1070,21 +1069,23 @@ impl RealTool for SearchTool {
 /// Parse changed files from git output
 fn parse_git_changed_files(output: &str) -> Vec<PathBuf> {
     let mut files = Vec::new();
-    
+
     for line in output.lines() {
         let line = line.trim();
-        
+
         // Parse git status format: "XY filename"
         if line.len() > 3 {
             let status = &line[..2];
             let filename = line[3..].trim();
-            
-            if !filename.is_empty() && (status.contains('M') || status.contains('A') || status.contains('D')) {
+
+            if !filename.is_empty()
+                && (status.contains('M') || status.contains('A') || status.contains('D'))
+            {
                 files.push(PathBuf::from(filename));
             }
         }
     }
-    
+
     files
 }
 
@@ -1265,17 +1266,25 @@ pub async fn dispatch(
     };
 
     let _ = runtime.sink().record(&record).await;
-    DispatchOutcome { decision, evidence: record, result }
+    DispatchOutcome {
+        decision,
+        evidence: record,
+        result,
+    }
 }
-
 
 /// Extension trait for pipe operations
 trait Pipe<T> {
-    fn pipe<F, U>(self, f: F) -> U where F: FnOnce(T) -> U;
+    fn pipe<F, U>(self, f: F) -> U
+    where
+        F: FnOnce(T) -> U;
 }
 
 impl<T> Pipe<T> for T {
-    fn pipe<F, U>(self, f: F) -> U where F: FnOnce(T) -> U {
+    fn pipe<F, U>(self, f: F) -> U
+    where
+        F: FnOnce(T) -> U,
+    {
         f(self)
     }
 }
@@ -1325,8 +1334,16 @@ mod tests {
     async fn git_commit_refuses_every_dangerous_subcommand() {
         let tool = GitTool::new("git.commit", "Git commit");
         for sub in [
-            "push", "reset", "clean", "checkout", "rebase", "config", "remote", "filter-branch",
-            "update-ref", "gc",
+            "push",
+            "reset",
+            "clean",
+            "checkout",
+            "rebase",
+            "config",
+            "remote",
+            "filter-branch",
+            "update-ref",
+            "gc",
         ] {
             let err = tool
                 .execute(
@@ -1354,7 +1371,10 @@ mod tests {
             )
             .await
             .expect_err("git.commit must reject free-form args");
-        assert!(err.to_string().contains("does not accept free-form"), "{err}");
+        assert!(
+            err.to_string().contains("does not accept free-form"),
+            "{err}"
+        );
     }
 
     /// `git.commit` requires a message.
@@ -1387,7 +1407,10 @@ mod tests {
     async fn git_diff_cannot_execute_git_checkout() {
         let tool = GitTool::new("git.diff", "Git diff");
         let err = tool
-            .execute(serde_json::json!({ "subcommand": "checkout" }), &test_context())
+            .execute(
+                serde_json::json!({ "subcommand": "checkout" }),
+                &test_context(),
+            )
             .await
             .expect_err("git.diff must not run git checkout");
         assert!(err.to_string().contains("may not perform"), "{err}");
@@ -1487,10 +1510,18 @@ mod tests {
     #[test]
     fn every_factory_tool_declares_its_binding() {
         for id in [
-            "fs.read", "fs.write", "fs.list",
-            "shell.execute", "shell.echo", "npm.run", "cargo.test",
-            "git.status", "git.diff", "git.commit",
-            "search.find", "search.grep",
+            "fs.read",
+            "fs.write",
+            "fs.list",
+            "shell.execute",
+            "shell.echo",
+            "npm.run",
+            "cargo.test",
+            "git.status",
+            "git.diff",
+            "git.commit",
+            "search.find",
+            "search.grep",
         ] {
             let tool = get_real_tool(id).unwrap_or_else(|| panic!("no executor for {id}"));
             let bound = tool.bound_operation();
@@ -1505,7 +1536,7 @@ mod tests {
             }
         }
     }
-    
+
     #[tokio::test]
     async fn test_filesystem_tool_read() {
         let tool = FileSystemTool::new("fs.read", "Read file contents");
@@ -1517,17 +1548,17 @@ mod tests {
             actor: None,
             approval_required: false,
         };
-        
+
         let params = serde_json::json!({
             "action": "read",
             "path": "Cargo.toml"
         });
-        
+
         let result = tool.execute(params, &context).await.unwrap();
         assert!(result.success);
         assert!(result.output.get("content").is_some());
     }
-    
+
     #[tokio::test]
     async fn test_shell_tool_echo() {
         let tool = ShellTool::new("shell.echo", "Echo command");
@@ -1581,7 +1612,10 @@ mod tests {
         let context = test_context();
         // Even a *legitimate-looking* command is refused if it is not `npm`.
         let err = tool
-            .execute(serde_json::json!({ "command": "npx", "args": ["evil"] }), &context)
+            .execute(
+                serde_json::json!({ "command": "npx", "args": ["evil"] }),
+                &context,
+            )
             .await
             .expect_err("npm.run must refuse npx");
         assert!(err.to_string().contains("may not perform"), "{err}");
@@ -1594,7 +1628,10 @@ mod tests {
         assert_eq!(tool.bound_operation().as_deref(), Some("cargo test"));
 
         let err = tool
-            .execute(serde_json::json!({ "command": "cargo", "args": ["publish"] }), &test_context())
+            .execute(
+                serde_json::json!({ "command": "cargo", "args": ["publish"] }),
+                &test_context(),
+            )
             .await;
         // A matching program is permitted; the *program* is what the binding
         // guards. The prefix `test` is always inserted, so the executed command
@@ -1649,12 +1686,15 @@ mod tests {
     async fn unrecognised_shell_id_fails_closed() {
         let tool = ShellTool::new("shell.definitely-not-real", "?");
         let err = tool
-            .execute(serde_json::json!({ "command": "echo", "args": ["hi"] }), &test_context())
+            .execute(
+                serde_json::json!({ "command": "echo", "args": ["hi"] }),
+                &test_context(),
+            )
             .await
             .expect_err("an unknown shell id must be refused");
         assert!(err.to_string().contains("unsupported tool"), "{err}");
     }
-    
+
     #[tokio::test]
     async fn test_git_tool_status() {
         let tool = GitTool::new("git.status", "Git status");
@@ -1666,12 +1706,12 @@ mod tests {
             actor: None,
             approval_required: false,
         };
-        
+
         let params = serde_json::json!({
             "subcommand": "status",
             "args": ["--short"]
         });
-        
+
         let result = tool.execute(params, &context).await.unwrap();
         assert!(result.success);
     }

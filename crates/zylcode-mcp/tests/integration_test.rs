@@ -95,7 +95,12 @@ async fn bridge_never_fabricates_success_for_unsupported_tools() {
     let bridge = EnhancedMcpBridge::new();
     bridge.initialize_with_builtin_tools().await.unwrap();
 
-    for id in ["openai.complete", "docker.build", "kubernetes.deploy", "eslint.lint"] {
+    for id in [
+        "openai.complete",
+        "docker.build",
+        "kubernetes.deploy",
+        "eslint.lint",
+    ] {
         let outcome = bridge
             .execute_tool(id, serde_json::json!({ "prompt": "anything" }))
             .await;
@@ -111,12 +116,10 @@ async fn bridge_never_fabricates_success_for_unsupported_tools() {
 async fn bridge_unknown_tool_id_fails_closed() {
     let bridge = EnhancedMcpBridge::new();
     bridge.initialize_with_builtin_tools().await.unwrap();
-    assert!(
-        bridge
-            .execute_tool("no.such.tool", serde_json::json!({}))
-            .await
-            .is_err()
-    );
+    assert!(bridge
+        .execute_tool("no.such.tool", serde_json::json!({}))
+        .await
+        .is_err());
 }
 
 /// A real, read-only execution actually reads a file.
@@ -173,7 +176,10 @@ async fn bridge_default_gate_refuses_unapproved_write() {
     bridge.initialize_with_builtin_tools().await.unwrap();
 
     let err = bridge
-        .execute_tool("git.commit", serde_json::json!({ "message": "must not run" }))
+        .execute_tool(
+            "git.commit",
+            serde_json::json!({ "message": "must not run" }),
+        )
         .await
         .expect_err("an unapproved GitWrite tool must not run");
     assert!(
@@ -217,10 +223,7 @@ async fn skills_system_initialises_and_executes() {
     assert_eq!(definition.name, "Code Review");
 
     let history = system.get_execution_history(10).await;
-    assert!(
-        !history.is_empty(),
-        "executing a skill must record history"
-    );
+    assert!(!history.is_empty(), "executing a skill must record history");
 }
 
 // ---------------------------------------------------------------------------
@@ -245,7 +248,10 @@ async fn plugin_marketplace_installs_and_executes() {
     }
 
     marketplace
-        .install_plugin("ai-model-provider", serde_json::json!({ "default_model": "gpt-4" }))
+        .install_plugin(
+            "ai-model-provider",
+            serde_json::json!({ "default_model": "gpt-4" }),
+        )
         .await
         .unwrap();
 
@@ -300,7 +306,10 @@ async fn systems_compose_without_fabricated_success() {
     // 2. A definition-only tool fails closed rather than inventing a result.
     assert!(
         bridge
-            .execute_tool("eslint.lint", serde_json::json!({ "files": ["src/main.rs"] }))
+            .execute_tool(
+                "eslint.lint",
+                serde_json::json!({ "files": ["src/main.rs"] })
+            )
             .await
             .is_err(),
         "a definition-only tool must not fabricate a result"
@@ -319,7 +328,10 @@ async fn systems_compose_without_fabricated_success() {
 
     // 4. The marketplace composes on top of that result.
     marketplace
-        .install_plugin("ai-model-provider", serde_json::json!({ "default_model": "gpt-4" }))
+        .install_plugin(
+            "ai-model-provider",
+            serde_json::json!({ "default_model": "gpt-4" }),
+        )
         .await
         .unwrap();
     let suggestion = marketplace
