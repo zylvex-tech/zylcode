@@ -289,7 +289,16 @@ pub fn parse_cargo_package(root: &Path, manifest_path: &Path) -> Result<Package>
         }
     }
 
-    let pkg_root = manifest_path.parent().unwrap_or(root).to_path_buf();
+    // Store the package root relative to the repository root, matching the
+    // semantics of Package.manifest and FileNode.id. Absolute roots here
+    // broke string prefix joins on Windows (an absolute backslash path can
+    // never match a relative forward-slash file id) and embedded the
+    // checkout location into model output, defeating determinism.
+    let pkg_root_abs = manifest_path.parent().unwrap_or(root).to_path_buf();
+    let pkg_root = pkg_root_abs
+        .strip_prefix(root)
+        .unwrap_or(&pkg_root_abs)
+        .to_path_buf();
 
     Ok(Package {
         id: name.clone(),
@@ -380,7 +389,12 @@ pub fn parse_npm_package(root: &Path, manifest_path: &Path) -> Result<Package> {
         }
     }
 
-    let pkg_root = manifest_path.parent().unwrap_or(root).to_path_buf();
+    // See parse_cargo_package: package roots are repo-relative.
+    let pkg_root_abs = manifest_path.parent().unwrap_or(root).to_path_buf();
+    let pkg_root = pkg_root_abs
+        .strip_prefix(root)
+        .unwrap_or(&pkg_root_abs)
+        .to_path_buf();
 
     Ok(Package {
         id: name.clone(),
@@ -467,8 +481,16 @@ pub fn discover_packages(root: &Path) -> Result<Vec<Package>> {
         if entry.file_name() == "package.json" {
             let manifest_path = entry.path();
             if let Ok(pkg) = parse_npm_package(root, manifest_path) {
-                // Avoid duplicates (e.g., workspace root)
-                if !packages.iter().any(|p| p.name == pkg.name) {
+                // Avoid duplicate manifests (e.g., workspace root parsed twice).
+                // Dedup key is the manifest path, NOT the package name: a
+                // Tauri app legitimately has a cargo package and an npm package
+                // sharing one name, and dropping the npm package hides the
+                // frontend entry points.
+                let manifest_key = pkg.manifest.replace('\\', "/");
+                if !packages
+                    .iter()
+                    .any(|p| p.manifest.replace('\\', "/") == manifest_key)
+                {
                     packages.push(pkg);
                 }
             }

@@ -5,13 +5,36 @@
 
 use crate::intelligence::types::{EntryPoint, EntryPointKind, Package};
 use anyhow::Result;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+
+/// Resolve a package's directory relative to the repository root.
+///
+/// Uses the package manifest (always repo-relative) so this works
+/// regardless of how `pkg.root` was populated.
+fn package_dir(root: &Path, pkg: &Package) -> PathBuf {
+    root.join(&pkg.manifest)
+        .parent()
+        .map(|p| p.to_path_buf())
+        .unwrap_or_else(|| root.to_path_buf())
+}
+
+/// Convert an absolute path under `root` to a repo-relative forward-slash
+/// string. Leaves already-relative paths untouched. Entry-point paths are
+/// stored repo-relative so model output does not embed the checkout
+/// location (determinism requirement).
+fn to_repo_relative(path: &Path, root: &Path) -> String {
+    path.strip_prefix(root)
+        .unwrap_or(path)
+        .to_string_lossy()
+        .replace('\\', "/")
+}
 
 /// Discover all entry points in a repository.
 pub fn discover_entry_points(root: &Path, packages: &[Package]) -> Result<Vec<EntryPoint>> {
     let mut entry_points = Vec::new();
 
     for pkg in packages {
+        let pkg_dir = package_dir(root, pkg);
         // Check for Rust binary targets from Cargo.toml
         let manifest_path = root.join(&pkg.manifest);
         if manifest_path.exists() {
@@ -27,7 +50,7 @@ pub fn discover_entry_points(root: &Path, packages: &[Package]) -> Result<Vec<En
                             bin.get("path").and_then(|p| p.as_str()),
                         ) {
                             entry_points.push(EntryPoint {
-                                path: pkg.root.join(path),
+                                path: PathBuf::from(to_repo_relative(&pkg_dir.join(path), root)),
                                 kind: EntryPointKind::Binary(name.to_string()),
                                 package: Some(pkg.id.clone()),
                                 evidence: vec![
@@ -47,7 +70,7 @@ pub fn discover_entry_points(root: &Path, packages: &[Package]) -> Result<Vec<En
                         .and_then(|p| p.as_str())
                         .unwrap_or("src/lib.rs");
                     entry_points.push(EntryPoint {
-                        path: pkg.root.join(lib_path),
+                        path: PathBuf::from(to_repo_relative(&pkg_dir.join(lib_path), root)),
                         kind: EntryPointKind::Lib,
                         package: Some(pkg.id.clone()),
                         evidence: vec![
@@ -59,10 +82,10 @@ pub fn discover_entry_points(root: &Path, packages: &[Package]) -> Result<Vec<En
 
                 // Default main.rs (if no explicit [[bin]] and src/main.rs exists)
                 if doc.get("bin").is_none() {
-                    let main_path = pkg.root.join("src/main.rs");
+                    let main_path = pkg_dir.join("src/main.rs");
                     if main_path.exists() {
                         entry_points.push(EntryPoint {
-                            path: main_path,
+                            path: PathBuf::from(to_repo_relative(&main_path, root)),
                             kind: EntryPointKind::Main,
                             package: Some(pkg.id.clone()),
                             evidence: vec![
@@ -74,10 +97,10 @@ pub fn discover_entry_points(root: &Path, packages: &[Package]) -> Result<Vec<En
                 }
 
                 // Build script
-                let build_rs = pkg.root.join("build.rs");
+                let build_rs = pkg_dir.join("build.rs");
                 if build_rs.exists() {
                     entry_points.push(EntryPoint {
-                        path: build_rs,
+                        path: PathBuf::from(to_repo_relative(&build_rs, root)),
                         kind: EntryPointKind::BuildScript,
                         package: Some(pkg.id.clone()),
                         evidence: vec![format!("{}: build.rs exists", pkg.manifest)],
@@ -85,14 +108,14 @@ pub fn discover_entry_points(root: &Path, packages: &[Package]) -> Result<Vec<En
                 }
 
                 // Test targets
-                let tests_dir = pkg.root.join("tests");
+                let tests_dir = pkg_dir.join("tests");
                 if tests_dir.exists() && tests_dir.is_dir() {
                     for entry in std::fs::read_dir(&tests_dir)? {
                         let entry = entry?;
                         let path = entry.path();
                         if path.extension().map(|e| e.to_str()) == Some(Some("rs")) {
                             entry_points.push(EntryPoint {
-                                path,
+                                path: PathBuf::from(to_repo_relative(&path, root)),
                                 kind: EntryPointKind::Test,
                                 package: Some(pkg.id.clone()),
                                 evidence: vec![format!("tests/ directory in {}", pkg.name)],
@@ -104,10 +127,13 @@ pub fn discover_entry_points(root: &Path, packages: &[Package]) -> Result<Vec<En
         }
 
         // Check for Tauri app
-        let tauri_conf = pkg.root.join("tauri.conf.json");
+        let tauri_conf = pkg_dir.join("tauri.conf.json");
         if tauri_conf.exists() {
+            // pkg_dir is the package containing tauri.conf.json (the src-tauri
+            // directory for a cargo package), so the Rust main is directly
+            // under it — not under a second src-tauri level.
             entry_points.push(EntryPoint {
-                path: pkg.root.join("src-tauri/src/main.rs"),
+                path: PathBuf::from(to_repo_relative(&pkg_dir.join("src/main.rs"), root)),
                 kind: EntryPointKind::TauriApp,
                 package: Some(pkg.id.clone()),
                 evidence: vec!["tauri.conf.json exists".to_string()],
@@ -115,7 +141,7 @@ pub fn discover_entry_points(root: &Path, packages: &[Package]) -> Result<Vec<En
         }
 
         // Check for package.json scripts
-        let pkg_json = pkg.root.join("package.json");
+        let pkg_json = pkg_dir.join("package.json");
         if pkg_json.exists() {
             if let Ok(content) = std::fs::read_to_string(&pkg_json) {
                 if let Ok(doc) = serde_json::from_str::<serde_json::Value>(&content) {
@@ -132,10 +158,10 @@ pub fn discover_entry_points(root: &Path, packages: &[Package]) -> Result<Vec<En
                                 "src/App.tsx",
                                 "src/App.ts",
                             ] {
-                                let entry_path = pkg.root.join(entry_name);
+                                let entry_path = pkg_dir.join(entry_name);
                                 if entry_path.exists() {
                                     entry_points.push(EntryPoint {
-                                        path: entry_path,
+                                        path: PathBuf::from(to_repo_relative(&entry_path, root)),
                                         kind: EntryPointKind::ReactBootstrap,
                                         package: Some(pkg.id.clone()),
                                         evidence: vec![
@@ -143,7 +169,6 @@ pub fn discover_entry_points(root: &Path, packages: &[Package]) -> Result<Vec<En
                                             format!("{} exists", entry_name),
                                         ],
                                     });
-                                    break;
                                 }
                             }
                         }
