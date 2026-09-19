@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { IS_DESKTOP, ENVIRONMENT } from "./events";
+import { safeInvoke } from "./runtime";
 import type { StreamDelta } from "./events";
 
 export interface ArtifactFile {
@@ -176,10 +177,15 @@ export function useArtifactStream(deltas: StreamDelta[]) {
     if (!file) return;
     setSaveStatus((s) => ({ ...s, [path]: "saving" }));
     try {
-      await invoke("save_workspace_artifact", {
+      const res = await safeInvoke(ENVIRONMENT, "save_workspace_artifact", {
         label: path,
         content: file.fullContent,
       });
+      if (!res.ok) {
+        setSaveStatus((s) => ({ ...s, [path]: "error" }));
+        console.error("Save failed:", res.reason);
+        return;
+      }
       setSaveStatus((s) => ({ ...s, [path]: "saved" }));
       setTimeout(() => setSaveStatus((s) => ({ ...s, [path]: "idle" })), 1500);
     } catch (e) {
@@ -193,9 +199,14 @@ export function useArtifactStream(deltas: StreamDelta[]) {
     if (!file) return;
     setSaveStatus((s) => ({ ...s, [path]: "saving" }));
     try {
-      await invoke("apply_patch", {
+      const res = await safeInvoke(ENVIRONMENT, "apply_patch", {
         patch: file.fullContent,
       });
+      if (!res.ok) {
+        setSaveStatus((s) => ({ ...s, [path]: "error" }));
+        console.error("Apply patch failed:", res.reason);
+        return;
+      }
       setSaveStatus((s) => ({ ...s, [path]: "saved" }));
       setTimeout(() => setSaveStatus((s) => ({ ...s, [path]: "idle" })), 1500);
     } catch (e) {

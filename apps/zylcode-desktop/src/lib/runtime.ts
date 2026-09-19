@@ -113,3 +113,14 @@ export async function safeInvoke<T>(
     return { ok: false, reason: String(e) };
   }
 }
+
+/**
+ * Unwrap a safeInvoke result for desktop-only panels: returns the data or
+ * throws, so existing try/catch error handling keeps working unchanged.
+ */
+export function unwrapInvoke<T>(
+  result: { ok: true; data: T } | { ok: false; reason: string },
+): T {
+  if (!result.ok) throw new Error(result.reason);
+  return result.data;
+}

@@ -77,6 +77,13 @@ const noopUnlisten: UnlistenFn = () => {};
  * resolves immediately to a no-op unlistener — `listen` is never called, so
  * no "Cannot read properties of undefined" exceptions ever occur.
  */
+export async function safeListen<T>(
+  event: string,
+  handler: (payload: T) => void,
+): Promise<UnlistenFn> {
+  return listenWhenSafe<T>(event, handler);
+}
+
 async function listenWhenSafe<T>(
   event: string,
   handler: (payload: T) => void,

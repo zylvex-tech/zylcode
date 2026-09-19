@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
+import { safeInvoke, unwrapInvoke } from "../lib/runtime";
+import { ENVIRONMENT, safeListen } from "../lib/events";
 
 type ProviderKind = "anthropic" | "open_router" | "ollama" | "synthetic_offline";
 
@@ -45,7 +45,9 @@ export default function ProviderSettings() {
 
   async function refresh() {
     try {
-      const res = await invoke<ProviderConfig[]>("get_provider_configs");
+      const res = unwrapInvoke(
+        await safeInvoke<ProviderConfig[]>(ENVIRONMENT, "get_provider_configs"),
+      );
       res.sort((a, b) => a.fallback_order - b.fallback_order);
       setConfigs(res);
       const draft: Record<string, { endpoint: string; timeout_ms: string; model: string }> = {};
@@ -62,8 +64,8 @@ export default function ProviderSettings() {
     let unlisten: (() => void) | undefined;
     (async () => {
       try {
-        const fn = await listen<Failover>("telemetry:provider_failover", (ev) => {
-          setFailovers((prev) => [ev.payload, ...prev].slice(0, 20));
+        const fn = await safeListen<Failover>("telemetry:provider_failover", (failover) => {
+          setFailovers((prev) => [failover, ...prev].slice(0, 20));
         });
         unlisten = fn;
       } catch {}
@@ -81,13 +83,15 @@ export default function ProviderSettings() {
       if (timeout !== undefined && (isNaN(timeout) || timeout < 1000 || timeout > 300000)) {
         throw new Error("timeout_ms must be 1000..300000");
       }
-      const next = await invoke<ProviderConfig[]>("set_provider_config", {
-        kind,
-        endpoint: e.endpoint.trim() || null,
-        timeoutMs: timeout ?? null,
-        enabled: null,
-        model: e.model.trim() || null,
-      });
+      const next = unwrapInvoke(
+        await safeInvoke<ProviderConfig[]>(ENVIRONMENT, "set_provider_config", {
+          kind,
+          endpoint: e.endpoint.trim() || null,
+          timeoutMs: timeout ?? null,
+          enabled: null,
+          model: e.model.trim() || null,
+        }),
+      );
       next.sort((a, b) => a.fallback_order - b.fallback_order);
       setConfigs(next);
     } catch (ex) {
@@ -100,13 +104,15 @@ export default function ProviderSettings() {
   async function toggleEnabled(kind: ProviderKind, enabled: boolean) {
     setBusy(kind);
     try {
-      const next = await invoke<ProviderConfig[]>("set_provider_config", {
-        kind,
-        endpoint: null,
-        timeoutMs: null,
-        enabled,
-        model: null,
-      });
+      const next = unwrapInvoke(
+        await safeInvoke<ProviderConfig[]>(ENVIRONMENT, "set_provider_config", {
+          kind,
+          endpoint: null,
+          timeoutMs: null,
+          enabled,
+          model: null,
+        }),
+      );
       next.sort((a, b) => a.fallback_order - b.fallback_order);
       setConfigs(next);
     } catch (ex) {
@@ -125,7 +131,9 @@ export default function ProviderSettings() {
     [order[idx], order[nxt]] = [order[nxt], order[idx]];
     setBusy("reorder");
     try {
-      const res = await invoke<ProviderConfig[]>("reorder_provider_chain", { order });
+      const res = unwrapInvoke(
+        await safeInvoke<ProviderConfig[]>(ENVIRONMENT, "reorder_provider_chain", { order }),
+      );
       res.sort((a, b) => a.fallback_order - b.fallback_order);
       setConfigs(res);
     } catch (ex) {

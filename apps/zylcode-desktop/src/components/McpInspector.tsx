@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { safeInvoke, unwrapInvoke } from "../lib/runtime";
+import { ENVIRONMENT } from "../lib/events";
 import type { McpToolCall } from "../lib/events";
 import { onMcpToolCall, drainBacklog } from "../lib/events";
 
@@ -43,12 +44,12 @@ export default function McpInspector() {
 
   // initial list + backlog drain
   useEffect(() => {
-    invoke<ToolDescriptor[]>("list_tools")
-      .then(setTools)
+    safeInvoke<ToolDescriptor[]>(ENVIRONMENT, "list_tools")
+      .then((r) => setTools(unwrapInvoke(r)))
       .catch((e) => setErr(String(e)));
     // also list MCP bridges as fallback
     if (tools.length === 0) {
-      invoke<ToolDescriptor[]>("list_mcp_bridges")
+      safeInvoke<ToolDescriptor[]>(ENVIRONMENT, "list_mcp_bridges")
         .then((bridges: unknown) => {
           // bridges have different shape; map to descriptor if list_tools empty
           if (Array.isArray(bridges) && (bridges as unknown[]).length > 0 && tools.length === 0) {
