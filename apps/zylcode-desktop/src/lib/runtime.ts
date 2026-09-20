@@ -80,6 +80,9 @@ export function isDesktopRuntime(env: RuntimeEnvironment): boolean {
   return env === "TAURI_DESKTOP";
 }
 
+/** Convenience constant for the current environment's desktop status. */
+export const IS_DESKTOP = isDesktopRuntime(detectEnvironment());
+
 /** Controlled, user-facing explanation for missing desktop capability. */
 export const DESKTOP_REQUIRED_MESSAGE =
   "Desktop runtime required — this panel uses the ZylCode desktop engine. " +
