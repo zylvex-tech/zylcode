@@ -17,6 +17,7 @@ pub mod marketplace;
 pub mod memory_ledger;
 pub mod pipeline;
 pub mod planner;
+pub mod project;
 pub mod router;
 pub mod sqlite_ledger;
 
