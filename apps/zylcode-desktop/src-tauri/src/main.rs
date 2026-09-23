@@ -256,11 +256,17 @@ async fn execute_tool(
     params: serde_json::Value,
     state: tauri::State<'_, EngineState>,
 ) -> Result<serde_json::Value, String> {
-    state
-        .engine
-        .execute_tool(&id, params)
-        .await
-        .map_err(|e| e.to_string())
+    // The desktop surface is the human operator: bind the actor so the
+    // evidence ledger attributes this invocation to "user:desktop" rather
+    // than to an unidentified process.
+    zylcode_mcp::with_actor("user:desktop", async {
+        state
+            .engine
+            .execute_tool(&id, params)
+            .await
+            .map_err(|e| e.to_string())
+    })
+    .await
 }
 
 /// Search marketplace extensions by query string.

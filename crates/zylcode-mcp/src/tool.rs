@@ -104,6 +104,10 @@ impl Tool for DynamicTool {
             environment: std::env::vars().collect(),
             timeout: Duration::from_secs(30),
             session_id: None,
+            // The task-local actor binding (set by the engine, the agent
+            // loop, or the desktop shell) is resolved inside `dispatch` —
+            // this site deliberately leaves `actor` unset so a named caller
+            // is recorded rather than masked.
             actor: None,
             approval_required: false,
         };
@@ -257,6 +261,44 @@ mod tests {
         assert!(
             out["output"].get("content").is_some(),
             "expected file content, got: {out}"
+        );
+    }
+
+    /// The task-local actor binding reaches the persisted evidence record
+    /// through the product-reachable dispatch site. This is the assertion the
+    /// audit implied was missing: attribution that never lands in the log is
+    /// indistinguishable from no attribution.
+    #[tokio::test]
+    async fn dynamic_tool_records_the_task_local_actor() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("evidence.jsonl");
+        let cfg = McpToolConfig {
+            id: "fs.read".into(),
+            command: "read".into(),
+            transport: McpTransport::Stdio,
+            env: Default::default(),
+            enabled: true,
+            description: None,
+        };
+        let t = DynamicTool::with_runtime(
+            cfg,
+            crate::evidence::ToolRuntime::restrictive().with_evidence_at(&path),
+        );
+
+        crate::actor::with_actor("agent:test-loop", async {
+            t.call(serde_json::json!({ "path": "Cargo.toml" }))
+                .await
+                .expect("a permitted read must succeed")
+        })
+        .await;
+
+        let sink = crate::evidence::JsonlEvidenceSink::new(&path);
+        let records = sink.read_all().unwrap();
+        assert_eq!(records.len(), 1, "the dispatch outcome must be persisted");
+        assert_eq!(
+            records[0].actor.as_deref(),
+            Some("agent:test-loop"),
+            "the task-local actor must reach the persisted record"
         );
     }
 }

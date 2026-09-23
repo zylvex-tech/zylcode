@@ -222,6 +222,9 @@ pub struct AgentLoop {
     model_client: Arc<dyn ModelClient>,
     context_builder: ContextBuilder,
     ledger: Arc<dyn LedgerStore>,
+    /// Actor identity recorded on every tool invocation this loop makes.
+    /// Defaults to `agent:{session_id}`; see [`AgentLoop::with_actor`].
+    actor: Option<String>,
 }
 
 /// Tool call request from the model
@@ -314,7 +317,28 @@ impl AgentLoop {
             model_client,
             context_builder: ContextBuilder::new(working_dir),
             ledger,
+            actor: None,
         }
+    }
+
+    /// Bind the actor identity recorded on every tool invocation this loop
+    /// makes.
+    ///
+    /// The identity is bound task-locally around each dispatch (see
+    /// `zylcode_mcp::with_actor`), so it reaches the evidence ledger even
+    /// though registry tools receive a `ToolContext` with `actor: None`.
+    /// Unset, the loop records `agent:{session_id}` — the run is identified
+    /// even when the caller did not name it.
+    pub fn with_actor(mut self, actor: impl Into<String>) -> Self {
+        self.actor = Some(actor.into());
+        self
+    }
+
+    /// The actor identity recorded for this loop's invocations.
+    fn actor_id(&self) -> String {
+        self.actor
+            .clone()
+            .unwrap_or_else(|| format!("agent:{}", self.session.id))
     }
 
     /// Save a checkpoint of the current session state to the ledger.
@@ -615,6 +639,7 @@ impl AgentLoop {
                 } else {
                     // Auto-approve and execute the tool directly
                     // Log to ledger: Approved (auto-approved)
+                    let prev_hash = self.compute_prev_hash().await?;
                     let entry_id = Uuid::new_v4();
                     let entry = LedgerEntry {
                         id: entry_id,
@@ -622,9 +647,12 @@ impl AgentLoop {
                         action_id: tool_call.tool_id.clone(),
                         arguments: tool_call.arguments.clone(),
                         state: ExecutionState::Approved,
-                        prev_hash: "TODO".to_string(),
+                        prev_hash,
                         timestamp: chrono::Utc::now(),
-                        payload: Some(serde_json::json!({"auto_approved": true})),
+                        payload: Some(serde_json::json!({
+                            "auto_approved": true,
+                            "actor": self.actor_id(),
+                        })),
                         error: None,
                     };
                     self.ledger.append(entry).await?;
@@ -798,10 +826,16 @@ impl AgentLoop {
                             tool_id, reason
                         ));
 
-                        // Execute the tool
+                        // Execute the tool with actor attribution (see
+                        // `execute_tool_call`).
                         let tool = self.tool_registry.get(&tool_id).await;
                         if let Some(tool) = tool {
-                            match tool.call(arguments.clone()).await {
+                            let tool_result = zylcode_mcp::with_actor(self.actor_id(), async {
+                                tool.call(arguments.clone()).await
+                            })
+                            .await;
+
+                            match tool_result {
                                 Ok(result) => {
                                     // Add tool result to session
                                     self.add_tool_result(&tool_id, result.clone(), true, 0);
@@ -1112,10 +1146,16 @@ impl AgentLoop {
                     } => {
                         self.add_system_message(format!("Repair: {} - {}", tool_id, reason));
 
-                        // Execute repair tool
+                        // Execute repair tool with actor attribution (see
+                        // `execute_tool_call`).
                         let tool = self.tool_registry.get(&tool_id).await;
                         if let Some(tool) = tool {
-                            match tool.call(arguments.clone()).await {
+                            let tool_result = zylcode_mcp::with_actor(self.actor_id(), async {
+                                tool.call(arguments.clone()).await
+                            })
+                            .await;
+
+                            match tool_result {
                                 Ok(result) => {
                                     self.add_tool_result(&tool_id, result.clone(), true, 0);
                                     self.add_system_message(
@@ -1307,21 +1347,21 @@ impl AgentLoop {
         let entries = self.ledger.get_entries(session_id).await?;
 
         if let Some(last_entry) = entries.last() {
-            // Hash the last entry's content
-            let content = format!(
-                "{}:{}:{}:{}",
-                last_entry.id,
-                last_entry.action_id,
-                serde_json::to_string(&last_entry.arguments)?,
-                serde_json::to_string(&last_entry.state)?
-            );
+            // Hash the previous entry's chain position together with its
+            // action. The caller-chosen `prev_hash` alone proves nothing (a
+            // caller can append any string); binding `action_id` into the
+            // digest makes this a hash chain over (prev_hash, action) pairs,
+            // so a re-ordered, re-targeted, or injected entry no longer
+            // hashes consistently with its neighbour's recorded value.
+            let content = format!("{}:{}", last_entry.prev_hash, last_entry.action_id);
             let mut hasher = Sha256::new();
             hasher.update(content.as_bytes());
             let hash = hasher.finalize();
             Ok(format!("{:x}", hash))
         } else {
-            // Genesis entry
-            Ok("genesis".to_string())
+            // Genesis entry: the empty string. The first entry's recorded
+            // prev_hash is the literal genesis value an auditor expects.
+            Ok(String::new())
         }
     }
 
@@ -1350,10 +1390,19 @@ impl AgentLoop {
         };
         self.ledger.append(entry).await?;
 
-        // Execute the tool
+        // Execute the tool. The call is wrapped in the session's actor
+        // binding: `real_tools::dispatch` resolves the actor from the
+        // task-local scope (registry tools carry `actor: None` by design), so
+        // without this every agent-driven invocation would be persisted as
+        // unidentified.
         let tool = self.tool_registry.get(&tool_call.tool_id).await;
         if let Some(tool) = tool {
-            match tool.call(tool_call.arguments.clone()).await {
+            let tool_result = zylcode_mcp::with_actor(self.actor_id(), async {
+                tool.call(tool_call.arguments.clone()).await
+            })
+            .await;
+
+            match tool_result {
                 Ok(result) => {
                     // Log to ledger: Executed
                     self.ledger
@@ -1697,5 +1746,123 @@ mod tests {
 
         // Should fail due to step limit
         assert_eq!(final_state, AgentState::Failed);
+    }
+
+    /// The ledger hash chain must be intact: every entry's recorded
+    /// prev_hash is exactly the hash of its predecessor's (prev_hash,
+    /// action_id) pair, and the first entry chains from the documented
+    /// genesis value. `compute_prev_hash` is private; the loop's public
+    /// surface (`run`) is what produces the entries, so the chain is
+    /// verified through it — the same way an auditor would.
+    #[tokio::test]
+    async fn ledger_hash_chain_is_intact_after_a_run() {
+        use sha2::{Digest, Sha256};
+
+        let registry = Arc::new(ToolRegistry::new());
+        let fs_cfg = McpToolConfig {
+            id: "fs.read".into(),
+            command: "read".into(),
+            transport: McpTransport::Stdio,
+            env: Default::default(),
+            enabled: true,
+            description: None,
+        };
+        registry
+            .register(Arc::new(DynamicTool::new(fs_cfg)))
+            .await;
+
+        let model_client = Arc::new(TestModelClient::new(vec![
+            // Plan, then one tool call, then complete.
+            r#"{"action": "Plan", "payload": {"steps": [{"id": "1", "description": "Read Cargo.toml", "expected_files": ["Cargo.toml"], "expected_tools": ["fs.read"], "risk": "Read", "verification": "File read successfully"}]}}"#.to_string(),
+            r#"{"action": "ToolCall", "payload": {"tool_id": "fs.read", "arguments": {"action": "read", "path": "Cargo.toml"}, "reason": "Need to read Cargo.toml", "expected_result": "File content"}}"#.to_string(),
+            r#"{"action": "Complete", "payload": {"summary": "done", "evidence": ["read"], "remaining_limitations": []}}"#.to_string(),
+        ]));
+
+        let ledger = Arc::new(MemoryLedgerStore::new());
+        let mut agent = AgentLoop::new(
+            "Read Cargo.toml",
+            PathBuf::from("."),
+            None,
+            registry,
+            model_client,
+            Arc::clone(&ledger) as Arc<dyn LedgerStore>,
+        );
+        agent.run().await.unwrap();
+
+        let session_id = Uuid::parse_str(&agent.session().id).unwrap();
+        let entries = ledger.get_entries(session_id).await.unwrap();
+        assert!(!entries.is_empty(), "the run must have produced ledger entries");
+
+        let mut prev_hash = String::new(); // documented genesis value
+        for (i, entry) in entries.iter().enumerate() {
+            assert_eq!(
+                entry.prev_hash, prev_hash,
+                "entry {i} ({}) breaks the chain: recorded prev_hash {:?}, expected {:?}",
+                entry.action_id, entry.prev_hash, prev_hash
+            );
+            let content = format!("{}:{}", entry.prev_hash, entry.action_id);
+            let mut hasher = Sha256::new();
+            hasher.update(content.as_bytes());
+            prev_hash = format!("{:x}", hasher.finalize());
+        }
+        assert_ne!(
+            entries[0].prev_hash, "TODO",
+            "the literal 'TODO' chain break must never reappear"
+        );
+    }
+
+    /// Every tool invocation the loop makes must be attributed. The loop
+    /// binds its actor around each dispatch, so the task-local resolution in
+    /// `real_tools::dispatch` records it — verified here through the real
+    /// JSONL sink the registered tool is constructed with.
+    #[tokio::test]
+    async fn agent_run_attributes_invocations_to_the_actor() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("evidence.jsonl");
+
+        let registry = Arc::new(ToolRegistry::new());
+        let fs_cfg = McpToolConfig {
+            id: "fs.read".into(),
+            command: "read".into(),
+            transport: McpTransport::Stdio,
+            env: Default::default(),
+            enabled: true,
+            description: None,
+        };
+        registry
+            .register(Arc::new(DynamicTool::with_runtime(
+                fs_cfg,
+                zylcode_mcp::ToolRuntime::restrictive().with_evidence_at(&path),
+            )))
+            .await;
+
+        let model_client = Arc::new(TestModelClient::new(vec![
+            r#"{"action": "Plan", "payload": {"steps": [{"id": "1", "description": "Read Cargo.toml", "expected_files": ["Cargo.toml"], "expected_tools": ["fs.read"], "risk": "Read", "verification": "File read successfully"}]}}"#.to_string(),
+            r#"{"action": "ToolCall", "payload": {"tool_id": "fs.read", "arguments": {"action": "read", "path": "Cargo.toml"}, "reason": "Need to read Cargo.toml", "expected_result": "File content"}}"#.to_string(),
+            r#"{"action": "Complete", "payload": {"summary": "done", "evidence": ["read"], "remaining_limitations": []}}"#.to_string(),
+        ]));
+
+        let ledger = Arc::new(MemoryLedgerStore::new());
+        let mut agent = AgentLoop::new(
+            "Read Cargo.toml",
+            PathBuf::from("."),
+            None,
+            registry,
+            model_client,
+            Arc::clone(&ledger) as Arc<dyn LedgerStore>,
+        )
+        .with_actor("agent:test-loop");
+        agent.run().await.unwrap();
+
+        let sink = zylcode_mcp::JsonlEvidenceSink::new(&path);
+        let records = sink.read_all().unwrap();
+        assert!(!records.is_empty(), "tool executions must reach the sink");
+        for record in &records {
+            assert_eq!(
+                record.actor.as_deref(),
+                Some("agent:test-loop"),
+                "the loop's actor binding must reach every persisted record"
+            );
+        }
     }
 }

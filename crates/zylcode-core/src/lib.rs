@@ -300,6 +300,14 @@ impl ZylCodeEngine {
             model_client,
             ledger,
         );
+        // Attribute every invocation this run makes. The correlation id (when
+        // the caller supplied one) names the actor; otherwise the agent run is
+        // identified by its own session id inside the loop.
+        let actor_id = intent
+            .correlation_id
+            .clone()
+            .unwrap_or_else(|| format!("agent:{}", agent.session().id));
+        agent = agent.with_actor(actor_id);
 
         // Run the agent loop
         let final_state = agent.run().await?;
@@ -557,8 +565,8 @@ pub use router::{
     ProviderKind, RouterConfig, StreamEvent, TokenMetrics, TokenRouter, TokenSnapshot,
 };
 pub use zylcode_mcp::{
-    execute_with_recovery, ExecuteOptions, McpConfigFile, McpToolConfig, McpTransport, Tool,
-    ToolDescriptor,
+    execute_with_recovery, with_actor, ExecuteOptions, McpConfigFile, McpToolConfig, McpTransport,
+    Tool, ToolDescriptor,
 };
 
 #[cfg(test)]

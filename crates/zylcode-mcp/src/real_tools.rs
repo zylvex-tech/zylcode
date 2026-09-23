@@ -1715,4 +1715,65 @@ mod tests {
         let result = tool.execute(params, &context).await.unwrap();
         assert!(result.success);
     }
+
+    /// Actor attribution must survive dispatch: the explicit context value
+    /// wins, the task-local binding is resolved when the context carries
+    /// none, and an unbound call is recorded as the least-privileged case.
+    /// All three outcomes must reach the sink — the audit's finding was not
+    /// that attribution was impossible but that it was never persisted.
+    #[tokio::test]
+    async fn dispatch_resolves_and_persists_the_actor() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("evidence.jsonl");
+        let runtime = crate::evidence::ToolRuntime::restrictive().with_evidence_at(&path);
+
+        let unbound = ToolContext {
+            working_directory: PathBuf::from("."),
+            environment: HashMap::new(),
+            timeout: Duration::from_secs(5),
+            session_id: None,
+            actor: None,
+            approval_required: false,
+        };
+        let read_cargo = || serde_json::json!({ "action": "read", "path": "Cargo.toml" });
+
+        // 1. Unbound: recorded with no actor, not fabricated.
+        let outcome = dispatch("fs.read", read_cargo(), &unbound, &runtime).await;
+        assert!(outcome.result.is_ok());
+        assert_eq!(outcome.evidence.actor, None);
+
+        // 2. Explicit context actor wins.
+        let explicit = ToolContext {
+            actor: Some("user:explicit".to_string()),
+            ..context_without_actor()
+        };
+        let outcome = dispatch("fs.read", read_cargo(), &explicit, &runtime).await;
+        assert_eq!(outcome.evidence.actor.as_deref(), Some("user:explicit"));
+
+        // 3. Task-local binding is resolved when the context carries none.
+        let bound = crate::actor::with_actor("agent:run-7", async {
+            dispatch("fs.read", read_cargo(), &unbound, &runtime).await
+        })
+        .await;
+        assert_eq!(bound.evidence.actor.as_deref(), Some("agent:run-7"));
+
+        // The sink saw all three records, with the right attribution.
+        let sink = crate::evidence::JsonlEvidenceSink::new(&path);
+        let records = sink.read_all().unwrap();
+        assert_eq!(records.len(), 3, "every dispatch outcome must be persisted");
+        assert_eq!(records[0].actor, None);
+        assert_eq!(records[1].actor.as_deref(), Some("user:explicit"));
+        assert_eq!(records[2].actor.as_deref(), Some("agent:run-7"));
+    }
+
+    fn context_without_actor() -> ToolContext {
+        ToolContext {
+            working_directory: PathBuf::from("."),
+            environment: HashMap::new(),
+            timeout: Duration::from_secs(5),
+            session_id: None,
+            actor: None,
+            approval_required: false,
+        }
+    }
 }

@@ -792,6 +792,9 @@ impl Tool for BuiltinTool {
             environment: std::env::vars().collect(),
             timeout: std::time::Duration::from_secs(30),
             session_id: None,
+            // The task-local actor binding (agent loop, desktop shell) is
+            // resolved inside `dispatch` — this site deliberately leaves
+            // `actor` unset so a named caller is recorded rather than masked.
             actor: None,
             approval_required: false,
         };
