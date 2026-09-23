@@ -160,6 +160,11 @@ impl ContextBuilder {
     fn find_relevant_files_intelligent(&self, task: &str) -> Result<Vec<String>> {
         let query = crate::intelligence::query::build_repo_query(&self.workspace_root)?;
         let results = query.relevant_context(task);
+        // The ranked stream interleaves file, symbol, package and
+        // entry-point resources. Capping the mixed stream before filtering
+        // starved the file list whenever symbol results outranked files
+        // (the co-change-backed agent.rs evidence sits below several symbol
+        // hits). Filter to files first, then cap.
         Ok(results
             .iter()
             .filter(|r| r.resource_type == "file")

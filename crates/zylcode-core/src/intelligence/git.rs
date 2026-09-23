@@ -102,6 +102,94 @@ pub fn get_recent_commits_with_files(root: &Path, count: usize) -> Result<Vec<Gi
     Ok(commits)
 }
 
+/// Parse one `git log --name-status` record line into changed file paths.
+///
+/// Statuses `A`/`M`/`D`/`T` carry a single path; `R`/`C` (rename, copy) may
+/// carry a similarity score (`R100`) and carry two paths. A rename
+/// contributes both endpoints: the coupling moves, it is not severed.
+fn commit_file_paths_from_name_status(line: &str) -> Vec<String> {
+    let mut parts = line.split('\t');
+    let status = parts.next().unwrap_or("");
+    let first = parts.next().unwrap_or("");
+    if first.is_empty() {
+        return Vec::new();
+    }
+    match status.chars().next() {
+        Some('R') | Some('C') => {
+            let second = parts.next().unwrap_or("");
+            let mut out = vec![first.to_string()];
+            if !second.is_empty() {
+                out.push(second.to_string());
+            }
+            out
+        }
+        _ => vec![first.to_string()],
+    }
+}
+
+/// Mine co-change evidence from the repository's **full** commit history.
+///
+/// The 40-commit window previously used here made coupling assertions
+/// HEAD-sensitive: a real, tested coupling slid out of the window as commits
+/// accumulated, silently changing retrieval behaviour on every push.
+/// Co-change evidence is structural — the coupling exists whether it is
+/// recent or not — so it is mined from the complete history. Recency
+/// semantics stay pinned to the 20 newest commits upstream (see
+/// `ContextSignals::new`).
+///
+/// One pass over `git log --name-status` replaces the per-commit
+/// `diff-tree` fan-out, so the full history costs about one subprocess
+/// invocation instead of one per commit.
+pub fn get_full_history_commits(root: &Path) -> Result<Vec<GitCommit>> {
+    const SEP: &str = "\u{1f}ZYLCOMMIT\u{1f}";
+    let format = "%H|%h|%s|%an|%aI";
+    let output = run_git(
+        root,
+        &[
+            "log",
+            &format!("--format={}", SEP),
+            "--name-status",
+        ],
+    )?;
+
+    let mut commits: Vec<GitCommit> = Vec::new();
+    let mut current: Option<GitCommit> = None;
+    for line in output.lines() {
+        if let Some(meta) = line.strip_prefix(SEP) {
+            if let Some(done) = current.take() {
+                commits.push(done);
+            }
+            let parts: Vec<&str> = meta.splitn(5, '|').collect();
+            if parts.len() < 5 {
+                current = None;
+                continue;
+            }
+            let timestamp = DateTime::parse_from_rfc3339(parts[4])
+                .map(|dt| dt.with_timezone(&Utc))
+                .unwrap_or_else(|_| Utc::now());
+            current = Some(GitCommit {
+                id: parts[0].to_string(),
+                short_id: parts[1].to_string(),
+                message: parts[2].to_string(),
+                author: parts[3].to_string(),
+                timestamp,
+                files_changed: Vec::new(),
+            });
+        } else if line.trim().is_empty() {
+            continue;
+        } else if let Some(commit) = current.as_mut() {
+            commit
+                .files_changed
+                .extend(commit_file_paths_from_name_status(line));
+        }
+    }
+    if let Some(done) = current.take() {
+        commits.push(done);
+    }
+
+    Ok(commits)
+}
+
 /// Get changes affecting a specific file (recent N commits).
 pub fn get_file_changes(root: &Path, file_path: &str, count: usize) -> Result<Vec<GitChange>> {
     let output = run_git(

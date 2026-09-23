@@ -12,10 +12,10 @@ const MAX_FILE_SIZE_FOR_METADATA: u64 = 1024 * 1024 * 1024;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum FileClassification {
-    TEXT,
-    BINARY,
-    TOO_LARGE,
-    UNSUPPORTED_ENCODING,
+    Text,
+    Binary,
+    TooLarge,
+    UnsupportedEncoding,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -180,22 +180,22 @@ impl ProjectFilesystem {
         let metadata = fs::metadata(&path)?;
 
         if metadata.len() > 1024 * 1024 * 1024 {
-            return Ok(FileClassification::TOO_LARGE);
+            return Ok(FileClassification::TooLarge);
         }
 
         if metadata.len() > MAX_FILE_SIZE_FOR_EDITOR {
-            return Ok(FileClassification::TOO_LARGE);
+            return Ok(FileClassification::TooLarge);
         }
 
         let content = fs::read(&path)?;
 
         if content.contains(&0) {
-            return Ok(FileClassification::BINARY);
+            return Ok(FileClassification::Binary);
         }
 
         match std::str::from_utf8(&content) {
-            Ok(_) => Ok(FileClassification::TEXT),
-            Err(_) => Ok(FileClassification::UNSUPPORTED_ENCODING),
+            Ok(_) => Ok(FileClassification::Text),
+            Err(_) => Ok(FileClassification::UnsupportedEncoding),
         }
     }
 
@@ -237,20 +237,17 @@ impl ProjectFilesystem {
                     .map(|t| chrono::DateTime::<chrono::Utc>::from(t).to_rfc3339())
                     .unwrap_or_else(|| chrono::Utc::now().to_rfc3339()),
                 language: None,
-                classification: FileClassification::TOO_LARGE,
+                classification: FileClassification::TooLarge,
                 line_count: None,
             });
         }
 
         let content_bytes = fs::read(&path)?;
-        let mut hasher = Sha256::new();
-        hasher.update(&content_bytes);
-        let content_hash = format!("{:x}", hasher.finalize());
 
         let is_binary = content_bytes.contains(&0);
 
         let (content, language, classification, line_count) = if is_binary {
-            (None, None, FileClassification::BINARY, None)
+            (None, None, FileClassification::Binary, None)
         } else {
             match std::str::from_utf8(&content_bytes) {
                 Ok(text) => {
@@ -259,23 +256,21 @@ impl ProjectFilesystem {
                         .and_then(|e| e.to_str())
                         .map(|s| s.to_lowercase());
                     let language = ext.as_ref().map(|e| detect_language(e));
-                    let line_count = text.lines().count();
+                    let lines = text.lines().count();
                     (
                         Some(text.to_string()),
                         language,
-                        FileClassification::TEXT,
-                        Some(text.lines().count()),
+                        FileClassification::Text,
+                        Some(lines),
                     )
                 }
-                Err(_) => (None, None, FileClassification::UNSUPPORTED_ENCODING, None),
+                Err(_) => (None, None, FileClassification::UnsupportedEncoding, None),
             }
         };
 
-        let mut hasher = Sha256::new();
-        hasher.update(&content_bytes);
-        let content_hash = format!("{:x}", hasher.finalize());
+        let content_hash = format!("{:x}", Sha256::digest(&content_bytes));
 
-        let metadata = fs::metadata(&self.project_root.join(relative_path))?;
+        let metadata = fs::metadata(self.project_root.join(relative_path))?;
 
         Ok(ClassifiedFileContent {
             path: relative_path.to_string(),
@@ -283,7 +278,7 @@ impl ProjectFilesystem {
                 .project_root
                 .join(relative_path)
                 .to_string_lossy()
-                .to_string(),
+                .into_owned(),
             content,
             content_hash,
             size: metadata.len(),
@@ -302,7 +297,7 @@ impl ProjectFilesystem {
         let classified = self.read_file_classified(relative_path)?;
 
         match classified.classification {
-            FileClassification::TEXT => Ok(FileContent {
+            FileClassification::Text => Ok(FileContent {
                 path: classified.path,
                 absolute_path: classified.absolute_path,
                 content: classified.content.unwrap_or_default(),
@@ -313,11 +308,11 @@ impl ProjectFilesystem {
                 language: classified.language,
                 line_count: classified.line_count.unwrap_or(0),
             }),
-            FileClassification::BINARY => {
+            FileClassification::Binary => {
                 Err(anyhow::anyhow!("Binary file cannot be opened as text"))
             }
-            FileClassification::TOO_LARGE => Err(anyhow::anyhow!("File too large for editor")),
-            FileClassification::UNSUPPORTED_ENCODING => {
+            FileClassification::TooLarge => Err(anyhow::anyhow!("File too large for editor")),
+            FileClassification::UnsupportedEncoding => {
                 Err(anyhow::anyhow!("Unsupported encoding"))
             }
         }
@@ -380,14 +375,13 @@ impl ProjectFilesystem {
         fs::write(&temp_path, content)
             .with_context(|| format!("Failed to write temp file: {}", relative_path))?;
 
-        fs::rename(&temp_path, &self.project_root.join(relative_path)).with_context(|| {
-            format!("Failed to move temp file to destination: {}", relative_path)
-        })?;
+        fs::rename(&temp_path, self.project_root.join(relative_path))
+            .with_context(|| {
+                format!("Failed to move temp file to destination: {}", relative_path)
+            })?;
 
-        let mut hasher = Sha256::new();
-        let mut file = fs::File::open(&self.project_root.join(relative_path))?;
-        std::io::copy(&mut file, &mut hasher)?;
-        Ok(format!("{:x}", hasher.finalize()))
+        let bytes = fs::read(self.project_root.join(relative_path))?;
+        Ok(format!("{:x}", Sha256::digest(&bytes)))
     }
 
     pub fn create_file(&self, relative_path: &str, content: &str) -> Result<String> {
@@ -407,7 +401,7 @@ impl ProjectFilesystem {
                 .canonicalize()
                 .context("Failed to canonicalize parent directory")?
         } else {
-            let mut current = parent.clone();
+            let mut current = parent;
             while !current.exists() {
                 current = current
                     .parent()
@@ -467,7 +461,7 @@ impl ProjectFilesystem {
             }
         }
 
-        Ok(self.compute_content_hash(relative_path)?)
+        self.compute_content_hash(relative_path)
     }
 
     pub fn file_exists(&self, relative_path: &str) -> bool {
@@ -593,8 +587,6 @@ impl ProjectFilesystem {
     }
 
     pub fn canonicalize_and_validate(&self, relative_path: &str) -> Result<PathBuf> {
-        let requested = self.project_root.join(relative_path);
-
         let canonical_project = self
             .project_root
             .canonicalize()
@@ -675,8 +667,6 @@ fn should_skip_directory(name: &str) -> bool {
             | ".gradle"
             | ".maven"
             | "gradle"
-            | "target"
-            | "out"
             | ".next"
             | ".nuxt"
             | ".output"
@@ -741,9 +731,7 @@ fn detect_language(ext: &str) -> String {
 }
 
 pub fn get_file_language(path: &Path) -> Option<String> {
-    path.extension()
-        .and_then(|e| e.to_str())
-        .map(|ext| detect_language(ext))
+    path.extension().and_then(|e| e.to_str()).map(detect_language)
 }
 
 #[cfg(test)]
@@ -852,7 +840,7 @@ mod tests {
         fs.write_file("text.txt", "Hello, 世界").unwrap();
         assert_eq!(
             fs.classify_file("text.txt").unwrap(),
-            FileClassification::TEXT
+            FileClassification::Text
         );
 
         // BINARY (null byte)
@@ -861,7 +849,7 @@ mod tests {
         drop(f);
         assert_eq!(
             fs.classify_file("binary.bin").unwrap(),
-            FileClassification::BINARY
+            FileClassification::Binary
         );
 
         // UNSUPPORTED_ENCODING (invalid UTF-8)
@@ -870,7 +858,7 @@ mod tests {
         drop(f);
         assert_eq!(
             fs.classify_file("bad.txt").unwrap(),
-            FileClassification::UNSUPPORTED_ENCODING
+            FileClassification::UnsupportedEncoding
         );
     }
 
@@ -879,7 +867,7 @@ mod tests {
         let (_tmp, fs) = temp_fs();
         fs.write_file("main.rs", "fn main() {}").unwrap();
         let c = fs.read_file_classified("main.rs").unwrap();
-        assert_eq!(c.classification, FileClassification::TEXT);
+        assert_eq!(c.classification, FileClassification::Text);
         assert_eq!(c.language, Some("rust".to_string()));
         assert_eq!(c.content_hash.len(), 64);
         assert_eq!(c.line_count, Some(1));
@@ -935,8 +923,8 @@ mod tests {
     // ── G. Project session authority ────────────────────────────────────
     #[test]
     fn project_session_authority_bound_to_root() {
-        let (tmp1, fs1) = temp_fs();
-        let (tmp2, fs2) = temp_fs();
+        let (_tmp1, fs1) = temp_fs();
+        let (_tmp2, fs2) = temp_fs();
 
         fs1.write_file("a.txt", "1").unwrap();
         fs2.write_file("a.txt", "2").unwrap();

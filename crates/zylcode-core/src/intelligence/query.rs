@@ -320,8 +320,13 @@ pub fn build_repo_query(root: &Path) -> Result<RepoQuery> {
     let dep_graph = DependencyGraph::from_packages(&packages);
     let entry_points = crate::intelligence::entry_points::discover_entry_points(root, &packages)?;
     let architecture = crate::intelligence::architecture::generate_fingerprint(root, &packages)?;
+    // Co-change evidence is mined from the FULL history (sliding-window
+    // defect: a fixed 40-commit window made coupling assertions HEAD-
+    // sensitive — the agent.rs/crash_recovery coupling at commit 6f564ac
+    // slid out of the window as commits accumulated). Recency is pinned to
+    // the 20 newest commits downstream, so recency semantics are unchanged.
     let git_commits =
-        crate::intelligence::git::get_recent_commits_with_files(root, 40).unwrap_or_default();
+        crate::intelligence::git::get_full_history_commits(root).unwrap_or_default();
 
     Ok(RepoQuery::new(
         scan_result.files,

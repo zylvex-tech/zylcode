@@ -776,11 +776,17 @@ impl ContextRetriever {
                 .then_with(|| a.1.resource.cmp(&b.1.resource))
         });
 
-        // Return top results
+        // Return top results. The cap applies to the MIXED stream (files,
+        // symbols, packages, commands). A small mixed cap starves file
+        // results whenever symbol hits outrank them, which broke consumers
+        // that filter by resource type AFTER retrieval (the co-change-
+        // backed agent.rs evidence was crowded out of a 20-slot mixed
+        // stream). 50 keeps every resource class represented while the cap
+        // still bounds work downstream.
         scored
             .into_iter()
             .map(|(_, result)| result)
-            .take(20)
+            .take(50)
             .collect()
     }
 }
