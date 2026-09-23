@@ -272,6 +272,31 @@ impl RepoQuery {
         self.files.len()
     }
 
+    /// The indexed file inventory (persisted-index reconstruction input).
+    pub fn files(&self) -> &[FileNode] {
+        &self.files
+    }
+
+    /// The extracted symbol inventory.
+    pub fn symbols(&self) -> &[Symbol] {
+        &self.symbols
+    }
+
+    /// The discovered packages.
+    pub fn packages(&self) -> &[Package] {
+        &self.packages
+    }
+
+    /// The discovered entry points.
+    pub fn entry_points_list(&self) -> &[EntryPoint] {
+        &self.entry_points
+    }
+
+    /// The git history feeding recency and co-change evidence.
+    pub fn git_commits(&self) -> &[GitCommit] {
+        &self.git_commits
+    }
+
     /// Get total symbol count.
     pub fn symbol_count(&self) -> usize {
         self.symbols.len()

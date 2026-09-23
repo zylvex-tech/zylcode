@@ -50,6 +50,11 @@ enum Commands {
     /// Intelligence (scanner, symbols, packages, dependency graph, entry
     /// points, git history).
     RepoContext { task: Vec<String> },
+
+    /// Run Best-of-N: verify N candidate attempts against the real test
+    /// suite, select the winner on recorded evidence, and append every
+    /// outcome plus the selection decision to the evidence ledger.
+    BestOfN(BestOfNArgs),
 }
 
 // ---------------------------------------------------------------------------
@@ -401,7 +406,9 @@ fn handle_repo_context(workspace: &str, task_words: &[String]) -> Result<()> {
     let root = std::path::Path::new(workspace)
         .canonicalize()
         .map_err(|e| anyhow::anyhow!("cannot resolve workspace '{}': {e}", workspace))?;
-    let query = zylcode_core::intelligence::query::build_repo_query(&root)?;
+    // Persisted index: the first call indexes (~seconds), subsequent calls
+    // with an unchanged tree serve from the content-hash-validated cache.
+    let query = zylcode_core::intelligence::persisted::PersistedIndex::new(&root).build()?;
     let results = query.relevant_context(&task);
 
     let elapsed = started.elapsed();
@@ -455,6 +462,7 @@ async fn main() -> Result<()> {
         Commands::AiInput(args) => handle_ai_input(&engine, args).await,
         Commands::ComputerUse(args) => handle_computer_use(&engine, args).await,
         Commands::RepoContext { task } => handle_repo_context(&cli.workspace, &task),
+        Commands::BestOfN(args) => handle_best_of_n(&cli.workspace, args).await,
     };
 
     if let Err(err) = &result {
@@ -464,4 +472,105 @@ async fn main() -> Result<()> {
     }
 
     result
+}
+
+// ---------------------------------------------------------------------------
+// best-of-n
+// ---------------------------------------------------------------------------
+
+#[derive(Args, Debug)]
+struct BestOfNArgs {
+    /// Verify the current working tree as the single candidate (the common
+    /// case until patch-sampling lands in Phase 3). Repeatable later.
+    #[arg(long, default_value_t = 1)]
+    candidates: usize,
+
+    /// Per-candidate verification budget in seconds.
+    #[arg(long, default_value_t = 600)]
+    timeout_secs: u64,
+
+    /// Record outcomes in the evidence ledger under this session id
+    /// (default: a fresh session). Reuse a session to keep a run's evidence
+    /// alongside its agent-loop entries.
+    #[arg(long)]
+    session_id: Option<String>,
+}
+
+async fn handle_best_of_n(workspace: &str, args: BestOfNArgs) -> Result<()> {
+    use std::sync::Arc;
+
+    let root = std::path::Path::new(workspace)
+        .canonicalize()
+        .map_err(|e| anyhow::anyhow!("cannot resolve workspace '{}': {e}", workspace))?;
+
+    let verifier: Arc<dyn zylcode_core::best_of_n::CandidateVerifier> =
+        Arc::new(zylcode_core::best_of_n::TestSuiteVerifier {
+            working_dir: root.clone(),
+            timeout: std::time::Duration::from_secs(args.timeout_secs),
+            ..Default::default()
+        });
+
+    let session_id = match &args.session_id {
+        Some(id) => Some(uuid::Uuid::parse_str(id).map_err(|e| {
+            anyhow::anyhow!("--session-id must be a UUID: {e}")
+        })?),
+        None => Some(uuid::Uuid::new_v4()),
+    };
+
+    // The ledger records which candidates passed and why.
+    let ledger_path = root.join(".zylcode").join("ledger.db");
+    std::fs::create_dir_all(ledger_path.parent().unwrap())?;
+    let ledger: Arc<dyn zylcode_core::ledger::LedgerStore> = Arc::new(
+        zylcode_core::sqlite_ledger::SqliteLedgerStore::new(
+            ledger_path.to_string_lossy().as_ref(),
+        )?,
+    );
+
+    // One candidate today: the current tree. `cargo test` is the real
+    // verifier — no simulation.
+    let candidates = vec!["working-tree".to_string()];
+    let config = zylcode_core::best_of_n::BestOfNConfig {
+        candidates: args.candidates.min(candidates.len()),
+        per_candidate_timeout: std::time::Duration::from_secs(args.timeout_secs),
+    };
+
+    println!("best-of-n: verifying the working tree against the real test suite...");
+    let started = std::time::Instant::now();
+    let result = zylcode_core::best_of_n::run_best_of_n(
+        &candidates,
+        verifier,
+        Some(Arc::clone(&ledger)),
+        session_id,
+        &config,
+    )
+    .await?;
+
+    for outcome in &result.outcomes {
+        println!(
+            "  candidate {}: {} ({} of {} checks passing)",
+            outcome.candidate_index,
+            if outcome.passed { "PASS" } else { "FAIL" },
+            outcome.evidence.passing_checks(),
+            outcome.evidence.checks.len()
+        );
+        for (name, ok, detail) in &outcome.evidence.checks {
+            println!(
+                "    [{}] {name}: {detail}",
+                if *ok { "pass" } else { "FAIL" }
+            );
+        }
+    }
+    println!("selection: {}", result.selection_reason);
+    println!("elapsed: {:.1}s", started.elapsed().as_secs_f64());
+    if let Some(sid) = session_id {
+        println!("evidence ledger session: {sid}");
+    }
+
+    match result.selected {
+        Some(_) => Ok(()),
+        None => {
+            eprintln!("no candidate passed verification");
+            std::process::exit(1);
+        }
+    }
 }

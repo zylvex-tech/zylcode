@@ -12,6 +12,7 @@ pub mod dependency;
 pub mod entry_points;
 pub mod git;
 pub mod manifest;
+pub mod persisted;
 pub mod query;
 pub mod scanner;
 pub mod store;

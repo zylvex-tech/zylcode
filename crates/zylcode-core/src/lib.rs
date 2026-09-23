@@ -6,6 +6,7 @@
 pub mod agent;
 pub mod agent_protocol;
 pub mod ai_input;
+pub mod best_of_n;
 pub mod cache;
 pub mod cli;
 pub mod compression;
