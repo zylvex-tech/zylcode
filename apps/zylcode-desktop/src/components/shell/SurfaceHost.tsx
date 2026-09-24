@@ -1,5 +1,8 @@
 import { ArtifactViewer } from "../ArtifactViewer";
 import { EvidenceCenter } from "../EvidenceCenter";
+import { EvidenceTimeline } from "../EvidenceTimeline";
+import { ExplorerTree } from "../ExplorerTree";
+import { LiveSearch } from "../LiveSearch";
 import { MissionComposer } from "../MissionComposer";
 import { RepoIntelPanel } from "../RepoIntelPanel";
 import { SourceControlPanel } from "../SourceControlPanel";
@@ -16,6 +19,8 @@ type SurfaceType =
   | "overview"
   | "intel"
   | "source-control"
+  | "search"
+  | "evidence-live"
   | "code"
   | "design"
   | "missions"
@@ -167,6 +172,20 @@ export function SurfaceHost({
         return (
           <div className="p-1">
             <SourceControlPanel />
+          </div>
+        );
+
+      case "search":
+        return (
+          <div className="p-1">
+            <LiveSearch />
+          </div>
+        );
+
+      case "evidence-live":
+        return (
+          <div className="p-1">
+            <EvidenceTimeline />
           </div>
         );
 

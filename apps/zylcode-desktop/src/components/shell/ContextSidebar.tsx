@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Panel } from "../Panel";
+import { ExplorerTree } from "../ExplorerTree";
 import { fetchGitStatus, type GitStatusState } from "../../lib/gitStatus";
+import { fetchEvidence, type EvidenceState } from "../../lib/surfaces";
 
 interface ContextSidebarProps {
   activeActivity: "explorer" | "search" | "source-control" | "missions" | "run" | "evidence" | "forge" | "extensions" | "settings" | "account";
@@ -11,30 +13,10 @@ export function ContextSidebar({ activeActivity, children }: ContextSidebarProps
   const renderContent = () => {
     switch (activeActivity) {
       case "explorer":
-        return (
-          <Panel title="EXPLORER">
-            <div className="space-y-2 text-sm">
-              <p className="text-text-muted">No folder opened</p>
-              <button className="btn btn-secondary w-full justify-start text-xs">
-                Open Folder
-              </button>
-            </div>
-          </Panel>
-        );
+        return <ExplorerTree />;
 
       case "search":
-        return (
-          <Panel title="SEARCH">
-            <div className="space-y-2">
-              <input
-                type="text"
-                placeholder="Search in files..."
-                className="input text-sm"
-              />
-              <p className="text-xs text-text-muted">Search results will appear here</p>
-            </div>
-          </Panel>
-        );
+        return <SearchSummary />;
 
       case "source-control":
         return <SourceControlSummary />;
@@ -59,13 +41,7 @@ export function ContextSidebar({ activeActivity, children }: ContextSidebarProps
         );
 
       case "evidence":
-        return (
-          <Panel title="EVIDENCE">
-            <div className="space-y-2 text-sm">
-              <p className="text-text-muted">Evidence timeline will appear here</p>
-            </div>
-          </Panel>
-        );
+        return <EvidenceSummary />;
 
       case "forge":
         return (
@@ -100,6 +76,94 @@ export function ContextSidebar({ activeActivity, children }: ContextSidebarProps
     <aside className="w-64 shrink-0 border-r border-border bg-surface/50 flex flex-col min-h-0">
       {children || renderContent()}
     </aside>
+  );
+}
+
+/** Compact live search for the search activity. */
+function SearchSummary() {
+  const [query, setQuery] = useState("");
+  const [state, setState] = useState<
+    { kind: "idle" } | { kind: "unavailable"; reason: string } | { kind: "ready"; count: number; top: string | null }
+  >({ kind: "idle" });
+
+  const run = () => {
+    if (query.trim().length === 0) return;
+    import("../../lib/surfaces").then(({ fetchSearch }) =>
+      fetchSearch(query).then((next) => {
+        if (next.kind === "ready") {
+          setState({ kind: "ready", count: next.data.results.length, top: next.data.results[0]?.resource ?? null });
+        } else if (next.kind === "unavailable") {
+          setState({ kind: "unavailable", reason: next.reason });
+        }
+      }),
+    );
+  };
+
+  return (
+    <Panel title="SEARCH">
+      <div className="space-y-2">
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && run()}
+          placeholder="Search symbols, files…"
+          className="input text-xs"
+        />
+        {state.kind === "unavailable" && <p className="text-xs text-text-muted">{state.reason}</p>}
+        {state.kind === "ready" && (
+          <p className="text-xs text-text-muted">
+            {state.count} result{state.count === 1 ? "" : "s"}
+            {state.top ? ` · top: ${state.top.split(/[\\/]/).pop()}` : ""}
+          </p>
+        )}
+        {state.kind === "idle" && (
+          <p className="text-xs text-text-muted">Results come from the real index, ranked.</p>
+        )}
+        <button className="btn btn-primary text-xs w-full justify-start" onClick={run} disabled={query.trim().length === 0}>
+          Search
+        </button>
+      </div>
+    </Panel>
+  );
+}
+
+/** Compact live evidence summary for the evidence activity. */
+function EvidenceSummary() {
+  const [state, setState] = useState<EvidenceState>({ kind: "loading" });
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchEvidence().then((next) => {
+      if (!cancelled) setState(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return (
+    <Panel title="EVIDENCE">
+      <div className="space-y-2 text-sm">
+        {state.kind === "unavailable" && <p className="text-text-muted">{state.reason}</p>}
+        {state.kind === "loading" && <p className="text-text-muted">Reading the ledger…</p>}
+        {state.kind === "empty" && <p className="text-text-muted">No evidence recorded yet.</p>}
+        {state.kind === "ready" && (
+          <>
+            <p className="text-text-muted">
+              {state.entry_count} entr{state.entry_count === 1 ? "y" : "ies"} ·{" "}
+              {state.session_count} session{state.session_count === 1 ? "" : "s"}
+            </p>
+            <p className={`font-mono text-xs ${state.chain_intact ? "text-primary" : "text-[#c0392b]"}`}>
+              {state.chain_intact ? "✓ hash chain intact" : "✗ chain broken"}
+            </p>
+          </>
+        )}
+        <button className="btn btn-secondary text-xs w-full justify-start" onClick={() => fetchEvidence().then(setState)}>
+          Refresh
+        </button>
+      </div>
+    </Panel>
   );
 }
 

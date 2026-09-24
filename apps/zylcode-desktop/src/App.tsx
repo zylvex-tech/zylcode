@@ -62,6 +62,8 @@ type SurfaceType =
   | "overview"
   | "intel"
   | "source-control"
+  | "search"
+  | "evidence-live"
   | "code"
   | "design"
   | "missions"
@@ -77,11 +79,11 @@ type BottomTab = "terminal" | "output" | "problems" | "tests" | "evidence" | "de
 
 const ACTIVITY_TO_SURFACE: Record<ActivityId, SurfaceType> = {
   explorer: "intel",
-  search: "overview",
+  search: "search",
   "source-control": "source-control",
   missions: "missions",
   run: "runtime",
-  evidence: "evidence",
+  evidence: "evidence-live",
   forge: "forge",
   extensions: "extensions",
   settings: "overview",

@@ -40,7 +40,7 @@ pub fn repo_intel_payload(root: &Path, task: &str) -> Result<Value> {
         let mut langs: Vec<String> = query
             .files()
             .iter()
-            .map(|f| format!("{:?}", f.language))
+            .map(|f| f.language.label())
             .collect();
         langs.sort();
         langs.dedup();

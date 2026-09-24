@@ -231,6 +231,47 @@ async fn git_status(
     .map_err(|e| format!("git task failed: {e}"))?
 }
 
+/// Live search over the intelligence pipeline (indexed resources + file
+/// paths) — the same payload the serve-intel HTTP route exposes.
+#[tauri::command]
+async fn repo_search(
+    q: String,
+    state: tauri::State<'_, EngineState>,
+) -> Result<serde_json::Value, String> {
+    let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
+    tokio::task::spawn_blocking(move || {
+        zylcode_core::surfaces::search_payload(&root, &q)
+            .map_err(|e| format!("search failed: {e:#}"))
+    })
+    .await
+    .map_err(|e| format!("search task failed: {e}"))?
+}
+
+/// The scanner's file tree for the Explorer surface.
+#[tauri::command]
+async fn repo_file_tree(
+    state: tauri::State<'_, EngineState>,
+) -> Result<serde_json::Value, String> {
+    let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
+    tokio::task::spawn_blocking(move || {
+        zylcode_core::surfaces::file_tree_payload(&root)
+            .map_err(|e| format!("file tree failed: {e:#}"))
+    })
+    .await
+    .map_err(|e| format!("tree task failed: {e}"))?
+}
+
+/// The evidence ledger timeline with hash-chain verification.
+#[tauri::command]
+async fn evidence_ledger(
+    state: tauri::State<'_, EngineState>,
+) -> Result<serde_json::Value, String> {
+    let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
+    tokio::task::spawn_blocking(move || Ok(zylcode_core::surfaces::evidence_payload(&root)))
+        .await
+        .map_err(|e| format!("evidence task failed: {e}"))?
+}
+
 /// Current token telemetry snapshot.
 #[tauri::command]
 async fn token_metrics(
@@ -802,6 +843,9 @@ fn main() {
             preview_execution_plan,
             repo_context,
             git_status,
+            repo_search,
+            repo_file_tree,
+            evidence_ledger,
             token_metrics,
             verify_logic,
             register_mcp_bridge,

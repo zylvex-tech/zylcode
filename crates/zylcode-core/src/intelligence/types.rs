@@ -153,6 +153,19 @@ pub enum Language {
     Unknown(String),
 }
 
+impl Language {
+    /// Clean display name for API payloads. The [`Language::Unknown`]
+    /// variant renders as its bare extension — the Debug form
+    /// (`Unknown("txt")`) is an implementation detail that leaked into
+    /// serialized output.
+    pub fn label(&self) -> String {
+        match self {
+            Language::Unknown(ext) => ext.clone(),
+            other => format!("{other:?}"),
+        }
+    }
+}
+
 /// Role of a file in the repository.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FileRole {

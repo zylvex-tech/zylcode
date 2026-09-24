@@ -568,6 +568,49 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
         }
     }
 
+    async fn search(
+        State(root): State<Arc<std::path::PathBuf>>,
+        axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
+    ) -> Json<serde_json::Value> {
+        let q = params.get("q").cloned().unwrap_or_default();
+        let root = Arc::clone(&root);
+        let payload = tokio::task::spawn_blocking(move || {
+            zylcode_core::surfaces::search_payload(&root, &q).unwrap_or_else(|e| {
+                serde_json::json!({ "error": format!("search failed: {e:#}") })
+            })
+        })
+        .await;
+        match payload {
+            Ok(value) => Json(value),
+            Err(e) => Json(serde_json::json!({ "error": format!("search task failed: {e}") })),
+        }
+    }
+
+    async fn file_tree(State(root): State<Arc<std::path::PathBuf>>) -> Json<serde_json::Value> {
+        let root = Arc::clone(&root);
+        let payload = tokio::task::spawn_blocking(move || {
+            zylcode_core::surfaces::file_tree_payload(&root).unwrap_or_else(|e| {
+                serde_json::json!({ "error": format!("file tree failed: {e:#}") })
+            })
+        })
+        .await;
+        match payload {
+            Ok(value) => Json(value),
+            Err(e) => Json(serde_json::json!({ "error": format!("tree task failed: {e}") })),
+        }
+    }
+
+    async fn evidence(State(root): State<Arc<std::path::PathBuf>>) -> Json<serde_json::Value> {
+        let root = Arc::clone(&root);
+        let payload =
+            tokio::task::spawn_blocking(move || zylcode_core::surfaces::evidence_payload(&root))
+                .await;
+        match payload {
+            Ok(value) => Json(value),
+            Err(e) => Json(serde_json::json!({ "error": format!("evidence task failed: {e}") })),
+        }
+    }
+
     async fn repo_intel(
         State(root): State<Arc<std::path::PathBuf>>,
         axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
@@ -590,6 +633,9 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
         .route("/healthz", get(healthz))
         .route("/api/repo-intel", get(repo_intel))
         .route("/api/git/status", get(git_status))
+        .route("/api/search", get(search))
+        .route("/api/files", get(file_tree))
+        .route("/api/evidence", get(evidence))
         .with_state(Arc::clone(&root));
 
     let addr = std::net::SocketAddr::from(([127, 0, 0, 1], port));
@@ -598,7 +644,10 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
         "repo-intel service listening on http://{addr} (repo: {})",
         root.display()
     );
-    println!("endpoints: GET /healthz, GET /api/repo-intel?task=..., GET /api/git/status");
+    println!(
+        "endpoints: GET /healthz, GET /api/repo-intel?task=..., GET /api/git/status, \
+         GET /api/search?q=..., GET /api/files, GET /api/evidence"
+    );
     axum::serve(listener, app).await?;
     Ok(())
 }
