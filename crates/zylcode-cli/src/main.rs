@@ -51,9 +51,10 @@ enum Commands {
     /// points, git history).
     RepoContext { task: Vec<String> },
 
-    /// Run Best-of-N: verify N candidate attempts against the real test
-    /// suite, select the winner on recorded evidence, and append every
-    /// outcome plus the selection decision to the evidence ledger.
+    /// Run Best-of-N: sample N candidate patches for a task, verify each in
+    /// an isolated git worktree against the real test suite, select the
+    /// winner on recorded evidence, and append every outcome plus the
+    /// selection decision to the evidence ledger.
     BestOfN(BestOfNArgs),
 }
 
@@ -480,10 +481,24 @@ async fn main() -> Result<()> {
 
 #[derive(Args, Debug)]
 struct BestOfNArgs {
-    /// Verify the current working tree as the single candidate (the common
-    /// case until patch-sampling lands in Phase 3). Repeatable later.
-    #[arg(long, default_value_t = 1)]
+    /// How many candidate patches to sample and verify.
+    #[arg(long, default_value_t = 3)]
     candidates: usize,
+
+    /// The task to solve. Required for patch sampling; omit it (with
+    /// `--candidates 1`) to verify the current working tree as-is.
+    #[arg(long)]
+    task: Option<String>,
+
+    /// Extra context prepended to the task for the model (repo layout,
+    /// entry points, conventions). Improves generated patches.
+    #[arg(long)]
+    context: Option<String>,
+
+    /// Where to write the winning patch (unified diff). When omitted the
+    /// winner is still reported, just not exported.
+    #[arg(long)]
+    export_out: Option<String>,
 
     /// Per-candidate verification budget in seconds.
     #[arg(long, default_value_t = 600)]
@@ -498,17 +513,14 @@ struct BestOfNArgs {
 
 async fn handle_best_of_n(workspace: &str, args: BestOfNArgs) -> Result<()> {
     use std::sync::Arc;
+    use zylcode_core::patch_best_of_n::{
+        record_patch_export, run_patch_best_of_n, CandidateSource, ModelPatchSource,
+        WorkingTreeSource,
+    };
 
     let root = std::path::Path::new(workspace)
         .canonicalize()
         .map_err(|e| anyhow::anyhow!("cannot resolve workspace '{}': {e}", workspace))?;
-
-    let verifier: Arc<dyn zylcode_core::best_of_n::CandidateVerifier> =
-        Arc::new(zylcode_core::best_of_n::TestSuiteVerifier {
-            working_dir: root.clone(),
-            timeout: std::time::Duration::from_secs(args.timeout_secs),
-            ..Default::default()
-        });
 
     let session_id = match &args.session_id {
         Some(id) => Some(uuid::Uuid::parse_str(id).map_err(|e| {
@@ -517,7 +529,8 @@ async fn handle_best_of_n(workspace: &str, args: BestOfNArgs) -> Result<()> {
         None => Some(uuid::Uuid::new_v4()),
     };
 
-    // The ledger records which candidates passed and why.
+    // The ledger records which candidates passed and why. A fresh session
+    // keeps the run's chain self-contained (genesis -> export).
     let ledger_path = root.join(".zylcode").join("ledger.db");
     std::fs::create_dir_all(ledger_path.parent().unwrap())?;
     let ledger: Arc<dyn zylcode_core::ledger::LedgerStore> = Arc::new(
@@ -526,26 +539,57 @@ async fn handle_best_of_n(workspace: &str, args: BestOfNArgs) -> Result<()> {
         )?,
     );
 
-    // One candidate today: the current tree. `cargo test` is the real
-    // verifier — no simulation.
-    let candidates = vec!["working-tree".to_string()];
+    // Candidate production: real model sampling when a task is given;
+    // working-tree verification otherwise.
+    let source: Arc<dyn CandidateSource> = match &args.task {
+        Some(_task) => {
+            let router = zylcode_core::TokenRouter::new(
+                zylcode_core::RouterConfig::from_env(),
+            )?;
+            Arc::new(ModelPatchSource {
+                client: Arc::new(zylcode_core::agent::RealModelClient::new(Arc::new(router))),
+                context: args.context.clone(),
+            })
+        }
+        None => Arc::new(WorkingTreeSource {
+            repo_root: root.clone(),
+        }),
+    };
+    if args.task.is_none() && args.candidates != 1 {
+        anyhow::bail!(
+            "working-tree mode produces exactly one candidate; drop --candidates or pass --task"
+        );
+    }
+
     let config = zylcode_core::best_of_n::BestOfNConfig {
-        candidates: args.candidates.min(candidates.len()),
+        candidates: args.candidates,
         per_candidate_timeout: std::time::Duration::from_secs(args.timeout_secs),
     };
 
-    println!("best-of-n: verifying the working tree against the real test suite...");
+    match &args.task {
+        Some(_task) => println!(
+            "best-of-n: sampling {} candidate patches for the task and verifying each in an \
+             isolated worktree against the real test suite...",
+            args.candidates
+        ),
+        None => println!(
+            "best-of-n: verifying the current working tree against the real test suite..."
+        ),
+    }
     let started = std::time::Instant::now();
-    let result = zylcode_core::best_of_n::run_best_of_n(
-        &candidates,
-        verifier,
+    let result = run_patch_best_of_n(
+        args.task.as_deref().unwrap_or(""),
+        source,
+        &root,
         Some(Arc::clone(&ledger)),
         session_id,
         &config,
+        vec!["cargo".to_string(), "test".to_string()],
+        std::time::Duration::from_secs(args.timeout_secs),
     )
     .await?;
 
-    for outcome in &result.outcomes {
+    for outcome in &result.selection.outcomes {
         println!(
             "  candidate {}: {} ({} of {} checks passing)",
             outcome.candidate_index,
@@ -560,13 +604,30 @@ async fn handle_best_of_n(workspace: &str, args: BestOfNArgs) -> Result<()> {
             );
         }
     }
-    println!("selection: {}", result.selection_reason);
+    println!("selection: {}", result.selection.selection_reason);
+
+    // Export the winner — byte-identical to what was verified.
+    let mut export_path: Option<std::path::PathBuf> = None;
+    if let (Some(selected), Some(out)) = (result.selection.selected, &args.export_out) {
+        let path = std::path::Path::new(out).to_path_buf();
+        let bytes = result.export_winner(&path)?;
+        println!(
+            "exported winning patch (candidate {selected}, {bytes} bytes) to {}",
+            path.display()
+        );
+        if let Some(sid) = session_id {
+            record_patch_export(&ledger, sid, selected, &path, bytes).await?;
+        }
+        export_path = Some(path);
+    }
+    let _ = export_path; // reported above; kept for future json output
+
     println!("elapsed: {:.1}s", started.elapsed().as_secs_f64());
     if let Some(sid) = session_id {
         println!("evidence ledger session: {sid}");
     }
 
-    match result.selected {
+    match result.selection.selected {
         Some(_) => Ok(()),
         None => {
             eprintln!("no candidate passed verification");

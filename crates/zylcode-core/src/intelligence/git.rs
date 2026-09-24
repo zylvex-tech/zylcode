@@ -142,7 +142,6 @@ fn commit_file_paths_from_name_status(line: &str) -> Vec<String> {
 /// invocation instead of one per commit.
 pub fn get_full_history_commits(root: &Path) -> Result<Vec<GitCommit>> {
     const SEP: &str = "\u{1f}ZYLCOMMIT\u{1f}";
-    let format = "%H|%h|%s|%an|%aI";
     let output = run_git(
         root,
         &[

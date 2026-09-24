@@ -16,6 +16,7 @@ pub mod intelligence;
 pub mod ledger;
 pub mod marketplace;
 pub mod memory_ledger;
+pub mod patch_best_of_n;
 pub mod pipeline;
 pub mod planner;
 pub mod project;
