@@ -12,6 +12,7 @@ pub mod cli;
 pub mod compression;
 pub mod computer_use;
 pub mod context_builder;
+pub mod gitops;
 pub mod intelligence;
 pub mod ledger;
 pub mod marketplace;

@@ -9,9 +9,10 @@ export default defineConfig({
     port: 1420,
     strictPort: true,
     proxy: {
-      // Browser preview: forward Repository Intelligence requests to the
-      // local `zylcode serve-intel` service (loopback only).
+      // Browser preview: forward Repository Intelligence and git source-
+      // control requests to the local `zylcode serve-intel` service.
       "/api/repo-intel": "http://127.0.0.1:17630",
+      "/api/git": "http://127.0.0.1:17630",
     },
   },
   envPrefix: ["VITE_", "TAURI_"],

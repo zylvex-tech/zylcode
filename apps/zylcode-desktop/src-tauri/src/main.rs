@@ -215,6 +215,22 @@ async fn repo_context(
     .map_err(|e| format!("intel task failed: {e}"))?
 }
 
+/// Git source-control state for the frontend (branch, tracking, status
+/// entries, uncommitted diff stat) — the same gitops payload the
+/// `serve-intel` HTTP service exposes.
+#[tauri::command]
+async fn git_status(
+    state: tauri::State<'_, EngineState>,
+) -> Result<serde_json::Value, String> {
+    let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
+    tokio::task::spawn_blocking(move || {
+        zylcode_core::gitops::git_status_payload(&root)
+            .map_err(|e| format!("git status failed: {e:#}"))
+    })
+    .await
+    .map_err(|e| format!("git task failed: {e}"))?
+}
+
 /// Current token telemetry snapshot.
 #[tauri::command]
 async fn token_metrics(
@@ -785,6 +801,7 @@ fn main() {
             process_intent_stream,
             preview_execution_plan,
             repo_context,
+            git_status,
             token_metrics,
             verify_logic,
             register_mcp_bridge,

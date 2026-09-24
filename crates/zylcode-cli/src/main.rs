@@ -549,6 +549,25 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
         }))
     }
 
+    async fn git_status(
+        State(root): State<Arc<std::path::PathBuf>>,
+    ) -> Json<serde_json::Value> {
+        let root = Arc::clone(&root);
+        let payload =
+            tokio::task::spawn_blocking(move || {
+                zylcode_core::gitops::git_status_payload(&root).unwrap_or_else(|e| {
+                    serde_json::json!({
+                        "error": format!("git status failed: {e:#}"),
+                    })
+                })
+            })
+            .await;
+        match payload {
+            Ok(value) => Json(value),
+            Err(e) => Json(serde_json::json!({ "error": format!("git task failed: {e}") })),
+        }
+    }
+
     async fn repo_intel(
         State(root): State<Arc<std::path::PathBuf>>,
         axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
@@ -570,6 +589,7 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
     let app = Router::new()
         .route("/healthz", get(healthz))
         .route("/api/repo-intel", get(repo_intel))
+        .route("/api/git/status", get(git_status))
         .with_state(Arc::clone(&root));
 
     let addr = std::net::SocketAddr::from(([127, 0, 0, 1], port));
@@ -578,7 +598,7 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
         "repo-intel service listening on http://{addr} (repo: {})",
         root.display()
     );
-    println!("endpoints: GET /healthz, GET /api/repo-intel?task=...");
+    println!("endpoints: GET /healthz, GET /api/repo-intel?task=..., GET /api/git/status");
     axum::serve(listener, app).await?;
     Ok(())
 }

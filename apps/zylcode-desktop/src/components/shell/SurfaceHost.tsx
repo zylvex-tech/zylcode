@@ -2,6 +2,7 @@ import { ArtifactViewer } from "../ArtifactViewer";
 import { EvidenceCenter } from "../EvidenceCenter";
 import { MissionComposer } from "../MissionComposer";
 import { RepoIntelPanel } from "../RepoIntelPanel";
+import { SourceControlPanel } from "../SourceControlPanel";
 import { RuntimeLab } from "../RuntimeLab";
 import Forge from "../Forge";
 import { VerificationRungBadge } from "../VerificationRungBadge";
@@ -14,6 +15,7 @@ type SurfaceType =
   | "home"
   | "overview"
   | "intel"
+  | "source-control"
   | "code"
   | "design"
   | "missions"
@@ -158,6 +160,13 @@ export function SurfaceHost({
                 </div>
               </Panel>
             </div>
+          </div>
+        );
+
+      case "source-control":
+        return (
+          <div className="p-1">
+            <SourceControlPanel />
           </div>
         );
 
