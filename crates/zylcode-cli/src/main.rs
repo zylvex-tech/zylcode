@@ -611,6 +611,25 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
         }
     }
 
+    async fn terminal_exec(
+        State(hub): State<Arc<zylcode_core::terminal::TerminalHub>>,
+        axum::Json(req): axum::Json<zylcode_core::terminal::TerminalRequest>,
+    ) -> Json<serde_json::Value> {
+        match hub.exec(&req).await {
+            Ok(out) => Json(serde_json::to_value(&out).unwrap_or_else(|_| {
+                serde_json::json!({ "error": "terminal output serialization failed" })
+            })),
+            Err(e) => Json(serde_json::json!({ "error": format!("terminal exec failed: {e:#}") })),
+        }
+    }
+
+    async fn terminal_reset(
+        State(hub): State<Arc<zylcode_core::terminal::TerminalHub>>,
+    ) -> Json<serde_json::Value> {
+        hub.reset();
+        Json(serde_json::json!({ "status": "ok" }))
+    }
+
     async fn repo_intel(
         State(root): State<Arc<std::path::PathBuf>>,
         axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
@@ -629,6 +648,14 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
         }
     }
 
+    // Terminal sessions: cwd state lives for the service's lifetime.
+    // FromRef lets each handler extract only the field it needs.
+    #[derive(Clone, axum::extract::FromRef)]
+    struct ServiceState {
+        root: Arc<std::path::PathBuf>,
+        hub: Arc<zylcode_core::terminal::TerminalHub>,
+    }
+
     let app = Router::new()
         .route("/healthz", get(healthz))
         .route("/api/repo-intel", get(repo_intel))
@@ -636,7 +663,14 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
         .route("/api/search", get(search))
         .route("/api/files", get(file_tree))
         .route("/api/evidence", get(evidence))
-        .with_state(Arc::clone(&root));
+        .route("/api/terminal/exec", axum::routing::post(terminal_exec))
+        .route("/api/terminal/reset", axum::routing::post(terminal_reset))
+        .with_state(ServiceState {
+            root: Arc::clone(&root),
+            hub: Arc::new(zylcode_core::terminal::TerminalHub::new(
+                root.as_ref().clone(),
+            )),
+        });
 
     let addr = std::net::SocketAddr::from(([127, 0, 0, 1], port));
     let listener = tokio::net::TcpListener::bind(addr).await?;

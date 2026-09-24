@@ -14,6 +14,8 @@ struct EngineState {
     engine: ZylCodeEngine,
     provider_configs: Arc<RwLock<Vec<ProviderConfig>>>,
     vector_cache: Arc<zylcode_core::cache::VectorCacheStore>,
+    /// Terminal sessions: cwd state persists for the app's lifetime.
+    terminal_hub: Arc<zylcode_core::terminal::TerminalHub>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -213,6 +215,29 @@ async fn repo_context(
     })
     .await
     .map_err(|e| format!("intel task failed: {e}"))?
+}
+
+/// Terminal exec with persistent cwd sessions — the same TerminalHub model
+/// the `serve-intel` HTTP service uses, so desktop and browser terminals
+/// behave identically. Session cwd state lives for the app's lifetime.
+#[tauri::command]
+async fn terminal_exec(
+    request: serde_json::Value,
+    state: tauri::State<'_, EngineState>,
+) -> Result<serde_json::Value, String> {
+    let req: zylcode_core::terminal::TerminalRequest =
+        serde_json::from_value(request).map_err(|e| format!("invalid terminal request: {e}"))?;
+    let hub = state.terminal_hub.clone();
+    // TerminalHub::exec is &self; run it without blocking the IPC thread.
+    tokio::task::spawn(async move {
+        hub.exec(&req).await.map(|out| {
+            serde_json::to_value(&out)
+                .unwrap_or_else(|_| serde_json::json!({ "error": "serialization failed" }))
+        })
+    })
+    .await
+    .map_err(|e| format!("terminal task failed: {e}"))?
+    .map_err(|e| format!("terminal exec failed: {e:#}"))
 }
 
 /// Git source-control state for the frontend (branch, tracking, status
@@ -832,10 +857,17 @@ fn main() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
-        .manage(EngineState {
-            engine,
-            provider_configs,
-            vector_cache,
+        .manage({
+            let workspace_root =
+                std::path::PathBuf::from(&engine.config().workspace_root);
+            EngineState {
+                engine,
+                provider_configs,
+                vector_cache,
+                terminal_hub: Arc::new(zylcode_core::terminal::TerminalHub::new(
+                    workspace_root,
+                )),
+            }
         })
         .invoke_handler(tauri::generate_handler![
             process_intent,
@@ -843,6 +875,7 @@ fn main() {
             preview_execution_plan,
             repo_context,
             git_status,
+            terminal_exec,
             repo_search,
             repo_file_tree,
             evidence_ledger,

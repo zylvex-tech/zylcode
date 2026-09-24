@@ -25,6 +25,7 @@ pub mod router;
 pub mod sandbox;
 pub mod sqlite_ledger;
 pub mod surfaces;
+pub mod terminal;
 
 use crate::ai_input::AIInputSystem;
 use crate::computer_use::ComputerUseSystem;

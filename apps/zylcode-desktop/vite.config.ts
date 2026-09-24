@@ -16,6 +16,7 @@ export default defineConfig({
       "/api/search": "http://127.0.0.1:17630",
       "/api/files": "http://127.0.0.1:17630",
       "/api/evidence": "http://127.0.0.1:17630",
+      "/api/terminal": "http://127.0.0.1:17630",
     },
   },
   envPrefix: ["VITE_", "TAURI_"],

@@ -7,6 +7,7 @@ import { MissionComposer } from "../MissionComposer";
 import { RepoIntelPanel } from "../RepoIntelPanel";
 import { SourceControlPanel } from "../SourceControlPanel";
 import { RuntimeLab } from "../RuntimeLab";
+import { TerminalPanel } from "../TerminalPanel";
 import Forge from "../Forge";
 import { VerificationRungBadge } from "../VerificationRungBadge";
 import { Panel } from "../Panel";
@@ -287,7 +288,14 @@ export function SurfaceHost({
         );
 
       case "runtime":
-        return <RuntimeLab />;
+        return (
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 min-h-0">
+            <div className="h-[420px]">
+              <TerminalPanel />
+            </div>
+            <RuntimeLab />
+          </div>
+        );
 
       case "evidence":
         return <EvidenceCenter missions={missions} />;
