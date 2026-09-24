@@ -500,6 +500,12 @@ struct BestOfNArgs {
     #[arg(long)]
     export_out: Option<String>,
 
+    /// How many candidates may verify at once. Each verification runs its
+    /// own suite subprocess in its own worktree, so concurrency turns
+    /// N × suite-time into roughly one suite-time. 1 = sequential.
+    #[arg(long, default_value_t = 4)]
+    max_concurrent: usize,
+
     /// Per-candidate verification budget in seconds.
     #[arg(long, default_value_t = 600)]
     timeout_secs: u64,
@@ -564,6 +570,7 @@ async fn handle_best_of_n(workspace: &str, args: BestOfNArgs) -> Result<()> {
     let config = zylcode_core::best_of_n::BestOfNConfig {
         candidates: args.candidates,
         per_candidate_timeout: std::time::Duration::from_secs(args.timeout_secs),
+        max_concurrent: args.max_concurrent,
     };
 
     match &args.task {

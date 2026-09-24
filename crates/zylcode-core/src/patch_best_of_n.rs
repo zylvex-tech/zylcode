@@ -491,7 +491,11 @@ mod tests {
             root,
             ledger_arc,
             session,
-            &BestOfNConfig { candidates: 3, per_candidate_timeout: Duration::from_secs(60) },
+            &BestOfNConfig {
+                candidates: 3,
+                per_candidate_timeout: Duration::from_secs(60),
+                ..Default::default()
+            },
             suite,
             Duration::from_secs(60),
         )

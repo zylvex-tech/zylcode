@@ -22,6 +22,11 @@
 //!   then candidate order — the same tie-breaking discipline as the
 //!   retrieval ranking, so a re-run at the same inputs selects the same
 //!   candidate.
+//! * Verification is concurrent — up to [`BestOfNConfig::max_concurrent`]
+//!   candidates at once — but the ledger chain does not inherit that
+//!   nondeterminism: start entries are appended first in candidate order
+//!   and outcome entries follow in candidate order, so identical results
+//!   replay to an identical chain regardless of completion order.
 //!
 //! # Sandbox boundary (recorded honestly)
 //!
@@ -192,6 +197,12 @@ pub struct BestOfNConfig {
     pub candidates: usize,
     /// Per-candidate verification budget (used by verifiers that take one).
     pub per_candidate_timeout: Duration,
+    /// How many candidates may verify at once. Verification work is
+    /// independent per candidate (each typically runs its own suite
+    /// subprocess in its own directory), so N candidates cost roughly one
+    /// suite run instead of N. `1` reproduces the historical sequential
+    /// behaviour exactly.
+    pub max_concurrent: usize,
 }
 
 impl Default for BestOfNConfig {
@@ -199,6 +210,7 @@ impl Default for BestOfNConfig {
         Self {
             candidates: 3,
             per_candidate_timeout: Duration::from_secs(600),
+            max_concurrent: 4,
         }
     }
 }
@@ -216,6 +228,15 @@ fn score(outcome: &CandidateOutcome) -> (u8, usize, usize) {
 /// Run Best-of-N over `candidates`, verify each, select on evidence, and
 /// append every outcome plus the selection decision to `ledger`.
 ///
+/// Verification is concurrent: up to [`BestOfNConfig::max_concurrent`]
+/// candidates run at once, each with its own wall-clock budget, so N
+/// candidates cost roughly one suite run instead of N. The ledger does not
+/// inherit that nondeterminism — start entries are appended first in
+/// candidate order and outcome entries afterwards in candidate order, and
+/// selection is a total order over the recorded evidence — so the same
+/// results replay to the same chain no matter which candidate finished
+/// first.
+///
 /// The ledger entries chain among themselves using the same
 /// `(prev_hash, action_id)` hash formula as the agent loop, so the run is
 /// auditable with the same replay procedure an auditor already uses.
@@ -227,14 +248,14 @@ pub async fn run_best_of_n(
     config: &BestOfNConfig,
 ) -> Result<BestOfNResult> {
     let n = config.candidates.min(candidates.len().max(1));
-    let mut outcomes = Vec::new();
     let mut prev_hash = String::new(); // genesis, same convention as agent.rs
 
-    for (i, candidate) in candidates.iter().take(n).enumerate() {
-        let started = Uuid::new_v4();
-        if let (Some(ledger), Some(session_id)) = (&ledger, session_id) {
+    // 1. Start entries go in first, in candidate order: the chain stays
+    //    linear and deterministic even though verification is concurrent.
+    if let (Some(ledger), Some(session_id)) = (&ledger, session_id) {
+        for i in 0..n {
             let entry = LedgerEntry {
-                id: started,
+                id: Uuid::new_v4(),
                 session_id,
                 action_id: format!("best_of_n.candidate[{i}]"),
                 arguments: json!({ "candidate_index": i }),
@@ -247,33 +268,83 @@ pub async fn run_best_of_n(
             prev_hash = chain_hash(&prev_hash, &entry.action_id);
             ledger.append(entry).await?;
         }
+    }
 
-        let evidence = match tokio::time::timeout(
-            config.per_candidate_timeout,
-            verifier.verify(i, candidate),
-        )
-        .await
-        {
-            Err(_) => VerificationEvidence {
-                checks: vec![(
-                    "verification_completed".to_string(),
-                    false,
-                    format!("verification timed out after {:?}", config.per_candidate_timeout),
-                )],
-                exit_status: None,
-                output_tail: String::new(),
-            },
-            Ok(Err(e)) => VerificationEvidence {
-                checks: vec![(
-                    "verification_ran".to_string(),
-                    false,
-                    format!("verifier error: {e}"),
-                )],
-                exit_status: None,
-                output_tail: String::new(),
-            },
-            Ok(Ok(e)) => e,
-        };
+    // 2. Verify concurrently. Each task holds a semaphore permit for its
+    //    whole verification (a real cap on suite subprocesses), enforces
+    //    its own budget, and guards against verifier panics so every
+    //    candidate still produces an outcome. `join_next` yields in
+    //    completion order; results are slotted back by candidate index
+    //    before anything reads them.
+    let max_concurrent = config.max_concurrent.max(1).min(n.max(1));
+    let semaphore = Arc::new(tokio::sync::Semaphore::new(max_concurrent));
+    let mut tasks = tokio::task::JoinSet::new();
+    for (i, candidate) in candidates.iter().take(n).enumerate() {
+        let verifier = Arc::clone(&verifier);
+        let candidate = candidate.clone();
+        let semaphore = Arc::clone(&semaphore);
+        let budget = config.per_candidate_timeout;
+        tasks.spawn(async move {
+            let _permit = semaphore.acquire_owned().await.ok();
+            let inner_verifier = Arc::clone(&verifier);
+            // The verifier runs in an inner task so a panic degrades to a
+            // failing outcome for *this* candidate instead of escaping with
+            // the candidate's index lost.
+            let inner = tokio::spawn(async move { inner_verifier.verify(i, &candidate).await });
+            let guarded = async {
+                match inner.await {
+                    Ok(result) => result,
+                    Err(join_err) => {
+                        Err(anyhow::anyhow!("verifier task failed: {join_err}"))
+                    }
+                }
+            };
+            let evidence = match tokio::time::timeout(budget, guarded).await {
+                Err(_) => VerificationEvidence {
+                    checks: vec![(
+                        "verification_completed".to_string(),
+                        false,
+                        format!("verification timed out after {budget:?}"),
+                    )],
+                    exit_status: None,
+                    output_tail: String::new(),
+                },
+                Ok(Err(e)) => VerificationEvidence {
+                    checks: vec![(
+                        "verification_ran".to_string(),
+                        false,
+                        format!("verifier error: {e}"),
+                    )],
+                    exit_status: None,
+                    output_tail: String::new(),
+                },
+                Ok(Ok(e)) => e,
+            };
+            (i, evidence)
+        });
+    }
+
+    let mut slots: Vec<Option<VerificationEvidence>> = (0..n).map(|_| None).collect();
+    while let Some(joined) = tasks.join_next().await {
+        if let Ok((i, evidence)) = joined {
+            if i < slots.len() {
+                slots[i] = Some(evidence);
+            }
+        }
+    }
+
+    // 3. Outcomes and their ledger entries, in candidate order.
+    let mut outcomes = Vec::with_capacity(slots.len());
+    for (i, slot) in slots.into_iter().enumerate() {
+        let evidence = slot.unwrap_or_else(|| VerificationEvidence {
+            checks: vec![(
+                "verification_ran".to_string(),
+                false,
+                "verifier produced no result".to_string(),
+            )],
+            exit_status: None,
+            output_tail: String::new(),
+        });
 
         let passed = evidence.passed();
         outcomes.push(CandidateOutcome {
@@ -605,5 +676,146 @@ mod tests {
         .await
         .unwrap();
         assert_eq!(result.outcomes.len(), 1);
+    }
+
+    /// Verifier that records how many verifications overlap in time and
+    /// sleeps a per-candidate duration, to probe real concurrency.
+    struct ConcurrencyProbeVerifier {
+        /// Sleep per candidate index (candidate_index -> millis).
+        delays_ms: HashMap<usize, u64>,
+        active: std::sync::atomic::AtomicUsize,
+        peak: std::sync::atomic::AtomicUsize,
+    }
+
+    impl ConcurrencyProbeVerifier {
+        fn new(delays_ms: HashMap<usize, u64>) -> Self {
+            Self {
+                delays_ms,
+                active: std::sync::atomic::AtomicUsize::new(0),
+                peak: std::sync::atomic::AtomicUsize::new(0),
+            }
+        }
+
+        fn peak(&self) -> usize {
+            self.peak.load(std::sync::atomic::Ordering::SeqCst)
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl CandidateVerifier for ConcurrencyProbeVerifier {
+        async fn verify(
+            &self,
+            candidate_index: usize,
+            _candidate: &str,
+        ) -> Result<VerificationEvidence> {
+            let now_active =
+                self.active.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
+            self.peak.fetch_max(now_active, std::sync::atomic::Ordering::SeqCst);
+            let delay = self.delays_ms.get(&candidate_index).copied().unwrap_or(0);
+            tokio::time::sleep(std::time::Duration::from_millis(delay)).await;
+            self.active.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+            Ok(VerificationEvidence {
+                checks: vec![(
+                    "probe".to_string(),
+                    true,
+                    format!("candidate {candidate_index}"),
+                )],
+                exit_status: Some(0),
+                output_tail: String::new(),
+            })
+        }
+    }
+
+    #[tokio::test]
+    async fn concurrent_verification_finishes_in_roughly_one_suite_run() {
+        let verifier = Arc::new(ConcurrencyProbeVerifier::new(
+            [(0, 500), (1, 500), (2, 500), (3, 500)].into_iter().collect(),
+        ));
+        let started = std::time::Instant::now();
+        let result = run_best_of_n(
+            &["a".into(), "b".into(), "c".into(), "d".into()],
+            Arc::clone(&verifier) as Arc<dyn CandidateVerifier>,
+            None,
+            None,
+            &BestOfNConfig {
+                candidates: 4,
+                per_candidate_timeout: Duration::from_secs(30),
+                max_concurrent: 4,
+            },
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(result.selected, Some(0), "all pass; lowest index wins");
+        assert_eq!(verifier.peak(), 4, "all four verifications overlapped");
+        // Sequentially this is 2s of sleeps; concurrently well under half.
+        assert!(
+            started.elapsed() < std::time::Duration::from_millis(1_500),
+            "verification did not overlap: {:?}",
+            started.elapsed()
+        );
+    }
+
+    #[tokio::test]
+    async fn max_concurrent_caps_how_many_verify_at_once() {
+        let verifier = Arc::new(ConcurrencyProbeVerifier::new(
+            [(0, 250), (1, 250), (2, 250), (3, 250)].into_iter().collect(),
+        ));
+        let result = run_best_of_n(
+            &["a".into(), "b".into(), "c".into(), "d".into()],
+            Arc::clone(&verifier) as Arc<dyn CandidateVerifier>,
+            None,
+            None,
+            &BestOfNConfig {
+                candidates: 4,
+                per_candidate_timeout: Duration::from_secs(30),
+                max_concurrent: 1,
+            },
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(result.outcomes.len(), 4);
+        assert_eq!(verifier.peak(), 1, "the cap must be a hard ceiling");
+    }
+
+    #[tokio::test]
+    async fn outcomes_and_chain_do_not_depend_on_completion_order() {
+        use sha2::{Digest, Sha256};
+        let (ledger, session) = ledger_session();
+        // Candidate 2 finishes first, candidate 0 last.
+        let verifier = Arc::new(ConcurrencyProbeVerifier::new(
+            [(0, 300), (1, 200), (2, 100)].into_iter().collect(),
+        ));
+        let result = run_best_of_n(
+            &["a".into(), "b".into(), "c".into()],
+            Arc::clone(&verifier) as Arc<dyn CandidateVerifier>,
+            Some(Arc::clone(&ledger) as Arc<dyn LedgerStore>),
+            Some(session),
+            &BestOfNConfig {
+                candidates: 3,
+                per_candidate_timeout: Duration::from_secs(30),
+                max_concurrent: 3,
+            },
+        )
+        .await
+        .unwrap();
+
+        // Outcomes are strictly in candidate order even though candidate 2
+        // completed first.
+        for (position, outcome) in result.outcomes.iter().enumerate() {
+            assert_eq!(outcome.candidate_index, position);
+        }
+
+        // The chain replays exactly as it would have sequentially.
+        let entries = ledger.get_entries(session).await.unwrap();
+        let mut prev_hash = String::new();
+        for entry in &entries {
+            assert_eq!(entry.prev_hash, prev_hash);
+            prev_hash = format!(
+                "{:x}",
+                Sha256::digest(format!("{}:{}", entry.prev_hash, entry.action_id).as_bytes())
+            );
+        }
     }
 }
