@@ -242,12 +242,26 @@ function AppContent() {
       {/* Header */}
       <header className="border-b border-border bg-surface/80 backdrop-blur-sm px-4 py-2.5 flex items-center justify-between gap-4 sticky top-0 z-40">
         <div className="flex items-center gap-3 min-w-0">
-          <h1 className="text-base font-bold tracking-tight truncate">
-            <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              ZylCode
-            </span>
-            <span className="font-mono text-xs font-normal text-text-muted ml-2">v0.3.0-convergence</span>
-          </h1>
+          {/* Official lockup: emblem + wordmark on the brand's own dark chip, */}
+          {/* so the steel letters keep their designed contrast in any theme.  */}
+          <div
+            className="flex items-center gap-2 shrink-0 rounded-md overflow-hidden"
+            style={{ background: "rgb(20 20 20 / 0.92)" }}
+          >
+            <img
+              src="/branding/emblem.png"
+              alt="ZylCode emblem"
+              className="h-8 w-8"
+              draggable={false}
+            />
+            <img
+              src="/branding/wordmark.png"
+              alt="ZylCode"
+              className="h-5 hidden sm:block"
+              draggable={false}
+            />
+          </div>
+          <span className="font-mono text-xs font-normal text-text-muted">v0.3.0-convergence</span>
           {activeSurface !== "home" && (
             <span className="hidden md:inline text-xs text-text-muted font-mono truncate">
               zylcode · main

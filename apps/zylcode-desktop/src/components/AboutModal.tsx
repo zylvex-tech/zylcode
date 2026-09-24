@@ -13,8 +13,13 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
       <div className="bg-slate-900 border border-slate-800 rounded-lg max-w-md w-full p-6 shadow-2xl text-slate-200">
         <div className="flex justify-between items-start mb-4">
           <div>
-            <h2 className="text-xl font-bold text-cyan-400 font-mono">ZylCode Workspace</h2>
-            <p className="text-xs text-slate-400">Formally Verified AI Software Synthesis Engine</p>
+            <img
+              src="/branding/lockup.png"
+              alt="ZylCode"
+              className="h-14 rounded"
+              draggable={false}
+            />
+            <p className="text-xs text-slate-400 mt-2">Formally Verified AI Software Synthesis Engine</p>
           </div>
           <button
             onClick={onClose}
