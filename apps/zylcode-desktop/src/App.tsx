@@ -60,6 +60,7 @@ type ActivityId =
 type SurfaceType =
   | "home"
   | "overview"
+  | "intel"
   | "code"
   | "design"
   | "missions"
@@ -74,7 +75,7 @@ type DockModule = "agent" | "preview" | "proof" | "mcp" | "providers" | "diagnos
 type BottomTab = "terminal" | "output" | "problems" | "tests" | "evidence" | "dev-tools";
 
 const ACTIVITY_TO_SURFACE: Record<ActivityId, SurfaceType> = {
-  explorer: "overview",
+  explorer: "intel",
   search: "overview",
   "source-control": "overview",
   missions: "missions",

@@ -6,6 +6,7 @@
 //! a structured model of a software repository.
 
 pub mod architecture;
+pub mod api;
 pub mod classifier;
 pub mod context;
 pub mod dependency;

@@ -51,6 +51,11 @@ enum Commands {
     /// points, git history).
     RepoContext { task: Vec<String> },
 
+    /// Serve Repository Intelligence over HTTP for the desktop frontend
+    /// (browser preview and remote surfaces). Endpoints: `GET /healthz`,
+    /// `GET /api/repo-intel?task=...`.
+    ServeIntel(ServeIntelArgs),
+
     /// Run Best-of-N: sample N candidate patches for a task, verify each in
     /// an isolated git worktree against the real test suite, select the
     /// winner on recorded evidence, and append every outcome plus the
@@ -463,6 +468,7 @@ async fn main() -> Result<()> {
         Commands::AiInput(args) => handle_ai_input(&engine, args).await,
         Commands::ComputerUse(args) => handle_computer_use(&engine, args).await,
         Commands::RepoContext { task } => handle_repo_context(&cli.workspace, &task),
+        Commands::ServeIntel(args) => handle_serve_intel(&cli.workspace, args).await,
         Commands::BestOfN(args) => handle_best_of_n(&cli.workspace, args).await,
     };
 
@@ -473,6 +479,108 @@ async fn main() -> Result<()> {
     }
 
     result
+}
+
+// ---------------------------------------------------------------------------
+// serve-intel
+// ---------------------------------------------------------------------------
+
+#[derive(Args, Debug)]
+struct ServeIntelArgs {
+    /// TCP port to listen on (loopback only).
+    #[arg(long, default_value_t = 17630)]
+    port: u16,
+
+    /// Repository root to index (defaults to the workspace root).
+    #[arg(long)]
+    repo: Option<String>,
+}
+
+/// Shared handler for both the HTTP service and the Tauri command path.
+fn repo_intel_json(root: &std::path::Path, task: &str) -> serde_json::Value {
+    zylcode_core::intelligence::api::repo_intel_payload(root, task)
+        .unwrap_or_else(|e| {
+            serde_json::json!({
+                "error": format!("repository intelligence failed: {e:#}"),
+            })
+        })
+}
+
+async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()> {
+    use axum::extract::State;
+    use axum::routing::get;
+    use axum::{Json, Router};
+    use std::sync::Arc;
+
+    let root = match &args.repo {
+        Some(r) => std::path::PathBuf::from(r).canonicalize()?,
+        None => std::path::Path::new(workspace).canonicalize()?,
+    };
+    anyhow::ensure!(
+        root.is_dir(),
+        "repository root '{}' is not a directory",
+        root.display()
+    );
+    let root = Arc::new(root);
+    let port = args.port;
+
+    // Warm the persisted index once at startup so the first UI request is
+    // fast; failures are non-fatal (the per-request build will surface them
+    // as payload errors instead).
+    {
+        let root = Arc::clone(&root);
+        tokio::task::spawn_blocking(move || {
+            match zylcode_core::intelligence::persisted::PersistedIndex::new(&*root).build() {
+                Ok(q) => tracing::info!(
+                    "intel index warm: {} files, {} symbols, {} packages",
+                    q.file_count(),
+                    q.symbol_count(),
+                    q.package_count()
+                ),
+                Err(e) => tracing::warn!("intel index warm failed: {e:#}"),
+            }
+        });
+    }
+
+    async fn healthz() -> Json<serde_json::Value> {
+        Json(serde_json::json!({
+            "status": "ok",
+            "service": "zylcode-repo-intel",
+        }))
+    }
+
+    async fn repo_intel(
+        State(root): State<Arc<std::path::PathBuf>>,
+        axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
+    ) -> Json<serde_json::Value> {
+        let task = params
+            .get("task")
+            .map(String::as_str)
+            .unwrap_or("")
+            .to_string();
+        let root = Arc::clone(&root);
+        let payload =
+            tokio::task::spawn_blocking(move || repo_intel_json(&root, &task)).await;
+        match payload {
+            Ok(value) => Json(value),
+            Err(e) => Json(serde_json::json!({ "error": format!("intel task failed: {e}") })),
+        }
+    }
+
+    let app = Router::new()
+        .route("/healthz", get(healthz))
+        .route("/api/repo-intel", get(repo_intel))
+        .with_state(Arc::clone(&root));
+
+    let addr = std::net::SocketAddr::from(([127, 0, 0, 1], port));
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    println!(
+        "repo-intel service listening on http://{addr} (repo: {})",
+        root.display()
+    );
+    println!("endpoints: GET /healthz, GET /api/repo-intel?task=...");
+    axum::serve(listener, app).await?;
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------

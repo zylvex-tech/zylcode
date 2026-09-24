@@ -8,6 +8,11 @@ export default defineConfig({
   server: {
     port: 1420,
     strictPort: true,
+    proxy: {
+      // Browser preview: forward Repository Intelligence requests to the
+      // local `zylcode serve-intel` service (loopback only).
+      "/api/repo-intel": "http://127.0.0.1:17630",
+    },
   },
   envPrefix: ["VITE_", "TAURI_"],
   build: {

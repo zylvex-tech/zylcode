@@ -197,6 +197,24 @@ async fn preview_execution_plan(
     Ok(plan)
 }
 
+/// Repository Intelligence payload for the frontend: the same persisted-
+/// index-backed pipeline the `repo-context` CLI and the `serve-intel`
+/// HTTP service expose, so every surface shows the same real data.
+#[tauri::command]
+async fn repo_context(
+    task: Option<String>,
+    state: tauri::State<'_, EngineState>,
+) -> Result<serde_json::Value, String> {
+    let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
+    let task = task.unwrap_or_default();
+    tokio::task::spawn_blocking(move || {
+        zylcode_core::intelligence::api::repo_intel_payload(&root, &task)
+            .map_err(|e| format!("repository intelligence failed: {e:#}"))
+    })
+    .await
+    .map_err(|e| format!("intel task failed: {e}"))?
+}
+
 /// Current token telemetry snapshot.
 #[tauri::command]
 async fn token_metrics(
@@ -766,6 +784,7 @@ fn main() {
             process_intent,
             process_intent_stream,
             preview_execution_plan,
+            repo_context,
             token_metrics,
             verify_logic,
             register_mcp_bridge,

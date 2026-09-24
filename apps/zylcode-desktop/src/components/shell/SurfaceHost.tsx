@@ -1,6 +1,7 @@
 import { ArtifactViewer } from "../ArtifactViewer";
 import { EvidenceCenter } from "../EvidenceCenter";
 import { MissionComposer } from "../MissionComposer";
+import { RepoIntelPanel } from "../RepoIntelPanel";
 import { RuntimeLab } from "../RuntimeLab";
 import Forge from "../Forge";
 import { VerificationRungBadge } from "../VerificationRungBadge";
@@ -12,6 +13,7 @@ import { IS_DESKTOP } from "../../lib/runtime";
 type SurfaceType =
   | "home"
   | "overview"
+  | "intel"
   | "code"
   | "design"
   | "missions"
@@ -126,6 +128,38 @@ export function SurfaceHost({
 
       case "forge":
         return <div className="p-4"><Forge /></div>;
+
+      case "intel":
+        return (
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 p-1">
+            <RepoIntelPanel initialTask="agent loop and evidence ledger" />
+            <div className="space-y-3">
+              <Panel title="WHAT AM I LOOKING AT">
+                <div className="space-y-1.5 text-xs text-text-muted">
+                  <p>
+                    This panel queries the <span className="text-text">real</span> Repository
+                    Intelligence pipeline: repository scan, symbol index, package manifests,
+                    dependency graph, git history — served through the persisted,
+                    content-hash-validated index (no per-keystroke re-indexing).
+                  </p>
+                  <p>
+                    Browser preview reaches it via <span className="font-mono">zylcode serve-intel</span>
+                    {" "}(HTTP); the desktop app calls the engine in-process. Ranking and provenance
+                    are the retriever's own output — nothing here is mocked.
+                  </p>
+                </div>
+              </Panel>
+              <Panel title="CAPABILITIES">
+                <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs">
+                  <span className="flex items-center gap-1.5">Missions <StatusBadge status="LIMITED" size="xs" /></span>
+                  <span className="flex items-center gap-1.5">Repository Intelligence <StatusBadge status="AVAILABLE" size="xs" /></span>
+                  <span className="flex items-center gap-1.5">Forge <StatusBadge status="LIMITED" size="xs" /></span>
+                  <span className="flex items-center gap-1.5">Design <StatusBadge status="COMING SOON" size="xs" /></span>
+                </div>
+              </Panel>
+            </div>
+          </div>
+        );
 
       case "overview":
         return (
