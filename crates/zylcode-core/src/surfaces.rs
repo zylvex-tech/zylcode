@@ -206,7 +206,13 @@ fn read_evidence_rows(db_path: &Path, limit: usize) -> Result<Vec<EvidenceRow>> 
                 id: row.get(0)?,
                 session_id: row.get(1)?,
                 action_id: row.get(2)?,
-                state: row.get(3)?,
+                // The state column stores JSON (`"Recorded"`); unwrap the
+                // string so the UI shows `Recorded`, not `"Recorded\"`.
+                // Unparseable values pass through unchanged — never fabricated.
+                state: {
+                    let raw: String = row.get(3)?;
+                    serde_json::from_str::<String>(&raw).unwrap_or(raw)
+                },
                 prev_hash: row.get(4)?,
                 timestamp: row.get(5)?,
                 payload: row
