@@ -32,18 +32,19 @@ budget, N in best-of-N, and the verifier command.
 | Real tool execution (fs/git/shell/search) | 🟢 Built — 12 real executors, fail-closed gate | — |
 | Bounded execution | 🟢 Built — steps, timeouts, cancellation | — |
 | Crash recovery | 🟢 Built — checkpoint + ledger reconciliation | — |
-| Best-of-N with evidence-scored selection | 🟢 Built (`best_of_n.rs`) — N candidates, real verifier, ledger-recorded selection, refuse-if-all-fail | Single-candidate CLI today; patch-sampling candidate generator is Phase 3 work |
+| Best-of-N with evidence-scored selection | 🟢 Built (`best_of_n.rs`, `patch_best_of_n.rs`) — N model-sampled patches, per-candidate worktree verification, concurrent fan-out, ledger-recorded selection, refuse-if-all-fail, winner export | Exported patch format is `git apply`-compatible unified diff |
 | Self-verification gate | 🟢 Built (`SelfVerificationGate`) — refuses unevidenced acceptance | — |
 | Persisted intelligence index | 🟢 Built — content-hash cache kills per-step re-index | — |
 | Context retrieval | 🟢 Built — deterministic, 20-query known-answer benchmark | Precision@10 = 0.48 leaves headroom; SWE-bench needs higher |
-| Sandboxed execution workers | 🔴 Not built — verifier runs in a plain subprocess with a timeout | **Blocking for Terminal-Bench**: untrusted-repo tasks need OS isolation (Phase 7A) |
+| Sandboxed execution workers | 🟢 Built (`sandbox.rs`, Phase 7A slice) — container-per-candidate docker verifier: `--network=none`, `--read-only` rootfs, size-capped noexec tmpfs, CPU/memory/PID caps, worktree-only writable mount, ready-marker env; **fails closed** (no daemon or image ⇒ refusal, never host fallback); concurrent-safe. In-container commissioning run requires an operator-provided image. | Podman/other backends not yet supported; Windows requires Linux containers |
 | Docker-based evaluation client | 🔴 Not built — SWE-bench runs candidates in per-instance containers | **Blocking for SWE-bench**: the harness must submit patches to the official evaluator |
-| Multi-file patch generation + apply | 🔴 Not built — the loop executes tools in-place today | **Blocking for SWE-bench**: candidates must be exportable as `git diff` patches |
+| Multi-file patch generation + apply | 🟢 Built — Phase 3A candidates are `git diff` patches applied via `git apply` in isolated worktrees | Benchmark task instance → model context mapping is the remaining harness work |
 | Model-agnostic routing with measured performance | 🟡 Providers wired; routing not measurement-based | Terminal-Bench economy runs need cost-aware routing |
 
-**Publication gate:** no external number is published until the two 🔴-blocking rows for
+**Publication gate:** no external number is published until the 🔴-blocking rows for
 the target benchmark are built and the harness runs unattended on the official evaluator
-container.
+container. (The sandbox row is built but its full in-container commissioning gate still
+requires an operator-provided image on the runner.)
 
 ## 3. Target ladder (targets, not claims)
 
@@ -86,14 +87,15 @@ variance:       scores of the 3 consecutive runs
 
 ## 6. Execution order to first published number
 
-1. **Phase 3A — patch export + candidate sampling** (unblocks SWE-bench submission):
-   best-of-N candidates become `git diff` patches; the loop applies, verifies, and
-   exports the winner.
-2. **Phase 3B — evaluator client** (unblocks SWE-bench): run the official
+1. ~~Phase 3A — patch export + candidate sampling~~ **Done** (`4f80b31`): model-sampled
+   `git diff` candidates, per-candidate worktree verification, concurrent fan-out
+   (`8181a0c`), winner export byte-identical to what was verified.
+2. ~~Phase 7A slice — worker sandbox~~ **Done** (`sandbox.rs`): container-per-candidate
+   verification, network deny-by-default, fail-closed without a backend; the sandbox
+   policy is recorded in every outcome's evidence. Remaining for the gate: operator
+   image provisioning + an in-container commissioning run.
+3. **Phase 3B — evaluator client** (unblocks SWE-bench): run the official
    `swebench` harness container against exported patches; adopt its verdict as the
-   verifier.
-3. **Phase 7A slice — worker sandbox** (unblocks Terminal-Bench): container-per-task
-   execution with network deny-by-default; the ledger records the sandbox config
-   alongside each outcome.
+   verifier. The sandbox verifier is the template for this client.
 4. **T1 baseline runs** on both benchmarks; commit reproduction blocks.
 5. Iterate T2 → T3 with routing engaged; independent audit before any R4 claim.

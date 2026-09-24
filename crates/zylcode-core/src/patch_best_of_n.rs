@@ -125,12 +125,109 @@ impl CandidateSource for ScriptedPatchSource {
     }
 }
 
+/// One candidate's isolated git worktree: `git worktree add --detach` at
+/// HEAD, patch applied inside, removed on demand. Shared by the plain
+/// verifier and the sandboxed one so both auditors read the same lifecycle.
+pub struct CandidateWorktree {
+    /// Scratch directory containing the worktree (and the patch file).
+    pub scratch: PathBuf,
+    /// The worktree root — a checkout of HEAD.
+    pub root: PathBuf,
+}
+
+impl CandidateWorktree {
+    /// Create the worktree. `Ok(worktree)` on success; `Err(detail)` carries
+    /// the git failure for the evidence trail.
+    pub async fn create(repo_root: &Path, candidate_index: usize) -> Result<Self, String> {
+        let scratch = std::env::temp_dir().join(format!(
+            "zylcode-bon-{}-{}",
+            Uuid::new_v4(),
+            candidate_index
+        ));
+        let root = scratch.join("wt");
+        let out = tokio::process::Command::new("git")
+            .args([
+                "worktree",
+                "add",
+                "--detach",
+                root.to_string_lossy().as_ref(),
+                "HEAD",
+            ])
+            .current_dir(repo_root)
+            .output()
+            .await;
+        match out {
+            Ok(out) if out.status.success() => Ok(Self { scratch, root }),
+            Ok(out) => Err(format!(
+                "git worktree add failed: {}",
+                String::from_utf8_lossy(&out.stderr).trim()
+            )),
+            Err(e) => Err(format!("spawn failed: {e}")),
+        }
+    }
+
+    /// Write the patch into the scratch dir and apply it inside the
+    /// worktree. `Err(detail)` on any failure.
+    pub async fn apply_patch(&self, patch: &str) -> Result<(), String> {
+        let patch_file = self.scratch.join("candidate.patch");
+        if let Err(e) = std::fs::write(&patch_file, patch) {
+            return Err(format!("cannot write patch: {e}"));
+        }
+        let out = tokio::process::Command::new("git")
+            .args([
+                "apply",
+                "--whitespace=nowarn",
+                patch_file.to_string_lossy().as_ref(),
+            ])
+            .current_dir(&self.root)
+            .output()
+            .await;
+        match out {
+            Ok(out) if out.status.success() => Ok(()),
+            Ok(out) => Err(String::from_utf8_lossy(&out.stderr).trim().to_string()),
+            Err(e) => Err(format!("spawn failed: {e}")),
+        }
+    }
+
+    /// Remove the worktree and its scratch directory (best-effort).
+    pub async fn remove(&self) {
+        let _ = tokio::process::Command::new("git")
+            .args([
+                "worktree",
+                "remove",
+                "--force",
+                self.root.to_string_lossy().as_ref(),
+            ])
+            .output()
+            .await;
+        let _ = std::fs::remove_dir_all(&self.scratch);
+    }
+}
+
+/// Truncated tail of combined process output, for evidence payloads.
+pub(crate) fn output_tail(stdout: &[u8], stderr: &[u8]) -> String {
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(stdout),
+        String::from_utf8_lossy(stderr)
+    );
+    combined
+        .chars()
+        .rev()
+        .take(8_000)
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+        .collect()
+}
+
 /// Verifies one patch in an isolated `git worktree`.
 ///
 /// Per candidate: `git worktree add --detach <tmp> HEAD`, apply the patch
 /// there, run the suite there, then `git worktree remove --force`. The
 /// caller's working tree is never touched, so candidates cannot poison each
-/// other's evidence.
+/// other's evidence. Isolation is per-candidate directory only — for
+/// OS-level isolation use [`crate::sandbox::SandboxedWorktreeVerifier`].
 pub struct PatchWorktreeVerifier {
     /// Repository (with a HEAD) to branch worktrees from.
     pub repo_root: PathBuf,
@@ -151,151 +248,88 @@ impl PatchWorktreeVerifier {
             keep_on_failure: false,
         }
     }
-
-    async fn run_in(&self, dir: &Path, program: &str, args: &[&str]) -> std::io::Result<std::process::Output> {
-        tokio::process::Command::new(program)
-            .args(args)
-            .current_dir(dir)
-            .output()
-            .await
-    }
 }
 
 #[async_trait]
 impl CandidateVerifier for PatchWorktreeVerifier {
     async fn verify(&self, candidate_index: usize, patch: &str) -> Result<VerificationEvidence> {
         let mut checks: Vec<(String, bool, String)> = Vec::new();
+        let mut keep = self.keep_on_failure;
 
         // 1. Isolated worktree at HEAD.
-        let parent = std::env::temp_dir().join(format!(
-            "zylcode-bon-{}-{}",
-            Uuid::new_v4(),
-            candidate_index
-        ));
-        let worktree = parent.join("wt");
-        let add = self.run_in(
-            &self.repo_root,
-            "git",
-            &["worktree", "add", "--detach", worktree.to_string_lossy().as_ref(), "HEAD"],
-        )
-        .await;
-        let mut keep = self.keep_on_failure;
-        match add {
-            Ok(out) if out.status.success() => checks.push((
-                "worktree_created".into(),
-                true,
-                worktree.display().to_string(),
-            )),
-            Ok(out) => {
-                checks.push((
-                    "worktree_created".into(),
-                    false,
-                    format!(
-                        "git worktree add failed: {}",
-                        String::from_utf8_lossy(&out.stderr).trim()
-                    ),
-                ));
-                return Ok(VerificationEvidence { checks, exit_status: None, output_tail: String::new() });
+        let worktree = match CandidateWorktree::create(&self.repo_root, candidate_index).await {
+            Ok(wt) => {
+                checks.push(("worktree_created".into(), true, wt.root.display().to_string()));
+                wt
             }
-            Err(e) => {
-                checks.push(("worktree_created".into(), false, format!("spawn failed: {e}")));
-                return Ok(VerificationEvidence { checks, exit_status: None, output_tail: String::new() });
-            }
-        }
-
-        // 2. Apply the patch inside the worktree.
-        let patch_file = parent.join("candidate.patch");
-        if let Err(e) = std::fs::write(&patch_file, patch) {
-            let _ = self.run_in(&self.repo_root, "git", &["worktree", "remove", "--force", worktree.to_string_lossy().as_ref()]).await;
-            checks.push(("patch_written".into(), false, format!("cannot write patch: {e}")));
-            return Ok(VerificationEvidence { checks, exit_status: None, output_tail: String::new() });
-        }
-        let apply = self
-            .run_in(&worktree, "git", &["apply", "--whitespace=nowarn", patch_file.to_string_lossy().as_ref()])
-            .await;
-        let applied = matches!(&apply, Ok(out) if out.status.success());
-        checks.push((
-            "patch_applied".into(),
-            applied,
-            match &apply {
-                Ok(out) if out.status.success() => "applied cleanly".into(),
-                Ok(out) => {
-                    keep = true;
-                    String::from_utf8_lossy(&out.stderr).trim().to_string()
-                }
-                Err(e) => format!("spawn failed: {e}"),
-            },
-        ));
-        if !applied {
-            if !keep {
-                let _ = self.run_in(&self.repo_root, "git", &["worktree", "remove", "--force", worktree.to_string_lossy().as_ref()]).await;
-                let _ = std::fs::remove_dir_all(&parent);
-            }
-            return Ok(VerificationEvidence { checks, exit_status: None, output_tail: String::new() });
-        }
-
-        // 3. The real suite, inside the worktree.
-        let (program, args) = match self.command.split_first() {
-            Some((p, a)) => (p.as_str(), a),
-            None => {
-                checks.push(("suite_configured".into(), false, "empty suite command".into()));
+            Err(detail) => {
+                checks.push(("worktree_created".into(), false, detail));
                 return Ok(VerificationEvidence { checks, exit_status: None, output_tail: String::new() });
             }
         };
-        let arg_refs: Vec<&str> = args.iter().map(String::as_str).collect();
-        let run =
-            tokio::time::timeout(self.timeout, self.run_in(&worktree, program, &arg_refs)).await;
-        let suite_result = match run {
-            Err(_) => {
-                keep = true;
-                checks.push((
-                    "test_suite".into(),
-                    false,
-                    format!("timed out after {:?}", self.timeout),
-                ));
+
+        // 2. Apply the patch inside the worktree.
+        if let Err(detail) = worktree.apply_patch(patch).await {
+            checks.push(("patch_applied".into(), false, detail));
+            if !self.keep_on_failure {
+                worktree.remove().await;
+            }
+            return Ok(VerificationEvidence { checks, exit_status: None, output_tail: String::new() });
+        }
+        checks.push(("patch_applied".into(), true, "applied cleanly".into()));
+
+        // 3. The real suite, inside the worktree.
+        let suite_result = match self.command.split_first() {
+            None => {
+                checks.push(("suite_configured".into(), false, "empty suite command".into()));
                 None
             }
-            Ok(Err(e)) => {
-                checks.push(("test_suite".into(), false, format!("spawn failed: {e}")));
-                None
-            }
-            Ok(Ok(out)) => {
-                let success = out.status.success();
-                checks.push((
-                    "test_suite".into(),
-                    success,
-                    format!("exit status: {:?}", out.status.code()),
-                ));
-                Some(out)
+            Some((program, args)) => {
+                let run = tokio::time::timeout(
+                    self.timeout,
+                    tokio::process::Command::new(program)
+                        .args(args)
+                        .current_dir(&worktree.root)
+                        .output(),
+                )
+                .await;
+                match run {
+                    Err(_) => {
+                        keep = true;
+                        checks.push((
+                            "test_suite".into(),
+                            false,
+                            format!("timed out after {:?}", self.timeout),
+                        ));
+                        None
+                    }
+                    Ok(Err(e)) => {
+                        checks.push(("test_suite".into(), false, format!("spawn failed: {e}")));
+                        None
+                    }
+                    Ok(Ok(out)) => {
+                        let success = out.status.success();
+                        checks.push((
+                            "test_suite".into(),
+                            success,
+                            format!("exit status: {:?}", out.status.code()),
+                        ));
+                        Some(out)
+                    }
+                }
             }
         };
 
         if !keep {
-            let _ = self.run_in(&self.repo_root, "git", &["worktree", "remove", "--force", worktree.to_string_lossy().as_ref()]).await;
-            let _ = std::fs::remove_dir_all(&parent);
+            worktree.remove().await;
         }
 
-        let (exit_status, output_tail) = match suite_result {
-            Some(out) => {
-                let combined = format!(
-                    "{}{}",
-                    String::from_utf8_lossy(&out.stdout),
-                    String::from_utf8_lossy(&out.stderr)
-                );
-                let tail: String = combined
-                    .chars()
-                    .rev()
-                    .take(8_000)
-                    .collect::<Vec<_>>()
-                    .into_iter()
-                    .rev()
-                    .collect();
-                (out.status.code(), tail)
-            }
+        let (exit_status, tail) = match suite_result {
+            Some(out) => (out.status.code(), output_tail(&out.stdout, &out.stderr)),
             None => (None, String::new()),
         };
 
-        Ok(VerificationEvidence { checks, exit_status, output_tail })
+        Ok(VerificationEvidence { checks, exit_status, output_tail: tail })
     }
 }
 
@@ -332,12 +366,18 @@ impl PatchBestOfNResult {
 
 /// Generate, verify in isolation, select on evidence, export.
 ///
+/// `verifier_override` replaces the default worktree verifier — used to
+/// inject [`crate::sandbox::SandboxedWorktreeVerifier`] (or any other
+/// [`CandidateVerifier`]); with `None` the plain per-candidate worktree
+/// verifier runs the suite on the host.
+///
 /// When `ledger` is provided a **fresh session** should be used — the run
 /// writes a self-contained chain starting at genesis.
 #[allow(clippy::too_many_arguments)]
 pub async fn run_patch_best_of_n(
     task: &str,
     source: Arc<dyn CandidateSource>,
+    verifier_override: Option<Arc<dyn crate::best_of_n::CandidateVerifier>>,
     repo_root: &Path,
     ledger: Option<Arc<dyn crate::ledger::LedgerStore>>,
     session_id: Option<Uuid>,
@@ -351,12 +391,15 @@ pub async fn run_patch_best_of_n(
         "no candidates could be generated for this task"
     );
 
-    let verifier = Arc::new(PatchWorktreeVerifier {
-        repo_root: repo_root.to_path_buf(),
-        timeout: suite_timeout,
-        command: suite_command,
-        keep_on_failure: false,
-    });
+    let verifier: Arc<dyn crate::best_of_n::CandidateVerifier> = match verifier_override {
+        Some(v) => v,
+        None => Arc::new(PatchWorktreeVerifier {
+            repo_root: repo_root.to_path_buf(),
+            timeout: suite_timeout,
+            command: suite_command,
+            keep_on_failure: false,
+        }),
+    };
 
     let selection = run_best_of_n(
         &patches,
@@ -488,6 +531,7 @@ mod tests {
         run_patch_best_of_n(
             "add a file",
             Arc::new(ScriptedPatchSource { patches }),
+            None,
             root,
             ledger_arc,
             session,

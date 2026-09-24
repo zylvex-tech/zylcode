@@ -506,6 +506,17 @@ struct BestOfNArgs {
     #[arg(long, default_value_t = 4)]
     max_concurrent: usize,
 
+    /// Verify every candidate inside its own throwaway container: no
+    /// network, read-only root filesystem, bounded CPU/memory/processes.
+    /// Fails closed — without a docker backend nothing is verified.
+    #[arg(long, default_value_t = false)]
+    sandbox: bool,
+
+    /// Container image the sandboxed suite runs in (e.g. a Rust toolchain
+    /// image). Required with --sandbox; never pulled on demand.
+    #[arg(long)]
+    sandbox_image: Option<String>,
+
     /// Per-candidate verification budget in seconds.
     #[arg(long, default_value_t = 600)]
     timeout_secs: u64,
@@ -567,6 +578,33 @@ async fn handle_best_of_n(workspace: &str, args: BestOfNArgs) -> Result<()> {
         );
     }
 
+    // Sandbox selection happens before anything runs, and fails closed:
+    // an explicit sandbox request that cannot be honoured stops the run.
+    let sandbox_verifier: Option<Arc<dyn zylcode_core::best_of_n::CandidateVerifier>> =
+        if args.sandbox {
+            let image = args.sandbox_image.as_deref().unwrap_or_default();
+            let cfg = zylcode_core::sandbox::SandboxConfig {
+                image: image.to_string(),
+                ..Default::default()
+            };
+            let verifier = zylcode_core::sandbox::SandboxedWorktreeVerifier::new(
+                root.clone(),
+                cfg,
+                std::time::Duration::from_secs(args.timeout_secs),
+            );
+            if let Err(e) = verifier.ensure_ready().await {
+                eprintln!("error: {e:#}");
+                std::process::exit(2);
+            }
+            println!(
+                "sandbox: per-candidate containers (network=none, read-only rootfs, image '{}')",
+                image
+            );
+            Some(Arc::new(verifier))
+        } else {
+            None
+        };
+
     let config = zylcode_core::best_of_n::BestOfNConfig {
         candidates: args.candidates,
         per_candidate_timeout: std::time::Duration::from_secs(args.timeout_secs),
@@ -587,6 +625,7 @@ async fn handle_best_of_n(workspace: &str, args: BestOfNArgs) -> Result<()> {
     let result = run_patch_best_of_n(
         args.task.as_deref().unwrap_or(""),
         source,
+        sandbox_verifier,
         &root,
         Some(Arc::clone(&ledger)),
         session_id,

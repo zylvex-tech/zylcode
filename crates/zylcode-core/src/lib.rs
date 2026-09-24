@@ -21,6 +21,7 @@ pub mod pipeline;
 pub mod planner;
 pub mod project;
 pub mod router;
+pub mod sandbox;
 pub mod sqlite_ledger;
 
 use crate::ai_input::AIInputSystem;
