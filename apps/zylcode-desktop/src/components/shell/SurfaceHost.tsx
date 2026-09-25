@@ -289,11 +289,13 @@ export function SurfaceHost({
 
       case "runtime":
         return (
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 min-h-0">
-            <div className="h-[420px]">
+          <div className="grid grid-cols-1 2xl:grid-cols-2 gap-3 min-h-0 min-w-0">
+            <div className="h-[380px] 2xl:h-[420px] min-w-0">
               <TerminalPanel />
             </div>
-            <RuntimeLab />
+            <div className="min-w-0">
+              <RuntimeLab />
+            </div>
           </div>
         );
 

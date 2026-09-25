@@ -22,17 +22,19 @@ export function RuntimeLab() {
     },
   ];
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2 min-w-0">
       {targets.map((t) => (
         <Panel key={t.name}>
-          <div className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between">
-              <span className="font-mono text-xs font-semibold">{t.name}</span>
-              <span className={`status-badge status-${t.status.toLowerCase().replace(" ", "-")} size-xs`}>
+          <div className="flex flex-col gap-1.5 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-mono text-xs font-semibold shrink-0">{t.name}</span>
+              <span
+                className={`status-badge status-${t.status.toLowerCase().replace(" ", "-")} size-xs shrink-0`}
+              >
                 {t.status}
               </span>
             </div>
-            <p className="text-[11px] text-text-muted">{t.note}</p>
+            <p className="text-[11px] text-text-muted break-words">{t.note}</p>
           </div>
         </Panel>
       ))}
