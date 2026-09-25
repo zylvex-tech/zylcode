@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useStreamSubscription, ENVIRONMENT, IS_DESKTOP } from "./lib/events";
 import {
   DESKTOP_REQUIRED_MESSAGE,
@@ -14,15 +13,30 @@ import {
   newMissionId,
   type MissionRecord,
 } from "./lib/mission";
-import { StatusBadge, type CapabilityStatus } from "./components/CapabilityStatus";
-import TokenMetricsWidget from "./components/TokenMetricsWidget";
 import { useArtifactStream } from "./lib/useArtifactStream";
+import { usePersistentState, useDragResize } from "./lib/layout";
 import { StatusBar } from "./components/StatusBar";
-import VerificationRungBadge from "./components/VerificationRungBadge";
+import TokenMetricsWidget from "./components/TokenMetricsWidget";
+import { ExplorerTree } from "./components/ExplorerTree";
 import { ThemeProvider, useTheme, ThemeSelector } from "./components/ui";
-import { Panel, SectionTitle } from "./components/Panel";
 import Forge from "./components/Forge";
-import { ActivityRail, ContextSidebar, AgentDock, BottomPanel, SurfaceHost } from "./components/shell";
+import CommandPalette from "./components/CommandPalette";
+import EditorPane from "./components/EditorPane";
+import { AboutModal } from "./components/AboutModal";
+import {
+  MenuBar,
+  type Menu,
+} from "./components/shell/MenuBar";
+import {
+  ActivityRail,
+  ContextSidebar,
+  AgentDock,
+  BottomPanel,
+  SurfaceHost,
+  RightWorkspace,
+} from "./components/shell";
+import type { BottomTab } from "./components/shell/BottomPanel";
+import type { ActivityId } from "./components/shell/ActivityRail";
 
 // ---------------------------------------------------------------------------
 // Backend result shapes (match src-tauri commands)
@@ -45,18 +59,6 @@ type VerificationReport = {
 // Navigation model
 // ---------------------------------------------------------------------------
 
-type ActivityId =
-  | "explorer"
-  | "search"
-  | "source-control"
-  | "missions"
-  | "run"
-  | "evidence"
-  | "forge"
-  | "extensions"
-  | "settings"
-  | "account";
-
 type SurfaceType =
   | "home"
   | "overview"
@@ -73,21 +75,8 @@ type SurfaceType =
   | "extensions"
   | "forge";
 
-type DockModule =
-  | "agent"
-  | "pulse"
-  | "changes"
-  | "files"
-  | "preview"
-  | "proof"
-  | "mcp"
-  | "providers"
-  | "diagnostics";
-
-type BottomTab = "terminal" | "output" | "problems" | "tests" | "evidence" | "dev-tools";
-
 const ACTIVITY_TO_SURFACE: Record<ActivityId, SurfaceType> = {
-  explorer: "intel",
+  explorer: "code",
   search: "search",
   "source-control": "source-control",
   missions: "missions",
@@ -99,10 +88,16 @@ const ACTIVITY_TO_SURFACE: Record<ActivityId, SurfaceType> = {
   account: "overview",
 };
 
-const BOTTOM_UTILITIES: { id: string; label: string }[] = [
-  { id: "settings", label: "Settings" },
-  { id: "account", label: "Account" },
-];
+type DockModule =
+  | "agent"
+  | "pulse"
+  | "changes"
+  | "files"
+  | "preview"
+  | "proof"
+  | "mcp"
+  | "providers"
+  | "diagnostics";
 
 // ---------------------------------------------------------------------------
 // Main app
@@ -110,10 +105,20 @@ const BOTTOM_UTILITIES: { id: string; label: string }[] = [
 
 function AppContent() {
   const [activeActivity, setActiveActivity] = useState<ActivityId>("explorer");
-  const [activeSurface, setActiveSurface] = useState<SurfaceType>("overview");
+  const [activeSurface, setActiveSurface] = useState<SurfaceType>("code");
   const [activeDockModule, setActiveDockModule] = useState<DockModule>("agent");
-  const [bottomPanelOpen, setBottomPanelOpen] = useState(false);
+  const [bottomPanelOpen, setBottomPanelOpen] = usePersistentState("bottomOpen", true);
   const [activeBottomTab, setActiveBottomTab] = useState<BottomTab>("terminal");
+
+  // Editor state: real workspace files open in the central pane.
+  const [editorTabs, setEditorTabs] = usePersistentState<string[]>("editorTabs", []);
+  const [editorActive, setEditorActive] = usePersistentState<string | null>("editorActive", null);
+
+  // Resizable sidebars (persisted).
+  const [sidebarWidth, setSidebarWidth] = usePersistentState("sidebarWidth", 260);
+  const [agentDockOpen, setAgentDockOpen] = usePersistentState("agentDockOpen", true);
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   const [missions, setMissions] = useState<MissionRecord[]>([]);
   const [activeMissionId, setActiveMissionId] = useState<string | null>(null);
@@ -236,120 +241,317 @@ function AppContent() {
 
   const handleActivityChange = useCallback((activity: ActivityId) => {
     setActiveActivity(activity);
-    setActiveSurface(ACTIVITY_TO_SURFACE[activity] || "overview");
+    setActiveSurface(ACTIVITY_TO_SURFACE[activity] || "code");
   }, []);
 
-  const handleBottomUtilityClick = useCallback((id: string) => {
-    if (id === "settings") {
-      setActiveActivity("explorer");
-      setActiveSurface("overview");
-    }
-  }, []);
+  // --- Editor tab management -------------------------------------------------
+
+  const openFile = useCallback((path: string) => {
+    setEditorTabs((prev) => (prev.includes(path) ? prev : [...prev, path]));
+    setEditorActive(path);
+  }, [setEditorTabs, setEditorActive]);
+
+  const closeEditorTab = useCallback(
+    (path: string) => {
+      setEditorTabs((prev) => {
+        const next = prev.filter((p) => p !== path);
+        if (editorActive === path) {
+          setEditorActive(next[next.length - 1] ?? null);
+        }
+        return next;
+      });
+    },
+    [editorActive, setEditorTabs, setEditorActive],
+  );
+
+  // --- Sidebar resize ---------------------------------------------------------
+
+  const sidebarResize = useDragResize((delta) => {
+    setSidebarWidth((w) => Math.min(Math.max(200, w + delta), 480));
+  });
+
+  // --- Menus -------------------------------------------------------------------
+
+  const menus: Menu[] = useMemo(
+    () => [
+      {
+        id: "code",
+        label: "Code",
+        items: [
+          { id: "cmd-palette", label: "Command Palette…", shortcut: "Ctrl+Shift+P", run: () => setPaletteOpen(true) },
+          { id: "settings", label: "Settings", run: () => { setActiveActivity("settings"); setActiveSurface("overview"); } },
+          { id: "about", label: "About ZylCode", separatorBefore: true, run: () => setAboutOpen(true) },
+        ],
+      },
+      {
+        id: "build",
+        label: "Build",
+        items: [
+          {
+            id: "build-verify",
+            label: "Verify Project (test suite)…",
+            shortcut: "Ctrl+Shift+B",
+            disabled: !IS_DESKTOP,
+            disabledReason: IS_DESKTOP
+              ? undefined
+              : "Verification runs on the desktop engine; browser preview has no engine process. Use a Build mission instead (AI Agent tab).",
+            run: () => { setActiveActivity("missions"); setActiveSurface("missions"); },
+          },
+          {
+            id: "build-clean",
+            label: "Rebuild Workspace",
+            disabled: true,
+            disabledReason: "No build orchestrator is commissioned yet; the Rust workspace builds via `cargo build` in the Terminal.",
+          },
+        ],
+      },
+      {
+        id: "run",
+        label: "Run",
+        items: [
+          { id: "run-open", label: "Open Run Surface", shortcut: "Ctrl+R", run: () => { setActiveActivity("run"); setActiveSurface("runtime"); } },
+          { id: "run-terminal", label: "Open Terminal", shortcut: "Ctrl+`", run: () => { setBottomPanelOpen(true); setActiveBottomTab("terminal"); } },
+          { id: "run-tests", label: "Show Test Results", run: () => { setBottomPanelOpen(true); setActiveBottomTab("tests"); } },
+        ],
+      },
+      {
+        id: "deploy",
+        label: "Deploy",
+        items: [
+          {
+            id: "deploy-app",
+            label: "Deploy…",
+            disabled: true,
+            disabledReason: "No deployment target is commissioned (no remote/CI pipeline configured in this build).",
+          },
+        ],
+      },
+      {
+        id: "ai",
+        label: "AI",
+        items: [
+          { id: "ai-agent", label: "New Mission (Build)…", shortcut: "Ctrl+M", run: () => { setActiveActivity("missions"); setActiveSurface("missions"); } },
+          { id: "ai-queue", label: "Mission Queue", run: () => { setActiveActivity("missions"); setActiveSurface("missions"); } },
+          { id: "ai-evidence", label: "Evidence Ledger", run: () => { setActiveActivity("evidence"); setActiveSurface("evidence-live"); } },
+          { id: "ai-forge", label: "Capability Forge", run: () => { setActiveActivity("forge"); setActiveSurface("forge"); } },
+        ],
+      },
+      {
+        id: "view",
+        label: "View",
+        items: [
+          { id: "view-explorer", label: "Explorer", shortcut: "Ctrl+Shift+E", run: () => handleActivityChange("explorer") },
+          { id: "view-search", label: "Search", shortcut: "Ctrl+Shift+F", run: () => handleActivityChange("search") },
+          { id: "view-scm", label: "Source Control", shortcut: "Ctrl+Shift+G", run: () => handleActivityChange("source-control") },
+          { id: "view-terminal", label: "Toggle Terminal Panel", shortcut: "Ctrl+`", run: () => setBottomPanelOpen((v) => !v) },
+          { id: "view-problems", label: "Problems", run: () => { setBottomPanelOpen(true); setActiveBottomTab("problems"); } },
+          { id: "view-output", label: "Output", run: () => { setBottomPanelOpen(true); setActiveBottomTab("output"); } },
+          { id: "view-ports", label: "Ports", run: () => { setBottomPanelOpen(true); setActiveBottomTab("ports"); } },
+        ],
+      },
+      {
+        id: "window",
+        label: "Window",
+        items: [
+          { id: "win-editor", label: "Editor Focus", run: () => { setActiveActivity("explorer"); setActiveSurface("code"); } },
+          { id: "win-preview", label: "Show Preview", run: () => { setAgentDockOpen(true); } },
+          {
+            id: "win-theme",
+            label: `Theme: ${currentTheme}`,
+            run: () => {
+              // Cycle to the next theme for quick visual verification.
+              const order = ["midnight-pro", "arctic-light", "github-dark", "vscode-classic", "solarized-dark", "dracula", "nord", "monokai-pro"];
+              const idx = order.indexOf(currentTheme);
+              setTheme(order[(idx + 1) % order.length] as typeof currentTheme);
+            },
+          },
+        ],
+      },
+      {
+        id: "help",
+        label: "Help",
+        items: [
+          { id: "help-about", label: "About", run: () => setAboutOpen(true) },
+          {
+            id: "help-cli",
+            label: "CLI Reference",
+            disabled: true,
+            disabledReason: "Documentation site not commissioned; use `zylcode --help` in the Terminal.",
+          },
+        ],
+      },
+    ],
+    [currentTheme, handleActivityChange, setTheme, setBottomPanelOpen, setAgentDockOpen],
+  );
+
+  // Global shortcuts.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const mod = e.ctrlKey || e.metaKey;
+      if (mod && e.shiftKey && e.key.toLowerCase() === "p") {
+        e.preventDefault();
+        setPaletteOpen((v) => !v);
+      } else if (mod && e.key === "`") {
+        e.preventDefault();
+        setBottomPanelOpen((v) => !v);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [setBottomPanelOpen]);
 
   return (
-    <div className="min-h-screen bg-background text-text-primary flex flex-col">
-      {/* Header */}
-      <header className="border-b border-border bg-surface/80 backdrop-blur-sm px-4 py-2.5 flex items-center justify-between gap-4 sticky top-0 z-40">
-        <div className="flex items-center gap-3 min-w-0">
-          {/* Official lockup: emblem + wordmark on the brand's own dark chip, */}
-          {/* so the steel letters keep their designed contrast in any theme.  */}
-          <div
-            className="flex items-center gap-2 shrink-0 rounded-md overflow-hidden"
-            style={{ background: "rgb(20 20 20 / 0.92)" }}
-          >
-            <img
-              src="/branding/emblem.png"
-              alt="ZylCode emblem"
-              className="h-8 w-8"
-              draggable={false}
-            />
-            <img
-              src="/branding/wordmark.png"
-              alt="ZylCode"
-              className="h-5 hidden sm:block"
-              draggable={false}
-            />
+    <div className="h-screen bg-background text-text-primary flex flex-col overflow-hidden">
+      {/* TOP: menu bar (brand inside the bar) */}
+      <MenuBar
+        menus={menus}
+        brand={
+          <div className="flex items-center gap-2 mr-2">
+            <div
+              className="flex items-center gap-1.5 shrink-0 rounded-md overflow-hidden"
+              style={{ background: "rgb(20 20 20 / 0.92)" }}
+            >
+              <img
+                src="/branding/emblem.png"
+                alt="ZylCode emblem"
+                className="h-6 w-6"
+                draggable={false}
+              />
+              <img
+                src="/branding/wordmark.png"
+                alt="ZylCode"
+                className="h-3.5 hidden md:block"
+                draggable={false}
+              />
+            </div>
+            <span className="hidden lg:inline text-[10px] font-mono text-text-muted">v0.3.0-convergence</span>
           </div>
-          <span className="font-mono text-xs font-normal text-text-muted">v0.3.0-convergence</span>
-          {activeSurface !== "home" && (
-            <span className="hidden md:inline text-xs text-text-muted font-mono truncate">
-              zylcode · main
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-3">
-          {activeMission && (
-            <span className="hidden sm:flex items-center gap-1.5 text-xs">
-              <span className="font-mono text-[10px] text-text-muted">{activeMission.state}</span>
-            </span>
-          )}
-          <TokenMetricsWidget refreshKey={metricsKey} />
-          <ThemeSelector />
-        </div>
-      </header>
+        }
+        right={
+          <div className="flex items-center gap-2">
+            {activeMission && (
+              <span className="hidden sm:flex items-center gap-1.5 text-xs font-mono text-text-muted">
+                {activeMission.state}
+              </span>
+            )}
+            <TokenMetricsWidget refreshKey={metricsKey} />
+            <ThemeSelector />
+          </div>
+        }
+      />
 
+      {/* MIDDLE: rail | sidebar | center | agent dock / right workspace */}
       <div className="flex flex-1 min-h-0">
-        {/* LEFT: Activity Rail */}
         <ActivityRail
           activeActivity={activeActivity}
           onActivityChange={handleActivityChange}
-          onBottomUtilityClick={handleBottomUtilityClick}
+          onBottomUtilityClick={(id) => {
+            if (id === "settings") {
+              setActiveActivity("settings");
+              setActiveSurface("overview");
+            }
+          }}
         />
 
-        {/* CONTEXT SIDEBAR */}
-        <ContextSidebar activeActivity={activeActivity} />
+        {/* Resizable context sidebar */}
+        <div
+          className="relative shrink-0 border-r border-border bg-surface/50 flex min-h-0"
+          style={{ width: sidebarWidth }}
+        >
+          <div className="flex-1 min-w-0 overflow-y-auto">
+            <ContextSidebar activeActivity={activeActivity}>
+              {activeActivity === "explorer" ? (
+                <ExplorerTree onOpenFile={openFile} activePath={editorActive} />
+              ) : undefined}
+            </ContextSidebar>
+          </div>
+          <div
+            className="w-1 hover:bg-primary/30 transition-colors"
+            style={{ cursor: "col-resize" }}
+            onPointerDown={sidebarResize.onPointerDown}
+            onPointerMove={sidebarResize.onPointerMove}
+            onPointerUp={sidebarResize.onPointerUp}
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize sidebar"
+          />
+        </div>
 
-        {/* CENTER: Surface Host */}
-        <main className="flex-1 flex flex-col min-h-0 overflow-y-auto">
-          <SurfaceHost
-            surface={activeSurface}
-            activeMission={activeMission}
-            missions={missions}
-            verification={verification}
-            busy={busy}
-            isStreaming={isStreaming}
-            onMissionStart={startMission}
-            onVerifyMission={verifyMission}
-            onOpenProject={() => {
-              setActiveActivity("missions");
-              setActiveSurface("missions");
-            }}
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
-            files={files}
-            diffMode={diffMode}
-            setDiffMode={setDiffMode}
-            saveStatus={saveStatus}
-            saveFile={saveFile}
-            applyPatch={applyPatch}
-            closeTab={closeTab}
-            deltas={deltas}
+        {/* CENTER: tabbed editor or surface host */}
+        <main className="flex-1 flex flex-col min-h-0">
+          {activeSurface === "code" ? (
+            <EditorPane
+              openFiles={editorTabs}
+              activePath={editorActive}
+              onSelectTab={setEditorActive}
+              onCloseTab={closeEditorTab}
+              serviceNote="Open a file from the Explorer — content comes from the real workspace through the engine API."
+            />
+          ) : (
+            <div className="flex-1 min-h-0 overflow-y-auto">
+              <SurfaceHost
+                surface={activeSurface}
+                activeMission={activeMission}
+                missions={missions}
+                verification={verification}
+                busy={busy}
+                isStreaming={isStreaming}
+                onMissionStart={startMission}
+                onVerifyMission={verifyMission}
+                onOpenProject={() => {
+                  setActiveActivity("explorer");
+                  setActiveSurface("code");
+                }}
+                activeTab={activeTab}
+                setActiveTab={setActiveTab}
+                files={files}
+                diffMode={diffMode}
+                setDiffMode={setDiffMode}
+                saveStatus={saveStatus}
+                saveFile={saveFile}
+                applyPatch={applyPatch}
+                closeTab={closeTab}
+                deltas={deltas}
+              />
+            </div>
+          )}
+
+          {/* Bottom workspace */}
+          <BottomPanel
+            isOpen={bottomPanelOpen}
+            onToggle={() => setBottomPanelOpen((v) => !v)}
+            activeTab={activeBottomTab}
+            onTabChange={setActiveBottomTab}
           />
         </main>
 
-        {/* RIGHT: Agent Dock */}
-        <AgentDock
-          activeModule={activeDockModule}
-          onModuleChange={setActiveDockModule}
-          activeMission={activeMission}
-          deltas={deltas}
-          isStreaming={isStreaming}
-        />
-      </div>
+        {/* RIGHT: preview + agent workspace (large screens) */}
+        <RightWorkspace />
 
-      {/* BOTTOM PANEL */}
-      <BottomPanel
-        isOpen={bottomPanelOpen}
-        onToggle={() => setBottomPanelOpen((v) => !v)}
-        activeTab={activeBottomTab}
-        onTabChange={setActiveBottomTab}
-      />
+        {/* Legacy agent dock hidden on xl screens where RightWorkspace shows; kept for smaller */}
+        <div className="hidden lg:flex xl:hidden flex-col">
+          <AgentDock
+            activeModule={activeDockModule}
+            onModuleChange={setActiveDockModule}
+            activeMission={activeMission}
+            deltas={deltas}
+            isStreaming={isStreaming}
+          />
+        </div>
+      </div>
 
       {/* Status strip */}
       <StatusBar theme={currentTheme} onThemeChange={setTheme} mcpBridgeCount={0} />
+
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} menus={menus} />
+      <AboutModal isOpen={aboutOpen} onClose={() => setAboutOpen(false)} />
     </div>
   );
 }
+
+// ---------------------------------------------------------------------------
+// App root
+// ---------------------------------------------------------------------------
 
 export default function App() {
   return (

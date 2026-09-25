@@ -600,6 +600,24 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
         }
     }
 
+    async fn file_content(
+        State(root): State<Arc<std::path::PathBuf>>,
+        axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
+    ) -> Json<serde_json::Value> {
+        let path = params.get("path").cloned().unwrap_or_default();
+        let root = Arc::clone(&root);
+        let payload = tokio::task::spawn_blocking(move || {
+            zylcode_core::surfaces::file_content_payload(&root, &path).unwrap_or_else(|e| {
+                serde_json::json!({ "error": format!("file content failed: {e:#}") })
+            })
+        })
+        .await;
+        match payload {
+            Ok(value) => Json(value),
+            Err(e) => Json(serde_json::json!({ "error": format!("file task failed: {e}") })),
+        }
+    }
+
     async fn evidence(State(root): State<Arc<std::path::PathBuf>>) -> Json<serde_json::Value> {
         let root = Arc::clone(&root);
         let payload =
@@ -866,6 +884,7 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
         .route("/api/git/status", get(git_status))
         .route("/api/search", get(search))
         .route("/api/files", get(file_tree))
+        .route("/api/file-content", get(file_content))
         .route("/api/evidence", get(evidence))
         .route("/api/terminal/exec", axum::routing::post(terminal_exec))
         .route("/api/terminal/reset", axum::routing::post(terminal_reset))

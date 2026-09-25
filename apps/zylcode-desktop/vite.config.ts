@@ -15,6 +15,7 @@ export default defineConfig({
       "/api/git": "http://127.0.0.1:17630",
       "/api/search": "http://127.0.0.1:17630",
       "/api/files": "http://127.0.0.1:17630",
+      "/api/file-content": "http://127.0.0.1:17630",
       "/api/evidence": "http://127.0.0.1:17630",
       "/api/terminal": "http://127.0.0.1:17630",
       "/api/missions": "http://127.0.0.1:17630",

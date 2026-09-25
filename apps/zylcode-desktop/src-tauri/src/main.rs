@@ -407,6 +407,21 @@ async fn repo_file_tree(
     .map_err(|e| format!("tree task failed: {e}"))?
 }
 
+/// Real file content for the central editor (workspace-relative path).
+#[tauri::command]
+async fn file_content(
+    state: tauri::State<'_, EngineState>,
+    path: String,
+) -> Result<serde_json::Value, String> {
+    let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
+    tokio::task::spawn_blocking(move || {
+        zylcode_core::surfaces::file_content_payload(&root, &path)
+            .map_err(|e| format!("file content failed: {e:#}"))
+    })
+    .await
+    .map_err(|e| format!("file task failed: {e}"))?
+}
+
 /// The evidence ledger timeline with hash-chain verification.
 #[tauri::command]
 async fn evidence_ledger(
@@ -1003,6 +1018,7 @@ fn main() {
             mission_run_next,
             repo_search,
             repo_file_tree,
+            file_content,
             evidence_ledger,
             token_metrics,
             verify_logic,

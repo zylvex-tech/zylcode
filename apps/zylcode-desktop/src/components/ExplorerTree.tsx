@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Panel } from "./Panel";
 import { StatusBadge, type CapabilityStatus } from "./CapabilityStatus";
 import { fetchFileTree, type FileTreeResult } from "../lib/surfaces";
@@ -29,41 +29,31 @@ function insertPath(rootMap: Map<string, TreeNode>, path: string, language: stri
   }
 }
 
-function renderNode(node: TreeNode, depth: number, out: React.ReactNode[], keyPrefix: string) {
-  const pad = { paddingLeft: `${depth * 12 + 4}px` };
-  if (node.isDir) {
-    out.push(
-      <div key={`d:${keyPrefix}`} style={pad} className="text-[11px] text-text-muted font-mono">
-        📁 {node.name}
-      </div>,
-    );
-    const children = [...node.children.values()].sort((a, b) => {
-      if (a.isDir !== b.isDir) return a.isDir ? -1 : 1;
-      return a.name.localeCompare(b.name);
-    });
-    for (const child of children) renderNode(child, depth + 1, out, `${keyPrefix}/${child.name}`);
-  } else {
-    out.push(
-      <div
-        key={`f:${keyPrefix}`}
-        style={pad}
-        className="text-[11px] font-mono truncate"
-        title={`${node.path} (${node.language})`}
-      >
-        📄 {node.name}
-      </div>,
-    );
-  }
+interface ExplorerTreeProps {
+  /** Called when a real file row is clicked; opens the file in the editor. */
+  onOpenFile?: (path: string) => void;
+  /** Files currently open in the editor, for the active/dirty marker. */
+  activePath?: string | null;
+  compact?: boolean;
+}
+
+function sortChildren(map: Map<string, TreeNode>): TreeNode[] {
+  return [...map.values()].sort((a, b) => {
+    if (a.isDir !== b.isDir) return a.isDir ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
 }
 
 /**
  * Live Explorer: the scanner's actual file tree (gitignore-aware), nested
- * client-side from the flat real rows. No fake "sample project" entries.
+ * client-side from the flat real rows. Directories collapse; files open in
+ * the central editor. No fake "sample project" entries.
  */
-export function ExplorerTree() {
+export function ExplorerTree({ onOpenFile, activePath, compact }: ExplorerTreeProps) {
   const [state, setState] = useState<
     { kind: "loading" } | { kind: "unavailable"; reason: string } | { kind: "ready"; data: FileTreeResult }
   >({ kind: "loading" });
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set(["apps", "crates", "src"]));
 
   useEffect(() => {
     let cancelled = false;
@@ -85,6 +75,62 @@ export function ExplorerTree() {
     return map;
   }, [state]);
 
+  const toggle = (path: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
+      return next;
+    });
+  };
+
+  const renderNode = (node: TreeNode, depth: number, out: React.ReactNode[], keyPrefix: string) => {
+    const pad = { paddingLeft: `${depth * 11 + 4}px` };
+    if (node.isDir) {
+      const open = expanded.has(node.path);
+      out.push(
+        <button
+          key={`d:${keyPrefix}`}
+          style={pad}
+          onClick={() => toggle(node.path)}
+          className="w-full text-left text-[11px] font-mono text-text-secondary hover:bg-surface-hover rounded flex items-center gap-1 py-0.5"
+        >
+          <span className="text-[9px] w-2 text-text-muted">{open ? "▾" : "▸"}</span>
+          <span>{open ? "📂" : "📁"}</span>
+          <span className="truncate">{node.name}</span>
+        </button>,
+      );
+      if (open) {
+        for (const child of sortChildren(node.children)) {
+          renderNode(child, depth + 1, out, `${keyPrefix}/${child.name}`);
+        }
+      }
+    } else {
+      const active = activePath === node.path;
+      out.push(
+        <button
+          key={`f:${keyPrefix}`}
+          style={pad}
+          onClick={() => onOpenFile?.(node.path)}
+          className={`w-full text-left text-[11px] font-mono truncate rounded flex items-center gap-1 py-0.5 ${
+            active ? "bg-primary/15 text-primary" : "text-text-muted hover:text-text-primary hover:bg-surface-hover"
+          }`}
+          title={`${node.path} (${node.language})`}
+        >
+          <span className="w-2" />
+          <span>📄</span>
+          <span className="truncate">{node.name}</span>
+        </button>,
+      );
+    }
+  };
+
+  const rows = tree ? [...tree.values()].flatMap((node) => {
+    const out: React.ReactNode[] = [];
+    renderNode(node, 0, out, node.path);
+    return out;
+  }) : [];
+
   return (
     <Panel title="EXPLORER">
       <div className="space-y-2">
@@ -102,14 +148,8 @@ export function ExplorerTree() {
         {state.kind === "loading" && <p className="text-xs text-text-muted">Scanning the repository…</p>}
 
         {state.kind === "ready" && tree && (
-          <div className="max-h-[70vh] overflow-y-auto">
-            {[...tree.values()]
-              .sort((a, b) => (a.isDir !== b.isDir ? (a.isDir ? -1 : 1) : a.name.localeCompare(b.name)))
-              .flatMap((node) => {
-                const out: React.ReactNode[] = [];
-                renderNode(node, 0, out, node.path);
-                return out;
-              })}
+          <div className={compact ? "flex-1 min-h-0 overflow-y-auto" : "max-h-[70vh] overflow-y-auto"}>
+            {rows}
           </div>
         )}
       </div>

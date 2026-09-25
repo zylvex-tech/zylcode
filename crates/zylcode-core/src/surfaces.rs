@@ -173,6 +173,71 @@ pub fn file_tree_payload(root: &Path) -> Result<Value> {
 }
 
 // ---------------------------------------------------------------------------
+// File content (central editor)
+// ---------------------------------------------------------------------------
+
+/// Maximum file size served to the editor; larger files are refused honestly.
+pub const MAX_FILE_BYTES: u64 = 512 * 1024;
+
+/// Resolve a workspace-relative path to a real file inside `root`.
+/// Rejects absolute paths, traversal escapes, and missing files — the
+/// editor must never become a filesystem read primitive for arbitrary paths.
+fn resolve_in_root(root: &Path, rel: &str) -> Result<std::path::PathBuf> {
+    anyhow::ensure!(!rel.trim().is_empty(), "file path must not be empty");
+    let rel_path = std::path::Path::new(rel);
+    anyhow::ensure!(
+        !rel_path.is_absolute(),
+        "file path must be relative to the workspace"
+    );
+    let normalized = rel.replace('\\', "/");
+    anyhow::ensure!(
+        !normalized.starts_with(".git/"),
+        "'.git/*' paths are not openable in the editor"
+    );
+    let canon_root = root.canonicalize()?;
+    // canonicalize errors if the file is missing and resolves symlinks/..,
+    // so the containment check below is exact.
+    let canon = root.join(rel_path).canonicalize()?;
+    anyhow::ensure!(
+        canon.starts_with(&canon_root),
+        "file path escapes the workspace"
+    );
+    Ok(canon)
+}
+
+/// Real file content for the central editor, with honest limits: the file
+/// must exist inside the workspace, be a regular file, and fit the size cap.
+/// Non-UTF-8 content is served lossily with `lossy: true` rather than failing.
+pub fn file_content_payload(root: &Path, rel_path: &str) -> Result<Value> {
+    anyhow::ensure!(
+        root.is_dir(),
+        "repository root '{}' is not a directory",
+        root.display()
+    );
+    let canon = resolve_in_root(root, rel_path)?;
+    let meta = std::fs::metadata(&canon)?;
+    anyhow::ensure!(meta.is_file(), "'{}' is a directory, not a file", rel_path);
+    anyhow::ensure!(
+        meta.len() <= MAX_FILE_BYTES,
+        "file is {} bytes; the editor serves at most {} bytes",
+        meta.len(),
+        MAX_FILE_BYTES
+    );
+    let bytes = std::fs::read(&canon)?;
+    let (content, lossy) = match String::from_utf8(bytes.clone()) {
+        Ok(s) => (s, false),
+        Err(_) => (String::from_utf8_lossy(&bytes).into_owned(), true),
+    };
+    Ok(json!({
+        "path": rel_path.replace('\\', "/"),
+        "size": meta.len(),
+        "lines": content.lines().count(),
+        "lossy": lossy,
+        "content": content,
+    }))
+}
+
+// ---------------------------------------------------------------------------
 // Evidence ledger
 // ---------------------------------------------------------------------------
 
@@ -533,5 +598,38 @@ mod tests {
         let payload = evidence_payload(&root);
         assert_eq!(payload["kind"], "empty");
         assert!(payload["reason"].as_str().unwrap().contains("no entries"));
+    }
+
+    #[test]
+    fn file_content_serves_real_content_with_metadata() {
+        let (_dir, root) = sample_repo();
+        let payload = file_content_payload(&root, "src/engine.rs").unwrap();
+        assert_eq!(payload["path"], "src/engine.rs");
+        assert!(payload["content"].as_str().unwrap().contains("pub struct Engine;"));
+        assert_eq!(payload["lines"], 2);
+        assert_eq!(payload["lossy"], false);
+        assert!(payload["size"].as_u64().unwrap() > 0);
+    }
+
+    #[test]
+    fn file_content_rejects_escape_and_missing_and_directory() {
+        let (_dir, root) = sample_repo();
+        for bad in ["../outside.rs", "no/such/file.rs", "src"] {
+            assert!(
+                file_content_payload(&root, bad).is_err(),
+                "must refuse {bad}"
+            );
+        }
+        // absolute path refused too
+        assert!(file_content_payload(&root, "C:/Windows/win.ini").is_err());
+    }
+
+    #[test]
+    fn file_content_marks_non_utf8_lossy() {
+        let (_dir, root) = sample_repo();
+        std::fs::write(root.join("blob.bin"), [0x68, 0x69, 0xFF, 0xFE]).unwrap();
+        let payload = file_content_payload(&root, "blob.bin").unwrap();
+        assert_eq!(payload["lossy"], true, "{payload:?}");
+        assert!(payload["content"].as_str().unwrap().contains("hi"));
     }
 }
