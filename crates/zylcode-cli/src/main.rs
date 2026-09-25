@@ -568,6 +568,16 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
         }
     }
 
+    async fn version(State(root): State<Arc<std::path::PathBuf>>) -> Json<serde_json::Value> {
+        let root = Arc::clone(&root);
+        let payload = tokio::task::spawn_blocking(move || zylcode_core::gitops::version_payload(&root))
+            .await;
+        match payload {
+            Ok(value) => Json(value),
+            Err(e) => Json(serde_json::json!({ "error": format!("version task failed: {e}") })),
+        }
+    }
+
     async fn search(
         State(root): State<Arc<std::path::PathBuf>>,
         axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
@@ -882,6 +892,7 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
         .route("/healthz", get(healthz))
         .route("/api/repo-intel", get(repo_intel))
         .route("/api/git/status", get(git_status))
+        .route("/api/version", get(version))
         .route("/api/search", get(search))
         .route("/api/files", get(file_tree))
         .route("/api/file-content", get(file_content))

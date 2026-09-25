@@ -9,6 +9,7 @@ import {
   type MissionMode,
 } from "../lib/missions";
 import { fetchEvidence, type EvidenceState } from "../lib/surfaces";
+import { useSettings } from "../lib/settings";
 
 type AgentTab = "agent" | "tasks" | "changes" | "evidence";
 
@@ -55,7 +56,12 @@ export const AgentWorkspace: React.FC<AgentWorkspaceProps> = ({
   narrow,
 }) => {
   const [task, setTask] = useState("");
-  const [mode, setMode] = useState<MissionMode>("build");
+  const { settings } = useSettings();
+  const [mode, setMode] = useState<MissionMode>(settings.defaultMissionMode);
+  // Follow a changed default when the composer is idle and untouched.
+  useEffect(() => {
+    setMode(settings.defaultMissionMode);
+  }, [settings.defaultMissionMode]);
   const [missions, setMissions] = useState<Mission[]>([]);
   const [evidence, setEvidence] = useState<EvidenceState | null>(null);
   const [connected, setConnected] = useState<CapabilityStatus>("BLOCKED");

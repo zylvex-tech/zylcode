@@ -13,6 +13,7 @@ export default defineConfig({
       // `zylcode serve-intel` service.
       "/api/repo-intel": "http://127.0.0.1:17630",
       "/api/git": "http://127.0.0.1:17630",
+      "/api/version": "http://127.0.0.1:17630",
       "/api/search": "http://127.0.0.1:17630",
       "/api/files": "http://127.0.0.1:17630",
       "/api/file-content": "http://127.0.0.1:17630",

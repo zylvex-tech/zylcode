@@ -56,6 +56,25 @@ fn parse_porcelain(output: &str) -> Vec<StatusEntry> {
         .collect()
 }
 
+/// Version & build payload for the About/Diagnostics surfaces: the running
+/// binary's real version, the workspace's actual HEAD commit and branch, and
+/// an honest dirty flag. Nothing is hardcoded.
+pub fn version_payload(root: &Path) -> Value {
+    let head = git(root, &["rev-parse", "--short", "HEAD"]);
+    let branch = git(root, &["rev-parse", "--abbrev-ref", "HEAD"]);
+    let dirty = !git(root, &["status", "--porcelain"])
+        .stdout
+        .trim()
+        .is_empty();
+    json!({
+        "app_version": env!("CARGO_PKG_VERSION"),
+        "engine": "zylcode-core",
+        "head_commit": if head.success { head.stdout.trim() } else { "" },
+        "branch": if branch.success { branch.stdout.trim() } else { "" },
+        "dirty": dirty,
+    })
+}
+
 /// Build the source-control payload for the repository at `root`.
 pub fn git_status_payload(root: &Path) -> Result<Value> {
     anyhow::ensure!(
@@ -308,5 +327,27 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let err = git_status_payload(dir.path());
         assert!(err.is_err(), "a non-repo must fail, not fabricate a payload");
+    }
+
+    #[test]
+    fn version_payload_reports_real_commit_and_engine_version() {
+        let (_dir, root) = sample_repo();
+        let payload = version_payload(&root);
+        assert_eq!(payload["app_version"], env!("CARGO_PKG_VERSION"));
+        assert_eq!(payload["engine"], "zylcode-core");
+        // The commit is the sample repo's real HEAD, not a hardcoded value.
+        let head = Command::new("git")
+            .args(["rev-parse", "--short", "HEAD"])
+            .current_dir(&root)
+            .output()
+            .unwrap();
+        let expected = String::from_utf8_lossy(&head.stdout).trim().to_string();
+        assert_eq!(payload["head_commit"], expected);
+        // Branch is whatever the repo actually is (init default varies by git version).
+        assert!(!payload["branch"].as_str().unwrap().is_empty());
+        // Dirty tree (README committed clean here; add an untracked file).
+        std::fs::write(root.join("wip.txt"), "wip").unwrap();
+        let payload = version_payload(&root);
+        assert_eq!(payload["dirty"], true, "{payload:?}");
     }
 }

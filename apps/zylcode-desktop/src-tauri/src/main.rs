@@ -361,6 +361,17 @@ async fn terminal_exec(
     .map_err(|e| format!("terminal exec failed: {e:#}"))
 }
 
+/// Version & build info for the About/Diagnostics surfaces.
+#[tauri::command]
+async fn app_version(
+    state: tauri::State<'_, EngineState>,
+) -> Result<serde_json::Value, String> {
+    let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
+    tokio::task::spawn_blocking(move || Ok(zylcode_core::gitops::version_payload(&root)))
+        .await
+        .map_err(|e| format!("version task failed: {e}"))?
+}
+
 /// Git source-control state for the frontend (branch, tracking, status
 /// entries, uncommitted diff stat) — the same gitops payload the
 /// `serve-intel` HTTP service exposes.
@@ -1019,6 +1030,7 @@ fn main() {
             repo_search,
             repo_file_tree,
             file_content,
+            app_version,
             evidence_ledger,
             token_metrics,
             verify_logic,

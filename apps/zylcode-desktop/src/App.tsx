@@ -22,7 +22,8 @@ import { ThemeProvider, useTheme, ThemeSelector } from "./components/ui";
 import Forge from "./components/Forge";
 import CommandPalette from "./components/CommandPalette";
 import EditorPane from "./components/EditorPane";
-import { AboutModal } from "./components/AboutModal";
+import SettingsSurface from "./components/SettingsSurface";
+import { useSettings } from "./lib/settings";
 import {
   MenuBar,
   type Menu,
@@ -118,7 +119,10 @@ function AppContent() {
   const [sidebarWidth, setSidebarWidth] = usePersistentState("sidebarWidth", 260);
   const [agentDockOpen, setAgentDockOpen] = usePersistentState("agentDockOpen", true);
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsSection, setSettingsSection] = useState<"general" | "agent" | "providers" | "extensions" | "appearance" | "hotkeys" | "diagnostics" | "about" | undefined>(undefined);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const { settings } = useSettings();
 
   const [missions, setMissions] = useState<MissionRecord[]>([]);
   const [activeMissionId, setActiveMissionId] = useState<string | null>(null);
@@ -279,8 +283,8 @@ function AppContent() {
         label: "Code",
         items: [
           { id: "cmd-palette", label: "Command Palette…", shortcut: "Ctrl+Shift+P", run: () => setPaletteOpen(true) },
-          { id: "settings", label: "Settings", run: () => { setActiveActivity("settings"); setActiveSurface("overview"); } },
-          { id: "about", label: "About ZylCode", separatorBefore: true, run: () => setAboutOpen(true) },
+          { id: "settings", label: "Settings…", shortcut: "Ctrl+,", run: () => { setSettingsSection("general"); setSettingsOpen(true); } },
+          { id: "about", label: "About ZylCode", separatorBefore: true, run: () => { setSettingsSection("about"); setSettingsOpen(true); } },
         ],
       },
       {
@@ -394,6 +398,10 @@ function AppContent() {
       } else if (mod && e.key === "`") {
         e.preventDefault();
         setBottomPanelOpen((v) => !v);
+      } else if (mod && e.key === ",") {
+        e.preventDefault();
+        setSettingsSection("general");
+        setSettingsOpen(true);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -544,7 +552,14 @@ function AppContent() {
       <StatusBar theme={currentTheme} onThemeChange={setTheme} mcpBridgeCount={0} />
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} menus={menus} />
-      <AboutModal isOpen={aboutOpen} onClose={() => setAboutOpen(false)} />
+      <SettingsSurface
+        open={settingsOpen || aboutOpen}
+        initialSection={aboutOpen ? "about" : settingsSection}
+        onClose={() => {
+          setSettingsOpen(false);
+          setAboutOpen(false);
+        }}
+      />
     </div>
   );
 }
