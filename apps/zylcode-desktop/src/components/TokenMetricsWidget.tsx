@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { detectEnvironment, safeInvoke } from "../lib/runtime";
+import { fetchMetrics } from "../lib/service";
 
 type TokenSnapshot = {
   input_tokens: number;
@@ -14,13 +15,30 @@ export default function TokenMetricsWidget({ refreshKey }: { refreshKey?: number
 
   useEffect(() => {
     let cancelled = false;
-    // Environment-aware: outside the desktop runtime this resolves to a
-    // controlled failure instead of firing Tauri IPC and throwing.
-    safeInvoke<TokenSnapshot>(detectEnvironment(), "token_metrics").then((r) => {
-      if (cancelled) return;
-      if (r.ok) setSnap(r.data);
-      else setErr(r.reason);
-    });
+    // Desktop: engine IPC. Browser: the serve-intel metrics route — both
+    // real telemetry; neither fabricates numbers.
+    if (detectEnvironment() === "TAURI_DESKTOP") {
+      safeInvoke<TokenSnapshot>(detectEnvironment(), "token_metrics").then((r) => {
+        if (cancelled) return;
+        if (r.ok) setSnap(r.data);
+        else setErr(r.reason);
+      });
+    } else {
+      fetchMetrics().then((m) => {
+        if (cancelled) return;
+        if (m.kind === "ready") {
+          setSnap({
+            input_tokens: m.input_tokens,
+            output_tokens: m.output_tokens,
+            verification_saved_tokens: m.verification_saved_tokens,
+            fallback_count: m.fallback_count,
+          });
+          setErr(null);
+        } else if (m.kind === "unavailable") {
+          setErr(m.reason);
+        }
+      });
+    }
     return () => {
       cancelled = true;
     };

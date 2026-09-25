@@ -4,6 +4,8 @@ import { IS_DESKTOP, DESKTOP_REQUIRED_MESSAGE, getDiagnostics, type DiagnosticEn
 import { fetchEvidence, type EvidenceState } from "../../lib/surfaces";
 import { listMissions } from "../../lib/missions";
 import TerminalPanel from "../TerminalPanel";
+import ToolsCataloguePanel from "../ToolsCataloguePanel";
+import { fetchProviders, type ProvidersState } from "../../lib/service";
 
 export type BottomTab =
   | "terminal"
@@ -414,17 +416,71 @@ function EvidenceView() {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Providers (browser-capable): real fallback chain from the service; the
+// desktop additionally gets the editable settings.
+// ---------------------------------------------------------------------------
+
+function ProvidersServiceView() {
+  const [state, setState] = useState<ProvidersState>({ kind: "loading" });
+  useEffect(() => {
+    let cancelled = false;
+    const load = () => {
+      fetchProviders().then((next) => {
+        if (!cancelled) setState(next);
+      });
+    };
+    load();
+    const t = setInterval(load, 15000);
+    return () => {
+      cancelled = true;
+      clearInterval(t);
+    };
+  }, []);
+  if (state.kind === "loading") return <p className="p-3 text-xs text-text-muted">Reading the provider chain…</p>;
+  if (state.kind === "unavailable") return <p className="p-3 text-xs text-text-muted">{state.reason}</p>;
+  return (
+    <div className="p-3 space-y-1.5 text-xs">
+      <p className="text-[11px] text-text-muted mb-2">
+        Live fallback chain (primary <span className="font-mono text-text-secondary">{state.primary_model}</span>,
+        fallback <span className="font-mono text-text-secondary">{state.fallback_model}</span>). Secrets are never
+        exposed; editing happens in Settings → Model Providers on the desktop.
+      </p>
+      {state.chain.map((p) => (
+        <div key={`${p.kind}-${p.fallback_order}`} className="flex items-center gap-2">
+          <span className="font-mono text-text-secondary w-24 shrink-0">{p.kind}</span>
+          <span className="truncate text-text-muted">{p.model}</span>
+          {p.requires_api_key && (
+            <span className="text-[10px] text-amber-400" title="This provider requires an API key (configured on the desktop)">
+              key required
+            </span>
+          )}
+          <span className={`ml-auto text-[10px] ${p.enabled ? "text-emerald-400" : "text-text-muted"}`}>
+            {p.enabled ? "enabled" : "disabled"}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function DevToolsView() {
   return (
     <div className="h-full p-3 overflow-y-auto space-y-3">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <div className="border border-border rounded-lg p-3">
-          <h4 className="text-sm font-medium mb-2">MCP Activity</h4>
-          {IS_DESKTOP ? <McpInspector /> : <DesktopRequired />}
+          <h4 className="text-sm font-medium mb-2">MCP Tool Catalogue</h4>
+          <ToolsCataloguePanel />
+          {IS_DESKTOP && (
+            <div className="mt-3 border-t border-border pt-2">
+              <h4 className="text-sm font-medium mb-2">MCP Bridge Activity</h4>
+              <McpInspector />
+            </div>
+          )}
         </div>
         <div className="border border-border rounded-lg p-3">
           <h4 className="text-sm font-medium mb-2">Providers</h4>
-          {IS_DESKTOP ? <ProviderSettings /> : <DesktopRequired />}
+          {IS_DESKTOP ? <ProviderSettings /> : <ProvidersServiceView />}
         </div>
         <div className="border border-border rounded-lg p-3 lg:col-span-2">
           <h4 className="text-sm font-medium mb-2">Diagnostics</h4>

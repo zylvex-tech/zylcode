@@ -223,9 +223,9 @@ is R0 by definition.
 | Evidence ledger | **R3** | — |
 | Permissions gate | **R3** | — |
 | Provider configuration / real HTTP dispatch | **R3** | — |
-| **Repository intelligence (Phase 2A)** | **R2** | **fails R2 benchmark; fails R3 reachability; metric mis-scoped** |
+| **Repository intelligence (Phase 2A code)** | **R3 (code) / not accepted (governance)** | committed entry points shipped (`serve-intel` routes, Tauri commands, IDE surfaces) with hash-chained evidence; **Phase 2A acceptance still awaits independent re-audit** — the original audit's three findings (metric mis-scoped, benchmark non-reproducible, zero integration) are remediated in code but rung acceptance is G3/G4's verdict, not a self-claim |
 | Release installers | **R1** | CI blocked externally |
-| Model routing (Model Democracy) | **R1** | not measurement-based |
+| Model routing (Model Democracy) | **R1** | not measurement-based (read-only chain/metrics views are R3) |
 | Everything in Epochs II–VI | **R0** | PROPOSED, not implemented |
 
 ---

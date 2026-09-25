@@ -6,6 +6,7 @@ import { getDiagnostics, clearDiagnostics, IS_DESKTOP } from "../lib/runtime";
 import { StatusBadge } from "./CapabilityStatus";
 import ProviderSettings from "./ProviderSettings";
 import McpInspector from "./McpInspector";
+import ToolsCataloguePanel from "./ToolsCataloguePanel";
 import { ThemeSelector } from "./ui";
 
 type SectionId =
@@ -323,15 +324,14 @@ export const SettingsSurface: React.FC<SettingsSurfaceProps> = ({
 
             {section === "extensions" && (
               <div className="p-4 space-y-3">
-                {IS_DESKTOP ? (
-                  <McpInspector />
-                ) : (
-                  <div className="space-y-2">
-                    <StatusBadge status="LIMITED" size="xs" />
-                    <p className="text-xs text-text-muted">
-                      MCP bridge activity is visible on the desktop engine. The browser preview has
-                      no engine process to inspect.
-                    </p>
+                <div className="border border-border rounded-lg p-3">
+                  <h4 className="text-sm font-medium mb-2">MCP Tool Catalogue</h4>
+                  <ToolsCataloguePanel />
+                </div>
+                {IS_DESKTOP && (
+                  <div className="border border-border rounded-lg p-3">
+                    <h4 className="text-sm font-medium mb-2">MCP Bridge Activity</h4>
+                    <McpInspector />
                   </div>
                 )}
                 <p className="text-[11px] text-text-muted">

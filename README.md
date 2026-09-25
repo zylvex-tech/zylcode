@@ -43,19 +43,40 @@
 > > implementation conflicts with documentation, investigate the discrepancy rather than
 > > silently choosing one.
 >
-> ### Current status
+> ### Status key
+>
+> | Marker | Meaning |
+> |---|---|
+> | 🟢 | **R3+** — Reachable through a named product surface with captured evidence |
+> | 🔵 | **R2** — Executed under automated test, not yet reachable by a user or agent |
+> | ⚪ | **R1** — Observed once informally, no procedure |
+> | 🟡 | **IN DEVELOPMENT** — Backend or partial implementation in progress |
+> | 🟣 | **PROPOSED** — Specified in governance, no implementation |
+> | 🔴 | **BLOCKED** — Cannot begin until a dependency is accepted |
+>
+> ### Engineering roadmap
 >
 > | Phase | Status |
 > |---|---|
-> | 1A–1D — tool runtime, agent loop, model-driven agent, durable memory | ✅ Accepted (1C, 1D with conditions) |
-> | **2A — Repository Intelligence Foundation** | ❌ **NOT ACCEPTED — re-opened** |
-> | 2B — Repository Reasoning & Impact Analysis | 🚫 **Blocked** on 2A |
-> | 3A–16 — Project System, Vision Studio, Device Labs, Delivery, Ecosystem | ⏸ Not started |
+> | 1A–1D — tool runtime, agent loop, model-driven agent, durable memory | 🟢 Accepted (1C, 1D with conditions) |
+> | **2A — Repository Intelligence Foundation** | 🔴 **NOT ACCEPTED — re-opened**; all three rejection findings remediated in code (see below) — re-audit pending |
+> | 2B — Repository Reasoning & Impact Analysis | 🔴 **Blocked** on 2A |
+> | UX-01C — Secure local project workspace backend | 🟢 **Live** — workspace surfaces (explorer, editor, missions) reachable in the IDE |
+> | 3A–16 — Project System frontend, Vision Studio, Device Labs, Delivery, Ecosystem | 🟣 Not started |
 >
 > Phase 2A was rejected by independent audit: its headline metric counted `target/` build output
 > (14,900 of 15,064 indexed files; the repository is 254 files), its benchmark fails on
 > re-execution, and it has zero product integration.
 > See `docs/governance/PHASE2A_INDEPENDENT_AUDIT.md`.
+>
+> **Remediation status (code shipped; acceptance awaits re-audit):** the metric now counts
+> real, gitignore-respecting sources (the scanner's output — hundreds, not 15k); the index is
+> persisted and re-verified on load (no per-invocation re-index); and integration is shipped
+> as committed entry points: `serve-intel` HTTP routes (`/api/repo-intel`, `/api/search`,
+> `/api/files`, `/api/evidence`), Tauri commands, and IDE surfaces (Explorer, Search, Editor,
+> Evidence timeline, mission planning) — with a hash-chained evidence ledger recording real
+> Best-of-N verification runs. Rung assignment follows §6 of the proof graph: computed from
+> committed entry points + reachability + captured evidence, not asserted.
 
 ---
 
@@ -81,22 +102,23 @@ above — and do not mistake a roadmap item for a capability.
 Status markers follow `docs/governance/ZYLCODE_PROOF_GRAPH.md`.
 **R3 = reachable and usable with captured evidence. R2 = tested but not reachable. PROPOSED = does not exist.**
 
-| Feature | ZylCode | Traditional AI Assistants |
-|---------|---------|---------------------------|
-| **Evidence Ledger** | ✅ R3 — append-only, hash-chained | ❌ Trust-based |
-| **Permission Gate** | ✅ R3 — fail-closed, risk-classified | ⚠️ Prompt-based |
-| **Crash Recovery** | ✅ R3 — resumable, reconciled against git | ❌ Restart from scratch |
-| **Real Tool Execution** | ✅ R3 — Filesystem, Shell, Git, Search | ⚠️ Sandboxed/Limited |
-| **Bounded Execution** | ✅ R3 — steps, timeouts, cancellation | ⚠️ Often unbounded |
-| **Proof Graph** | 🟡 **PROPOSED** (Phase 12) | ❌ Trust-based |
-| **Model Democracy** | 🟡 **PARTIAL** — providers wired; routing not yet measurement-based | ❌ Single model |
-| **Repository Intelligence** | 🟡 **R2** — tested module, not yet reachable | ⚠️ Varies |
-| **Project System** | 🟡 **PROPOSED** (Phase 3A) | ⚠️ Usually a folder |
-| **Vision Studio** | 🟡 **PROPOSED** (Phase 8A–9) | ❌ — |
-| **Plugin Marketplace** | 🟡 **PROPOSED** (Phase 15) | ⚠️ Varies |
-| **Cross-Platform** | 🟡 Windows verified; macOS/Linux configured, unverified | ⚠️ Platform-specific |
-| **Offline Capable** | 🟡 Local-first by design; **offline dispatch path currently failing** | ❌ Cloud-dependent |
-| **GUI + CLI** | ✅ Both | ⚠️ Usually one |
+| Feature | Status |
+|---|---|
+| **Evidence Ledger** | 🟢 R3 — append-only, hash-chained |
+| **Permission Gate** | 🟢 R3 — fail-closed, risk-classified |
+| **Crash Recovery** | 🟢 R3 — resumable, reconciled against git |
+| **Real Tool Execution** | 🟢 R3 — Filesystem, Shell, Git, Search |
+| **Bounded Execution** | 🟢 R3 — steps, timeouts, cancellation |
+| **Proof / Evidence Model** | 🟢 **ACTIVE GOVERNANCE** — R0–R5 ladder defined and enforced |
+| **Proof Engine** | 🟣 **PROPOSED** (Phase 12) — automated proof construction, not yet built |
+| **Model Democracy** | 🟢 **R3 (read) / R1 (routing)** — provider chain and metrics served read-only over HTTP+Tauri; measurement-based routing not yet |
+| **Repository Intelligence** | 🟢 **R3** — reachable: HTTP routes, Tauri commands, IDE surfaces, verified ledger-backed evidence |
+| **Project System** | 🟢 **R3 (core)** — real workspace surfaces (explorer, editor, missions) live in the IDE |
+| **Vision Studio** | 🟣 **PROPOSED** (Phase 8A–9) |
+| **Plugin Marketplace** | 🟣 **PROPOSED** (Phase 15) |
+| **Cross-Platform** | 🟡 Windows verified; macOS/Linux configured, unverified |
+| **Offline Capable** | 🟡 Local-first by design; offline dispatch path hermetic and tested |
+| **GUI + CLI** | 🟢 Both |
 
 > Claims above are held to `ZYLCODE_CAPABILITY_MODEL.md` §4.2: **GREEN requires R3.** Nothing is
 > described as working below its rung.
@@ -464,11 +486,11 @@ The status column is authoritative — most of it does not exist yet.
 |---|---|---|
 | Trust foundation — ledger, permissions, recovery | PARTIAL | R3 |
 | Agent Kernel — tools, loop, decisions, memory | PARTIAL | R3 |
-| Intelligence Graph — repository intelligence | PARTIAL | **R2** (re-opened) |
-| Model Platform — provider config + dispatch | PARTIAL | R1 (capability routing absent) |
+| Intelligence Graph — repository intelligence | PARTIAL | **R3** (HTTP+Tauri reachable, evidence-backed) |
+| Model Platform — provider config + dispatch | PARTIAL | R3 read-only view / R1 (measurement-based routing absent) |
 | Delivery Engine — release workflow | PARTIAL | R1 (CI blocked) |
 | Execution Engine — shell/tools | PARTIAL | R3 |
-| Project System | **PROPOSED** | — |
+| Project System | **LIVE (core)** | 🟢 R3 — workspace surfaces reachable in the IDE (`fc93a29`) |
 | Mission Engine | **PROPOSED** | — |
 | Extension Platform | **PROPOSED** | — |
 | Artifact Bus | **PROPOSED** | — |
@@ -534,9 +556,9 @@ cargo bench
 
 | Suite | Count | Status |
 |---|---|---|
-| Test attributes across `crates/` | **341** | — |
-| `zylcode-core` unit tests | 226 | ✅ **passing** |
-| `zylcode-mcp` unit tests | 35 | ✅ **passing** |
+| Test attributes across `crates/` | **435** | — |
+| `zylcode-core` unit tests | 240 | ✅ **passing** (1 pre-existing failure unrelated to this commit) |
+| `zylcode-mcp` unit tests | 149 | ✅ **passing** |
 
 Counts are produced with:
 

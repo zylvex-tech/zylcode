@@ -578,6 +578,84 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
         }
     }
 
+    /// The committed MCP tool catalogue (`mcp.tools.yaml`): every enabled
+    /// tool id with its real executor binding. Read-only; no secrets.
+    async fn tools(State(root): State<Arc<std::path::PathBuf>>) -> Json<serde_json::Value> {
+        let root = Arc::clone(&root);
+        let payload = tokio::task::spawn_blocking(move || {
+            let config_path = root.join("mcp.tools.yaml");
+            match zylcode_mcp::config::McpConfigFile::from_path(&config_path) {
+                Ok(cfg) => {
+                    let tools: Vec<serde_json::Value> = cfg
+                        .enabled_tools()
+                        .iter()
+                        .map(|t| {
+                            let has_executor = zylcode_mcp::real_tools::get_real_tool(&t.id).is_some();
+                            serde_json::json!({
+                                "id": t.id,
+                                "transport": t.transport.to_string(),
+                                "description": t.description,
+                                "enabled": t.enabled,
+                                "executor_bound": has_executor,
+                            })
+                        })
+                        .collect();
+                    serde_json::json!({
+                        "source": "mcp.tools.yaml",
+                        "tools": tools,
+                    })
+                }
+                Err(e) => serde_json::json!({ "error": format!("tool catalogue parse failed: {e:#}") }),
+            }
+        })
+        .await;
+        match payload {
+            Ok(value) => Json(value),
+            Err(e) => Json(serde_json::json!({ "error": format!("tools task failed: {e}") })),
+        }
+    }
+
+    /// The real provider fallback chain from the router's configuration.
+    /// Read-only: API keys and endpoints are never included in the payload.
+    async fn providers() -> Json<serde_json::Value> {
+        let cfg = zylcode_core::router::RouterConfig::from_env();
+        let mut chain: Vec<serde_json::Value> = cfg
+            .provider_configs
+            .iter()
+            .map(|p| {
+                serde_json::json!({
+                    "kind": p.kind.to_string(),
+                    "model": p.model,
+                    "enabled": p.enabled,
+                    "fallback_order": p.fallback_order,
+                    "requires_api_key": p.requires_api_key,
+                    "timeout_ms": p.timeout_ms,
+                })
+            })
+            .collect();
+        chain.sort_by_key(|p| p["fallback_order"].as_i64().unwrap_or(i64::MAX));
+        Json(serde_json::json!({
+            "primary_model": cfg.primary_model,
+            "fallback_model": cfg.fallback_model,
+            "chain": chain,
+        }))
+    }
+
+    /// Live token telemetry from the router snapshot (session counters).
+    async fn metrics() -> Json<serde_json::Value> {
+        let cfg = zylcode_core::router::RouterConfig::from_env();
+        let router = match zylcode_core::TokenRouter::new(cfg) {
+            Ok(r) => r,
+            Err(e) => {
+                return Json(serde_json::json!({ "error": format!("router init failed: {e:#}") }));
+            }
+        };
+        let snap = router.metrics().snapshot();
+        Json(serde_json::to_value(&snap).unwrap_or_else(|_| {
+            serde_json::json!({ "error": "metrics serialization failed" })
+        }))
+    }
+
     async fn search(
         State(root): State<Arc<std::path::PathBuf>>,
         axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
@@ -893,6 +971,9 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
         .route("/api/repo-intel", get(repo_intel))
         .route("/api/git/status", get(git_status))
         .route("/api/version", get(version))
+        .route("/api/tools", get(tools))
+        .route("/api/providers", get(providers))
+        .route("/api/metrics", get(metrics))
         .route("/api/search", get(search))
         .route("/api/files", get(file_tree))
         .route("/api/file-content", get(file_content))
