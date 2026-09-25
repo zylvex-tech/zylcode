@@ -98,18 +98,60 @@ pub struct WorkingTreeSource {
 impl CandidateSource for WorkingTreeSource {
     async fn generate(&self, _task: &str, n: usize) -> Result<Vec<String>> {
         anyhow::ensure!(n >= 1, "at least one candidate must be requested");
-        let output = tokio::process::Command::new("git")
-            .args(["diff", "HEAD"])
-            .current_dir(&self.repo_root)
-            .output()
-            .await
-            .context("failed to run `git diff HEAD`")?;
-        anyhow::ensure!(
-            output.status.success(),
-            "git diff HEAD failed: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-        Ok(vec![String::from_utf8_lossy(&output.stdout).to_string()])
+
+        // `git diff HEAD` alone omits **untracked** files entirely — verifying
+        // work-in-progress with a NEW module produced a worktree whose `lib.rs`
+        // referenced a file it did not have (a real failure this repo hit).
+        //
+        // The fix is a **throwaway index**: read HEAD into a temp index file,
+        // mark untracked-but-not-ignored files as intent-to-add inside it, and
+        // diff against HEAD. The user's real index is never touched — staging
+        // state, `git status`, and any concurrent git work are unaffected.
+        let index_file =
+            std::env::temp_dir().join(format!("zylcode-wtidx-{}", Uuid::new_v4()));
+        let run = |args: &[&str]| {
+            tokio::process::Command::new("git")
+                .args(args)
+                .current_dir(&self.repo_root)
+                .env("GIT_INDEX_FILE", &index_file)
+                .output()
+        };
+
+        let result = async {
+            let out = run(&["read-tree", "HEAD"])
+                .await
+                .context("failed to run `git read-tree`")?;
+            anyhow::ensure!(
+                out.status.success(),
+                "git read-tree HEAD failed: {}",
+                String::from_utf8_lossy(&out.stderr)
+            );
+
+            let out = run(&["add", "--intent-to-add", "."])
+                .await
+                .context("failed to run `git add --intent-to-add`")?;
+            anyhow::ensure!(
+                out.status.success(),
+                "git add --intent-to-add failed: {}",
+                String::from_utf8_lossy(&out.stderr)
+            );
+
+            let out = run(&["diff", "HEAD"])
+                .await
+                .context("failed to run `git diff HEAD`")?;
+            anyhow::ensure!(
+                out.status.success(),
+                "git diff HEAD failed: {}",
+                String::from_utf8_lossy(&out.stderr)
+            );
+            Ok(String::from_utf8_lossy(&out.stdout).to_string())
+        }
+        .await;
+
+        // Best-effort cleanup of the throwaway index; failure is harmless.
+        let _ = std::fs::remove_file(&index_file);
+        let patch = result?;
+        Ok(vec![patch])
     }
 }
 
@@ -659,5 +701,50 @@ mod tests {
         .await
         .unwrap();
         assert_eq!(patches.len(), 1, "exactly one working-tree candidate");
+    }
+
+    #[tokio::test]
+    async fn the_working_tree_source_includes_untracked_files() {
+        // Regression pin: `git diff HEAD` alone omits untracked files, so a
+        // candidate verifying work-in-progress with a NEW module compiled a
+        // worktree whose `lib.rs` referenced a file it did not have. The
+        // candidate must carry untracked-but-not-ignored files too.
+        let repo = std::env::temp_dir().join(format!("wt-src-{}", Uuid::new_v4()));
+        std::fs::create_dir_all(&repo).unwrap();
+        let run = |args: &[&str]| {
+            let out = Command::new("git")
+                .args(args)
+                .current_dir(&repo)
+                .output()
+                .unwrap();
+            assert!(
+                out.status.success(),
+                "git {args:?} failed: {}",
+                String::from_utf8_lossy(&out.stderr)
+            );
+        };
+        // A base repo with one commit, built in place (hermetic — no clone).
+        run(&["init", "-q"]);
+        run(&["config", "user.email", "test@example.com"]);
+        run(&["config", "user.name", "test"]);
+        std::fs::write(repo.join("README.md"), "# t\n").unwrap();
+        run(&["add", "."]);
+        run(&["commit", "-q", "-m", "base"]);
+
+        // Modify a tracked file to reference an UNTRACKED new module.
+        let lib = repo.join("README.md");
+        std::fs::write(&lib, "# t\nmod missions;\n").unwrap();
+        std::fs::write(repo.join("missions.rs"), "pub fn live() {}\n").unwrap();
+
+        let patches = WorkingTreeSource { repo_root: repo.clone() }
+            .generate("t", 1)
+            .await
+            .unwrap();
+        assert_eq!(patches.len(), 1);
+        let patch = &patches[0];
+        assert!(patch.contains("missions.rs"), "untracked file must be in the diff: {patch}");
+        assert!(patch.contains("README.md"), "tracked edit must be in the diff");
+
+        let _ = std::fs::remove_dir_all(&repo);
     }
 }

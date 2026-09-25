@@ -1,9 +1,21 @@
 import { Panel } from "../Panel";
 import { ProofInspector, McpInspector, ProviderSettings, DiagnosticsPanel } from "../../components";
+import PulsePanel from "../PulsePanel";
+import ChangesPanel from "../ChangesPanel";
+import FilesPanel from "../FilesPanel";
 import { useTheme } from "../ui";
 import { IS_DESKTOP, DESKTOP_REQUIRED_MESSAGE } from "../../lib/runtime";
 
-type DockModule = "agent" | "preview" | "proof" | "mcp" | "providers" | "diagnostics";
+type DockModule =
+  | "agent"
+  | "pulse"
+  | "changes"
+  | "files"
+  | "preview"
+  | "proof"
+  | "mcp"
+  | "providers"
+  | "diagnostics";
 
 interface AgentDockProps {
   activeModule: DockModule;
@@ -14,7 +26,10 @@ interface AgentDockProps {
 }
 
 const DOCK_MODULES: { id: DockModule; label: string }[] = [
+  { id: "pulse", label: "⚡ Pulse" },
   { id: "agent", label: "Agent" },
+  { id: "changes", label: "Changes" },
+  { id: "files", label: "Files" },
   { id: "preview", label: "Preview" },
   { id: "proof", label: "Proof" },
   { id: "mcp", label: "MCP" },
@@ -49,7 +64,25 @@ export function AgentDock({
         ))}
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-3">
+      <div className="flex-1 min-h-0 overflow-hidden p-3 flex flex-col">
+        {activeModule === "pulse" && (
+          <div className="flex-1 min-h-0 flex flex-col">
+            <PulsePanel />
+          </div>
+        )}
+
+        {activeModule === "changes" && (
+          <div className="flex-1 min-h-0 flex flex-col">
+            <ChangesPanel />
+          </div>
+        )}
+
+        {activeModule === "files" && (
+          <div className="flex-1 min-h-0 flex flex-col">
+            <FilesPanel />
+          </div>
+        )}
+
         {activeModule === "agent" && (
           <>
             {activeMission ? (

@@ -225,16 +225,30 @@ fn read_evidence_rows(db_path: &Path, limit: usize) -> Result<Vec<EvidenceRow>> 
     Ok(rows)
 }
 
-/// Verify the hash chain of chronologically ordered rows (oldest first).
-/// Same replay formula as the agent loop: hash of `(prev_hash, action_id)`.
+/// Verify the hash chain of chronologically ordered rows (oldest first),
+/// **per session**. Same replay formula as the agent loop: hash of
+/// `(prev_hash, action_id)`.
+///
+/// Sessions are independent chains — each writer starts its session from the
+/// genesis value (`""`), so a listing that spans sessions must never be
+/// verified as one concatenated chain. A session whose first visible row
+/// carries a non-genesis `prev_hash` had its head cut off by the read window
+/// (`MAX_EVIDENCE_ENTRIES`); its remaining visible links are still verified
+/// from that anchor, but the missing head cannot invalidate the verdict.
 fn chain_is_intact(rows_oldest_first: &[EvidenceRow]) -> bool {
     use sha2::Digest;
-    let mut prev = String::new(); // genesis
+    use std::collections::HashMap;
+
+    // session_id -> expected prev_hash of the session's next row
+    let mut anchors: HashMap<&str, String> = HashMap::new();
     for row in rows_oldest_first {
-        if row.prev_hash != prev {
+        let expected = anchors
+            .entry(row.session_id.as_str())
+            .or_default(); // genesis for a fresh session
+        if row.prev_hash != *expected {
             return false;
         }
-        prev = format!(
+        *expected = format!(
             "{:x}",
             sha2::Sha256::digest(format!("{}:{}", row.prev_hash, row.action_id).as_bytes())
         );
@@ -461,6 +475,51 @@ mod tests {
         let tampered = evidence_payload(&root);
         assert_eq!(tampered["chain_intact"], false, "{tampered:?}");
         let _ = h2;
+    }
+
+    #[test]
+    fn evidence_chain_is_verified_per_session_not_across_the_listing() {
+        // Two sessions: the second starts its own chain from genesis, which
+        // must NOT be read as a broken link between sessions. (This exact
+        // shape fired in the real ledger after a second best-of-n run.)
+        let (_dir, root) = sample_repo();
+        std::fs::create_dir_all(root.join(".zylcode")).unwrap();
+        let ledger = crate::sqlite_ledger::SqliteLedgerStore::new(
+            root.join(".zylcode").join("ledger.db").to_string_lossy().as_ref(),
+        )
+        .unwrap();
+        let s1 = uuid::Uuid::new_v4();
+        let s2 = uuid::Uuid::new_v4();
+        let _h1 = append(&ledger, s1, "", "best_of_n.candidate[0]");
+        let _h2 = append(&ledger, s2, "", "best_of_n.selection"); // genesis again: new session
+
+        let payload = evidence_payload(&root);
+        assert_eq!(payload["kind"], "ready", "{payload:?}");
+        assert_eq!(payload["session_count"], 2);
+        assert_eq!(
+            payload["chain_intact"], true,
+            "each session's chain starts from genesis; session boundaries are not broken links: {payload:?}"
+        );
+    }
+
+    #[test]
+    fn evidence_still_detects_a_tampered_link_inside_one_session() {
+        let (_dir, root) = sample_repo();
+        std::fs::create_dir_all(root.join(".zylcode")).unwrap();
+        let ledger = crate::sqlite_ledger::SqliteLedgerStore::new(
+            root.join(".zylcode").join("ledger.db").to_string_lossy().as_ref(),
+        )
+        .unwrap();
+        let s1 = uuid::Uuid::new_v4();
+        let s2 = uuid::Uuid::new_v4();
+        let _ = append(&ledger, s1, "", "a");
+        let _ = append(&ledger, s2, "", "b");
+
+        let conn = Connection::open(root.join(".zylcode").join("ledger.db")).unwrap();
+        conn.execute("UPDATE ledger_entries SET prev_hash = 'forged' WHERE session_id = ?1", [s1.to_string()])
+            .unwrap();
+        let payload = evidence_payload(&root);
+        assert_eq!(payload["chain_intact"], false, "{payload:?}");
     }
 
     #[test]

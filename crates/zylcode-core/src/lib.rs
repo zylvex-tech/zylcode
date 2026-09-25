@@ -26,6 +26,13 @@ pub mod sandbox;
 pub mod sqlite_ledger;
 pub mod surfaces;
 pub mod terminal;
+pub mod missions;
+
+/// Fresh ledger session id; re-exported so dependent crates (e.g. the
+/// desktop shell) need not depend on `uuid` directly.
+pub fn new_session_id() -> uuid::Uuid {
+    uuid::Uuid::new_v4()
+}
 
 use crate::ai_input::AIInputSystem;
 use crate::computer_use::ComputerUseSystem;

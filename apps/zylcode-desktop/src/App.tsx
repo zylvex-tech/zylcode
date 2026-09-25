@@ -73,7 +73,16 @@ type SurfaceType =
   | "extensions"
   | "forge";
 
-type DockModule = "agent" | "preview" | "proof" | "mcp" | "providers" | "diagnostics";
+type DockModule =
+  | "agent"
+  | "pulse"
+  | "changes"
+  | "files"
+  | "preview"
+  | "proof"
+  | "mcp"
+  | "providers"
+  | "diagnostics";
 
 type BottomTab = "terminal" | "output" | "problems" | "tests" | "evidence" | "dev-tools";
 

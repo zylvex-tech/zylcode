@@ -630,6 +630,207 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
         Json(serde_json::json!({ "status": "ok" }))
     }
 
+    async fn missions_list(
+        State(missions): State<Arc<zylcode_core::missions::MissionQueue>>,
+    ) -> Json<serde_json::Value> {
+        let list: Vec<serde_json::Value> = missions
+            .list()
+            .iter()
+            .map(|m| serde_json::to_value(m).unwrap_or(serde_json::json!({})))
+            .collect();
+        Json(serde_json::json!({ "missions": list }))
+    }
+
+    async fn missions_enqueue(
+        State(missions): State<Arc<zylcode_core::missions::MissionQueue>>,
+        axum::Json(body): axum::Json<serde_json::Value>,
+    ) -> Json<serde_json::Value> {
+        let task = body["task"].as_str().unwrap_or("");
+        let mode = match body["mode"].as_str().unwrap_or("build") {
+            "plan" => zylcode_core::missions::MissionMode::Plan,
+            _ => zylcode_core::missions::MissionMode::Build,
+        };
+        match missions.enqueue(task, mode) {
+            Ok(m) => Json(serde_json::to_value(&m).unwrap_or(serde_json::json!({ "error": "serialization" }))),
+            Err(e) => Json(serde_json::json!({ "error": format!("enqueue failed: {e:#}") })),
+        }
+    }
+
+    async fn missions_clear(
+        State(missions): State<Arc<zylcode_core::missions::MissionQueue>>,
+    ) -> Json<serde_json::Value> {
+        match missions.clear() {
+            Ok(()) => Json(serde_json::json!({ "status": "ok" })),
+            Err(e) => Json(serde_json::json!({ "error": format!("clear failed: {e:#}") })),
+        }
+    }
+
+    /// Drain one queued mission for real: BUILD missions run the actual
+    /// Best-of-N working-tree verification (candidates against the real
+    /// suite, ledger-recorded); PLAN missions record a plan built from the
+    /// intelligence pipeline without executing anything.
+    async fn missions_run_next(
+        State(st): State<ServiceState>,
+    ) -> Json<serde_json::Value> {
+        let missions = st.missions;
+        let root = st.root;
+        let lock = st.mission_lock;
+        let Some(mission) = missions.claim_next() else {
+            return Json(serde_json::json!({ "status": "idle", "reason": "queue empty" }));
+        };
+        // Hold the drain lock across the whole run; a second concurrent
+        // run-next reports busy instead of racing candidates.
+        let Ok(_guard) = lock.try_lock() else {
+            missions.finish(
+                &mission.id,
+                false,
+                "another mission is already running; queued again",
+                None,
+            );
+            missions.enqueue(&mission.task, mission.mode).ok();
+            return Json(serde_json::json!({ "status": "busy", "mission_id": mission.id }));
+        };
+        let started = std::time::Instant::now();
+        match mission.mode {
+            zylcode_core::missions::MissionMode::Plan => {
+                let result =
+                    tokio::task::spawn_blocking({
+                        let root = Arc::clone(&root);
+                        let task = mission.task.clone();
+                        move || zylcode_core::missions::build_plan(&root, &task)
+                    })
+                    .await;
+                match result {
+                    Ok(Ok(plan)) => {
+                        let head: String = plan.lines().take(6).collect::<Vec<_>>().join(" ");
+                        missions.finish(&mission.id, true, &head, None);
+                        Json(serde_json::json!({ "status": "done", "mission": mission.id, "mode": "plan", "plan": plan }))
+                    }
+                    Ok(Err(e)) => {
+                        missions.finish(&mission.id, false, &format!("plan failed: {e:#}"), None);
+                        Json(serde_json::json!({ "status": "failed", "mission": mission.id, "error": format!("{e:#}") }))
+                    }
+                    Err(e) => {
+                        missions.finish(&mission.id, false, &format!("plan task failed: {e}"), None);
+                        Json(serde_json::json!({ "status": "failed", "mission": mission.id, "error": format!("{e}") }))
+                    }
+                }
+            }
+            zylcode_core::missions::MissionMode::Build => {
+                // Real pipeline: working-tree Best-of-N with the ledger.
+                let ledger_path = root.join(".zylcode").join("ledger.db");
+                let _ = std::fs::create_dir_all(ledger_path.parent().unwrap());
+                let ledger: Arc<dyn zylcode_core::ledger::LedgerStore> =
+                    match zylcode_core::sqlite_ledger::SqliteLedgerStore::new(
+                        ledger_path.to_string_lossy().as_ref(),
+                    ) {
+                        Ok(l) => Arc::new(l),
+                        Err(e) => {
+                            missions.finish(
+                                &mission.id,
+                                false,
+                                &format!("ledger unavailable: {e:#}"),
+                                None,
+                            );
+                            return Json(serde_json::json!({
+                                "status": "failed", "mission": mission.id,
+                                "error": format!("ledger unavailable: {e:#}"),
+                            }));
+                        }
+                    };
+                let session_id = uuid::Uuid::new_v4();
+                let source: Arc<dyn zylcode_core::patch_best_of_n::CandidateSource> = Arc::new(
+                    zylcode_core::patch_best_of_n::WorkingTreeSource {
+                        repo_root: root.as_ref().clone(),
+                    },
+                );
+                let config = zylcode_core::best_of_n::BestOfNConfig {
+                    candidates: 1,
+                    per_candidate_timeout: std::time::Duration::from_secs(1800),
+                    max_concurrent: 1,
+                };
+                let run = zylcode_core::patch_best_of_n::run_patch_best_of_n(
+                    &mission.task,
+                    source,
+                    None,
+                    &root,
+                    Some(Arc::clone(&ledger)),
+                    Some(session_id),
+                    &config,
+                    vec!["cargo".to_string(), "test".to_string()],
+                    std::time::Duration::from_secs(1800),
+                )
+                .await;
+                let elapsed = started.elapsed().as_secs();
+                match run {
+                    Ok(result) => {
+                        let selected = result.selection.outcomes.iter().find(|o| o.passed);
+                        match selected {
+                            Some(o) => {
+                                let summary = format!(
+                                    "candidate {} passed: {} of {} checks green ({}s)",
+                                    o.candidate_index,
+                                    o.evidence.passing_checks(),
+                                    o.evidence.checks.len(),
+                                    elapsed
+                                );
+                                let sess = session_id.to_string();
+                                missions.finish(&mission.id, true, &summary, Some(sess));
+                                Json(serde_json::json!({
+                                    "status": "done", "mission": mission.id, "mode": "build",
+                                    "summary": summary, "ledger_session": session_id.to_string(),
+                                }))
+                            }
+                            None => {
+                                let summary = format!(
+                                    "no candidate passed verification ({}s)",
+                                    elapsed
+                                );
+                                missions.finish(&mission.id, false, &summary, Some(session_id.to_string()));
+                                Json(serde_json::json!({ "status": "failed", "mission": mission.id, "summary": summary }))
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        missions.finish(&mission.id, false, &format!("best-of-n failed: {e:#}"), None);
+                        Json(serde_json::json!({ "status": "failed", "mission": mission.id, "error": format!("{e:#}") }))
+                    }
+                }
+            }
+        }
+    }
+
+    async fn recent_files(
+        State(root): State<Arc<std::path::PathBuf>>,
+    ) -> Json<serde_json::Value> {
+        let root = Arc::clone(&root);
+        let payload = tokio::task::spawn_blocking(move || {
+            // Recently modified tracked files: git gives the truth.
+            let out = std::process::Command::new("git")
+                .args(["log", "--name-only", "--pretty=format:", "-12"])
+                .current_dir(root.as_ref())
+                .output();
+            match out {
+                Ok(o) if o.status.success() => {
+                    let mut files: Vec<String> = String::from_utf8_lossy(&o.stdout)
+                        .lines()
+                        .filter(|l| !l.trim().is_empty())
+                        .map(|l| l.trim().to_string())
+                        .collect();
+                    files.dedup();
+                    serde_json::json!({ "recently_edited": files.into_iter().take(24).collect::<Vec<_>>() })
+                }
+                Ok(o) => serde_json::json!({ "error": String::from_utf8_lossy(&o.stderr).to_string() }),
+                Err(e) => serde_json::json!({ "error": format!("git failed: {e}") }),
+            }
+        })
+        .await;
+        match payload {
+            Ok(v) => Json(v),
+            Err(e) => Json(serde_json::json!({ "error": format!("recent task failed: {e}") })),
+        }
+    }
+
     async fn repo_intel(
         State(root): State<Arc<std::path::PathBuf>>,
         axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
@@ -654,6 +855,9 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
     struct ServiceState {
         root: Arc<std::path::PathBuf>,
         hub: Arc<zylcode_core::terminal::TerminalHub>,
+        missions: Arc<zylcode_core::missions::MissionQueue>,
+        /// Serialize Best-of-N drains: one mission runs at a time.
+        mission_lock: Arc<tokio::sync::Mutex<()>>,
     }
 
     let app = Router::new()
@@ -665,11 +869,19 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
         .route("/api/evidence", get(evidence))
         .route("/api/terminal/exec", axum::routing::post(terminal_exec))
         .route("/api/terminal/reset", axum::routing::post(terminal_reset))
+        .route("/api/missions", axum::routing::get(missions_list).post(missions_enqueue))
+        .route("/api/missions/clear", axum::routing::post(missions_clear))
+        .route("/api/missions/run-next", axum::routing::post(missions_run_next))
+        .route("/api/recent-files", axum::routing::get(recent_files))
         .with_state(ServiceState {
             root: Arc::clone(&root),
             hub: Arc::new(zylcode_core::terminal::TerminalHub::new(
                 root.as_ref().clone(),
             )),
+            missions: Arc::new(zylcode_core::missions::MissionQueue::new(
+                root.as_ref().clone(),
+            )),
+            mission_lock: Arc::new(tokio::sync::Mutex::new(())),
         });
 
     let addr = std::net::SocketAddr::from(([127, 0, 0, 1], port));

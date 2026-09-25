@@ -16,6 +16,8 @@ struct EngineState {
     vector_cache: Arc<zylcode_core::cache::VectorCacheStore>,
     /// Terminal sessions: cwd state persists for the app's lifetime.
     terminal_hub: Arc<zylcode_core::terminal::TerminalHub>,
+    /// Mission queue: file-backed, survives app restarts.
+    missions: Arc<zylcode_core::missions::MissionQueue>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -215,6 +217,125 @@ async fn repo_context(
     })
     .await
     .map_err(|e| format!("intel task failed: {e}"))?
+}    /// Mission queue: append a task (build or plan mode).
+#[tauri::command]
+async fn mission_enqueue(
+    task: String,
+    mode: Option<String>,
+    state: tauri::State<'_, EngineState>,
+) -> Result<serde_json::Value, String> {
+    let m = if mode.as_deref() == Some("plan") {
+        zylcode_core::missions::MissionMode::Plan
+    } else {
+        zylcode_core::missions::MissionMode::Build
+    };
+    state
+        .missions
+        .enqueue(&task, m)
+        .map(|mission| serde_json::to_value(&mission).unwrap_or(serde_json::json!({})))
+        .map_err(|e| format!("enqueue failed: {e:#}"))
+}
+
+/// Mission queue: full list, newest first.
+#[tauri::command]
+async fn missions_list(
+    state: tauri::State<'_, EngineState>,
+) -> Result<serde_json::Value, String> {
+    let list: Vec<serde_json::Value> = state
+        .missions
+        .list()
+        .iter()
+        .map(|m| serde_json::to_value(m).unwrap_or(serde_json::json!({})))
+        .collect();
+    Ok(serde_json::json!({ "missions": list }))
+}
+
+/// Drain one queued mission for real (best-of-n or plan generation).
+#[tauri::command]
+async fn mission_run_next(
+    state: tauri::State<'_, EngineState>,
+) -> Result<serde_json::Value, String> {
+    let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
+    let Some(mission) = state.missions.claim_next() else {
+        return Ok(serde_json::json!({ "status": "idle", "reason": "queue empty" }));
+    };
+    match mission.mode {
+        zylcode_core::missions::MissionMode::Plan => {
+            let hub = state.missions.clone();
+            tokio::task::spawn_blocking(move || {
+                match zylcode_core::missions::build_plan(&root, &mission.task) {
+                    Ok(plan) => {
+                        let head: String = plan.lines().take(6).collect::<Vec<_>>().join(" ");
+                        hub.finish(&mission.id, true, &head, None);
+                        serde_json::json!({ "status": "done", "mission": mission.id, "mode": "plan", "plan": plan })
+                    }
+                    Err(e) => {
+                        hub.finish(&mission.id, false, &format!("plan failed: {e:#}"), None);
+                        serde_json::json!({ "status": "failed", "mission": mission.id, "error": format!("{e:#}") })
+                    }
+                }
+            })
+            .await
+            .map_err(|e| format!("plan task failed: {e}"))
+        }
+        zylcode_core::missions::MissionMode::Build => {
+            let ledger_path = root.join(".zylcode").join("ledger.db");
+            let _ = std::fs::create_dir_all(ledger_path.parent().unwrap());
+            let ledger: Arc<dyn zylcode_core::ledger::LedgerStore> =
+                zylcode_core::sqlite_ledger::SqliteLedgerStore::new(
+                    ledger_path.to_string_lossy().as_ref(),
+                )
+                .map(Arc::new)
+                .map_err(|e| format!("ledger unavailable: {e:#}"))?;
+            let session_id = zylcode_core::new_session_id();
+            let source: Arc<dyn zylcode_core::patch_best_of_n::CandidateSource> = Arc::new(
+                zylcode_core::patch_best_of_n::WorkingTreeSource { repo_root: root.clone() },
+            );
+            let config = zylcode_core::best_of_n::BestOfNConfig {
+                candidates: 1,
+                per_candidate_timeout: std::time::Duration::from_secs(1800),
+                max_concurrent: 1,
+            };
+            let hub = state.missions.clone();
+            let run = zylcode_core::patch_best_of_n::run_patch_best_of_n(
+                &mission.task,
+                source,
+                None,
+                &root,
+                Some(ledger),
+                Some(session_id),
+                &config,
+                vec!["cargo".to_string(), "test".to_string()],
+                std::time::Duration::from_secs(1800),
+            )
+            .await;
+            match run {
+                Ok(result) => {
+                    let passed = result.selection.outcomes.iter().find(|o| o.passed);
+                    Ok(match passed {
+                        Some(o) => {
+                            let summary = format!(
+                                "candidate {} passed: {} of {} checks green",
+                                o.candidate_index,
+                                o.evidence.passing_checks(),
+                                o.evidence.checks.len()
+                            );
+                            hub.finish(&mission.id, true, &summary, Some(session_id.to_string()));
+                            serde_json::json!({ "status": "done", "mission": mission.id, "mode": "build", "summary": summary, "ledger_session": session_id.to_string() })
+                        }
+                        None => {
+                            hub.finish(&mission.id, false, "no candidate passed verification", Some(session_id.to_string()));
+                            serde_json::json!({ "status": "failed", "mission": mission.id, "summary": "no candidate passed verification" })
+                        }
+                    })
+                }
+                Err(e) => {
+                    hub.finish(&mission.id, false, &format!("best-of-n failed: {e:#}"), None);
+                    Ok(serde_json::json!({ "status": "failed", "mission": mission.id, "error": format!("{e:#}") }))
+                }
+            }
+        }
+    }
 }
 
 /// Terminal exec with persistent cwd sessions — the same TerminalHub model
@@ -865,8 +986,9 @@ fn main() {
                 provider_configs,
                 vector_cache,
                 terminal_hub: Arc::new(zylcode_core::terminal::TerminalHub::new(
-                    workspace_root,
+                    workspace_root.clone(),
                 )),
+                missions: Arc::new(zylcode_core::missions::MissionQueue::new(workspace_root)),
             }
         })
         .invoke_handler(tauri::generate_handler![
@@ -876,6 +998,9 @@ fn main() {
             repo_context,
             git_status,
             terminal_exec,
+            mission_enqueue,
+            missions_list,
+            mission_run_next,
             repo_search,
             repo_file_tree,
             evidence_ledger,
