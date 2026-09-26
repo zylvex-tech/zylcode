@@ -28,6 +28,7 @@ import {
   MenuBar,
   type Menu,
 } from "./components/shell/MenuBar";
+import { isEmbeddedPreview } from "./components/shell/RightWorkspace";
 import {
   ActivityRail,
   ContextSidebar,
@@ -103,6 +104,41 @@ type DockModule =
 // ---------------------------------------------------------------------------
 // Main app
 // ---------------------------------------------------------------------------
+
+/**
+ * Embedded preview target: when this app is iframed by its own Preview pane
+ * (`/?embed=1`), render content only — no menu bar, rail, sidebars, or status
+ * strip. The previous behavior rendered the full shell recursively, which is
+ * how a second menu system appeared inside the right workspace.
+ */
+function EmbeddedPreviewApp() {
+  return (
+    <div className="h-screen bg-background text-text-primary overflow-auto">
+      <div className="p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <img src="/branding/emblem.png" alt="" className="h-5 w-5" draggable={false} />
+          <span className="text-sm font-semibold tracking-wide">ZylCode — live project preview</span>
+        </div>
+        <p className="text-xs text-text-muted max-w-md">
+          This pane mirrors the running workspace front end. A production project preview
+          (the built output of the project under development) is served once a project's
+          preview target is commissioned in Project System — the shell around this pane
+          remains fully interactive while this frame reflects the live state.
+        </p>
+        <div className="grid grid-cols-2 gap-2 max-w-md text-xs">
+          <div className="border border-border rounded-lg p-2">
+            <p className="text-[10px] text-text-muted">ENGINE</p>
+            <p className="font-mono text-text-secondary">serve-intel · 17630</p>
+          </div>
+          <div className="border border-border rounded-lg p-2">
+            <p className="text-[10px] text-text-muted">FRONTEND</p>
+            <p className="font-mono text-text-secondary">vite · 1420</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function AppContent() {
   const [activeActivity, setActiveActivity] = useState<ActivityId>("explorer");
@@ -579,6 +615,11 @@ function AppContent() {
 // ---------------------------------------------------------------------------
 
 export default function App() {
+  // Embedded context (`/?embed=1`, e.g. the Preview pane iframing this app):
+  // content-only render, no second shell.
+  if (isEmbeddedPreview()) {
+    return <EmbeddedPreviewApp />;
+  }
   return (
     <ThemeProvider>
       <AppContent />

@@ -40,6 +40,7 @@ export const RightWorkspace: React.FC = () => {
   }, []);
 
   const previewStatus: CapabilityStatus = embedded ? "LIMITED" : "AVAILABLE";
+  const previewLabel = "Workspace mirror — the project's own preview target is not commissioned yet";
 
   return (
     <aside className="hidden xl:flex w-[380px] 2xl:w-[440px] shrink-0 border-l border-border bg-surface/40 flex-col min-h-0">
@@ -128,8 +129,10 @@ export const RightWorkspace: React.FC = () => {
             )}
             <div className="shrink-0 px-2 py-1 border-t border-border flex items-center gap-2">
               <StatusBadge status={previewStatus} size="xs" />
-              <span className="text-[10px] text-text-muted truncate">
-                {tab === "responsive" ? `Responsive · ${WIDTHS.find((w) => w.id === width)?.label}` : "Live dev server"}
+              <span className="text-[10px] text-text-muted truncate" title={previewLabel}>
+                {tab === "responsive"
+                  ? `Responsive · ${WIDTHS.find((w) => w.id === width)?.label}`
+                  : "Workspace mirror"}
               </span>
             </div>
           </div>
