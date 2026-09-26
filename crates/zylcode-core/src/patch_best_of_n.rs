@@ -107,8 +107,7 @@ impl CandidateSource for WorkingTreeSource {
         // mark untracked-but-not-ignored files as intent-to-add inside it, and
         // diff against HEAD. The user's real index is never touched — staging
         // state, `git status`, and any concurrent git work are unaffected.
-        let index_file =
-            std::env::temp_dir().join(format!("zylcode-wtidx-{}", Uuid::new_v4()));
+        let index_file = std::env::temp_dir().join(format!("zylcode-wtidx-{}", Uuid::new_v4()));
         let run = |args: &[&str]| {
             tokio::process::Command::new("git")
                 .args(args)
@@ -301,12 +300,20 @@ impl CandidateVerifier for PatchWorktreeVerifier {
         // 1. Isolated worktree at HEAD.
         let worktree = match CandidateWorktree::create(&self.repo_root, candidate_index).await {
             Ok(wt) => {
-                checks.push(("worktree_created".into(), true, wt.root.display().to_string()));
+                checks.push((
+                    "worktree_created".into(),
+                    true,
+                    wt.root.display().to_string(),
+                ));
                 wt
             }
             Err(detail) => {
                 checks.push(("worktree_created".into(), false, detail));
-                return Ok(VerificationEvidence { checks, exit_status: None, output_tail: String::new() });
+                return Ok(VerificationEvidence {
+                    checks,
+                    exit_status: None,
+                    output_tail: String::new(),
+                });
             }
         };
 
@@ -316,14 +323,22 @@ impl CandidateVerifier for PatchWorktreeVerifier {
             if !self.keep_on_failure {
                 worktree.remove().await;
             }
-            return Ok(VerificationEvidence { checks, exit_status: None, output_tail: String::new() });
+            return Ok(VerificationEvidence {
+                checks,
+                exit_status: None,
+                output_tail: String::new(),
+            });
         }
         checks.push(("patch_applied".into(), true, "applied cleanly".into()));
 
         // 3. The real suite, inside the worktree.
         let suite_result = match self.command.split_first() {
             None => {
-                checks.push(("suite_configured".into(), false, "empty suite command".into()));
+                checks.push((
+                    "suite_configured".into(),
+                    false,
+                    "empty suite command".into(),
+                ));
                 None
             }
             Some((program, args)) => {
@@ -371,7 +386,11 @@ impl CandidateVerifier for PatchWorktreeVerifier {
             None => (None, String::new()),
         };
 
-        Ok(VerificationEvidence { checks, exit_status, output_tail: tail })
+        Ok(VerificationEvidence {
+            checks,
+            exit_status,
+            output_tail: tail,
+        })
     }
 }
 
@@ -443,14 +462,7 @@ pub async fn run_patch_best_of_n(
         }),
     };
 
-    let selection = run_best_of_n(
-        &patches,
-        verifier,
-        ledger,
-        session_id,
-        config,
-    )
-    .await?;
+    let selection = run_best_of_n(&patches, verifier, ledger, session_id, config).await?;
 
     Ok(PatchBestOfNResult { selection, patches })
 }
@@ -567,7 +579,10 @@ mod tests {
     ) -> PatchBestOfNResult {
         let root: &PathBuf = shared_git_repo();
         let (ledger_arc, session) = match &ledger {
-            Some((l, s)) => (Some(Arc::clone(l) as Arc<dyn crate::ledger::LedgerStore>), Some(*s)),
+            Some((l, s)) => (
+                Some(Arc::clone(l) as Arc<dyn crate::ledger::LedgerStore>),
+                Some(*s),
+            ),
             None => (None, None),
         };
         run_patch_best_of_n(
@@ -599,7 +614,12 @@ mod tests {
         )
         .await;
 
-        assert_eq!(result.selection.selected, Some(0), "{:?}", result.selection.selection_reason);
+        assert_eq!(
+            result.selection.selected,
+            Some(0),
+            "{:?}",
+            result.selection.selection_reason
+        );
         let exported = std::env::temp_dir().join(format!("winner-{}.patch", Uuid::new_v4()));
         let bytes = result.export_winner(&exported).unwrap();
         assert_eq!(bytes, good.len());
@@ -609,12 +629,7 @@ mod tests {
 
     #[tokio::test]
     async fn all_candidates_failing_to_apply_selects_nothing() {
-        let result = run(
-            vec!["garbage".into(), "".into()],
-            fast_pass_command(),
-            None,
-        )
-        .await;
+        let result = run(vec!["garbage".into(), "".into()], fast_pass_command(), None).await;
         assert_eq!(result.selection.selected, None);
         assert!(result.selection.selection_reason.contains("refusing"));
         // The refusals name the failing stage.
@@ -670,7 +685,9 @@ mod tests {
                 Sha256::digest(format!("{}:{}", e.prev_hash, e.action_id).as_bytes())
             );
         }
-        assert!(entries.iter().any(|e| e.action_id == "best_of_n.patch_export"));
+        assert!(entries
+            .iter()
+            .any(|e| e.action_id == "best_of_n.patch_export"));
     }
 
     #[tokio::test]
@@ -680,10 +697,13 @@ mod tests {
             diff.clone(),
             String::new(), // an empty generation is a candidate that fails later
         ]));
-        let patches = ModelPatchSource { client, context: None }
-            .generate("add m.txt", 2)
-            .await
-            .unwrap();
+        let patches = ModelPatchSource {
+            client,
+            context: None,
+        }
+        .generate("add m.txt", 2)
+        .await
+        .unwrap();
         assert_eq!(patches.len(), 2);
         assert_eq!(patches[0], diff);
         assert_eq!(patches[1], "");
@@ -736,14 +756,22 @@ mod tests {
         std::fs::write(&lib, "# t\nmod missions;\n").unwrap();
         std::fs::write(repo.join("missions.rs"), "pub fn live() {}\n").unwrap();
 
-        let patches = WorkingTreeSource { repo_root: repo.clone() }
-            .generate("t", 1)
-            .await
-            .unwrap();
+        let patches = WorkingTreeSource {
+            repo_root: repo.clone(),
+        }
+        .generate("t", 1)
+        .await
+        .unwrap();
         assert_eq!(patches.len(), 1);
         let patch = &patches[0];
-        assert!(patch.contains("missions.rs"), "untracked file must be in the diff: {patch}");
-        assert!(patch.contains("README.md"), "tracked edit must be in the diff");
+        assert!(
+            patch.contains("missions.rs"),
+            "untracked file must be in the diff: {patch}"
+        );
+        assert!(
+            patch.contains("README.md"),
+            "tracked edit must be in the diff"
+        );
 
         let _ = std::fs::remove_dir_all(&repo);
     }

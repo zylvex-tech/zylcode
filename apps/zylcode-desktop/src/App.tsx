@@ -106,7 +106,7 @@ type DockModule =
 
 function AppContent() {
   const [activeActivity, setActiveActivity] = useState<ActivityId>("explorer");
-  const [activeSurface, setActiveSurface] = useState<SurfaceType>("code");
+  const [activeSurface, setActiveSurface] = useState<SurfaceType>("home");
   const [activeDockModule, setActiveDockModule] = useState<DockModule>("agent");
   const [bottomPanelOpen, setBottomPanelOpen] = usePersistentState("bottomOpen", true);
   const [activeBottomTab, setActiveBottomTab] = useState<BottomTab>("terminal");
@@ -414,7 +414,13 @@ function AppContent() {
       <MenuBar
         menus={menus}
         brand={
-          <div className="flex items-center gap-2 mr-2">
+          <button
+            type="button"
+            onClick={() => setActiveSurface("home")}
+            className="flex items-center gap-2 mr-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            aria-label="Go to Mission Home"
+            title="Mission Home"
+          >
             <div
               className="flex items-center gap-1.5 shrink-0 rounded-md overflow-hidden"
               style={{ background: "rgb(20 20 20 / 0.92)" }}
@@ -433,7 +439,7 @@ function AppContent() {
               />
             </div>
             <span className="hidden lg:inline text-[10px] font-mono text-text-muted">v0.3.0-convergence</span>
-          </div>
+          </button>
         }
         right={
           <div className="flex items-center gap-2">
@@ -509,6 +515,10 @@ function AppContent() {
                 onOpenProject={() => {
                   setActiveActivity("explorer");
                   setActiveSurface("code");
+                }}
+                onOpenMissions={() => {
+                  setActiveActivity("missions");
+                  setActiveSurface("missions");
                 }}
                 activeTab={activeTab}
                 setActiveTab={setActiveTab}

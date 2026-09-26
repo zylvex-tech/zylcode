@@ -70,8 +70,7 @@ pub fn search_payload(root: &Path, query: &str) -> Result<Value> {
             let display = display_path(root, &f.path);
             let path_str = display.to_lowercase();
             let name_match = path_str.contains(&q_lower);
-            let token_match = !tokens.is_empty()
-                && tokens.iter().all(|t| path_str.contains(t));
+            let token_match = !tokens.is_empty() && tokens.iter().all(|t| path_str.contains(t));
             if name_match || token_match {
                 let resource = display;
                 if seen.insert(format!("file:{resource}")) {
@@ -254,11 +253,12 @@ struct EvidenceRow {
 }
 
 fn read_evidence_rows(db_path: &Path, limit: usize) -> Result<Vec<EvidenceRow>> {
-    anyhow::ensure!(db_path.exists(), "no evidence ledger at {}", db_path.display());
-    let conn = Connection::open_with_flags(
-        db_path,
-        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
-    )?;
+    anyhow::ensure!(
+        db_path.exists(),
+        "no evidence ledger at {}",
+        db_path.display()
+    );
+    let conn = Connection::open_with_flags(db_path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)?;
     let mut stmt = conn.prepare(
         "SELECT id, session_id, action_id, state, prev_hash, timestamp, payload, error
          FROM ledger_entries
@@ -307,9 +307,7 @@ fn chain_is_intact(rows_oldest_first: &[EvidenceRow]) -> bool {
     // session_id -> expected prev_hash of the session's next row
     let mut anchors: HashMap<&str, String> = HashMap::new();
     for row in rows_oldest_first {
-        let expected = anchors
-            .entry(row.session_id.as_str())
-            .or_default(); // genesis for a fresh session
+        let expected = anchors.entry(row.session_id.as_str()).or_default(); // genesis for a fresh session
         if row.prev_hash != *expected {
             return false;
         }
@@ -358,10 +356,8 @@ pub fn evidence_payload(root: &Path) -> Value {
     chrono_rows.reverse();
     let intact = chain_is_intact(&chrono_rows);
 
-    let sessions: std::collections::HashSet<&str> = rows
-        .iter()
-        .map(|r| r.session_id.as_str())
-        .collect();
+    let sessions: std::collections::HashSet<&str> =
+        rows.iter().map(|r| r.session_id.as_str()).collect();
 
     let entries: Vec<Value> = rows
         .iter()
@@ -425,7 +421,12 @@ mod tests {
         (dir, root)
     }
 
-    fn append(ledger: &dyn crate::ledger::LedgerStore, session: uuid::Uuid, prev: &str, action: &str) -> String {
+    fn append(
+        ledger: &dyn crate::ledger::LedgerStore,
+        session: uuid::Uuid,
+        prev: &str,
+        action: &str,
+    ) -> String {
         let id = uuid::Uuid::new_v4();
         let entry = LedgerEntry {
             id,
@@ -469,15 +470,19 @@ mod tests {
             .map(|r| r["relevance"].as_f64().unwrap())
             .collect();
         for w in rels.windows(2) {
-            assert!(w[0] >= w[1], "results must be relevance-descending: {rels:?}");
+            assert!(
+                w[0] >= w[1],
+                "results must be relevance-descending: {rels:?}"
+            );
         }
         // A pure filename query finds the file even without symbol hits.
         let by_name = search_payload(&root, "README").unwrap();
         let rows = by_name["results"].as_array().unwrap();
-        assert!(rows
-            .iter()
-            .any(|r| r["resource"].as_str().unwrap().contains("README.md")),
-            "{by_name:?}");
+        assert!(
+            rows.iter()
+                .any(|r| r["resource"].as_str().unwrap().contains("README.md")),
+            "{by_name:?}"
+        );
     }
 
     #[test]
@@ -492,8 +497,12 @@ mod tests {
         let payload = file_tree_payload(&root).unwrap();
         assert!(payload["total_scanned"].as_u64().unwrap() >= 2);
         let rows = payload["rows"].as_array().unwrap();
-        assert!(rows.iter().any(|r| r["path"].as_str().unwrap().contains("engine.rs")));
-        assert!(rows.iter().any(|r| r["path"].as_str().unwrap().contains("README.md")));
+        assert!(rows
+            .iter()
+            .any(|r| r["path"].as_str().unwrap().contains("engine.rs")));
+        assert!(rows
+            .iter()
+            .any(|r| r["path"].as_str().unwrap().contains("README.md")));
         // Sorted by path for a stable tree.
         let paths: Vec<&str> = rows.iter().map(|r| r["path"].as_str().unwrap()).collect();
         let mut sorted = paths.clone();
@@ -506,7 +515,10 @@ mod tests {
         let (_dir, root) = sample_repo();
         let payload = evidence_payload(&root);
         assert_eq!(payload["kind"], "empty");
-        assert!(payload["reason"].as_str().unwrap().contains("no evidence ledger"));
+        assert!(payload["reason"]
+            .as_str()
+            .unwrap()
+            .contains("no evidence ledger"));
     }
 
     #[test]
@@ -514,7 +526,10 @@ mod tests {
         let (_dir, root) = sample_repo();
         std::fs::create_dir_all(root.join(".zylcode")).unwrap();
         let ledger = crate::sqlite_ledger::SqliteLedgerStore::new(
-            root.join(".zylcode").join("ledger.db").to_string_lossy().as_ref(),
+            root.join(".zylcode")
+                .join("ledger.db")
+                .to_string_lossy()
+                .as_ref(),
         )
         .unwrap();
         let session = uuid::Uuid::new_v4();
@@ -528,7 +543,10 @@ mod tests {
         assert_eq!(payload["entry_count"], 2);
         let entries = payload["entries"].as_array().unwrap();
         assert_eq!(entries.len(), 2);
-        assert!(entries[0]["action_id"].as_str().unwrap().starts_with("mission.step"));
+        assert!(entries[0]["action_id"]
+            .as_str()
+            .unwrap()
+            .starts_with("mission.step"));
 
         // Tampering with one link must be detected.
         let conn = Connection::open(root.join(".zylcode").join("ledger.db")).unwrap();
@@ -550,7 +568,10 @@ mod tests {
         let (_dir, root) = sample_repo();
         std::fs::create_dir_all(root.join(".zylcode")).unwrap();
         let ledger = crate::sqlite_ledger::SqliteLedgerStore::new(
-            root.join(".zylcode").join("ledger.db").to_string_lossy().as_ref(),
+            root.join(".zylcode")
+                .join("ledger.db")
+                .to_string_lossy()
+                .as_ref(),
         )
         .unwrap();
         let s1 = uuid::Uuid::new_v4();
@@ -572,7 +593,10 @@ mod tests {
         let (_dir, root) = sample_repo();
         std::fs::create_dir_all(root.join(".zylcode")).unwrap();
         let ledger = crate::sqlite_ledger::SqliteLedgerStore::new(
-            root.join(".zylcode").join("ledger.db").to_string_lossy().as_ref(),
+            root.join(".zylcode")
+                .join("ledger.db")
+                .to_string_lossy()
+                .as_ref(),
         )
         .unwrap();
         let s1 = uuid::Uuid::new_v4();
@@ -581,8 +605,11 @@ mod tests {
         let _ = append(&ledger, s2, "", "b");
 
         let conn = Connection::open(root.join(".zylcode").join("ledger.db")).unwrap();
-        conn.execute("UPDATE ledger_entries SET prev_hash = 'forged' WHERE session_id = ?1", [s1.to_string()])
-            .unwrap();
+        conn.execute(
+            "UPDATE ledger_entries SET prev_hash = 'forged' WHERE session_id = ?1",
+            [s1.to_string()],
+        )
+        .unwrap();
         let payload = evidence_payload(&root);
         assert_eq!(payload["chain_intact"], false, "{payload:?}");
     }
@@ -592,7 +619,10 @@ mod tests {
         let (_dir, root) = sample_repo();
         std::fs::create_dir_all(root.join(".zylcode")).unwrap();
         let _ledger = crate::sqlite_ledger::SqliteLedgerStore::new(
-            root.join(".zylcode").join("ledger.db").to_string_lossy().as_ref(),
+            root.join(".zylcode")
+                .join("ledger.db")
+                .to_string_lossy()
+                .as_ref(),
         )
         .unwrap();
         let payload = evidence_payload(&root);
@@ -605,7 +635,10 @@ mod tests {
         let (_dir, root) = sample_repo();
         let payload = file_content_payload(&root, "src/engine.rs").unwrap();
         assert_eq!(payload["path"], "src/engine.rs");
-        assert!(payload["content"].as_str().unwrap().contains("pub struct Engine;"));
+        assert!(payload["content"]
+            .as_str()
+            .unwrap()
+            .contains("pub struct Engine;"));
         assert_eq!(payload["lines"], 2);
         assert_eq!(payload["lossy"], false);
         assert!(payload["size"].as_u64().unwrap() > 0);

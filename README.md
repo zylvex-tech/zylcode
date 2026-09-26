@@ -93,9 +93,10 @@ Built with Rust for the engine and React + Tauri for the desktop shell. Designed
 execution loop with model-driven decisions, a durable evidence ledger, permission enforcement,
 and crash recovery.
 
-**What does not exist yet:** the Project System, Mission Engine, Vision Studio, Artifact Bus,
-Proof Engine, Delivery Engine, device labs, and the extension marketplace. See the status table
-above — and do not mistake a roadmap item for a capability.
+**What does not exist yet:** Vision Studio, Delivery Engine, device labs, and the extension
+marketplace. The Project System store, Artifact Bus, Proof Engine, and mission approval/verify
+states now exist and are tested (see the status table) — their product surfaces are still being
+built out, and no roadmap item should be mistaken for a capability.
 
 ### Why ZylCode?
 
@@ -110,8 +111,10 @@ Status markers follow `docs/governance/ZYLCODE_PROOF_GRAPH.md`.
 | **Real Tool Execution** | 🟢 R3 — Filesystem, Shell, Git, Search |
 | **Bounded Execution** | 🟢 R3 — steps, timeouts, cancellation |
 | **Proof / Evidence Model** | 🟢 **ACTIVE GOVERNANCE** — R0–R5 ladder defined and enforced |
-| **Proof Engine** | 🟣 **PROPOSED** (Phase 12) — automated proof construction, not yet built |
-| **Model Democracy** | 🟢 **R3 (read) / R1 (routing)** — provider chain and metrics served read-only over HTTP+Tauri; measurement-based routing not yet |
+| **Proof Engine** | 🟣 **PROPOSED → foundation landed** — hash-chained proof records with honest states (Passed/NotRun/Blocked/RuntimeNotReached/EvidenceMissing), acceptance gates, tamper detection; tested, service route live |
+| **Artifact Bus** | 🟣 **PROPOSED → foundation landed** — versioned content-hashed artifacts with forward-only lifecycle; tested, service route live |
+| **Project System (persistence)** | 🟣 **NEW** — schema-versioned project store with migration, recovery, import/export; survives restart (tested) |
+| **Model Democracy** | 🟢 **R3 (read) / R3 (routing foundation)** — provider chain, metrics, AND measured scorecard routing served read-only over HTTP+Tauri; dispatch order follows recorded outcomes once samples exist |
 | **Repository Intelligence** | 🟢 **R3** — reachable: HTTP routes, Tauri commands, IDE surfaces, verified ledger-backed evidence |
 | **Project System** | 🟢 **R3 (core)** — real workspace surfaces (explorer, editor, missions) live in the IDE |
 | **Vision Studio** | 🟣 **PROPOSED** (Phase 8A–9) |
@@ -487,17 +490,17 @@ The status column is authoritative — most of it does not exist yet.
 | Trust foundation — ledger, permissions, recovery | PARTIAL | R3 |
 | Agent Kernel — tools, loop, decisions, memory | PARTIAL | R3 |
 | Intelligence Graph — repository intelligence | PARTIAL | **R3** (HTTP+Tauri reachable, evidence-backed) |
-| Model Platform — provider config + dispatch | PARTIAL | R3 read-only view / R1 (measurement-based routing absent) |
+| Model Platform — provider config + dispatch | PARTIAL | R3 read-only view / routing foundation live (outcome-scored order) |
 | Delivery Engine — release workflow | PARTIAL | R1 (CI blocked) |
 | Execution Engine — shell/tools | PARTIAL | R3 |
-| Project System | **LIVE (core)** | 🟢 R3 — workspace surfaces reachable in the IDE (`fc93a29`) |
-| Mission Engine | **PROPOSED** | — |
+| Project System | **LIVE (core)** | 🟢 R3 — workspace surfaces in the IDE + persistent store with schema versioning/migration (`projects.json`) |
+| Mission Engine | **PARTIAL (real queue live)** | 🟢 R3 core — queue/build/plan/verify with approval + blocked states; best-of-N execution |
 | Extension Platform | **PROPOSED** | — |
-| Artifact Bus | **PROPOSED** | — |
+| Artifact Bus | **FOUNDATION** | 🟢 tested + served (`/api/artifacts`) — lifecycle forward-only, SHA-256 pinned, tamper-flagging |
 | Vision Studio | **PROPOSED** | — |
 | Execution Engine — browser / Android / Mac worker | **PROPOSED** | — |
 | **Computer-Use Engine** | **PROPOSED — non-functional skeleton present** | **R0** |
-| Proof Engine v2 | **PROPOSED** | — |
+| Proof Engine v2 | **FOUNDATION** | 🟢 tested + served (`/api/proofs`) — hash-chained, honest states, acceptance gated to runtime passes |
 | Multi-Agent Engineering | **PROPOSED** | — |
 | Marketplace | **PROPOSED** | — |
 

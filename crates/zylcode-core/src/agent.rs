@@ -1767,9 +1767,7 @@ mod tests {
             enabled: true,
             description: None,
         };
-        registry
-            .register(Arc::new(DynamicTool::new(fs_cfg)))
-            .await;
+        registry.register(Arc::new(DynamicTool::new(fs_cfg))).await;
 
         let model_client = Arc::new(TestModelClient::new(vec![
             // Plan, then one tool call, then complete.
@@ -1791,7 +1789,10 @@ mod tests {
 
         let session_id = Uuid::parse_str(&agent.session().id).unwrap();
         let entries = ledger.get_entries(session_id).await.unwrap();
-        assert!(!entries.is_empty(), "the run must have produced ledger entries");
+        assert!(
+            !entries.is_empty(),
+            "the run must have produced ledger entries"
+        );
 
         let mut prev_hash = String::new(); // documented genesis value
         for (i, entry) in entries.iter().enumerate() {

@@ -30,10 +30,25 @@ export type ProviderRow = {
   timeout_ms: number;
 };
 
+/** Measured per-provider outcome record from the persisted scorecard. */
+export type MeasuredProviderRow = {
+  provider: string;
+  successes: number;
+  failures: number;
+  score: number;
+  avg_latency_ms: number | null;
+};
+
 export type ProvidersState =
   | { kind: "loading" }
   | { kind: "unavailable"; reason: string }
-  | { kind: "ready"; primary_model: string; fallback_model: string; chain: ProviderRow[] };
+  | {
+      kind: "ready";
+      primary_model: string;
+      fallback_model: string;
+      chain: ProviderRow[];
+      measured_ranking: MeasuredProviderRow[];
+    };
 
 export type MetricsState =
   | { kind: "loading" }
@@ -80,6 +95,7 @@ export async function fetchProviders(): Promise<ProvidersState> {
       primary_model: String(data.primary_model ?? ""),
       fallback_model: String(data.fallback_model ?? ""),
       chain: (data.chain as ProviderRow[]) ?? [],
+      measured_ranking: (data.measured_ranking as MeasuredProviderRow[]) ?? [],
     };
   } catch (e) {
     return {

@@ -294,9 +294,7 @@ pub async fn run_best_of_n(
             let guarded = async {
                 match inner.await {
                     Ok(result) => result,
-                    Err(join_err) => {
-                        Err(anyhow::anyhow!("verifier task failed: {join_err}"))
-                    }
+                    Err(join_err) => Err(anyhow::anyhow!("verifier task failed: {join_err}")),
                 }
             };
             let evidence = match tokio::time::timeout(budget, guarded).await {
@@ -414,8 +412,7 @@ pub async fn run_best_of_n(
         None => BestOfNResult {
             selected: None,
             outcomes,
-            selection_reason: "no candidate passed verification; refusing to select"
-                .to_string(),
+            selection_reason: "no candidate passed verification; refusing to select".to_string(),
         },
     };
 
@@ -552,10 +549,7 @@ mod tests {
         assert!(result.selection_reason.contains("candidate 1"));
         assert_eq!(result.outcomes.len(), 3, "every candidate is recorded");
 
-        let entries = ledger
-            .get_entries(session)
-            .await
-            .unwrap();
+        let entries = ledger.get_entries(session).await.unwrap();
         // 3 candidates × 2 entries + 1 selection entry.
         assert_eq!(entries.len(), 7);
         let selection = entries
@@ -708,12 +702,16 @@ mod tests {
             candidate_index: usize,
             _candidate: &str,
         ) -> Result<VerificationEvidence> {
-            let now_active =
-                self.active.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
-            self.peak.fetch_max(now_active, std::sync::atomic::Ordering::SeqCst);
+            let now_active = self
+                .active
+                .fetch_add(1, std::sync::atomic::Ordering::SeqCst)
+                + 1;
+            self.peak
+                .fetch_max(now_active, std::sync::atomic::Ordering::SeqCst);
             let delay = self.delays_ms.get(&candidate_index).copied().unwrap_or(0);
             tokio::time::sleep(std::time::Duration::from_millis(delay)).await;
-            self.active.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+            self.active
+                .fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
             Ok(VerificationEvidence {
                 checks: vec![(
                     "probe".to_string(),
@@ -729,7 +727,9 @@ mod tests {
     #[tokio::test]
     async fn concurrent_verification_finishes_in_roughly_one_suite_run() {
         let verifier = Arc::new(ConcurrencyProbeVerifier::new(
-            [(0, 500), (1, 500), (2, 500), (3, 500)].into_iter().collect(),
+            [(0, 500), (1, 500), (2, 500), (3, 500)]
+                .into_iter()
+                .collect(),
         ));
         let started = std::time::Instant::now();
         let result = run_best_of_n(
@@ -759,7 +759,9 @@ mod tests {
     #[tokio::test]
     async fn max_concurrent_caps_how_many_verify_at_once() {
         let verifier = Arc::new(ConcurrencyProbeVerifier::new(
-            [(0, 250), (1, 250), (2, 250), (3, 250)].into_iter().collect(),
+            [(0, 250), (1, 250), (2, 250), (3, 250)]
+                .into_iter()
+                .collect(),
         ));
         let result = run_best_of_n(
             &["a".into(), "b".into(), "c".into(), "d".into()],

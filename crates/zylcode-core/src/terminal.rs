@@ -135,10 +135,12 @@ impl TerminalHub {
             .clone()
             .filter(|s| !s.trim().is_empty())
             .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
-        let session = sessions.entry(id.clone()).or_insert_with(|| TerminalSession {
-            id: id.clone(),
-            cwd: None,
-        });
+        let session = sessions
+            .entry(id.clone())
+            .or_insert_with(|| TerminalSession {
+                id: id.clone(),
+                cwd: None,
+            });
         let base = req
             .cwd
             .as_ref()
@@ -184,15 +186,13 @@ impl TerminalHub {
         let (program, pre, post) = (
             "cmd.exe",
             vec!["/V:ON".to_string(), "/C".to_string()],
-            ") & echo __ZYLCODE_CWD__!CD! & exit /b !ERRORLEVEL!"
-                .to_string(),
+            ") & echo __ZYLCODE_CWD__!CD! & exit /b !ERRORLEVEL!".to_string(),
         );
         #[cfg(not(target_family = "windows"))]
         let (program, pre, post) = (
             "sh",
             vec!["-c".to_string()],
-            "); __zyl_rc=$?; echo __ZYLCODE_CWD__$PWD; exit $__zyl_rc"
-                .to_string(),
+            "); __zyl_rc=$?; echo __ZYLCODE_CWD__$PWD; exit $__zyl_rc".to_string(),
         );
         // Parenthesize the user command so the wrapper appends to the
         // WHOLE command, not to a compound body: without grouping, a `for`
@@ -240,9 +240,7 @@ impl TerminalHub {
         let (stderr_tail, err_trunc) = tail(&String::from_utf8_lossy(&output.stderr));
 
         // Persist the resulting cwd for the next command in this session.
-        let final_cwd = new_cwd
-            .map(PathBuf::from)
-            .unwrap_or_else(|| base.clone());
+        let final_cwd = new_cwd.map(PathBuf::from).unwrap_or_else(|| base.clone());
         if final_cwd.is_dir() {
             self.store_cwd(&session.id, final_cwd.clone());
         }

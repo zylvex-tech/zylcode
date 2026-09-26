@@ -144,11 +144,7 @@ pub fn get_full_history_commits(root: &Path) -> Result<Vec<GitCommit>> {
     const SEP: &str = "\u{1f}ZYLCOMMIT\u{1f}";
     let output = run_git(
         root,
-        &[
-            "log",
-            &format!("--format={}", SEP),
-            "--name-status",
-        ],
+        &["log", &format!("--format={}", SEP), "--name-status"],
     )?;
 
     let mut commits: Vec<GitCommit> = Vec::new();

@@ -179,14 +179,8 @@ pub fn git_status_payload(root: &Path) -> Result<Value> {
     }
     diff_rows.truncate(MAX_DIFF_ROWS);
 
-    let staged = entries
-        .iter()
-        .filter(|e| e.x != ' ' && e.x != '?')
-        .count();
-    let unstaged = entries
-        .iter()
-        .filter(|e| e.y != ' ' && e.y != '?')
-        .count();
+    let staged = entries.iter().filter(|e| e.x != ' ' && e.x != '?').count();
+    let unstaged = entries.iter().filter(|e| e.y != ' ' && e.y != '?').count();
     let untracked = entries.iter().filter(|e| e.x == '?' || e.y == '?').count();
 
     let head = git(root, &["rev-parse", "--short", "HEAD"]);
@@ -326,7 +320,10 @@ mod tests {
     fn a_non_repository_fails_with_the_git_error() {
         let dir = tempfile::tempdir().unwrap();
         let err = git_status_payload(dir.path());
-        assert!(err.is_err(), "a non-repo must fail, not fabricate a payload");
+        assert!(
+            err.is_err(),
+            "a non-repo must fail, not fabricate a payload"
+        );
     }
 
     #[test]

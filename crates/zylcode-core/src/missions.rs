@@ -40,14 +40,22 @@ pub enum MissionMode {
     Plan,
 }
 
-/// Lifecycle state of a mission.
+/// Lifecycle state of a mission. `WaitingApproval` and `Blocked` are
+/// first-class states: an approval gate must be visible, and a blocked
+/// mission must never masquerade as either queued or failed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum MissionState {
     Queued,
     Running,
+    /// Paused at a human approval gate (permissions/explicit confirmation).
+    WaitingApproval,
+    /// Cannot proceed (missing tool, failed precondition). Asserts the block.
+    Blocked,
     Done,
     Failed,
+    /// Done AND independently verified (proof recorded against it).
+    Verified,
 }
 
 /// One queued mission and its outcome.
@@ -66,6 +74,19 @@ pub struct Mission {
     /// actual failure).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub summary: Option<String>,
+    /// Artifact Bus ids produced by this mission (plan, patches, reports).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub artifact_ids: Vec<String>,
+    /// Why the mission is blocked (present only in `Blocked` state).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub blocked_reason: Option<String>,
+}
+
+impl Mission {
+    /// True when the mission reached a terminal, honestly-good state.
+    pub fn is_complete(&self) -> bool {
+        matches!(self.state, MissionState::Done | MissionState::Verified)
+    }
 }
 
 /// File-backed queue store.
@@ -107,10 +128,7 @@ impl MissionQueue {
     /// Append a mission. Empty tasks are rejected — an intentless queue
     /// entry is noise, not data.
     pub fn enqueue(&self, task: &str, mode: MissionMode) -> Result<Mission> {
-        anyhow::ensure!(
-            !task.trim().is_empty(),
-            "mission task must not be empty"
-        );
+        anyhow::ensure!(!task.trim().is_empty(), "mission task must not be empty");
         let _g = self.lock.lock().unwrap();
         let now = chrono::Utc::now().to_rfc3339();
         let mission = Mission {
@@ -122,6 +140,8 @@ impl MissionQueue {
             updated_at: now,
             ledger_session: None,
             summary: None,
+            artifact_ids: Vec::new(),
+            blocked_reason: None,
         };
         let mut missions = self.load();
         missions.push(mission.clone());
@@ -155,9 +175,104 @@ impl MissionQueue {
             };
             m.summary = Some(summary.to_string());
             m.ledger_session = ledger_session;
+            m.blocked_reason = None;
             m.updated_at = chrono::Utc::now().to_rfc3339();
             let _ = self.store(&missions);
         }
+    }
+
+    /// Park a running mission at the human approval gate.
+    pub fn request_approval(&self, id: &str, reason: &str) {
+        let _g = self.lock.lock().unwrap();
+        let mut missions = self.load();
+        if let Some(m) = missions.iter_mut().find(|m| m.id == id) {
+            m.state = MissionState::WaitingApproval;
+            m.summary = Some(reason.to_string());
+            m.updated_at = chrono::Utc::now().to_rfc3339();
+            let _ = self.store(&missions);
+        }
+    }
+
+    /// Resume a mission that was waiting at the approval gate.
+    pub fn approve(&self, id: &str) -> Result<()> {
+        let _g = self.lock.lock().unwrap();
+        let mut missions = self.load();
+        let mut found = false;
+        for m in &mut missions {
+            if m.id == id {
+                anyhow::ensure!(
+                    m.state == MissionState::WaitingApproval,
+                    "mission {id} is {:?}, not waiting for approval",
+                    m.state
+                );
+                m.state = MissionState::Queued;
+                m.summary = Some("approved by operator; requeued".to_string());
+                m.updated_at = chrono::Utc::now().to_rfc3339();
+                found = true;
+            }
+        }
+        anyhow::ensure!(found, "unknown mission id: {id}");
+        self.store(&missions)
+    }
+
+    /// Mark a mission blocked. A blocked mission asserts why it cannot
+    /// proceed; it is neither queued nor failed.
+    pub fn block(&self, id: &str, reason: &str) {
+        let _g = self.lock.lock().unwrap();
+        let mut missions = self.load();
+        if let Some(m) = missions.iter_mut().find(|m| m.id == id) {
+            m.state = MissionState::Blocked;
+            m.blocked_reason = Some(reason.to_string());
+            m.updated_at = chrono::Utc::now().to_rfc3339();
+            let _ = self.store(&missions);
+        }
+    }
+
+    /// Upgrade a completed mission to `Verified` after independent proof
+    /// (Proof Engine) was recorded against it. Refuses to verify a mission
+    /// that is not actually done — text generation is not completion.
+    pub fn mark_verified(&self, id: &str, proof_note: &str) -> Result<()> {
+        let _g = self.lock.lock().unwrap();
+        let mut missions = self.load();
+        let mut found = false;
+        for m in &mut missions {
+            if m.id == id {
+                anyhow::ensure!(
+                    m.state == MissionState::Done,
+                    "only a Done mission can be verified; {id} is {:?}",
+                    m.state
+                );
+                m.state = MissionState::Verified;
+                m.summary = Some(format!(
+                    "{} — verified: {proof_note}",
+                    m.summary.as_deref().unwrap_or("")
+                ));
+                m.updated_at = chrono::Utc::now().to_rfc3339();
+                found = true;
+            }
+        }
+        anyhow::ensure!(found, "unknown mission id: {id}");
+        self.store(&missions)
+    }
+
+    /// Attach artifact ids produced by this mission.
+    pub fn attach_artifacts(&self, id: &str, artifact_ids: &[String]) -> Result<()> {
+        let _g = self.lock.lock().unwrap();
+        let mut missions = self.load();
+        let mut found = false;
+        for m in &mut missions {
+            if m.id == id {
+                for a in artifact_ids {
+                    if !m.artifact_ids.contains(a) {
+                        m.artifact_ids.push(a.clone());
+                    }
+                }
+                m.updated_at = chrono::Utc::now().to_rfc3339();
+                found = true;
+            }
+        }
+        anyhow::ensure!(found, "unknown mission id: {id}");
+        self.store(&missions)
     }
 
     /// Complete list, newest first.
@@ -186,8 +301,12 @@ pub fn build_plan(root: &Path, task: &str) -> Result<String> {
     let mut plan = String::new();
     plan.push_str("PLAN (no code executed — mode: plan)\n");
     plan.push_str(&format!("task: {task}\n\n"));
-    plan.push_str("1. Study the ranked context below; each item cites why the retriever surfaced it.\n");
-    plan.push_str("2. Design the change; identify the files to touch and the tests that must pass.\n");
+    plan.push_str(
+        "1. Study the ranked context below; each item cites why the retriever surfaced it.\n",
+    );
+    plan.push_str(
+        "2. Design the change; identify the files to touch and the tests that must pass.\n",
+    );
     plan.push_str("3. Switch to BUILD mode to execute — candidates will be verified against the real suite.\n\n");
     if ranked.is_empty() {
         plan.push_str("no ranked context available for this task\n");
@@ -258,7 +377,12 @@ mod tests {
         let q = MissionQueue::new(root);
         let m = q.enqueue("do it", MissionMode::Build).unwrap();
         q.claim_next();
-        q.finish(&m.id, true, "candidate 0 selected: 3 of 3 checks", Some("sess-1".into()));
+        q.finish(
+            &m.id,
+            true,
+            "candidate 0 selected: 3 of 3 checks",
+            Some("sess-1".into()),
+        );
         let list = q.list();
         assert_eq!(list[0].state, MissionState::Done);
         assert_eq!(list[0].ledger_session.as_deref(), Some("sess-1"));
@@ -276,6 +400,73 @@ mod tests {
     }
 
     #[test]
+    fn approval_gate_is_visible_and_resumable() {
+        let (_d, root) = temp_root();
+        let q = MissionQueue::new(root);
+        let m = q.enqueue("risky op", MissionMode::Build).unwrap();
+        q.claim_next();
+        q.request_approval(&m.id, "mission requests filesystem write outside workspace");
+        let listed = q.list();
+        assert_eq!(listed[0].state, MissionState::WaitingApproval);
+
+        // Approving requeues for execution; nothing ran while parked.
+        q.approve(&m.id).unwrap();
+        let resumed = q.list();
+        assert_eq!(resumed[0].state, MissionState::Queued);
+
+        // Approval of a non-waiting mission is refused.
+        let m2 = q.enqueue("other", MissionMode::Build).unwrap();
+        assert!(q.approve(&m2.id).is_err());
+    }
+
+    #[test]
+    fn blocked_is_a_distinct_honest_state() {
+        let (_d, root) = temp_root();
+        let q = MissionQueue::new(root);
+        let m = q.enqueue("needs missing tool", MissionMode::Build).unwrap();
+        q.claim_next();
+        q.block(&m.id, "required tool 'deploy' is not commissioned");
+        let listed = q.list();
+        assert_eq!(listed[0].state, MissionState::Blocked);
+        assert_eq!(
+            listed[0].blocked_reason.as_deref(),
+            Some("required tool 'deploy' is not commissioned")
+        );
+        assert!(!listed[0].is_complete(), "blocked is not complete");
+    }
+
+    #[test]
+    fn verification_requires_done_state() {
+        let (_d, root) = temp_root();
+        let q = MissionQueue::new(root);
+        // A merely-queued mission cannot be verified.
+        let m = q.enqueue("not finished yet", MissionMode::Build).unwrap();
+        assert!(q.mark_verified(&m.id, "proof-x").is_err());
+
+        let m2 = q.enqueue("real work", MissionMode::Build).unwrap();
+        q.claim_next();
+        q.finish(&m2.id, true, "candidate 0 selected", None);
+        q.mark_verified(&m2.id, "proof-abc: suite green at commit c0b2e7f")
+            .unwrap();
+        let listed = q.list();
+        assert_eq!(listed[0].state, MissionState::Verified);
+        assert!(listed[0].summary.as_deref().unwrap().contains("proof-abc"));
+    }
+
+    #[test]
+    fn artifacts_attach_deduplicated() {
+        let (_d, root) = temp_root();
+        let q = MissionQueue::new(root);
+        let m = q.enqueue("make things", MissionMode::Build).unwrap();
+        let ids = vec!["plan-1".to_string(), "code_patch-2".to_string()];
+        q.attach_artifacts(&m.id, &ids).unwrap();
+        // Duplicate attach must not double-list.
+        q.attach_artifacts(&m.id, &ids).unwrap();
+        let listed = q.list();
+        assert_eq!(listed[0].artifact_ids.len(), 2);
+    }
+
+    #[test]
     fn clear_empties_but_keeps_the_file() {
         let (_d, root) = temp_root();
         let q = MissionQueue::new(root.clone());
@@ -283,7 +474,10 @@ mod tests {
         q.enqueue("two", MissionMode::Plan).unwrap();
         q.clear().unwrap();
         assert!(q.list().is_empty());
-        assert!(missions_path(&root).exists(), "queue file must survive clear");
+        assert!(
+            missions_path(&root).exists(),
+            "queue file must survive clear"
+        );
     }
 
     #[test]
@@ -294,6 +488,9 @@ mod tests {
         let plan = build_plan(root, "engine run").unwrap();
         assert!(plan.contains("PLAN"), "{plan}");
         assert!(plan.contains("engine run"), "{plan}");
-        assert!(plan.contains("run_engine"), "plan must cite real symbols: {plan}");
+        assert!(
+            plan.contains("run_engine"),
+            "plan must cite real symbols: {plan}"
+        );
     }
 }

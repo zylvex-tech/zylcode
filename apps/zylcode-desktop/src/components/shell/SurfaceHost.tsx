@@ -41,6 +41,7 @@ interface SurfaceHostProps {
   onMissionStart: (goal: string, autonomy: string, model: string | null) => void;
   onVerifyMission: () => void;
   onOpenProject: () => void;
+  onOpenMissions: () => void;
   activeTab: string | null;
   setActiveTab: React.Dispatch<React.SetStateAction<string | null>>;
   files: any;
@@ -63,6 +64,7 @@ export function SurfaceHost({
   onMissionStart,
   onVerifyMission,
   onOpenProject,
+  onOpenMissions,
   activeTab,
   setActiveTab,
   files,
@@ -78,20 +80,63 @@ export function SurfaceHost({
     switch (surface) {
       case "home":
         return (
-          <div className="p-4">
-            <div className="space-y-4">
+          <div className="p-4 max-w-5xl mx-auto w-full">
+            <header className="border-b border-border pb-5 mb-5">
+              <p className="font-mono text-[11px] tracking-[0.16em] text-primary uppercase">ZylCode workspace</p>
+              <div className="mt-2 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <h1 className="text-2xl font-semibold tracking-tight">Build from a mission</h1>
+                  <p className="mt-1 text-sm text-text-muted max-w-xl">
+                    Turn a clear outcome into planned work, evidence, and a verified result.
+                  </p>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={onOpenMissions}
+                    className="bg-primary text-primary-foreground px-3 py-2 rounded-md text-sm font-medium hover:bg-primary-hover"
+                  >
+                    Start a mission
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onOpenProject}
+                    className="border border-border px-3 py-2 rounded-md text-sm font-medium hover:border-primary/50"
+                  >
+                    Open workspace
+                  </button>
+                </div>
+              </div>
+            </header>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <Panel title="PROJECT" className="lg:col-span-2">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-base font-medium">zylcode</p>
+                    <p className="mt-1 text-[11px] text-text-muted font-mono">C:\\Projects\\zylcode · main</p>
+                  </div>
+                  <StatusBadge status="AVAILABLE" size="xs" />
+                </div>
+                <div className="mt-4 grid grid-cols-3 gap-3 border-t border-border pt-3 text-xs">
+                  <div><p className="text-text-muted">Plan</p><p className="mt-1 font-medium">Ready</p></div>
+                  <div><p className="text-text-muted">Evidence</p><p className="mt-1 font-medium">{missions.some((m) => m.verification) ? "Captured" : "Not captured"}</p></div>
+                  <div><p className="text-text-muted">Missions</p><p className="mt-1 font-medium">{missions.length}</p></div>
+                </div>
+              </Panel>
+              <Panel title="NEXT STEP">
+                <p className="text-sm font-medium">Describe what should change.</p>
+                <p className="mt-1 text-xs text-text-muted">ZylCode will turn it into a mission with an explicit verification path.</p>
+                <button type="button" onClick={onOpenMissions} className="mt-4 text-xs text-primary hover:underline">
+                  Open mission composer →
+                </button>
+              </Panel>
               <Panel title="PROJECTS">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-medium">zylcode</p>
                     <p className="text-[11px] text-text-muted font-mono">C:\Projects\zylcode · main</p>
                   </div>
-                  <button
-                    onClick={onOpenProject}
-                    className="bg-primary text-primary-foreground px-3 py-1.5 rounded-md text-sm font-medium hover:bg-primary-hover"
-                  >
-                    Open project
-                  </button>
+                  <button onClick={onOpenProject} className="text-xs text-primary hover:underline">Open files →</button>
                 </div>
               </Panel>
               <Panel title="RECENT MISSIONS">

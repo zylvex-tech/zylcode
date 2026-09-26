@@ -162,8 +162,8 @@ impl ContextBuilder {
     /// calls with an unchanged tree are content-hash cache hits — the
     /// agent loop no longer pays a full re-index per gathered context.
     fn find_relevant_files_intelligent(&self, task: &str) -> Result<Vec<String>> {
-        let query = crate::intelligence::persisted::PersistedIndex::new(&self.workspace_root)
-            .build()?;
+        let query =
+            crate::intelligence::persisted::PersistedIndex::new(&self.workspace_root).build()?;
         let results = query.relevant_context(task);
         // The ranked stream interleaves file, symbol, package and
         // entry-point resources. Capping the mixed stream before filtering

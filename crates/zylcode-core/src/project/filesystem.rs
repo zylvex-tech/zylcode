@@ -312,9 +312,7 @@ impl ProjectFilesystem {
                 Err(anyhow::anyhow!("Binary file cannot be opened as text"))
             }
             FileClassification::TooLarge => Err(anyhow::anyhow!("File too large for editor")),
-            FileClassification::UnsupportedEncoding => {
-                Err(anyhow::anyhow!("Unsupported encoding"))
-            }
+            FileClassification::UnsupportedEncoding => Err(anyhow::anyhow!("Unsupported encoding")),
         }
     }
 
@@ -375,10 +373,9 @@ impl ProjectFilesystem {
         fs::write(&temp_path, content)
             .with_context(|| format!("Failed to write temp file: {}", relative_path))?;
 
-        fs::rename(&temp_path, self.project_root.join(relative_path))
-            .with_context(|| {
-                format!("Failed to move temp file to destination: {}", relative_path)
-            })?;
+        fs::rename(&temp_path, self.project_root.join(relative_path)).with_context(|| {
+            format!("Failed to move temp file to destination: {}", relative_path)
+        })?;
 
         let bytes = fs::read(self.project_root.join(relative_path))?;
         Ok(format!("{:x}", Sha256::digest(&bytes)))
@@ -731,7 +728,9 @@ fn detect_language(ext: &str) -> String {
 }
 
 pub fn get_file_language(path: &Path) -> Option<String> {
-    path.extension().and_then(|e| e.to_str()).map(detect_language)
+    path.extension()
+        .and_then(|e| e.to_str())
+        .map(detect_language)
 }
 
 #[cfg(test)]

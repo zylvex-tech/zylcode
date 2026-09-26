@@ -287,31 +287,35 @@ mod tests {
     #[test]
     fn container_argv_denies_network_and_freezes_the_rootfs() {
         let root = Path::new("/tmp/wt");
-        let argv = container_argv(&config(), root, "cargo", &["test".to_string()])
-            .expect("argv builds");
+        let argv =
+            container_argv(&config(), root, "cargo", &["test".to_string()]).expect("argv builds");
 
         let joined = argv.join(" ");
         assert!(argv.contains(&"--network=none".to_string()), "{joined}");
         assert!(argv.contains(&"--read-only".to_string()), "{joined}");
         assert!(
-            argv.iter().any(|a| a.starts_with("/tmp:rw,size=") && a.contains(",noexec")),
+            argv.iter()
+                .any(|a| a.starts_with("/tmp:rw,size=") && a.contains(",noexec")),
             "tmpfs must be size-capped and non-executable: {joined}"
         );
         assert!(argv.iter().any(|a| a.starts_with("--cpus=")), "{joined}");
         assert!(argv.iter().any(|a| a.starts_with("--memory=")), "{joined}");
-        assert!(argv.iter().any(|a| a.starts_with("--memory-swap=")), "{joined}");
-        assert!(argv.iter().any(|a| a.starts_with("--pids-limit=")), "{joined}");
+        assert!(
+            argv.iter().any(|a| a.starts_with("--memory-swap=")),
+            "{joined}"
+        );
+        assert!(
+            argv.iter().any(|a| a.starts_with("--pids-limit=")),
+            "{joined}"
+        );
     }
 
     #[test]
     fn only_the_worktree_is_mounted_and_writable() {
         let root = Path::new("/tmp/wt");
-        let argv = container_argv(&config(), root, "cargo", &["test".to_string()])
-            .expect("argv builds");
-        let mounts: Vec<&String> = argv
-            .iter()
-            .filter(|a| a.starts_with("--volume="))
-            .collect();
+        let argv =
+            container_argv(&config(), root, "cargo", &["test".to_string()]).expect("argv builds");
+        let mounts: Vec<&String> = argv.iter().filter(|a| a.starts_with("--volume=")).collect();
         assert_eq!(mounts.len(), 1, "exactly one bind mount: {mounts:?}");
         assert!(
             mounts[0].starts_with("--volume=/tmp/wt:/work:rw"),
@@ -322,8 +326,8 @@ mod tests {
     #[test]
     fn the_image_is_last_among_selectors_and_precedes_the_suite_command() {
         let root = Path::new("/tmp/wt");
-        let argv = container_argv(&config(), root, "cargo", &["test".to_string()])
-            .expect("argv builds");
+        let argv =
+            container_argv(&config(), root, "cargo", &["test".to_string()]).expect("argv builds");
         let image_pos = argv.iter().position(|a| a == "rust:1-bookworm").unwrap();
         assert_eq!(argv[image_pos + 1], "--");
         assert_eq!(argv[image_pos + 2], "cargo");
@@ -359,11 +363,8 @@ mod tests {
         if docker_available().await {
             return;
         }
-        let verifier = SandboxedWorktreeVerifier::new(
-            std::env::temp_dir(),
-            config(),
-            Duration::from_secs(30),
-        );
+        let verifier =
+            SandboxedWorktreeVerifier::new(std::env::temp_dir(), config(), Duration::from_secs(30));
         let err = verifier
             .verify(0, "diff --git a/x b/x")
             .await

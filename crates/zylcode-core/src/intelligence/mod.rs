@@ -5,8 +5,8 @@
 //! This module enables ZylCode to construct, persist, query, update, and verify
 //! a structured model of a software repository.
 
-pub mod architecture;
 pub mod api;
+pub mod architecture;
 pub mod classifier;
 pub mod context;
 pub mod dependency;

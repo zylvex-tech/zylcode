@@ -9,6 +9,7 @@ use crate::intelligence::classifier::{
 use crate::intelligence::types::FileNode;
 use anyhow::Result;
 use chrono::Utc;
+use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
@@ -55,8 +56,11 @@ pub fn scan_repository(root: &Path, config: &ScannerConfig) -> Result<ScanResult
     let mut errors = Vec::new();
     let mut files_scanned = 0usize;
 
-    // Load .gitignore patterns (simple implementation)
-    let gitignore = load_gitignore(root);
+    // Use the same maintained gitignore implementation as ripgrep rather than
+    // trying to approximate anchored paths, `**`, negation, and directory
+    // semantics ourselves. This is a security boundary: an ignored generated
+    // or secret-adjacent tree must never silently enter the intelligence index.
+    let gitignore = load_gitignore(root)?;
 
     for entry in WalkDir::new(root)
         .max_depth(config.max_depth)
@@ -188,62 +192,22 @@ fn is_binary(data: &[u8]) -> bool {
     sample.contains(&0)
 }
 
-/// Load .gitignore patterns (simple implementation).
-fn load_gitignore(root: &Path) -> Vec<String> {
+fn load_gitignore(root: &Path) -> Result<Gitignore> {
+    let mut builder = GitignoreBuilder::new(root);
     let gitignore_path = root.join(".gitignore");
-    match std::fs::read_to_string(gitignore_path) {
-        Ok(content) => content
-            .lines()
-            .map(|l| l.trim().to_string())
-            .filter(|l| !l.is_empty() && !l.starts_with('#'))
-            .collect(),
-        Err(_) => Vec::new(),
+    if gitignore_path.is_file() {
+        builder.add(gitignore_path);
     }
+    // An invalid ignore file fails the scan rather than producing a
+    // plausible-but-incomplete intelligence index.
+    builder.build().map_err(Into::into)
 }
 
-/// Check if a path matches any gitignore pattern (simple glob matching).
-fn is_gitignored(path: &Path, root: &Path, patterns: &[String]) -> bool {
-    let relative = path
-        .strip_prefix(root)
-        .unwrap_or(path)
-        .to_string_lossy()
-        .replace('\\', "/");
-
-    for pattern in patterns {
-        if matches_gitignore_pattern(&relative, pattern) {
-            return true;
-        }
-    }
-    false
-}
-
-/// Simple gitignore pattern matching.
-fn matches_gitignore_pattern(path: &str, pattern: &str) -> bool {
-    let pattern = pattern.trim_end_matches('/');
-
-    // Exact match
-    if path == pattern {
-        return true;
-    }
-
-    // Suffix match (e.g., "*.rs" matches "src/main.rs")
-    if let Some(suffix) = pattern.strip_prefix('*') {
-        return path.ends_with(suffix);
-    }
-
-    // Directory match
-    if path.starts_with(pattern) {
-        return true;
-    }
-
-    // Filename match
-    if let Some(name) = path.rsplit('/').next() {
-        if name == pattern {
-            return true;
-        }
-    }
-
-    false
+/// Check a path and its parents with native gitignore semantics.
+fn is_gitignored(path: &Path, _root: &Path, gitignore: &Gitignore) -> bool {
+    gitignore
+        .matched_path_or_any_parents(path, path.is_dir())
+        .is_ignore()
 }
 
 #[cfg(test)]
@@ -378,9 +342,24 @@ mod tests {
     }
 
     #[test]
-    fn gitignore_pattern_matching() {
-        assert!(matches_gitignore_pattern("target/debug/app", "target"));
-        assert!(matches_gitignore_pattern("src/main.log", "*.log"));
-        assert!(!matches_gitignore_pattern("src/main.rs", "*.log"));
+    fn scan_respects_gitignore_glob_patterns() {
+        let dir = TempDir::new().unwrap();
+        let root = dir.path();
+        fs::write(root.join(".gitignore"), "/private/**\n").unwrap();
+        fs::create_dir_all(root.join("private/nested")).unwrap();
+        fs::write(root.join("private/nested/secret.txt"), "not indexable").unwrap();
+        fs::create_dir_all(root.join("src")).unwrap();
+        fs::write(root.join("src/main.rs"), "fn main() {}").unwrap();
+
+        let result = scan_repository(root, &ScannerConfig::default()).unwrap();
+
+        assert!(
+            result
+                .files
+                .iter()
+                .all(|file| !file.id.starts_with("private/")),
+            "gitignore glob must exclude the private tree: {:?}",
+            result.files.iter().map(|file| &file.id).collect::<Vec<_>>()
+        );
     }
 }

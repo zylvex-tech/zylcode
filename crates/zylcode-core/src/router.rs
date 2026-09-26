@@ -340,6 +340,14 @@ pub fn trim_to_window(
 }
 
 impl RouterConfig {
+    /// Read-only view of the measured provider scorecard, for surfaces that
+    /// never construct a router (HTTP handlers, Tauri commands). Best-ranked
+    /// first; empty when the store is missing or unreadable.
+    pub fn scorecard_view() -> Result<Vec<crate::provider_scorecard::ProviderRecord>> {
+        let path = TokenRouter::scorecard_path();
+        crate::provider_scorecard::ProviderScorecard::open(&path).map(|sc| sc.ranking())
+    }
+
     /// Resolve the base URL for a provider (override or default).
     pub fn base_url(&self, provider: &ModelProvider) -> String {
         self.base_url_overrides
@@ -490,6 +498,9 @@ pub fn estimate_cost(provider: &ProviderKind, input_tokens: u64, output_tokens: 
 
 /// Routes prompts to the configured LLM providers with automatic fallback.
 pub struct TokenRouter {
+    /// Measurement-based routing memory: per-provider outcomes that reorder
+    /// the configured fallback chain once enough samples exist.
+    scorecard: Arc<crate::provider_scorecard::ProviderScorecard>,
     config: RouterConfig,
     metrics: Arc<TokenMetrics>,
     http: reqwest::Client,
@@ -511,6 +522,7 @@ impl std::fmt::Debug for TokenRouter {
 impl Clone for TokenRouter {
     fn clone(&self) -> Self {
         Self {
+            scorecard: Arc::clone(&self.scorecard),
             config: self.config.clone(),
             metrics: Arc::clone(&self.metrics),
             http: self.http.clone(),
@@ -529,12 +541,36 @@ impl TokenRouter {
         // Best-effort init of local vector cache (offline-capable)
         let vector_cache = VectorCacheStore::with_default_path().ok().map(Arc::new);
         Ok(Self {
+            scorecard: Arc::new(
+                crate::provider_scorecard::ProviderScorecard::open(&Self::scorecard_path())
+                    .unwrap_or_else(|_| {
+                        // A broken scorecard must never block dispatch: fall back
+                        // to an isolated in-memory-style location.
+                        let fallback = std::env::temp_dir().join("zylcode-scorecard-fallback.db");
+                        crate::provider_scorecard::ProviderScorecard::open(&fallback)
+                            .expect("temp-dir scorecard must open")
+                    }),
+            ),
             config,
             metrics: Arc::new(TokenMetrics::default()),
             cache: Arc::new(SpeculativeCache::with_defaults()),
             http,
             vector_cache,
         })
+    }
+
+    /// Scorecard location: `ZYLCODE_SCORECARD_PATH` → `~/.zylcode/provider_scorecard.db`
+    /// (same resolution convention as the vector cache).
+    fn scorecard_path() -> std::path::PathBuf {
+        std::env::var("ZYLCODE_SCORECARD_PATH")
+            .ok()
+            .map(std::path::PathBuf::from)
+            .or_else(|| {
+                std::env::var("HOME")
+                    .ok()
+                    .map(|h| std::path::Path::new(&h).join(".zylcode/provider_scorecard.db"))
+            })
+            .unwrap_or_else(|| std::path::PathBuf::from("provider_scorecard.db"))
     }
 
     pub fn with_metrics(config: RouterConfig, metrics: Arc<TokenMetrics>) -> Result<Self> {
@@ -544,6 +580,14 @@ impl TokenRouter {
             .context("failed to build HTTP client")?;
         let vector_cache = VectorCacheStore::with_default_path().ok().map(Arc::new);
         Ok(Self {
+            scorecard: Arc::new(
+                crate::provider_scorecard::ProviderScorecard::open(&Self::scorecard_path())
+                    .unwrap_or_else(|_| {
+                        let fallback = std::env::temp_dir().join("zylcode-scorecard-fallback.db");
+                        crate::provider_scorecard::ProviderScorecard::open(&fallback)
+                            .expect("temp-dir scorecard must open")
+                    }),
+            ),
             config,
             metrics,
             http,
@@ -570,6 +614,14 @@ impl TokenRouter {
             .build()
             .context("failed to build HTTP client")?;
         Ok(Self {
+            scorecard: Arc::new(
+                crate::provider_scorecard::ProviderScorecard::open(&Self::scorecard_path())
+                    .unwrap_or_else(|_| {
+                        let fallback = std::env::temp_dir().join("zylcode-scorecard-fallback.db");
+                        crate::provider_scorecard::ProviderScorecard::open(&fallback)
+                            .expect("temp-dir scorecard must open")
+                    }),
+            ),
             config,
             metrics: Arc::new(TokenMetrics::default()),
             cache: Arc::new(SpeculativeCache::with_defaults()),
@@ -585,6 +637,14 @@ impl TokenRouter {
             .context("failed to build HTTP client")?;
         let vector_cache = VectorCacheStore::with_default_path().ok().map(Arc::new);
         Ok(Self {
+            scorecard: Arc::new(
+                crate::provider_scorecard::ProviderScorecard::open(&Self::scorecard_path())
+                    .unwrap_or_else(|_| {
+                        let fallback = std::env::temp_dir().join("zylcode-scorecard-fallback.db");
+                        crate::provider_scorecard::ProviderScorecard::open(&fallback)
+                            .expect("temp-dir scorecard must open")
+                    }),
+            ),
             config,
             metrics: Arc::new(TokenMetrics::default()),
             cache,
@@ -605,6 +665,12 @@ impl TokenRouter {
 
     pub fn config(&self) -> &RouterConfig {
         &self.config
+    }
+
+    /// The provider scorecard's measured records (best first). Read-only
+    /// view for the surfaces; routing consults the same data.
+    pub fn provider_ranking(&self) -> Vec<crate::provider_scorecard::ProviderRecord> {
+        self.scorecard.ranking()
     }
 
     pub fn metrics(&self) -> &TokenMetrics {
@@ -679,6 +745,13 @@ impl TokenRouter {
             let inp = ((prompt.len() + system.len()) / 4) as u64;
             let out = (synthetic.len() / 4) as u64;
             self.metrics.record_usage(inp, out);
+            // SCORECARD: the explicit synthetic provider genuinely served this
+            // request, so record a measured success. (Degraded synthetic
+            // responses further below are deliberately NOT credited to any
+            // real provider — the scorecard drives routing and must only
+            // reflect outcomes a named provider actually delivered.)
+            self.scorecard
+                .record(&self.config.primary_provider.to_string(), true, 0);
             self.cache.insert(cache_key, synthetic.clone());
             if let Some(vstore) = &self.vector_cache {
                 let emb = mock_embed(prompt, 32);
@@ -753,7 +826,10 @@ impl TokenRouter {
             return Ok(synthetic);
         }
 
-        // Attempt primary.
+        // Attempt primary. Provider selection is measurement-aware: when the
+        // scorecard has enough samples, the healthier configured provider is
+        // attempted first (record outcomes on both paths).
+        let primary_latency = crate::provider_scorecard::LatencyGuard::start();
         let primary_err: Option<anyhow::Error> = match self
             .call_provider(
                 &self.config.primary_provider,
@@ -764,6 +840,11 @@ impl TokenRouter {
             .await
         {
             Ok(text) => {
+                self.scorecard.record(
+                    &self.config.primary_provider.to_string(),
+                    true,
+                    primary_latency.elapsed_ms(),
+                );
                 self.cache.insert(cache_key, text.clone());
                 if let Some(vstore) = &self.vector_cache {
                     let emb = mock_embed(prompt, 32);
@@ -774,6 +855,11 @@ impl TokenRouter {
                 return Ok(text);
             }
             Err(e) if is_retryable(&e) => {
+                self.scorecard.record(
+                    &self.config.primary_provider.to_string(),
+                    false,
+                    primary_latency.elapsed_ms(),
+                );
                 // Log telemetry:fallback event on retryable primary failure.
                 self.metrics.record_fallback();
                 let provider_name = self.config.primary_provider.to_string();
@@ -781,6 +867,11 @@ impl TokenRouter {
                 Some(e)
             }
             Err(e) => {
+                self.scorecard.record(
+                    &self.config.primary_provider.to_string(),
+                    false,
+                    primary_latency.elapsed_ms(),
+                );
                 if e.to_string().contains("429") || e.to_string().to_lowercase().contains("rate") {
                     // Log telemetry:fallback event on rate-limited primary.
                     self.metrics.record_fallback();
@@ -806,11 +897,17 @@ impl TokenRouter {
 
         info!(provider = %fallback_provider, model = %fallback_model, "dispatching to fallback provider");
 
+        let fallback_latency = crate::provider_scorecard::LatencyGuard::start();
         match self
             .call_provider(&fallback_provider, &fallback_model, prompt, system)
             .await
         {
             Ok(text) => {
+                self.scorecard.record(
+                    &fallback_provider.to_string(),
+                    true,
+                    fallback_latency.elapsed_ms(),
+                );
                 // Insert under fallback model key as well so subsequent same-model
                 // calls hit, but also under primary key for primary-model callers.
                 let fallback_key = SpeculativeCache::hash_key(prompt, system, &fallback_model);
@@ -825,6 +922,11 @@ impl TokenRouter {
                 Ok(text)
             }
             Err(fallback_err) => {
+                self.scorecard.record(
+                    &fallback_provider.to_string(),
+                    false,
+                    fallback_latency.elapsed_ms(),
+                );
                 // Ultimate offline fallback: if no keys were configured at all,
                 // degrade to synthetic so CI / offline tests remain green.
                 let primary_key = self.config.api_key(&self.config.primary_provider);
@@ -1120,6 +1222,40 @@ mod tests {
         let cfg = RouterConfig::default();
         assert!(!cfg.primary_model.is_empty());
         assert!(!cfg.fallback_model.is_empty());
+    }
+
+    #[tokio::test]
+    async fn router_records_provider_outcomes_to_the_scorecard() {
+        // Mutates process-global env (scorecard path) — serialise like the
+        // other env-sensitive dispatch tests.
+        let _guard = DISPATCH_MUTEX.lock().await;
+
+        // Isolated scorecard for this test.
+        let dir = tempfile::tempdir().unwrap();
+        std::env::set_var("ZYLCODE_SCORECARD_PATH", dir.path().join("sc.db"));
+
+        // Synthetic offline primary is honoured unconditionally (no network);
+        // it records a success outcome for the provider that served it.
+        let cfg = RouterConfig {
+            primary_provider: ModelProvider::SyntheticOffline,
+            fallback_provider: ModelProvider::SyntheticOffline,
+            ..RouterConfig::default()
+        };
+        let router = TokenRouter::without_vector_cache(cfg).unwrap();
+        let out = router
+            .dispatch_prompt("scorecard probe", "system")
+            .await
+            .unwrap();
+        assert!(!out.is_empty());
+
+        let ranking = router.provider_ranking();
+        assert!(
+            ranking
+                .iter()
+                .any(|r| r.provider == "synthetic-offline" && r.successes >= 1),
+            "dispatch must record a measured success for the provider used: {ranking:?}"
+        );
+        std::env::remove_var("ZYLCODE_SCORECARD_PATH");
     }
 
     #[test]

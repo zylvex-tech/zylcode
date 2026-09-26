@@ -217,7 +217,8 @@ async fn repo_context(
     })
     .await
     .map_err(|e| format!("intel task failed: {e}"))?
-}    /// Mission queue: append a task (build or plan mode).
+}
+/// Mission queue: append a task (build or plan mode).
 #[tauri::command]
 async fn mission_enqueue(
     task: String,
@@ -238,9 +239,7 @@ async fn mission_enqueue(
 
 /// Mission queue: full list, newest first.
 #[tauri::command]
-async fn missions_list(
-    state: tauri::State<'_, EngineState>,
-) -> Result<serde_json::Value, String> {
+async fn missions_list(state: tauri::State<'_, EngineState>) -> Result<serde_json::Value, String> {
     let list: Vec<serde_json::Value> = state
         .missions
         .list()
@@ -288,9 +287,10 @@ async fn mission_run_next(
                 .map(Arc::new)
                 .map_err(|e| format!("ledger unavailable: {e:#}"))?;
             let session_id = zylcode_core::new_session_id();
-            let source: Arc<dyn zylcode_core::patch_best_of_n::CandidateSource> = Arc::new(
-                zylcode_core::patch_best_of_n::WorkingTreeSource { repo_root: root.clone() },
-            );
+            let source: Arc<dyn zylcode_core::patch_best_of_n::CandidateSource> =
+                Arc::new(zylcode_core::patch_best_of_n::WorkingTreeSource {
+                    repo_root: root.clone(),
+                });
             let config = zylcode_core::best_of_n::BestOfNConfig {
                 candidates: 1,
                 per_candidate_timeout: std::time::Duration::from_secs(1800),
@@ -324,14 +324,26 @@ async fn mission_run_next(
                             serde_json::json!({ "status": "done", "mission": mission.id, "mode": "build", "summary": summary, "ledger_session": session_id.to_string() })
                         }
                         None => {
-                            hub.finish(&mission.id, false, "no candidate passed verification", Some(session_id.to_string()));
+                            hub.finish(
+                                &mission.id,
+                                false,
+                                "no candidate passed verification",
+                                Some(session_id.to_string()),
+                            );
                             serde_json::json!({ "status": "failed", "mission": mission.id, "summary": "no candidate passed verification" })
                         }
                     })
                 }
                 Err(e) => {
-                    hub.finish(&mission.id, false, &format!("best-of-n failed: {e:#}"), None);
-                    Ok(serde_json::json!({ "status": "failed", "mission": mission.id, "error": format!("{e:#}") }))
+                    hub.finish(
+                        &mission.id,
+                        false,
+                        &format!("best-of-n failed: {e:#}"),
+                        None,
+                    );
+                    Ok(
+                        serde_json::json!({ "status": "failed", "mission": mission.id, "error": format!("{e:#}") }),
+                    )
                 }
             }
         }
@@ -363,9 +375,7 @@ async fn terminal_exec(
 
 /// Version & build info for the About/Diagnostics surfaces.
 #[tauri::command]
-async fn app_version(
-    state: tauri::State<'_, EngineState>,
-) -> Result<serde_json::Value, String> {
+async fn app_version(state: tauri::State<'_, EngineState>) -> Result<serde_json::Value, String> {
     let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
     tokio::task::spawn_blocking(move || Ok(zylcode_core::gitops::version_payload(&root)))
         .await
@@ -376,9 +386,7 @@ async fn app_version(
 /// entries, uncommitted diff stat) — the same gitops payload the
 /// `serve-intel` HTTP service exposes.
 #[tauri::command]
-async fn git_status(
-    state: tauri::State<'_, EngineState>,
-) -> Result<serde_json::Value, String> {
+async fn git_status(state: tauri::State<'_, EngineState>) -> Result<serde_json::Value, String> {
     let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
     tokio::task::spawn_blocking(move || {
         zylcode_core::gitops::git_status_payload(&root)
@@ -406,9 +414,7 @@ async fn repo_search(
 
 /// The scanner's file tree for the Explorer surface.
 #[tauri::command]
-async fn repo_file_tree(
-    state: tauri::State<'_, EngineState>,
-) -> Result<serde_json::Value, String> {
+async fn repo_file_tree(state: tauri::State<'_, EngineState>) -> Result<serde_json::Value, String> {
     let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
     tokio::task::spawn_blocking(move || {
         zylcode_core::surfaces::file_tree_payload(&root)
@@ -547,6 +553,15 @@ async fn get_provider_configs(
     let mut sorted = cfgs;
     sorted.sort_by_key(|c| c.fallback_order);
     Ok(sorted)
+}
+
+/// Read-only view of the measured provider scorecard (best first). The same
+/// Laplace-smoothed records that inform dispatch order in the core router.
+#[tauri::command]
+async fn get_provider_scorecard(
+) -> Result<Vec<zylcode_core::provider_scorecard::ProviderRecord>, String> {
+    zylcode_core::router::RouterConfig::scorecard_view()
+        .map_err(|e| format!("scorecard unavailable: {e:#}"))
 }
 
 /// Update settings for a single provider at runtime.
@@ -1005,8 +1020,7 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .manage({
-            let workspace_root =
-                std::path::PathBuf::from(&engine.config().workspace_root);
+            let workspace_root = std::path::PathBuf::from(&engine.config().workspace_root);
             EngineState {
                 engine,
                 provider_configs,
@@ -1040,6 +1054,7 @@ fn main() {
             execute_tool,
             marketplace_search,
             get_provider_configs,
+            get_provider_scorecard,
             set_provider_config,
             reorder_provider_chain,
             clear_vector_cache,

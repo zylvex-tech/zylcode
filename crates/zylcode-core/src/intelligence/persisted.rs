@@ -240,8 +240,11 @@ mod tests {
         let before = idx.build().unwrap();
         let before_symbols = before.symbol_count();
 
-        fs::write(dir.path().join("src/lib.rs"), "pub fn alpha() {}\npub fn beta() {}\n")
-            .unwrap();
+        fs::write(
+            dir.path().join("src/lib.rs"),
+            "pub fn alpha() {}\npub fn beta() {}\n",
+        )
+        .unwrap();
 
         let after = idx.build().unwrap();
         assert!(
@@ -260,9 +263,10 @@ mod tests {
         // Touch mtime without changing content.
         let f = dir.path().join("src/lib.rs");
         let file = fs::OpenOptions::new().append(true).open(&f).unwrap();
-        file.set_times(std::fs::FileTimes::new().set_modified(
-            std::time::SystemTime::now() + std::time::Duration::from_secs(60),
-        ))
+        file.set_times(
+            std::fs::FileTimes::new()
+                .set_modified(std::time::SystemTime::now() + std::time::Duration::from_secs(60)),
+        )
         .unwrap();
         drop(file);
 

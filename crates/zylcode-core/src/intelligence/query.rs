@@ -350,8 +350,7 @@ pub fn build_repo_query(root: &Path) -> Result<RepoQuery> {
     // sensitive — the agent.rs/crash_recovery coupling at commit 6f564ac
     // slid out of the window as commits accumulated). Recency is pinned to
     // the 20 newest commits downstream, so recency semantics are unchanged.
-    let git_commits =
-        crate::intelligence::git::get_full_history_commits(root).unwrap_or_default();
+    let git_commits = crate::intelligence::git::get_full_history_commits(root).unwrap_or_default();
 
     Ok(RepoQuery::new(
         scan_result.files,

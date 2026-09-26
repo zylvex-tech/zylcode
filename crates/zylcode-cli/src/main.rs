@@ -498,12 +498,11 @@ struct ServeIntelArgs {
 
 /// Shared handler for both the HTTP service and the Tauri command path.
 fn repo_intel_json(root: &std::path::Path, task: &str) -> serde_json::Value {
-    zylcode_core::intelligence::api::repo_intel_payload(root, task)
-        .unwrap_or_else(|e| {
-            serde_json::json!({
-                "error": format!("repository intelligence failed: {e:#}"),
-            })
+    zylcode_core::intelligence::api::repo_intel_payload(root, task).unwrap_or_else(|e| {
+        serde_json::json!({
+            "error": format!("repository intelligence failed: {e:#}"),
         })
+    })
 }
 
 async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()> {
@@ -549,19 +548,16 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
         }))
     }
 
-    async fn git_status(
-        State(root): State<Arc<std::path::PathBuf>>,
-    ) -> Json<serde_json::Value> {
+    async fn git_status(State(root): State<Arc<std::path::PathBuf>>) -> Json<serde_json::Value> {
         let root = Arc::clone(&root);
-        let payload =
-            tokio::task::spawn_blocking(move || {
-                zylcode_core::gitops::git_status_payload(&root).unwrap_or_else(|e| {
-                    serde_json::json!({
-                        "error": format!("git status failed: {e:#}"),
-                    })
+        let payload = tokio::task::spawn_blocking(move || {
+            zylcode_core::gitops::git_status_payload(&root).unwrap_or_else(|e| {
+                serde_json::json!({
+                    "error": format!("git status failed: {e:#}"),
                 })
             })
-            .await;
+        })
+        .await;
         match payload {
             Ok(value) => Json(value),
             Err(e) => Json(serde_json::json!({ "error": format!("git task failed: {e}") })),
@@ -570,8 +566,8 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
 
     async fn version(State(root): State<Arc<std::path::PathBuf>>) -> Json<serde_json::Value> {
         let root = Arc::clone(&root);
-        let payload = tokio::task::spawn_blocking(move || zylcode_core::gitops::version_payload(&root))
-            .await;
+        let payload =
+            tokio::task::spawn_blocking(move || zylcode_core::gitops::version_payload(&root)).await;
         match payload {
             Ok(value) => Json(value),
             Err(e) => Json(serde_json::json!({ "error": format!("version task failed: {e}") })),
@@ -590,7 +586,8 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
                         .enabled_tools()
                         .iter()
                         .map(|t| {
-                            let has_executor = zylcode_mcp::real_tools::get_real_tool(&t.id).is_some();
+                            let has_executor =
+                                zylcode_mcp::real_tools::get_real_tool(&t.id).is_some();
                             serde_json::json!({
                                 "id": t.id,
                                 "transport": t.transport.to_string(),
@@ -605,7 +602,9 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
                         "tools": tools,
                     })
                 }
-                Err(e) => serde_json::json!({ "error": format!("tool catalogue parse failed: {e:#}") }),
+                Err(e) => {
+                    serde_json::json!({ "error": format!("tool catalogue parse failed: {e:#}") })
+                }
             }
         })
         .await;
@@ -634,10 +633,27 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
             })
             .collect();
         chain.sort_by_key(|p| p["fallback_order"].as_i64().unwrap_or(i64::MAX));
+        // SCORECARD: measured per-provider outcomes (Laplace-smoothed) that
+        // now inform dispatch order. Read-only view; absent samples render as
+        // an empty list, never fabricated numbers.
+        let ranking: Vec<serde_json::Value> = zylcode_core::router::RouterConfig::scorecard_view()
+            .unwrap_or_default()
+            .into_iter()
+            .map(|r| {
+                serde_json::json!({
+                    "provider": r.provider,
+                    "successes": r.successes,
+                    "failures": r.failures,
+                    "score": r.score,
+                    "avg_latency_ms": r.avg_latency_ms,
+                })
+            })
+            .collect();
         Json(serde_json::json!({
             "primary_model": cfg.primary_model,
             "fallback_model": cfg.fallback_model,
             "chain": chain,
+            "measured_ranking": ranking,
         }))
     }
 
@@ -651,21 +667,23 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
             }
         };
         let snap = router.metrics().snapshot();
-        Json(serde_json::to_value(&snap).unwrap_or_else(|_| {
-            serde_json::json!({ "error": "metrics serialization failed" })
-        }))
+        Json(
+            serde_json::to_value(&snap)
+                .unwrap_or_else(|_| serde_json::json!({ "error": "metrics serialization failed" })),
+        )
     }
 
     async fn search(
         State(root): State<Arc<std::path::PathBuf>>,
-        axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
+        axum::extract::Query(params): axum::extract::Query<
+            std::collections::HashMap<String, String>,
+        >,
     ) -> Json<serde_json::Value> {
         let q = params.get("q").cloned().unwrap_or_default();
         let root = Arc::clone(&root);
         let payload = tokio::task::spawn_blocking(move || {
-            zylcode_core::surfaces::search_payload(&root, &q).unwrap_or_else(|e| {
-                serde_json::json!({ "error": format!("search failed: {e:#}") })
-            })
+            zylcode_core::surfaces::search_payload(&root, &q)
+                .unwrap_or_else(|e| serde_json::json!({ "error": format!("search failed: {e:#}") }))
         })
         .await;
         match payload {
@@ -674,12 +692,101 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
         }
     }
 
+    /// Persistent Project System store (read-only list). Reveals the store's
+    /// state (Ready/Migrated/Empty/Corrupt) so surfaces never invent one.
+    async fn projects(State(root): State<Arc<std::path::PathBuf>>) -> Json<serde_json::Value> {
+        let root = Arc::clone(&root);
+        let payload = tokio::task::spawn_blocking(move || {
+            match zylcode_core::project_store::ProjectStore::open(&root) {
+                Ok(store) => {
+                    let state = format!("{:?}", store.state());
+                    let projects = store
+                        .list()
+                        .unwrap_or_default()
+                        .into_iter()
+                        .map(|p| serde_json::to_value(&p).unwrap_or_default())
+                        .collect::<Vec<_>>();
+                    serde_json::json!({ "store_state": state, "projects": projects })
+                }
+                Err(e) => {
+                    serde_json::json!({ "store_state": "Unavailable", "error": format!("{e:#}") })
+                }
+            }
+        })
+        .await
+        .unwrap_or_else(
+            |_| serde_json::json!({ "store_state": "Unavailable", "error": "task join failed" }),
+        );
+        Json(payload)
+    }
+
+    /// Artifact Bus records (read-only). Bytes are never served here — only
+    /// metadata, lifecycle, and hash truth.
+    async fn artifacts(State(root): State<Arc<std::path::PathBuf>>) -> Json<serde_json::Value> {
+        let root = Arc::clone(&root);
+        let payload =
+            tokio::task::spawn_blocking(
+                move || match zylcode_core::artifact_bus::ArtifactBus::open(&root) {
+                    Ok(bus) => {
+                        let records = bus.list().unwrap_or_default();
+                        serde_json::json!({
+                            "contract_version": zylcode_core::artifact_bus::ARTIFACT_SCHEMA_VERSION,
+                            "count": records.len(),
+                            "artifacts": records,
+                        })
+                    }
+                    Err(e) => serde_json::json!({ "error": format!("{e:#}") }),
+                },
+            )
+            .await
+            .unwrap_or_else(|_| serde_json::json!({ "error": "task join failed" }));
+        Json(payload)
+    }
+
+    /// Proof Engine records (read-only). Each proof carries its honest
+    /// verification state and staleness relative to the current HEAD.
+    async fn proofs(State(root): State<Arc<std::path::PathBuf>>) -> Json<serde_json::Value> {
+        let root = Arc::clone(&root);
+        let payload =
+            tokio::task::spawn_blocking(
+                move || match zylcode_core::proof_engine::ProofEngine::open(&root) {
+                    Ok(engine) => {
+                        let head = std::process::Command::new("git")
+                            .args(["rev-parse", "--short", "HEAD"])
+                            .current_dir(root.as_ref())
+                            .output()
+                            .ok()
+                            .filter(|o| o.status.success())
+                            .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+                            .unwrap_or_default();
+                        let proofs = engine.list(&head).unwrap_or_default();
+                        serde_json::json!({
+                            "schema_version": zylcode_core::proof_engine::PROOF_SCHEMA_VERSION,
+                            "chain_intact": engine.chain_intact(),
+                            "current_commit": head,
+                            "count": proofs.len(),
+                            "proofs": proofs,
+                        })
+                    }
+                    Err(e) => serde_json::json!({ "error": format!("{e:#}") }),
+                },
+            )
+            .await
+            .unwrap_or_else(|_| serde_json::json!({ "error": "task join failed" }));
+        Json(payload)
+    }
+
+    /// Model capability metadata registry (read-only, deterministic).
+    async fn models() -> Json<serde_json::Value> {
+        Json(zylcode_core::model_capabilities::registry_json())
+    }
+
     async fn file_tree(State(root): State<Arc<std::path::PathBuf>>) -> Json<serde_json::Value> {
         let root = Arc::clone(&root);
         let payload = tokio::task::spawn_blocking(move || {
-            zylcode_core::surfaces::file_tree_payload(&root).unwrap_or_else(|e| {
-                serde_json::json!({ "error": format!("file tree failed: {e:#}") })
-            })
+            zylcode_core::surfaces::file_tree_payload(&root).unwrap_or_else(
+                |e| serde_json::json!({ "error": format!("file tree failed: {e:#}") }),
+            )
         })
         .await;
         match payload {
@@ -690,14 +797,16 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
 
     async fn file_content(
         State(root): State<Arc<std::path::PathBuf>>,
-        axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
+        axum::extract::Query(params): axum::extract::Query<
+            std::collections::HashMap<String, String>,
+        >,
     ) -> Json<serde_json::Value> {
         let path = params.get("path").cloned().unwrap_or_default();
         let root = Arc::clone(&root);
         let payload = tokio::task::spawn_blocking(move || {
-            zylcode_core::surfaces::file_content_payload(&root, &path).unwrap_or_else(|e| {
-                serde_json::json!({ "error": format!("file content failed: {e:#}") })
-            })
+            zylcode_core::surfaces::file_content_payload(&root, &path).unwrap_or_else(
+                |e| serde_json::json!({ "error": format!("file content failed: {e:#}") }),
+            )
         })
         .await;
         match payload {
@@ -722,9 +831,9 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
         axum::Json(req): axum::Json<zylcode_core::terminal::TerminalRequest>,
     ) -> Json<serde_json::Value> {
         match hub.exec(&req).await {
-            Ok(out) => Json(serde_json::to_value(&out).unwrap_or_else(|_| {
-                serde_json::json!({ "error": "terminal output serialization failed" })
-            })),
+            Ok(out) => Json(serde_json::to_value(&out).unwrap_or_else(
+                |_| serde_json::json!({ "error": "terminal output serialization failed" }),
+            )),
             Err(e) => Json(serde_json::json!({ "error": format!("terminal exec failed: {e:#}") })),
         }
     }
@@ -757,7 +866,9 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
             _ => zylcode_core::missions::MissionMode::Build,
         };
         match missions.enqueue(task, mode) {
-            Ok(m) => Json(serde_json::to_value(&m).unwrap_or(serde_json::json!({ "error": "serialization" }))),
+            Ok(m) => Json(
+                serde_json::to_value(&m).unwrap_or(serde_json::json!({ "error": "serialization" })),
+            ),
             Err(e) => Json(serde_json::json!({ "error": format!("enqueue failed: {e:#}") })),
         }
     }
@@ -775,9 +886,7 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
     /// Best-of-N working-tree verification (candidates against the real
     /// suite, ledger-recorded); PLAN missions record a plan built from the
     /// intelligence pipeline without executing anything.
-    async fn missions_run_next(
-        State(st): State<ServiceState>,
-    ) -> Json<serde_json::Value> {
+    async fn missions_run_next(State(st): State<ServiceState>) -> Json<serde_json::Value> {
         let missions = st.missions;
         let root = st.root;
         let lock = st.mission_lock;
@@ -799,26 +908,36 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
         let started = std::time::Instant::now();
         match mission.mode {
             zylcode_core::missions::MissionMode::Plan => {
-                let result =
-                    tokio::task::spawn_blocking({
-                        let root = Arc::clone(&root);
-                        let task = mission.task.clone();
-                        move || zylcode_core::missions::build_plan(&root, &task)
-                    })
-                    .await;
+                let result = tokio::task::spawn_blocking({
+                    let root = Arc::clone(&root);
+                    let task = mission.task.clone();
+                    move || zylcode_core::missions::build_plan(&root, &task)
+                })
+                .await;
                 match result {
                     Ok(Ok(plan)) => {
                         let head: String = plan.lines().take(6).collect::<Vec<_>>().join(" ");
                         missions.finish(&mission.id, true, &head, None);
-                        Json(serde_json::json!({ "status": "done", "mission": mission.id, "mode": "plan", "plan": plan }))
+                        Json(
+                            serde_json::json!({ "status": "done", "mission": mission.id, "mode": "plan", "plan": plan }),
+                        )
                     }
                     Ok(Err(e)) => {
                         missions.finish(&mission.id, false, &format!("plan failed: {e:#}"), None);
-                        Json(serde_json::json!({ "status": "failed", "mission": mission.id, "error": format!("{e:#}") }))
+                        Json(
+                            serde_json::json!({ "status": "failed", "mission": mission.id, "error": format!("{e:#}") }),
+                        )
                     }
                     Err(e) => {
-                        missions.finish(&mission.id, false, &format!("plan task failed: {e}"), None);
-                        Json(serde_json::json!({ "status": "failed", "mission": mission.id, "error": format!("{e}") }))
+                        missions.finish(
+                            &mission.id,
+                            false,
+                            &format!("plan task failed: {e}"),
+                            None,
+                        );
+                        Json(
+                            serde_json::json!({ "status": "failed", "mission": mission.id, "error": format!("{e}") }),
+                        )
                     }
                 }
             }
@@ -845,11 +964,10 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
                         }
                     };
                 let session_id = uuid::Uuid::new_v4();
-                let source: Arc<dyn zylcode_core::patch_best_of_n::CandidateSource> = Arc::new(
-                    zylcode_core::patch_best_of_n::WorkingTreeSource {
+                let source: Arc<dyn zylcode_core::patch_best_of_n::CandidateSource> =
+                    Arc::new(zylcode_core::patch_best_of_n::WorkingTreeSource {
                         repo_root: root.as_ref().clone(),
-                    },
-                );
+                    });
                 let config = zylcode_core::best_of_n::BestOfNConfig {
                     candidates: 1,
                     per_candidate_timeout: std::time::Duration::from_secs(1800),
@@ -888,27 +1006,37 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
                                 }))
                             }
                             None => {
-                                let summary = format!(
-                                    "no candidate passed verification ({}s)",
-                                    elapsed
+                                let summary =
+                                    format!("no candidate passed verification ({}s)", elapsed);
+                                missions.finish(
+                                    &mission.id,
+                                    false,
+                                    &summary,
+                                    Some(session_id.to_string()),
                                 );
-                                missions.finish(&mission.id, false, &summary, Some(session_id.to_string()));
-                                Json(serde_json::json!({ "status": "failed", "mission": mission.id, "summary": summary }))
+                                Json(
+                                    serde_json::json!({ "status": "failed", "mission": mission.id, "summary": summary }),
+                                )
                             }
                         }
                     }
                     Err(e) => {
-                        missions.finish(&mission.id, false, &format!("best-of-n failed: {e:#}"), None);
-                        Json(serde_json::json!({ "status": "failed", "mission": mission.id, "error": format!("{e:#}") }))
+                        missions.finish(
+                            &mission.id,
+                            false,
+                            &format!("best-of-n failed: {e:#}"),
+                            None,
+                        );
+                        Json(
+                            serde_json::json!({ "status": "failed", "mission": mission.id, "error": format!("{e:#}") }),
+                        )
                     }
                 }
             }
         }
     }
 
-    async fn recent_files(
-        State(root): State<Arc<std::path::PathBuf>>,
-    ) -> Json<serde_json::Value> {
+    async fn recent_files(State(root): State<Arc<std::path::PathBuf>>) -> Json<serde_json::Value> {
         let root = Arc::clone(&root);
         let payload = tokio::task::spawn_blocking(move || {
             // Recently modified tracked files: git gives the truth.
@@ -939,7 +1067,9 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
 
     async fn repo_intel(
         State(root): State<Arc<std::path::PathBuf>>,
-        axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
+        axum::extract::Query(params): axum::extract::Query<
+            std::collections::HashMap<String, String>,
+        >,
     ) -> Json<serde_json::Value> {
         let task = params
             .get("task")
@@ -947,8 +1077,7 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
             .unwrap_or("")
             .to_string();
         let root = Arc::clone(&root);
-        let payload =
-            tokio::task::spawn_blocking(move || repo_intel_json(&root, &task)).await;
+        let payload = tokio::task::spawn_blocking(move || repo_intel_json(&root, &task)).await;
         match payload {
             Ok(value) => Json(value),
             Err(e) => Json(serde_json::json!({ "error": format!("intel task failed: {e}") })),
@@ -980,10 +1109,20 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
         .route("/api/evidence", get(evidence))
         .route("/api/terminal/exec", axum::routing::post(terminal_exec))
         .route("/api/terminal/reset", axum::routing::post(terminal_reset))
-        .route("/api/missions", axum::routing::get(missions_list).post(missions_enqueue))
+        .route(
+            "/api/missions",
+            axum::routing::get(missions_list).post(missions_enqueue),
+        )
         .route("/api/missions/clear", axum::routing::post(missions_clear))
-        .route("/api/missions/run-next", axum::routing::post(missions_run_next))
+        .route(
+            "/api/missions/run-next",
+            axum::routing::post(missions_run_next),
+        )
         .route("/api/recent-files", axum::routing::get(recent_files))
+        .route("/api/projects", get(projects))
+        .route("/api/artifacts", get(artifacts))
+        .route("/api/proofs", get(proofs))
+        .route("/api/models", get(models))
         .with_state(ServiceState {
             root: Arc::clone(&root),
             hub: Arc::new(zylcode_core::terminal::TerminalHub::new(
@@ -1074,9 +1213,10 @@ async fn handle_best_of_n(workspace: &str, args: BestOfNArgs) -> Result<()> {
         .map_err(|e| anyhow::anyhow!("cannot resolve workspace '{}': {e}", workspace))?;
 
     let session_id = match &args.session_id {
-        Some(id) => Some(uuid::Uuid::parse_str(id).map_err(|e| {
-            anyhow::anyhow!("--session-id must be a UUID: {e}")
-        })?),
+        Some(id) => Some(
+            uuid::Uuid::parse_str(id)
+                .map_err(|e| anyhow::anyhow!("--session-id must be a UUID: {e}"))?,
+        ),
         None => Some(uuid::Uuid::new_v4()),
     };
 
@@ -1084,19 +1224,16 @@ async fn handle_best_of_n(workspace: &str, args: BestOfNArgs) -> Result<()> {
     // keeps the run's chain self-contained (genesis -> export).
     let ledger_path = root.join(".zylcode").join("ledger.db");
     std::fs::create_dir_all(ledger_path.parent().unwrap())?;
-    let ledger: Arc<dyn zylcode_core::ledger::LedgerStore> = Arc::new(
-        zylcode_core::sqlite_ledger::SqliteLedgerStore::new(
+    let ledger: Arc<dyn zylcode_core::ledger::LedgerStore> =
+        Arc::new(zylcode_core::sqlite_ledger::SqliteLedgerStore::new(
             ledger_path.to_string_lossy().as_ref(),
-        )?,
-    );
+        )?);
 
     // Candidate production: real model sampling when a task is given;
     // working-tree verification otherwise.
     let source: Arc<dyn CandidateSource> = match &args.task {
         Some(_task) => {
-            let router = zylcode_core::TokenRouter::new(
-                zylcode_core::RouterConfig::from_env(),
-            )?;
+            let router = zylcode_core::TokenRouter::new(zylcode_core::RouterConfig::from_env())?;
             Arc::new(ModelPatchSource {
                 client: Arc::new(zylcode_core::agent::RealModelClient::new(Arc::new(router))),
                 context: args.context.clone(),
@@ -1151,9 +1288,9 @@ async fn handle_best_of_n(workspace: &str, args: BestOfNArgs) -> Result<()> {
              isolated worktree against the real test suite...",
             args.candidates
         ),
-        None => println!(
-            "best-of-n: verifying the current working tree against the real test suite..."
-        ),
+        None => {
+            println!("best-of-n: verifying the current working tree against the real test suite...")
+        }
     }
     let started = std::time::Instant::now();
     let result = run_patch_best_of_n(

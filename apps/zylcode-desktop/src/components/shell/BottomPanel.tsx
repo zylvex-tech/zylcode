@@ -5,7 +5,12 @@ import { fetchEvidence, type EvidenceState } from "../../lib/surfaces";
 import { listMissions } from "../../lib/missions";
 import TerminalPanel from "../TerminalPanel";
 import ToolsCataloguePanel from "../ToolsCataloguePanel";
-import { fetchProviders, type ProvidersState } from "../../lib/service";
+import { FoundationPanel } from "../FoundationPanel";
+import {
+  fetchProviders,
+  type ProvidersState,
+  type MeasuredProviderRow,
+} from "../../lib/service";
 
 export type BottomTab =
   | "terminal"
@@ -15,7 +20,8 @@ export type BottomTab =
   | "ports"
   | "tests"
   | "evidence"
-  | "dev-tools";
+  | "dev-tools"
+  | "foundation";
 
 interface BottomPanelProps {
   isOpen: boolean;
@@ -104,6 +110,17 @@ const BOTTOM_TABS: { id: BottomTab; label: string; icon: React.ReactNode }[] = [
         <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
         <path d="M8 21h8"></path>
         <path d="M12 17v4"></path>
+      </svg>
+    ),
+  },
+  {
+    id: "foundation",
+    label: "Foundation",
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+        <path d="M3 21h18"></path>
+        <path d="M5 21V9l7-5 7 5v12"></path>
+        <path d="M9 21v-6h6v6"></path>
       </svg>
     ),
   },
@@ -460,6 +477,45 @@ function ProvidersServiceView() {
           </span>
         </div>
       ))}
+      <MeasuredRankingView rows={state.measured_ranking} />
+    </div>
+  );
+}
+
+/**
+ * Measured per-provider outcomes from the persisted scorecard — the same
+ * Laplace-smoothed records that inform dispatch order. Rendered only when
+ * samples exist; no fabricated "no data yet" decorations beyond the honest
+ * one-liner.
+ */
+function MeasuredRankingView({ rows }: { rows: MeasuredProviderRow[] }) {
+  if (rows.length === 0) {
+    return (
+      <p className="text-[10px] text-text-muted pt-2 border-t border-border mt-2">
+        No measured outcomes yet — routing uses the configured fallback order until the
+        scorecard records real dispatch results.
+      </p>
+    );
+  }
+  return (
+    <div className="pt-2 mt-2 border-t border-border">
+      <p className="text-[11px] text-text-muted mb-1">
+        Measured outcomes (drive dispatch order when significant):
+      </p>
+      {rows.map((r) => (
+        <div key={r.provider} className="flex items-center gap-2">
+          <span className="font-mono text-text-secondary w-24 shrink-0 truncate" title={r.provider}>
+            {r.provider}
+          </span>
+          <span className="text-text-muted">
+            {r.successes}✓ / {r.failures}✕
+          </span>
+          <span className="font-mono text-[10px] text-text-muted">
+            score {r.score.toFixed(3)}
+            {r.avg_latency_ms != null ? ` · ${Math.round(r.avg_latency_ms)}ms avg` : ""}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }
@@ -538,6 +594,8 @@ export function BottomPanel({ isOpen, onToggle, activeTab, onTabChange }: Bottom
         return <EvidenceView />;
       case "dev-tools":
         return <DevToolsView />;
+      case "foundation":
+        return <FoundationPanel />;
       default:
         return <TerminalPanel />;
     }

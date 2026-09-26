@@ -6,6 +6,7 @@
 pub mod agent;
 pub mod agent_protocol;
 pub mod ai_input;
+pub mod artifact_bus;
 pub mod best_of_n;
 pub mod cache;
 pub mod cli;
@@ -17,16 +18,21 @@ pub mod intelligence;
 pub mod ledger;
 pub mod marketplace;
 pub mod memory_ledger;
+pub mod missions;
+pub mod model_capabilities;
 pub mod patch_best_of_n;
 pub mod pipeline;
 pub mod planner;
 pub mod project;
+pub mod project_store;
+pub mod proof_engine;
+pub mod provider_scorecard;
 pub mod router;
 pub mod sandbox;
 pub mod sqlite_ledger;
 pub mod surfaces;
 pub mod terminal;
-pub mod missions;
+pub mod zylforge_bridge;
 
 /// Fresh ledger session id; re-exported so dependent crates (e.g. the
 /// desktop shell) need not depend on `uuid` directly.

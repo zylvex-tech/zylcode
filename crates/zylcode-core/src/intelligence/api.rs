@@ -37,11 +37,7 @@ pub fn repo_intel_payload(root: &Path, task: &str) -> Result<Value> {
 
     let packages: Vec<String> = query.packages().iter().map(|p| p.name.clone()).collect();
     let languages: Vec<String> = {
-        let mut langs: Vec<String> = query
-            .files()
-            .iter()
-            .map(|f| f.language.label())
-            .collect();
+        let mut langs: Vec<String> = query.files().iter().map(|f| f.language.label()).collect();
         langs.sort();
         langs.dedup();
         langs
@@ -161,7 +157,10 @@ mod tests {
             "Engine must be symbol-indexed: {summary:?}"
         );
         assert!(summary["packages"].as_array().unwrap().is_empty());
-        assert!(summary["languages"].as_array().unwrap().contains(&json!("Rust")));
+        assert!(summary["languages"]
+            .as_array()
+            .unwrap()
+            .contains(&json!("Rust")));
         // The retriever ran and ranked something.
         let results = payload["results"].as_array().unwrap();
         assert!(
