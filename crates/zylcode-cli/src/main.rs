@@ -1,5 +1,6 @@
-use anyhow::Result;
+use anyhow::{Context as _, Result};
 use clap::{Args, Parser, Subcommand};
+use std::path::Path;
 use tracing::{error, info};
 use zylcode_core::ai_input::InputContext;
 use zylcode_core::{EngineConfig, Intent, McpBridgeDescriptor, ZylCodeEngine};
@@ -61,6 +62,15 @@ enum Commands {
     /// winner on recorded evidence, and append every outcome plus the
     /// selection decision to the evidence ledger.
     BestOfN(BestOfNArgs),
+
+    /// Delivery: run the real build pipeline and/or package a versioned
+    /// release bundle (CLI binary + frontend dist, SHA-256 manifest) into
+    /// `.zylcode/releases/`, registered in the Artifact Bus.
+    Package(PackageArgs),
+
+    /// Delivery: report deploy targets that are actually commissioned
+    /// (GitHub release via tag, crates.io token, remote server).
+    DeployStatus,
 }
 
 // ---------------------------------------------------------------------------
@@ -470,6 +480,12 @@ async fn main() -> Result<()> {
         Commands::RepoContext { task } => handle_repo_context(&cli.workspace, &task),
         Commands::ServeIntel(args) => handle_serve_intel(&cli.workspace, args).await,
         Commands::BestOfN(args) => handle_best_of_n(&cli.workspace, args).await,
+        Commands::Package(args) => handle_package(&cli.workspace, args).await,
+        Commands::DeployStatus => {
+            let payload = zylcode_core::delivery::deploy_targets(Path::new(&cli.workspace))?;
+            println!("{}", serde_json::to_string_pretty(&payload)?);
+            Ok(())
+        }
     };
 
     if let Err(err) = &result {
@@ -779,6 +795,188 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
     /// Model capability metadata registry (read-only, deterministic).
     async fn models() -> Json<serde_json::Value> {
         Json(zylcode_core::model_capabilities::registry_json())
+    }
+
+    async fn deploy_status(State(root): State<Arc<std::path::PathBuf>>) -> Json<serde_json::Value> {
+        match zylcode_core::delivery::deploy_targets(&root) {
+            Ok(payload) => Json(payload),
+            Err(e) => Json(serde_json::json!({ "error": format!("deploy targets failed: {e:#}") })),
+        }
+    }
+
+    /// Current/last build state (poll after POST /api/build).
+    async fn build_status(State(state): State<ServiceState>) -> Json<serde_json::Value> {
+        match state.build_status.lock() {
+            Ok(guard) => Json(guard.clone()),
+            Err(_) => Json(
+                serde_json::json!({ "state": "failed", "error": "build status lock poisoned" }),
+            ),
+        }
+    }
+
+    /// Kick off the real build pipeline in the background. Returns 409 if a
+    /// build is already running — poll GET /api/build for the outcome.
+    async fn build_start(
+        State(state): State<ServiceState>,
+    ) -> axum::response::Json<serde_json::Value> {
+        {
+            let status = match state.build_status.lock() {
+                Ok(g) => g,
+                Err(_) => {
+                    return axum::response::Json(serde_json::json!({
+                        "error": "build status lock poisoned"
+                    }));
+                }
+            };
+            if status["state"] == "running" {
+                return axum::response::Json(serde_json::json!({
+                    "started": false,
+                    "state": "running",
+                    "note": "a build is already in progress; poll GET /api/build"
+                }));
+            }
+        }
+
+        let root = std::path::PathBuf::clone(&state.root);
+        let status_cell = Arc::clone(&state.build_status);
+        tokio::spawn(async move {
+            if let Ok(mut status) = status_cell.lock() {
+                *status = serde_json::json!({ "state": "running", "started_at": chrono_now_iso() });
+            }
+            let pipeline = zylcode_core::delivery::default_build_pipeline();
+            let report = zylcode_core::delivery::build_workspace(&root, &pipeline, false).await;
+            if let Ok(mut status) = status_cell.lock() {
+                match report {
+                    Ok(report) => *status = report,
+                    Err(e) => {
+                        *status = serde_json::json!({
+                            "state": "failed",
+                            "error": format!("build pipeline failed: {e:#}"),
+                            "finished_at": chrono_now_iso(),
+                        });
+                    }
+                }
+            }
+        });
+
+        axum::response::Json(serde_json::json!({
+            "started": true,
+            "state": "running",
+            "note": "build pipeline launched; poll GET /api/build"
+        }))
+    }
+
+    /// Package a versioned release bundle. Runs the build pipeline first
+    /// unless `package_only` is set; refuses to package a red build.
+    #[derive(serde::Deserialize, Default)]
+    struct PackageRequest {
+        version: Option<String>,
+        package_only: Option<bool>,
+    }
+
+    async fn package(
+        State(state): State<ServiceState>,
+        axum::Json(req): axum::Json<PackageRequest>,
+    ) -> axum::response::Json<serde_json::Value> {
+        {
+            let status = match state.build_status.lock() {
+                Ok(g) => g,
+                Err(_) => {
+                    return axum::response::Json(
+                        serde_json::json!({ "error": "build status lock poisoned" }),
+                    );
+                }
+            };
+            if status["state"] == "running" {
+                return axum::response::Json(serde_json::json!({
+                    "error": "a build is in progress; wait for it to finish before packaging"
+                }));
+            }
+        }
+
+        let root = std::path::PathBuf::clone(&state.root);
+        let status_cell = Arc::clone(&state.build_status);
+        let package_only = req.package_only.unwrap_or(false);
+        tokio::spawn(async move {
+            if let Ok(mut status) = status_cell.lock() {
+                *status = serde_json::json!({ "state": "running", "started_at": chrono_now_iso() });
+            }
+            if !package_only {
+                let pipeline = zylcode_core::delivery::default_build_pipeline();
+                match zylcode_core::delivery::build_workspace(&root, &pipeline, false).await {
+                    Ok(report) => {
+                        let passed = report["passed"].as_bool().unwrap_or(false);
+                        if let Ok(mut status) = status_cell.lock() {
+                            *status = report;
+                        }
+                        if !passed {
+                            return; // status already carries the red report
+                        }
+                    }
+                    Err(e) => {
+                        if let Ok(mut status) = status_cell.lock() {
+                            *status = serde_json::json!({
+                                "state": "failed",
+                                "error": format!("build pipeline failed: {e:#}"),
+                                "finished_at": chrono_now_iso(),
+                            });
+                        }
+                        return;
+                    }
+                }
+            }
+            // Resolve version from gitops when not supplied.
+            let version = req.version.unwrap_or_default();
+            let version = if version.trim().is_empty() {
+                zylcode_core::gitops::version_payload(&root)["app_version"]
+                    .as_str()
+                    .unwrap_or("")
+                    .to_string()
+            } else {
+                version
+            };
+            if version.trim().is_empty() {
+                if let Ok(mut status) = status_cell.lock() {
+                    *status = serde_json::json!({
+                        "state": "failed",
+                        "error": "no version resolvable; pass {\"version\": \"x.y.z\"}",
+                        "finished_at": chrono_now_iso(),
+                    });
+                }
+                return;
+            }
+            match zylcode_core::delivery::package_release(&root, &version).await {
+                Ok(payload) => {
+                    if let Ok(mut status) = status_cell.lock() {
+                        *status = serde_json::json!({
+                            "state": "passed",
+                            "packaged": payload,
+                            "finished_at": chrono_now_iso(),
+                        });
+                    }
+                }
+                Err(e) => {
+                    if let Ok(mut status) = status_cell.lock() {
+                        *status = serde_json::json!({
+                            "state": "failed",
+                            "error": format!("packaging failed: {e:#}"),
+                            "finished_at": chrono_now_iso(),
+                        });
+                    }
+                }
+            }
+        });
+
+        axum::response::Json(serde_json::json!({
+            "started": true,
+            "state": "running",
+            "note": "packaging pipeline launched; poll GET /api/build"
+        }))
+    }
+
+    /// Wall-clock timestamp for build status records.
+    fn chrono_now_iso() -> String {
+        chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
     }
 
     async fn file_tree(State(root): State<Arc<std::path::PathBuf>>) -> Json<serde_json::Value> {
@@ -1093,6 +1291,8 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
         missions: Arc<zylcode_core::missions::MissionQueue>,
         /// Serialize Best-of-N drains: one mission runs at a time.
         mission_lock: Arc<tokio::sync::Mutex<()>>,
+        /// Last/current workspace build: {state: idle|running|passed|failed, ...}.
+        build_status: Arc<std::sync::Mutex<serde_json::Value>>,
     }
 
     let app = Router::new()
@@ -1123,6 +1323,9 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
         .route("/api/artifacts", get(artifacts))
         .route("/api/proofs", get(proofs))
         .route("/api/models", get(models))
+        .route("/api/deploy", get(deploy_status))
+        .route("/api/build", get(build_status).post(build_start))
+        .route("/api/package", axum::routing::post(package))
         .with_state(ServiceState {
             root: Arc::clone(&root),
             hub: Arc::new(zylcode_core::terminal::TerminalHub::new(
@@ -1132,6 +1335,10 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
                 root.as_ref().clone(),
             )),
             mission_lock: Arc::new(tokio::sync::Mutex::new(())),
+            build_status: Arc::new(std::sync::Mutex::new(serde_json::json!({
+                "state": "idle",
+                "note": "no build run in this service session"
+            }))),
         });
 
     let addr = std::net::SocketAddr::from(([127, 0, 0, 1], port));
@@ -1151,6 +1358,26 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
 // ---------------------------------------------------------------------------
 // best-of-n
 // ---------------------------------------------------------------------------
+
+#[derive(Args, Debug)]
+struct PackageArgs {
+    /// Run the build pipeline first (tests → release build → frontend). A
+    /// failed pipeline aborts packaging — a red build is never released.
+    #[arg(long, default_value_t = false)]
+    with_build: bool,
+
+    /// Continue the pipeline after a failed step (record every outcome).
+    #[arg(long, default_value_t = false)]
+    keep_going: bool,
+
+    /// Release version for the bundle (required with --package).
+    #[arg(long)]
+    version: Option<String>,
+
+    /// Package only (skip the pipeline) — implies a prior build exists.
+    #[arg(long, default_value_t = false)]
+    package_only: bool,
+}
 
 #[derive(Args, Debug)]
 struct BestOfNArgs {
@@ -1351,4 +1578,62 @@ async fn handle_best_of_n(workspace: &str, args: BestOfNArgs) -> Result<()> {
             std::process::exit(1);
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// delivery: package / deploy status
+// ---------------------------------------------------------------------------
+
+async fn handle_package(workspace: &str, args: PackageArgs) -> Result<()> {
+    let root = std::path::PathBuf::from(workspace);
+    let version = args
+        .version
+        .clone()
+        .or_else(|| {
+            Some(
+                zylcode_core::gitops::version_payload(&root)["app_version"]
+                    .as_str()
+                    .unwrap_or("0.0.0")
+                    .to_string(),
+            )
+        })
+        .context("release version could not be resolved; pass --version")?;
+
+    if !args.package_only {
+        println!("running the build pipeline for v{version}…");
+        let pipeline = zylcode_core::delivery::default_build_pipeline();
+        let report =
+            zylcode_core::delivery::build_workspace(&root, &pipeline, args.keep_going).await?;
+        let passed = report["passed"].as_bool().unwrap_or(false);
+        for step in report["steps"].as_array().unwrap_or(&vec![]) {
+            let name = step["name"].as_str().unwrap_or("?");
+            let ok = step["passed"].as_bool().unwrap_or(false);
+            let dur = step["duration_ms"].as_u64().unwrap_or(0);
+            println!(
+                "  {} {name} ({} ms)",
+                if ok { "\u{2713}" } else { "\u{2717}" },
+                dur
+            );
+        }
+        if !passed {
+            eprintln!("build pipeline FAILED — refusing to package a red build");
+            std::process::exit(1);
+        }
+    }
+
+    println!("packaging release v{version}…");
+    let payload = zylcode_core::delivery::package_release(&root, &version).await?;
+    println!(
+        "release ready: {} (artifact {}, {} files, sha256 {})",
+        Path::new(payload["release_dir"].as_str().unwrap_or("?")).display(),
+        payload["artifact_id"].as_str().unwrap_or("?"),
+        payload["file_count"].as_u64().unwrap_or(0),
+        &payload["content_hash"].as_str().unwrap_or("?")[..16.min(
+            payload["content_hash"]
+                .as_str()
+                .map(|s| s.len())
+                .unwrap_or(0)
+        )],
+    );
+    Ok(())
 }

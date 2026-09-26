@@ -17,8 +17,10 @@ description = "ZylCode — autonomous, cross-platform developer desktop engine, 
 rust-version = "1.77"
 
 [workspace.dependencies]
-zylcode-core = { path = "crates/zylcode-core" }
-zylcode-mcp = { path = "crates/zylcode-mcp" }
+# Version is required alongside path so `cargo publish` can rewrite
+# internal deps to their crates.io versions (publishing fails without it).
+zylcode-core = { path = "crates/zylcode-core", version = "0.2.0" }
+zylcode-mcp = { path = "crates/zylcode-mcp", version = "0.2.0" }
 
 # Async runtime
 tokio = { version = "1.38", features = ["full"] }

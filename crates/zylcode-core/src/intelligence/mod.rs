@@ -7,6 +7,7 @@
 
 pub mod api;
 pub mod architecture;
+pub mod canvas;
 pub mod classifier;
 pub mod context;
 pub mod dependency;

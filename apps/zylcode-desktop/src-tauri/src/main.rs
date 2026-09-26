@@ -18,6 +18,8 @@ struct EngineState {
     terminal_hub: Arc<zylcode_core::terminal::TerminalHub>,
     /// Mission queue: file-backed, survives app restarts.
     missions: Arc<zylcode_core::missions::MissionQueue>,
+    /// Last/current workspace build pipeline state.
+    build_status: Arc<std::sync::Mutex<serde_json::Value>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -564,6 +566,147 @@ async fn get_provider_scorecard(
         .map_err(|e| format!("scorecard unavailable: {e:#}"))
 }
 
+/// Deploy targets that are actually commissioned — same payload the
+/// `serve-intel` HTTP route exposes.
+#[tauri::command]
+async fn deploy_status(state: tauri::State<'_, EngineState>) -> Result<serde_json::Value, String> {
+    let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
+    zylcode_core::delivery::deploy_targets(&root)
+        .map_err(|e| format!("deploy status failed: {e:#}"))
+}
+
+/// Current/last build pipeline state for this workspace session.
+#[tauri::command]
+async fn build_status(state: tauri::State<'_, EngineState>) -> Result<serde_json::Value, String> {
+    let cell = state
+        .build_status
+        .lock()
+        .map_err(|_| "build status lock poisoned".to_string())?;
+    Ok(cell.clone())
+}
+
+/// Start the real build pipeline in the background.
+#[tauri::command]
+async fn build_start(state: tauri::State<'_, EngineState>) -> Result<serde_json::Value, String> {
+    let running = {
+        let cell = state
+            .build_status
+            .lock()
+            .map_err(|_| "build status lock poisoned".to_string())?;
+        cell["state"] == "running"
+    };
+    if running {
+        return Ok(serde_json::json!({
+            "started": false,
+            "state": "running",
+            "note": "a build is already in progress"
+        }));
+    }
+    let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
+    let cell = Arc::clone(&state.build_status);
+    tauri::async_runtime::spawn(async move {
+        if let Ok(mut status) = cell.lock() {
+            *status = serde_json::json!({ "state": "running" });
+        }
+        let pipeline = zylcode_core::delivery::default_build_pipeline();
+        match zylcode_core::delivery::build_workspace(&root, &pipeline, false).await {
+            Ok(report) => {
+                if let Ok(mut status) = cell.lock() {
+                    *status = report;
+                }
+            }
+            Err(e) => {
+                if let Ok(mut status) = cell.lock() {
+                    *status = serde_json::json!({ "state": "failed", "error": format!("{e:#}") });
+                }
+            }
+        }
+    });
+    Ok(serde_json::json!({ "started": true, "state": "running" }))
+}
+
+/// Start release packaging in the background (pipeline included unless package_only).
+#[tauri::command]
+async fn package_start(
+    version: Option<String>,
+    package_only: Option<bool>,
+    state: tauri::State<'_, EngineState>,
+) -> Result<serde_json::Value, String> {
+    let running = {
+        let cell = state
+            .build_status
+            .lock()
+            .map_err(|_| "build status lock poisoned".to_string())?;
+        cell["state"] == "running"
+    };
+    if running {
+        return Ok(serde_json::json!({
+            "started": false,
+            "note": "a build is already in progress; wait for it to finish"
+        }));
+    }
+    let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
+    let cell = Arc::clone(&state.build_status);
+    tauri::async_runtime::spawn(async move {
+        if let Ok(mut status) = cell.lock() {
+            *status = serde_json::json!({ "state": "running" });
+        }
+        let mut version = version.unwrap_or_default();
+        if !package_only.unwrap_or(false) {
+            let pipeline = zylcode_core::delivery::default_build_pipeline();
+            match zylcode_core::delivery::build_workspace(&root, &pipeline, false).await {
+                Ok(report) => {
+                    let passed = report["passed"].as_bool().unwrap_or(false);
+                    if let Ok(mut status) = cell.lock() {
+                        *status = report;
+                    }
+                    if !passed {
+                        return; // red build is never packaged
+                    }
+                }
+                Err(e) => {
+                    if let Ok(mut status) = cell.lock() {
+                        *status =
+                            serde_json::json!({ "state": "failed", "error": format!("{e:#}") });
+                    }
+                    return;
+                }
+            }
+        }
+        if version.trim().is_empty() {
+            version = zylcode_core::gitops::version_payload(&root)["app_version"]
+                .as_str()
+                .unwrap_or("")
+                .to_string();
+        }
+        if version.trim().is_empty() {
+            if let Ok(mut status) = cell.lock() {
+                *status = serde_json::json!({
+                    "state": "failed",
+                    "error": "no version resolvable; pass a version"
+                });
+            }
+            return;
+        }
+        match zylcode_core::delivery::package_release(&root, &version).await {
+            Ok(payload) => {
+                if let Ok(mut status) = cell.lock() {
+                    *status = serde_json::json!({ "state": "passed", "packaged": payload });
+                }
+            }
+            Err(e) => {
+                if let Ok(mut status) = cell.lock() {
+                    *status = serde_json::json!({
+                        "state": "failed",
+                        "error": format!("packaging failed: {e:#}")
+                    });
+                }
+            }
+        }
+    });
+    Ok(serde_json::json!({ "started": true, "state": "running" }))
+}
+
 /// Update settings for a single provider at runtime.
 #[tauri::command]
 async fn set_provider_config(
@@ -1029,6 +1172,10 @@ fn main() {
                     workspace_root.clone(),
                 )),
                 missions: Arc::new(zylcode_core::missions::MissionQueue::new(workspace_root)),
+                build_status: Arc::new(std::sync::Mutex::new(serde_json::json!({
+                    "state": "idle",
+                    "note": "no build run in this app session"
+                }))),
             }
         })
         .invoke_handler(tauri::generate_handler![
@@ -1057,6 +1204,10 @@ fn main() {
             get_provider_scorecard,
             set_provider_config,
             reorder_provider_chain,
+            deploy_status,
+            build_status,
+            build_start,
+            package_start,
             clear_vector_cache,
             get_cache_stats
         ])

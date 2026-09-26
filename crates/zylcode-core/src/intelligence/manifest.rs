@@ -451,6 +451,12 @@ pub fn discover_packages(root: &Path) -> Result<Vec<Package>> {
         .max_depth(5)
         .into_iter()
         .filter_entry(|e| {
+            // Depth 0 is the walk root itself — a repository may legitimately
+            // live in a dot-prefixed directory (e.g. test tempdirs); only
+            // *entries inside* the tree are subject to ignore rules.
+            if e.depth() == 0 {
+                return true;
+            }
             let name = e.file_name().to_string_lossy();
             !name.starts_with('.') && name != "target" && name != "node_modules"
         })
@@ -473,6 +479,10 @@ pub fn discover_packages(root: &Path) -> Result<Vec<Package>> {
         .max_depth(5)
         .into_iter()
         .filter_entry(|e| {
+            // Same depth-0 exemption as the Cargo walk above.
+            if e.depth() == 0 {
+                return true;
+            }
             let name = e.file_name().to_string_lossy();
             !name.starts_with('.') && name != "target" && name != "node_modules"
         })

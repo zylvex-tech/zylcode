@@ -491,7 +491,7 @@ The status column is authoritative — most of it does not exist yet.
 | Agent Kernel — tools, loop, decisions, memory | PARTIAL | R3 |
 | Intelligence Graph — repository intelligence | PARTIAL | **R3** (HTTP+Tauri reachable, evidence-backed) |
 | Model Platform — provider config + dispatch | PARTIAL | R3 read-only view / routing foundation live (outcome-scored order) |
-| Delivery Engine — release workflow | PARTIAL | R1 (CI blocked) |
+| Delivery Engine — build pipeline + release packaging | **CORE LIVE** | 🟢 R3 — `zylcode package` runs the real pipeline (tests → release build → frontend) and refuses to package a red build; versioned SHA-256-manifested releases land in `.zylcode/releases/` and register in the Artifact Bus; deploy targets (`deploy-status`) are reported honestly (GitHub release COMMISSIONED, crates.io/remote UNCOMMISSIONED); UI: Delivery tab. CI publishing remains blocked (Actions billing) |
 | Execution Engine — shell/tools | PARTIAL | R3 |
 | Project System | **LIVE (core)** | 🟢 R3 — workspace surfaces in the IDE + persistent store with schema versioning/migration (`projects.json`) |
 | Mission Engine | **PARTIAL (real queue live)** | 🟢 R3 core — queue/build/plan/verify with approval + blocked states; best-of-N execution |

@@ -267,6 +267,11 @@ impl RepoQuery {
         self.retriever.retrieve(task)
     }
 
+    /// The dependency graph (read access for specialized payloads).
+    pub fn dep_graph(&self) -> &DependencyGraph {
+        &self.dep_graph
+    }
+
     /// Get total file count.
     pub fn file_count(&self) -> usize {
         self.files.len()

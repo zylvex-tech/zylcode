@@ -141,10 +141,16 @@ fn commit_file_paths_from_name_status(line: &str) -> Vec<String> {
 /// `diff-tree` fan-out, so the full history costs about one subprocess
 /// invocation instead of one per commit.
 pub fn get_full_history_commits(root: &Path) -> Result<Vec<GitCommit>> {
+    // Record separator, emitted by git's own %x1f escape. Passing a literal
+    // 0x1f byte inside --format made git 2.45 on Windows reject the whole
+    // command ("fatal: invalid --pretty format"), so history mining silently
+    // degraded to an empty commit list everywhere it fed co-change evidence,
+    // commit counts, and contributor stats.
     const SEP: &str = "\u{1f}ZYLCOMMIT\u{1f}";
+    const GIT_FORMAT: &str = "%x1fZYLCOMMIT%x1f%H|%h|%s|%an|%aI";
     let output = run_git(
         root,
-        &["log", &format!("--format={}", SEP), "--name-status"],
+        &["log", &format!("--format={}", GIT_FORMAT), "--name-status"],
     )?;
 
     let mut commits: Vec<GitCommit> = Vec::new();
