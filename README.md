@@ -1,7 +1,7 @@
 # ZylCode
 
 <p align="center">
-  <img src="apps/zylcode-desktop/src-tauri/icons/128x128.png" alt="ZylCode Logo" width="100">
+  <img src="docs/branding/zylcode-logo.png" alt="ZylCode — Formally Verified Software Synthesis Engine" width="280">
 </p>
 
 <p align="center">
