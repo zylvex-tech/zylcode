@@ -1,4 +1,4 @@
-//! N-ATLAS integration boundary — **Phase C0: scaffold and block, never fake**.
+//! N-ATLAS integration boundary — **never fake**.
 //!
 //! # The one rule
 //!
@@ -6,46 +6,46 @@
 //!
 //! No endpoint is invented. No authentication format is invented. No model id
 //! is invented. No response is fabricated. No other provider is relabelled as
-//! N-ATLAS. A mock transport exists only inside tests and is named as such.
+//! N-ATLAS. A test double exists only inside tests and is named as such.
 //!
-//! If official N-ATLAS documentation, credentials, endpoint information or
-//! access are unavailable, this module produces
-//! [`NatlasStatus::BlockedNatlasAccess`] and says so. That is the preferred
-//! outcome, because it is true.
-//!
-//! # What is actually here (Phase C0)
+//! # What is actually here
 //!
 //! | Item | State |
 //! |---|---|
 //! | Configuration from the environment, no invented defaults | `IMPLEMENTED` · `TESTED` |
 //! | Request / response / error / status types | `IMPLEMENTED` · `TESTED` |
 //! | `NatlasTransport` trait — the provider boundary | `IMPLEMENTED` |
-//! | `BlockedNatlasTransport` — the C0 runtime state | `IMPLEMENTED` · `TESTED` |
-//! | Client: invoke → parse → evidence | `IMPLEMENTED` · `TESTED` (mock transport) |
+//! | `BlockedNatlasTransport` — the truthful blocked state | `IMPLEMENTED` · `TESTED` |
+//! | **`LocalNatlasTransport`** — real call to a local N-ATLAS runtime | `IMPLEMENTED` · `TESTED` |
+//! | **Runtime health probe** (`local::probe`) | `IMPLEMENTED` · `TESTED` |
+//! | `HttpNatlasTransport` — remote adapter, contract **unverified** | `IMPLEMENTED` · `CONTRACT_UNVERIFIED` |
+//! | Client: invoke → parse → evidence | `IMPLEMENTED` · `TESTED` |
 //! | Evidence record + secret redaction | `IMPLEMENTED` · `TESTED` |
 //! | Structured-intent parse → factory task graph handoff | `IMPLEMENTED` · `TESTED` |
-//! | **A real N-ATLAS HTTP call** | **`BLOCKED_NATLAS_ACCESS`** |
+//! | **A captured genuine N-ATLAS invocation** | **`BLOCKED_NATLAS_ACCESS`** |
 //!
-//! # Why there is no HTTP transport yet
+//! # The two blocked reasons, kept distinct
 //!
-//! A real transport needs to know N-ATLAS's endpoint path, authentication
-//! scheme and response shape. None of those are documented to us. Writing a
-//! speculative one would mean inventing the very things the directive forbids,
-//! so the boundary is defined and the transport is left [`BlockedNatlasTransport`]
-//! until the real contract is known. Phase C1 implements it against the
-//! official documentation.
+//! * [`BLOCKED_NATLAS_API_ACCESS`] — no documented remote API contract exists.
+//! * [`BLOCKED_NATLAS_ACCESS`] — the runtime could not be reached or its access
+//!   was not granted (e.g. the official model weights are gated).
 //!
-//! # The honest separation that makes this testable anyway
+//! Neither is a synonym for "not done". Both are statements about the world.
 //!
-//! The **wire translation** (N-ATLAS bytes ⇄ our types) is the part that is
-//! blocked. The **response contract** we parse is *ours* — it is the schema we
-//! ask the model to return — so it can be parsed, validated and tested
-//! deterministically today without claiming anything about N-ATLAS.
+//! # Why a mock cannot be mistaken for evidence
+//!
+//! The `NatlasTransport` trait is public so that tests can implement a double.
+//! Any such double lives **only in test code**, is named `Mock*`, and its
+//! success is never competition evidence. The shipped transports perform real
+//! network calls and have **no fallback path**: an unreachable runtime yields
+//! [`NatlasError::Transport`], never a synthesised answer.
 
 pub mod client;
 pub mod config;
 pub mod evidence;
 pub mod intent;
+pub mod local;
+pub mod remote;
 pub mod transport;
 pub mod types;
 
@@ -53,6 +53,8 @@ pub use client::{NatlasClient, NatlasInvocation};
 pub use config::{NatlasConfig, NatlasConfigError, RedactedNatlasConfig};
 pub use evidence::{redact_secrets, NatlasEvidence, NATLAS_PROVIDER};
 pub use intent::{IntentStepKind, NatlasEngineeringIntent, NatlasIntentStep};
+pub use local::{probe, LocalNatlasTransport, LocalRuntimeHealth};
+pub use remote::HttpNatlasTransport;
 pub use transport::{BlockedNatlasTransport, NatlasRawResponse, NatlasTransport};
 pub use types::{
     NatlasContextChunk, NatlasError, NatlasRequest, NatlasResponse, NatlasStatus, NatlasUsage,
@@ -65,14 +67,20 @@ pub use types::{
 /// `BLOCKED_PROVIDER`.
 pub const BLOCKED_NATLAS_ACCESS: &str = "BLOCKED_NATLAS_ACCESS";
 
-/// The runtime state of N-ATLAS integration, resolvable without constructing a
-/// client. Useful for a CLI banner or a UI badge.
+/// The greppable reason string used when no documented remote N-ATLAS API
+/// contract exists (Route A). Kept distinct from [`BLOCKED_NATLAS_ACCESS`] so a
+/// report can say *which* access is missing.
+pub const BLOCKED_NATLAS_API_ACCESS: &str = "BLOCKED_NATLAS_API_ACCESS";
+
+/// The runtime state of N-ATLAS integration, resolvable **without any I/O**.
 ///
 /// * [`NatlasStatus::NotConfigured`] — required environment variables are absent.
-/// * [`NatlasStatus::BlockedNatlasAccess`] — configured, but no verified
-///   transport exists yet.
+/// * [`NatlasStatus::BlockedNatlasAccess`] — configured, but no verified call
+///   has been made.
 ///
 /// It never returns [`NatlasStatus::Succeeded`]: success requires a real call.
+/// For a live availability check use [`local::probe`], which performs real I/O
+/// and reports what it actually observed.
 pub fn runtime_status() -> NatlasStatus {
     match NatlasConfig::from_env() {
         Err(_) => NatlasStatus::NotConfigured,
@@ -84,4 +92,21 @@ pub fn runtime_status() -> NatlasStatus {
 /// display in an operator-facing message. Never contains a value.
 pub fn required_env_vars() -> &'static [&'static str] {
     config::REQUIRED_ENV
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn runtime_status_never_reports_success_without_a_call() {
+        // Whatever the environment, this synchronous status must not claim a
+        // verified success — that is the whole point of the honest boundary.
+        assert!(!runtime_status().is_verified_success());
+    }
+
+    #[test]
+    fn the_two_blocked_reasons_are_distinct_strings() {
+        assert_ne!(BLOCKED_NATLAS_ACCESS, BLOCKED_NATLAS_API_ACCESS);
+    }
 }
