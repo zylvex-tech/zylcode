@@ -69,3 +69,32 @@ __pycache__/
 
 # ZylCode per-project session state (agent memory, evidence, recovery markers)
 .zylcode/
+
+# ---------------------------------------------------------------------------
+# N-ATLAS competition (Phase C1)
+# ---------------------------------------------------------------------------
+
+# Model weights — NEVER commit. They are large, and they are licensed under the
+# N-ATLaS terms (a separate work from ZylCode's Apache-2.0 source).
+*.gguf
+*.safetensors
+*.pt
+*.pth
+*.onnx
+*.bin
+/models/
+/n-atlas/
+
+# Ollama model definitions may embed absolute local paths
+Modelfile
+Modelfile.*
+
+# Hugging Face local cache and credentials
+.hf/
+.huggingface/
+
+# Local N-ATLAS runtime scratch space
+.natlas/
+
+# Competition runtime evidence — may embed repository content. Never publish raw.
+docs/competition/natlas/evidence/
