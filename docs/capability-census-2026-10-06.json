@@ -1,0 +1,1281 @@
+{
+  "$schema": "zylcode-capability-census/v1",
+  "census_id": "ZYLCODE-CAPABILITY-CENSUS-2026-10-06",
+  "generated_at": "2026-10-06",
+  "method": "Evidence-first census. Status is derived from source inspection, committed tests, and executed commands in this working tree on 2026-10-06 — never from file names or historical claims. Where a claim could not be reproduced in this session it is marked accordingly.",
+  "repository": {
+    "root": "C:/Projects/zylcode",
+    "branch": "main",
+    "baseline_head": "aae6b4e4ffd939cd09abb6d7345ae1a762f7ba03",
+    "origin_main": "aae6b4e4ffd939cd09abb6d7345ae1a762f7ba03",
+    "ahead_behind": "0/0",
+    "dirty_entries": 14,
+    "stash_entries": 0,
+    "tracked_files": 475
+  },
+  "status_vocabulary": {
+    "NOT_IMPLEMENTED": "No source, no surface, no behaviour. Includes planned-only.",
+    "SCAFFOLDED": "Types or module skeleton exist but no reachable behaviour.",
+    "UI_ONLY": "A user surface renders; no real backend path is reachable from it.",
+    "WIRED": "Real backend path exists and is reachable from a named surface, but no executed test in this session proves it.",
+    "TESTED": "Exercised by a committed test that executed in this session's battery.",
+    "RUNTIME_VERIFIED": "Exercised against a real process/network/filesystem and the outcome captured.",
+    "BLOCKED": "The capability cannot be reached for a stated external or provider reason. Never a synonym for 'not done'.",
+    "DEPRECATED": "Superseded; retained only as provenance."
+  },
+  "categories": {
+    "A_IDE_EDITOR": {
+      "capabilities": [
+        {
+          "id": "A-01",
+          "name": "Desktop shell (four-zone IDE layout)",
+          "description": "Menu bar, activity rail + context sidebar, main editor/workspace area, bottom panel + status bar.",
+          "status": "TESTED",
+          "evidence": "apps/zylcode-desktop/src/components/shell/* ; SurfaceHost.test.tsx, ActivityRail.test.tsx present and in the vitest suite (54 tests reported 2026-09-28). Not re-executed in this Rust-only session.",
+          "dependencies": ["A-02", "T-01"],
+          "user_surface": "Tauri desktop window",
+          "backend_implementation": "React/TS over HTTP service and Tauri IPC",
+          "tests": "components/shell/*.test.tsx",
+          "known_limitations": "Frontend vitest suite was not executed in this session (Rust-only battery). Status carried from the 2026-09-28 audit, not re-verified here.",
+          "target_maturity": "TESTED"
+        },
+        {
+          "id": "A-02",
+          "name": "Editor pane (file view + tabbed editing)",
+          "description": "Tabbed code editor surface fed by the HTTP file-content route.",
+          "status": "UI_ONLY",
+          "evidence": "components/EditorPane.tsx + lib/fileContent.ts read via /api/file-content. Saving routes through useArtifactStream.saveFile → safeInvoke('save_workspace_artifact'), a command that does not exist in the Tauri generate_handler (STUB_MOCK_GAP_REGISTER G-03).",
+          "dependencies": ["B-02"],
+          "user_surface": "Editor pane",
+          "backend_implementation": "Read path real (HTTP). Write path absent for the GUI.",
+          "tests": "No committed test asserts a GUI-initiated save lands on disk.",
+          "known_limitations": "Read works; GUI write does not. This is the broken link in the core loop for the GUI path.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        },
+        {
+          "id": "A-03",
+          "name": "Command palette",
+          "description": "Keyboard-driven command surface.",
+          "status": "UI_ONLY",
+          "evidence": "components/CommandPalette.tsx present; no backend command dispatcher bound to it.",
+          "dependencies": [],
+          "user_surface": "Command palette overlay",
+          "backend_implementation": "None bound",
+          "tests": "None",
+          "known_limitations": "Navigational only.",
+          "target_maturity": "WIRED"
+        },
+        {
+          "id": "A-04",
+          "name": "Source control panel",
+          "description": "Working-tree status, ahead/behind, diffstat.",
+          "status": "RUNTIME_VERIFIED",
+          "evidence": "core/gitops.rs::git_status_payload reads real git (status --porcelain=v1 -b, merge-base counts, diff HEAD --stat); 5 committed tests incl. clean/dirty/stale-upstream/non-repo; SourceControlPanel consumes /api/git/status.",
+          "dependencies": ["J-01"],
+          "user_surface": "Source Control panel",
+          "backend_implementation": "zylcode-core/src/gitops.rs",
+          "tests": "gitops.rs #[cfg(test)] (5)",
+          "known_limitations": "Read-only view; no staging/commit from the panel.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        }
+      ]
+    },
+    "B_PROJECT_WORKSPACE": {
+      "capabilities": [
+        {
+          "id": "B-01",
+          "name": "Secure local project filesystem",
+          "description": "Canonicalise-and-contain file operations rooted at a workspace; refuses escapes.",
+          "status": "TESTED",
+          "evidence": "core/project/filesystem.rs (10 committed tests). Containment semantics mirror the TOOL-01 fix in mcp/real_tools.rs::resolve_within.",
+          "dependencies": [],
+          "user_surface": "HTTP service; desktop IPC path is an orphan (G-02).",
+          "backend_implementation": "zylcode-core/src/project/filesystem.rs",
+          "tests": "filesystem.rs #[cfg(test)]",
+          "known_limitations": "Tauri project IPC file exists but is never mod-declared or registered — dead weight (G-02).",
+          "target_maturity": "RUNTIME_VERIFIED"
+        },
+        {
+          "id": "B-02",
+          "name": "Workspace file read/tree service",
+          "description": "/api/files and /api/file-content serve the live tree and file bodies.",
+          "status": "RUNTIME_VERIFIED",
+          "evidence": "Audit baseline §1.1 records the live backend returning the file tree; route served to EditorPane.",
+          "dependencies": ["B-01"],
+          "user_surface": "Explorer tree, editor pane",
+          "backend_implementation": "serve-intel HTTP router",
+          "tests": "Covered indirectly by repo-intelligence tests",
+          "known_limitations": "No HTTP write route exists by design today.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        },
+        {
+          "id": "B-03",
+          "name": "Project store (persistent project identity)",
+          "description": "File-backed project records distinct from a directory.",
+          "status": "TESTED",
+          "evidence": "core/project_store.rs (634 lines) committed in 56cf3e5 (project store, artifact bus, proof engine, zylforge contract).",
+          "dependencies": [],
+          "user_surface": "Indirect",
+          "backend_implementation": "zylcode-core/src/project_store.rs",
+          "tests": "project_store.rs #[cfg(test)]",
+          "known_limitations": "Constitution §4 ('a Project is not a directory') is only partly realised: no product surface enumerates projects.",
+          "target_maturity": "WIRED"
+        },
+        {
+          "id": "B-04",
+          "name": "Git worktree isolation for candidate patches",
+          "description": "Throwaway worktree per candidate; optional container sandbox with only the worktree writable.",
+          "status": "TESTED",
+          "evidence": "core/sandbox.rs::SandboxedWorktreeVerifier + core/patch_best_of_n.rs::CandidateWorktree; tests assert only the worktree is mounted rw.",
+          "dependencies": ["J-02"],
+          "user_surface": "Best-of-N verification path",
+          "backend_implementation": "zylcode-core/src/sandbox.rs, patch_best_of_n.rs",
+          "tests": "sandbox.rs #[cfg(test)]",
+          "known_limitations": "Container path requires a container runtime; worktree-only path is the fallback. Not yet used by a factory job.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        }
+      ]
+    },
+    "C_REPOSITORY_INTELLIGENCE": {
+      "capabilities": [
+        {
+          "id": "C-01",
+          "name": "Repository scanner + persisted index",
+          "description": "Deterministic file-tree walk with exclusion, language/role classification, content hashing, persisted index with freshness.",
+          "status": "RUNTIME_VERIFIED",
+          "evidence": "intelligence/scanner.rs + persisted.rs (content-hash freshness); 9+4 tests; live log 'intel index warm: 444 files, 2111 symbols, 6 packages'. Windows path-normalisation defect fixed and asserted by planted trap files.",
+          "dependencies": [],
+          "user_surface": "serve-intel HTTP route; RepoIntelPanel",
+          "backend_implementation": "zylcode-core/src/intelligence/{scanner,persisted,store}.rs",
+          "tests": "unit tests + repo_intelligence_benchmark.rs",
+          "known_limitations": "Indexing is per-invocation (~10-12s); no persisted incremental cache beyond content-hash freshness.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        },
+        {
+          "id": "C-02",
+          "name": "Symbol index (Rust + TypeScript)",
+          "description": "Extraction of struct/enum/trait/fn/impl/const/type/module/macro (Rust) and class/interface/type/function/component (TS).",
+          "status": "TESTED",
+          "evidence": "intelligence/symbols.rs; 1552 symbols extracted on HEAD; feeds deterministic retrieval.",
+          "dependencies": ["C-01"],
+          "user_surface": "repo-context CLI; symbol search",
+          "backend_implementation": "zylcode-core/src/intelligence/symbols.rs",
+          "tests": "symbols.rs #[cfg(test)] (10)",
+          "known_limitations": "Regex-based, not semantic resolution. Quality label DEFINITION_INDEXED.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        },
+        {
+          "id": "C-03",
+          "name": "Repository query API (14 typed queries)",
+          "description": "repository_summary, find_symbol, symbol_definition, symbols_in_file, package_for_file, dependencies_of, dependents_of, entry_points, test_targets, build_commands, recent_changes, architecture, relevant_context.",
+          "status": "TESTED",
+          "evidence": "intelligence/query.rs; product surface `zylcode repo-context \"<task>\"` committed with a raw invocation transcript at docs/governance/evidence/repo_context_transcript.txt. Builder-claimed R3; independent acceptance pending.",
+          "dependencies": ["C-01", "C-02"],
+          "user_surface": "CLI repo-context; AgentLoop ContextBuilder seam",
+          "backend_implementation": "zylcode-core/src/intelligence/query.rs",
+          "tests": "query.rs + context_builder integration test",
+          "known_limitations": "R3 is builder-claimed; the Phase 2A audit remains the acceptance authority and Phase 2A is still formally RE-OPENED.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        },
+        {
+          "id": "C-04",
+          "name": "Context retrieval (ranked, deterministic)",
+          "description": "Ranks files by symbol match, filename, dependency distance, test relationship, recent changes; returns WHY.",
+          "status": "TESTED",
+          "evidence": "20-query known-answer benchmark P@10=0.48, R@10=1.00; deterministic across 10 consecutive cross-process runs (1 unique SHA-256).",
+          "dependencies": ["C-02", "C-03"],
+          "user_surface": "CLI repo-context; plan mode",
+          "backend_implementation": "zylcode-core/src/intelligence/context.rs",
+          "tests": "repo_intelligence_benchmark.rs (2)",
+          "known_limitations": "Precision@10 of 0.48 is honest and modest; threshold held at 0.20 with documented non-determinism caveat in one path.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        },
+        {
+          "id": "C-05",
+          "name": "AST navigation engine (tree-sitter)",
+          "description": "Symbols, references, callers/callees, import/export graph over Rust/TS/JS.",
+          "status": "TESTED",
+          "evidence": "crates/zylcode-nav (8207 LOC, 9 modules: parse, resolve, index, queries, model, payload, scan, cache); crates/zylcode-nav/tests/navigation.rs.",
+          "dependencies": [],
+          "user_surface": "nav.* tools; RepoNavPanel",
+          "backend_implementation": "crates/zylcode-nav",
+          "tests": "tests/navigation.rs",
+          "known_limitations": "Newer subsystem; not yet wired into the factory task graph.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        },
+        {
+          "id": "C-06",
+          "name": "Impact analysis ('what will this change affect?')",
+          "description": "Reverse dependency + reference walk to predict blast radius before editing.",
+          "status": "TESTED",
+          "evidence": "intelligence/dependency.rs dependents_of + nav queries. Used by retrieval intent gating (Q6 P@10=1.00 R@10=1.00).",
+          "dependencies": ["C-03", "C-05"],
+          "user_surface": "repo-context; RepoIntelPanel",
+          "backend_implementation": "intelligence/dependency.rs, zylcode-nav/src/queries.rs",
+          "tests": "dependency tests + navigation tests",
+          "known_limitations": "No first-class 'impact report' artifact type; consumed as ranked context only.",
+          "target_maturity": "WIRED"
+        }
+      ]
+    },
+    "D_AI_PROVIDERS": {
+      "capabilities": [
+        {
+          "id": "D-01",
+          "name": "Provider registry + capability model",
+          "description": "Declared providers with requires_api_key, model capability registry, provider scorecard.",
+          "status": "TESTED",
+          "evidence": "router.rs ProviderKind/ProviderConfig; core/model_capabilities.rs; core/provider_scorecard.rs + provider_scorecard.db on disk.",
+          "dependencies": [],
+          "user_surface": "ProviderSettings panel; settings surface",
+          "backend_implementation": "zylcode-core/src/router/*, model_capabilities.rs",
+          "tests": "router tests; settings tests (frontend)",
+          "known_limitations": "Capability registry is declarative; it does not by itself prove any provider answers.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        },
+        {
+          "id": "D-02",
+          "name": "Token router with real HTTP dispatch",
+          "description": "Real HTTP POST to provider endpoints when keys are configured; streaming; token metrics.",
+          "status": "TESTED",
+          "evidence": "router.rs dispatch_prompt; live_commissioning.rs recorded 3 real provider HTTP outcomes on 2026-09-28.",
+          "dependencies": ["D-01"],
+          "user_surface": "Agent loop; provider settings",
+          "backend_implementation": "zylcode-core/src/router/*",
+          "tests": "router tests; live_commissioning (ignored by default)",
+          "known_limitations": "Real HTTP yes; successful completion no. See D-03.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        },
+        {
+          "id": "D-03",
+          "name": "Usable approved cloud provider",
+          "description": "A provider that answers a real turn and satisfies the AGENT-01 self-citation criterion.",
+          "status": "BLOCKED",
+          "evidence": "OpenRouter/Anthropic → 401; DeepSeek → 402; OpenRouter key is a literal placeholder (OPENROUTER_API_KEY=YOUR_OPENROUTER_API_KEY). AGENT-01 stays BLOCKED (REPOSITORY_INTELLIGENCE_WAVE §17.1).",
+          "dependencies": ["D-02"],
+          "user_surface": "Agent loop",
+          "backend_implementation": "n/a — external",
+          "tests": "live_commissioning probe records the failure honestly",
+          "known_limitations": "Every model-dependent gate stays BLOCKED until a provider answers. Local models (Ollama) may run LOCAL_DIAGNOSTIC/NON-GATE only.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        },
+        {
+          "id": "D-04",
+          "name": "Synthetic offline provider (deterministic test double)",
+          "description": "A deterministic provider used by tests and benches so the suite never egresses.",
+          "status": "TESTED",
+          "evidence": "SyntheticOffline is the sanctioned double; memory records that a literal placeholder key causes tests to egress and that SyntheticOffline must be used in tests/benches.",
+          "dependencies": ["D-02"],
+          "user_surface": "Tests, benches",
+          "backend_implementation": "router.rs provider kind",
+          "tests": "Used across the suite",
+          "known_limitations": "G-01: an on-disk vector cache can answer a live prompt with a persisted SYNTHETIC response. Mitigation exists (TokenRouter::without_vector_cache) but the gap is open.",
+          "target_maturity": "TESTED"
+        }
+      ]
+    },
+    "E_AGENT_RUNTIME": {
+      "capabilities": [
+        {
+          "id": "E-01",
+          "name": "Agent kernel loop (observe→reason→act→verify→recover)",
+          "description": "Bounded agent loop with plan/tool approval gates and max_iterations termination.",
+          "status": "TESTED",
+          "evidence": "core/agent.rs; agent_loop_e2e.rs (4 tests incl. observation and repair loops); max_iterations default 10.",
+          "dependencies": ["H-01", "D-02", "G-01"],
+          "user_surface": "process_intent (CLI, desktop, HTTP)",
+          "backend_implementation": "zylcode-core/src/agent.rs",
+          "tests": "tests/agent_loop_e2e.rs, executable_tools_e2e.rs",
+          "known_limitations": "With a live model: BLOCKED (D-03). Deterministic paths are exercised.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        },
+        {
+          "id": "E-02",
+          "name": "Agent decision protocol",
+          "description": "AgentDecision enum: Think, Plan, ToolCall, RequestApproval, Verify, Complete, Fail.",
+          "status": "TESTED",
+          "evidence": "core/agent_protocol.rs; decision_proptest.rs property tests (deny overrides allow; invalid session always denies).",
+          "dependencies": [],
+          "user_surface": "Agent workspace",
+          "backend_implementation": "zylcode-core/src/agent_protocol.rs",
+          "tests": "tests/decision_proptest.rs",
+          "known_limitations": "Protocol is real; model-driven decision quality is unmeasurable while D-03 is blocked.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        },
+        {
+          "id": "E-03",
+          "name": "Builder/verifier separation",
+          "description": "Candidates accepted only through a deterministic gate, never model say-so.",
+          "status": "TESTED",
+          "evidence": "core/best_of_n.rs TestSuiteVerifier + SelfVerificationGate; core/patch_best_of_n.rs.",
+          "dependencies": ["K-01"],
+          "user_surface": "Mission drain (build mode)",
+          "backend_implementation": "zylcode-core/src/best_of_n.rs, patch_best_of_n.rs",
+          "tests": "best_of_n / patch_best_of_n tests",
+          "known_limitations": "Verifier is real; candidate generation is model-dependent.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        },
+        {
+          "id": "E-04",
+          "name": "Context builder for the agent",
+          "description": "Ranks files through the real intelligence pipeline before a turn.",
+          "status": "TESTED",
+          "evidence": "core/context_builder.rs; committed discriminating test context_builder_uses_intelligence_ranking (agent.rs reachable only via co-change evidence).",
+          "dependencies": ["C-04"],
+          "user_surface": "AgentLoop::gather_context",
+          "backend_implementation": "zylcode-core/src/context_builder.rs",
+          "tests": "context_builder integration test",
+          "known_limitations": "Per-invocation re-index ~10s.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        }
+      ]
+    },
+    "F_AGENT_ORCHESTRATION": {
+      "capabilities": [
+        {
+          "id": "F-01",
+          "name": "Mission queue (durable, file-backed)",
+          "description": "FIFO queue with modes build/plan and states queued/running/waiting_approval/blocked/done/failed/verified.",
+          "status": "TESTED",
+          "evidence": "core/missions.rs (496 lines, 10 committed tests); .zylcode/missions.json live; /api/missions and /run-next returned 200 in the 2026-09-28 audit.",
+          "dependencies": ["G-01"],
+          "user_surface": "MissionComposer panel; HTTP routes",
+          "backend_implementation": "zylcode-core/src/missions.rs",
+          "tests": "missions.rs #[cfg(test)] (10)",
+          "known_limitations": "Linear queue, not a dependency graph. No per-task DAG, no parallel scheduling.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        },
+        {
+          "id": "F-02",
+          "name": "Deterministic plan mode",
+          "description": "Plan missions cite real ranked repository context and execute no code.",
+          "status": "TESTED",
+          "evidence": "missions::build_plan uses intelligence::api::repo_intel_payload; test plan_mode_never_executes_and_cites_real_context asserts real symbols appear.",
+          "dependencies": ["C-04"],
+          "user_surface": "Mission composer (plan mode)",
+          "backend_implementation": "zylcode-core/src/missions.rs",
+          "tests": "missions.rs test",
+          "known_limitations": "Model-authored plan: BLOCKED (D-03).",
+          "target_maturity": "RUNTIME_VERIFIED"
+        },
+        {
+          "id": "F-03",
+          "name": "Dependency-aware task graph",
+          "description": "A job decomposes into a DAG of tasks with dependencies, parallel-safe vs serial edges, blocked propagation, retry, cancellation, per-task approval and evidence.",
+          "status": "NOT_IMPLEMENTED",
+          "evidence": "No module in crates/ implements a dependency-aware task graph. missions.rs is a linear queue; first_mission.rs Plan is a linear step list. Created by this wave: crates/zylcode-core/src/factory/.",
+          "dependencies": ["F-01", "G-01"],
+          "user_surface": "None yet",
+          "backend_implementation": "n/a before this wave",
+          "tests": "n/a before this wave",
+          "known_limitations": "This was the single largest structural gap between ZylCode and a software factory.",
+          "target_maturity": "TESTED"
+        },
+        {
+          "id": "F-04",
+          "name": "Factory job lifecycle (durable)",
+          "description": "An explicit INTAKE→…→DELIVERY lifecycle for a factory job, persisted and resumable.",
+          "status": "NOT_IMPLEMENTED",
+          "evidence": "No lifecycle type existed. MissionState is a queue state, not a job lifecycle. Created by this wave.",
+          "dependencies": ["F-03"],
+          "user_surface": "None yet",
+          "backend_implementation": "n/a before this wave",
+          "tests": "n/a before this wave",
+          "known_limitations": "Lifecycle is modelled; stage automation beyond the implemented slice is design-only.",
+          "target_maturity": "TESTED"
+        },
+        {
+          "id": "F-05",
+          "name": "Parallel agents over isolated worktrees",
+          "description": "Multiple agents working concurrently without racing over one dirty tree.",
+          "status": "SCAFFOLDED",
+          "evidence": "CandidateWorktree (patch_best_of_n.rs) + SandboxedWorktreeVerifier (sandbox.rs) provide isolated worktrees for candidates. No scheduler, no file leases, no merge queue.",
+          "dependencies": ["B-04"],
+          "user_surface": "Best-of-N verification only",
+          "backend_implementation": "sandbox.rs, patch_best_of_n.rs",
+          "tests": "sandbox tests",
+          "known_limitations": "Worktree primitives exist; orchestration over them does not.",
+          "target_maturity": "WIRED"
+        }
+      ]
+    },
+    "G_MEMORY": {
+      "capabilities": [
+        {
+          "id": "G-01",
+          "name": "Execution ledger (hash-chained, durable)",
+          "description": "Append-first ledger with session checkpoints and two implementations (SQLite, in-memory).",
+          "status": "TESTED",
+          "evidence": "core/ledger.rs (LedgerEntry{prev_hash,…}, SessionCheckpoint, LedgerStore trait), memory_ledger.rs, sqlite_ledger.rs; tests/crash_recovery.rs; .zylcode/ledger.db live.",
+          "dependencies": [],
+          "user_surface": "Evidence Center; ledger-backed mission sessions",
+          "backend_implementation": "zylcode-core/src/{ledger,memory_ledger,sqlite_ledger}.rs",
+          "tests": "tests/crash_recovery.rs",
+          "known_limitations": "Ledger is execution-scoped; it is not a project or decision memory.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        },
+        {
+          "id": "G-02",
+          "name": "Crash recovery / reconciliation",
+          "description": "Resume from checkpoint; reconcile filesystem against expected effects rather than repeating work.",
+          "status": "TESTED",
+          "evidence": "core/agent.rs recover_from_checkpoint() + RecoveryResult/ReconciliationResult; first_mission.rs real abort() + resume (crates/zylcode-cli/tests/first_mission_kill_resume.rs).",
+          "dependencies": ["G-01"],
+          "user_surface": "Mission resume; CLI --resume",
+          "backend_implementation": "agent.rs, first_mission.rs",
+          "tests": "tests/crash_recovery.rs, e2e_crash_recovery.rs, first_mission_kill_resume.rs",
+          "known_limitations": "Reconciliation is per-mission; there is no general job-level recovery service.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        },
+        {
+          "id": "G-03",
+          "name": "Decision memory (ADR-style, durable, attributable)",
+          "description": "Durable architecture decision records an agent must consult before contradicting prior decisions.",
+          "status": "NOT_IMPLEMENTED",
+          "evidence": "No ADR/decision store exists in crates/. Governance decisions live in prose docs only.",
+          "dependencies": ["G-01"],
+          "user_surface": "None",
+          "backend_implementation": "n/a",
+          "tests": "n/a",
+          "known_limitations": "Design-only; see EVIDENCE_AND_PROVENANCE_MODEL.",
+          "target_maturity": "TESTED"
+        },
+        {
+          "id": "G-04",
+          "name": "Project / repository / research memory separation",
+          "description": "Distinct memory scopes: session, project, repository, decision, research, organisation policy.",
+          "status": "NOT_IMPLEMENTED",
+          "evidence": "Only session-scoped ledger memory exists. No scope separation in code.",
+          "dependencies": ["G-01"],
+          "user_surface": "None",
+          "backend_implementation": "n/a",
+          "tests": "n/a",
+          "known_limitations": "Design-only.",
+          "target_maturity": "TESTED"
+        }
+      ]
+    },
+    "H_TOOLS": {
+      "capabilities": [
+        {
+          "id": "H-01",
+          "name": "Executable tool catalogue (single source of truth)",
+          "description": "Canonical catalogue separating definition from executable capability with five explicit metrics.",
+          "status": "TESTED",
+          "evidence": "mcp/tool_catalogue.rs (881 lines); metrics asserted by test; r3_verified_count == 0 pinned.",
+          "dependencies": [],
+          "user_surface": "ToolsCataloguePanel; HTTP catalogue route",
+          "backend_implementation": "crates/zylcode-mcp/src/tool_catalogue.rs",
+          "tests": "catalogue tests",
+          "known_limitations": "definition_count 38 · executable 12 · tested 2 · product_reachable 11 · r3_verified 0 (candidate metrics, 2026-09-17; re-measure before quoting).",
+          "target_maturity": "RUNTIME_VERIFIED"
+        },
+        {
+          "id": "H-02",
+          "name": "Real tool executors (filesystem/shell/git/search)",
+          "description": "12 general-purpose executors, each bound to exactly one operation; the id constrains the operation.",
+          "status": "TESTED",
+          "evidence": "mcp/real_tools.rs get_real_tool: fs.read/write/list, shell.execute/echo, npm.run, cargo.test, git.status/diff/commit, search.find/grep; integration_test.rs (11 tests) proves no fabricated success and that git.commit cannot push.",
+          "dependencies": ["H-01"],
+          "user_surface": "Agent loop; HTTP tool execution",
+          "backend_implementation": "crates/zylcode-mcp/src/real_tools.rs",
+          "tests": "tests/integration_test.rs, executable_builtins*.rs",
+          "known_limitations": "12 of 38 definitions are executable. Definition-only ids must never be registered or reported as success.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        },
+        {
+          "id": "H-03",
+          "name": "Repository-intelligence tools (nav.*)",
+          "description": "8 read-only nav.* tools mapping 1:1 to engine queries.",
+          "status": "TESTED",
+          "evidence": "mcp/nav_tools.rs is_nav_tool/payload_id; tests/nav_tools.rs.",
+          "dependencies": ["C-05"],
+          "user_surface": "Agent tools; MCP inspector",
+          "backend_implementation": "crates/zylcode-mcp/src/nav_tools.rs",
+          "tests": "tests/nav_tools.rs",
+          "known_limitations": "Read-only by construction.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        },
+        {
+          "id": "H-04",
+          "name": "Permission gate (default-deny) + dispatch",
+          "description": "The single path from request to executor; a refusal does not execute anything and is recorded as evidence.",
+          "status": "TESTED",
+          "evidence": "mcp/permission.rs (PermissionPolicy default allow_up_to: Some(Read)); mcp/real_tools.rs::dispatch records refusals; decision_proptest.rs property tests.",
+          "dependencies": [],
+          "user_surface": "All tool execution",
+          "backend_implementation": "crates/zylcode-mcp/src/permission.rs, real_tools.rs",
+          "tests": "tests/decision_proptest.rs, integration_test.rs",
+          "known_limitations": "Policy is per-runtime; a factory job must choose its own risk ceiling explicitly.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        },
+        {
+          "id": "H-05",
+          "name": "Tool execution evidence (JSONL sink)",
+          "description": "Every gated invocation — success or refusal — written to an append-only evidence sink.",
+          "status": "TESTED",
+          "evidence": "mcp/evidence.rs JsonlEvidenceSink + ToolRuntime; tests/executable_builtins_evidence.rs.",
+          "dependencies": ["H-04"],
+          "user_surface": "Evidence Center",
+          "backend_implementation": "crates/zylcode-mcp/src/evidence.rs",
+          "tests": "tests/executable_builtins_evidence.rs",
+          "known_limitations": "Evidence is stored; until this wave it was not linked into a traversable graph by the tool path.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        }
+      ]
+    },
+    "I_MCP": {
+      "capabilities": [
+        {
+          "id": "I-01",
+          "name": "MCP tool registry + dynamic tools",
+          "description": "Registry with DynamicTool wrappers registered from mcp.tools.yaml.",
+          "status": "TESTED",
+          "evidence": "mcp/registry.rs, mcp/tool.rs DynamicTool; mcp.tools.yaml is now tracked.",
+          "dependencies": ["H-01"],
+          "user_surface": "McpInspector panel; /api/tools",
+          "backend_implementation": "crates/zylcode-mcp/src/{registry,tool}.rs",
+          "tests": "mcp integration tests",
+          "known_limitations": "TOOL-01 fixed: process_intent registers every catalogue-executable built-in before the loop is built (commit 1a0c79d).",
+          "target_maturity": "RUNTIME_VERIFIED"
+        },
+        {
+          "id": "I-02",
+          "name": "MCP bridge (external server transport)",
+          "description": "Register/connect external MCP servers over stdio/sse/websocket.",
+          "status": "SCAFFOLDED",
+          "evidence": "core/lib.rs register_mcp_bridge stores descriptors in memory with transport validation; no transport client spawns a real server in the committed code path.",
+          "dependencies": ["I-01"],
+          "user_surface": "BridgeMonitor panel",
+          "backend_implementation": "zylcode-core/src/lib.rs (descriptor store); mcp/enhanced_bridge.rs",
+          "tests": "lib.rs tests assert validation and listing only",
+          "known_limitations": "Descriptor registry is real; outbound MCP client transport is not demonstrated. Do not describe as a working MCP client.",
+          "target_maturity": "WIRED"
+        },
+        {
+          "id": "I-03",
+          "name": "Config hot-reload",
+          "description": "Watch mcp.tools.yaml and re-register tools on change.",
+          "status": "TESTED",
+          "evidence": "mcp/hot_reload.rs, mcp/config.rs install_global_watcher; core/lib.rs watch_tools_config.",
+          "dependencies": ["I-01"],
+          "user_surface": "None",
+          "backend_implementation": "crates/zylcode-mcp/src/hot_reload.rs",
+          "tests": "hot_reload tests",
+          "known_limitations": "Hot-reload calls registry.clear() then re-register; the TOOL-01 invariant is re-established per run at process_intent.",
+          "target_maturity": "TESTED"
+        }
+      ]
+    },
+    "J_TERMINAL_PROCESS": {
+      "capabilities": [
+        {
+          "id": "J-01",
+          "name": "Terminal hub (real shell)",
+          "description": "Real terminal session management in the Run surface.",
+          "status": "TESTED",
+          "evidence": "core/terminal.rs TerminalHub/TerminalSession; commit aa76f71 'real working terminal in the Run surface'; /api/terminal/reset returned 200.",
+          "dependencies": ["H-02"],
+          "user_surface": "Terminal panel",
+          "backend_implementation": "zylcode-core/src/terminal.rs",
+          "tests": "TerminalPanel.test.tsx (frontend); terminal.rs unit tests",
+          "known_limitations": "No PTY-level interaction guarantees documented; command execution is real.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        },
+        {
+          "id": "J-02",
+          "name": "Process execution with captured outcome",
+          "description": "Commands run with argv, cwd, exit code, stdout/stderr capture and duration.",
+          "status": "TESTED",
+          "evidence": "first_mission.rs run_cmd/CmdOutcome; shell.execute executor.",
+          "dependencies": [],
+          "user_surface": "Agent tools; First Mission",
+          "backend_implementation": "first_mission.rs, mcp/real_tools.rs ShellTool",
+          "tests": "first_mission_e2e.rs",
+          "known_limitations": "No resource limits beyond timeout on the plain path; sandbox path provides container isolation for candidates.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        }
+      ]
+    },
+    "K_TESTING": {
+      "capabilities": [
+        {
+          "id": "K-01",
+          "name": "Workspace test battery",
+          "description": "cargo test --workspace --all-targets with 17 test binaries.",
+          "status": "RUNTIME_VERIFIED",
+          "evidence": "575 passed / 0 failed / 0 ignored recorded 2026-09-28. Re-run in this session to establish the 2026-10-06 baseline.",
+          "dependencies": [],
+          "user_surface": "CLI / CI",
+          "backend_implementation": "crates/*/tests",
+          "tests": "the suite itself",
+          "known_limitations": "Remote CI is BLOCKED by an external billing lock; the local battery is the only verification authority.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        },
+        {
+          "id": "K-02",
+          "name": "Property-based tests",
+          "description": "proptest suites for the decision protocol and the pipeline.",
+          "status": "TESTED",
+          "evidence": "tests/decision_proptest.rs, tests/pipeline_proptest.rs.",
+          "dependencies": [],
+          "user_surface": "CLI",
+          "backend_implementation": "crates/zylcode-core/tests",
+          "tests": "2 proptest binaries",
+          "known_limitations": "Coverage is narrow (two subsystems).",
+          "target_maturity": "RUNTIME_VERIFIED"
+        },
+        {
+          "id": "K-03",
+          "name": "Fault-injection suite",
+          "description": "Corrupted/partial writes and refusal paths.",
+          "status": "TESTED",
+          "evidence": "crates/zylcode-mcp/tests/fault_injection.rs; docs/FAULT_INJECTION.md.",
+          "dependencies": ["H-04"],
+          "user_surface": "CLI",
+          "backend_implementation": "crates/zylcode-mcp/tests",
+          "tests": "fault_injection.rs",
+          "known_limitations": "Adversarial evidence tests (corrupted JSONL, truncated sqlite, tampered claims) are PARTIAL.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        },
+        {
+          "id": "K-04",
+          "name": "Agent behaviour evaluation framework",
+          "description": "Repeatable fixtures scoring agent behaviour (diagnose, correct file, avoid unrelated files, refuse fabricated success, recover, follow an ADR).",
+          "status": "NOT_IMPLEMENTED",
+          "evidence": "No evaluation harness exists. The First Mission is one scenario, not a scored framework.",
+          "dependencies": ["E-01"],
+          "user_surface": "None",
+          "backend_implementation": "n/a",
+          "tests": "n/a",
+          "known_limitations": "Design-only; see AGENT_EVALUATION_MODEL.",
+          "target_maturity": "TESTED"
+        }
+      ]
+    },
+    "L_DEBUGGING": {
+      "capabilities": [
+        {
+          "id": "L-01",
+          "name": "Failure diagnosis from captured output",
+          "description": "Parse a failing command's real output to name a cause and an implicated file.",
+          "status": "TESTED",
+          "evidence": "first_mission.rs diagnose_from_output()/implicated_file(); Failure object with diagnosis/attempt/recovery (§9).",
+          "dependencies": ["L-02", "G-01"],
+          "user_surface": "First Mission record",
+          "backend_implementation": "zylcode-core/src/{first_mission,failure}.rs",
+          "tests": "first_mission_e2e.rs, failure.rs unit tests",
+          "known_limitations": "Diagnosis is signature-based, not semantic. Model-assisted diagnosis is BLOCKED (D-03).",
+          "target_maturity": "RUNTIME_VERIFIED"
+        },
+        {
+          "id": "L-02",
+          "name": "Structured failure taxonomy",
+          "description": "FAILED/BLOCKED/TIMED_OUT/CANCELLED/UNKNOWN/PARTIALLY_COMPLETED/RECOVERED with fail-closed recovery.",
+          "status": "TESTED",
+          "evidence": "core/failure.rs (283 lines, 5 committed tests) — recover requires diagnosis + attempt + evidence + resolution.",
+          "dependencies": [],
+          "user_surface": "None directly (library)",
+          "backend_implementation": "zylcode-core/src/failure.rs",
+          "tests": "failure.rs #[cfg(test)] (5)",
+          "known_limitations": "Not yet surfaced in the UI as a first-class failure object.",
+          "target_maturity": "WIRED"
+        },
+        {
+          "id": "L-03",
+          "name": "Interactive debugger (breakpoints, stepping, DAP)",
+          "description": "Source-level debugging.",
+          "status": "NOT_IMPLEMENTED",
+          "evidence": "grep for debugger|breakpoint|DAP across crates/**/*.rs returns nothing.",
+          "dependencies": [],
+          "user_surface": "None",
+          "backend_implementation": "n/a",
+          "tests": "n/a",
+          "known_limitations": "Not in the 16-phase roadmap. Treat as future work, not a gap being closed.",
+          "target_maturity": "NOT_IMPLEMENTED"
+        }
+      ]
+    },
+    "M_SECURITY": {
+      "capabilities": [
+        {
+          "id": "M-01",
+          "name": "Permission/risk gate (tool execution)",
+          "description": "Risk classification Read..Release with a default-deny policy at the dispatch chokepoint.",
+          "status": "TESTED",
+          "evidence": "mcp/permission.rs RiskLevel + PermissionPolicy; decision_proptest.rs.",
+          "dependencies": ["H-04"],
+          "user_surface": "All tool execution",
+          "backend_implementation": "crates/zylcode-mcp/src/permission.rs",
+          "tests": "decision_proptest.rs, integration_test.rs",
+          "known_limitations": "Covers tool execution only; it is not a security-review subsystem.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        },
+        {
+          "id": "M-02",
+          "name": "Workspace containment (path traversal defence)",
+          "description": "Refuses .., absolute paths, and symlink escapes out of the workspace.",
+          "status": "TESTED",
+          "evidence": "mcp/real_tools.rs::resolve_within (TOOL-01 fix) + core/project/filesystem.rs canonicalise containment; both tested.",
+          "dependencies": [],
+          "user_surface": "fs.read/fs.write",
+          "backend_implementation": "real_tools.rs, project/filesystem.rs",
+          "tests": "integration_test.rs, filesystem tests",
+          "known_limitations": "Containment is enforced at the tool boundary; a future non-tool write path must re-use it.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        },
+        {
+          "id": "M-03",
+          "name": "Secret detection / SAST / dependency vulnerability scanning",
+          "description": "Automated security analysis of the workspace and its dependencies.",
+          "status": "NOT_IMPLEMENTED",
+          "evidence": "No scanner, no SAST integration, no dependency audit tool exists in crates/. Only the retracted-claims guard (a documentation check) runs in CI.",
+          "dependencies": [],
+          "user_surface": "None",
+          "backend_implementation": "n/a",
+          "tests": "n/a",
+          "known_limitations": "Design-only; see AGENT_EVALUATION_MODEL §Security.",
+          "target_maturity": "SCAFFOLDED"
+        },
+        {
+          "id": "M-04",
+          "name": "Security finding object (severity/location/evidence/status)",
+          "description": "First-class record for a security finding with remediation and verification state.",
+          "status": "NOT_IMPLEMENTED",
+          "evidence": "No SecurityFinding type exists.",
+          "dependencies": ["M-03"],
+          "user_surface": "None",
+          "backend_implementation": "n/a",
+          "tests": "n/a",
+          "known_limitations": "Design-only.",
+          "target_maturity": "SCAFFOLDED"
+        }
+      ]
+    },
+    "N_DOCUMENTATION": {
+      "capabilities": [
+        {
+          "id": "N-01",
+          "name": "Governance corpus",
+          "description": "Constitution, Architecture v2.1, Master Execution Plan, Capability Model, Proof Graph, Agent Operating Protocol, roadmap.",
+          "status": "WIRED",
+          "evidence": "docs/governance/README.md indexes 30+ documents; superseded/ holds obsolete drafts. Documentation is real and enforced by policy, not by a runtime.",
+          "dependencies": [],
+          "user_surface": "Repository only",
+          "backend_implementation": "n/a (documents)",
+          "tests": "check_retracted_claims.py enforces one class of doc defect",
+          "known_limitations": "48 tracked root-level .md files; legacy completion-claiming reports are quarantined by README_INDEX.md, not archived.",
+          "target_maturity": "WIRED"
+        },
+        {
+          "id": "N-02",
+          "name": "Retracted-claim guard",
+          "description": "CI step that fails on any new occurrence of a retracted claim; baselined debt may only shrink.",
+          "status": "RUNTIME_VERIFIED",
+          "evidence": "scripts/check_retracted_claims.py + retracted_claims_baseline.txt + .github/workflows/ci.yml step. Falsification-proven: clean→0, regression→1, stale baseline→1.",
+          "dependencies": [],
+          "user_surface": "CI / local",
+          "backend_implementation": "scripts/check_retracted_claims.py",
+          "tests": "self-testing (three documented outcomes)",
+          "known_limitations": "Remote CI cannot run (external billing lock), so the guard runs only locally until that clears.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        },
+        {
+          "id": "N-03",
+          "name": "Automated documentation generation",
+          "description": "Generate docs/API references from source.",
+          "status": "NOT_IMPLEMENTED",
+          "evidence": "No doc-generation pipeline in the workspace.",
+          "dependencies": [],
+          "user_surface": "None",
+          "backend_implementation": "n/a",
+          "tests": "n/a",
+          "known_limitations": "A Documentation Agent role is designed, not built.",
+          "target_maturity": "SCAFFOLDED"
+        }
+      ]
+    },
+    "O_RESEARCH": {
+      "capabilities": [
+        {
+          "id": "O-01",
+          "name": "Research mode (question/hypothesis/sources/experiments/results)",
+          "description": "A research project workspace with epistemic typing of every statement.",
+          "status": "NOT_IMPLEMENTED",
+          "evidence": "grep -ri 'research' over crates/**/*.rs returns no module. No ResearchProject type exists.",
+          "dependencies": ["B-03"],
+          "user_surface": "None",
+          "backend_implementation": "n/a",
+          "tests": "n/a",
+          "known_limitations": "Design-only; see RESEARCH_MODE_ARCHITECTURE.",
+          "target_maturity": "SCAFFOLDED"
+        },
+        {
+          "id": "O-02",
+          "name": "Reproducible computational research capture",
+          "description": "Capture SHA, lockfiles, runtime versions, dataset/input/output hashes, seed, command, results.",
+          "status": "NOT_IMPLEMENTED",
+          "evidence": "First Mission captures env + spec hash + effect hashes + a repro package, but there is no research-oriented dataset/seed/result model.",
+          "dependencies": ["P-02"],
+          "user_surface": "None",
+          "backend_implementation": "n/a",
+          "tests": "n/a",
+          "known_limitations": "The reproducibility *pattern* exists (First Mission); the research data model does not.",
+          "target_maturity": "SCAFFOLDED"
+        },
+        {
+          "id": "O-03",
+          "name": "Epistemic typing of research statements",
+          "description": "SOURCE / OBSERVATION / INFERENCE / HYPOTHESIS / RESULT / DECISION.",
+          "status": "NOT_IMPLEMENTED",
+          "evidence": "claim.rs provides Observed/Derived/Verified/Hypothesis/Unverified/Contradicted/Unknown for engineering claims. There is no research-specific typing or citation model.",
+          "dependencies": ["P-01"],
+          "user_surface": "None",
+          "backend_implementation": "n/a",
+          "tests": "n/a",
+          "known_limitations": "Design-only. The claim model is the correct substrate to extend.",
+          "target_maturity": "SCAFFOLDED"
+        }
+      ]
+    },
+    "P_SOFTWARE_FACTORY": {
+      "capabilities": [
+        {
+          "id": "P-01",
+          "name": "Claim model with epistemic status",
+          "description": "Fail-closed Claim type; VERIFIED cannot be constructed without evidence and level R2+.",
+          "status": "TESTED",
+          "evidence": "core/claim.rs (609 lines, 13 committed tests) incl. tamper detection and corrupt-file refusal.",
+          "dependencies": [],
+          "user_surface": "Evidence Center (grouping pending)",
+          "backend_implementation": "zylcode-core/src/claim.rs",
+          "tests": "claim.rs #[cfg(test)] (13)",
+          "known_limitations": "Two ladders share the R0..R5 prefix (claim ladder vs capability rung); every artifact must name its ladder.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        },
+        {
+          "id": "P-02",
+          "name": "Evidence graph (typed nodes, provenance, hash-chained)",
+          "description": "INTENT→SPECIFICATION→PLAN→DECISION→ACTION→TOOL_CALL→RESULT→ARTIFACT→VERIFICATION→CLAIM, traversable to the originating intent.",
+          "status": "TESTED",
+          "evidence": "core/evidence_graph.rs (557 lines, 7 committed tests) incl. ancestry walk, dangling-edge refusal, tamper detection.",
+          "dependencies": ["P-01"],
+          "user_surface": "Evidence Center",
+          "backend_implementation": "zylcode-core/src/evidence_graph.rs",
+          "tests": "evidence_graph.rs #[cfg(test)] (7)",
+          "known_limitations": "Before this wave the tool-dispatch path did not write graph nodes; the factory runner now does.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        },
+        {
+          "id": "P-03",
+          "name": "Proof records (deterministic verification)",
+          "description": "Hash-chained ProofRecord with command/exit_status/environment/source_commit and honest VerificationState.",
+          "status": "TESTED",
+          "evidence": "core/proof_engine.rs (662 lines); persisted .zylcode/proofs.json; distinguishes runtime from simulated ProofSource.",
+          "dependencies": [],
+          "user_surface": "ProofInspector panel",
+          "backend_implementation": "zylcode-core/src/proof_engine.rs",
+          "tests": "proof_engine tests",
+          "known_limitations": "VerificationState includes Blocked/RuntimeNotReached/EvidenceMissing — honest negatives, not failures.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        },
+        {
+          "id": "P-04",
+          "name": "End-to-end mission runner (First Mission §36)",
+          "description": "spec→plan→real tools→real failure→diagnosis→repair→re-verify→ledger→graph→record→repro package→kill/resume.",
+          "status": "RUNTIME_VERIFIED",
+          "evidence": "core/first_mission.rs (2689 lines); tests/first_mission_e2e.rs (2) + crates/zylcode-cli/tests/first_mission_kill_resume.rs (1, real abort() + resume) executed 2026-09-28.",
+          "dependencies": ["P-01", "P-02", "G-01", "H-02"],
+          "user_surface": "CLI first-mission",
+          "backend_implementation": "zylcode-core/src/first_mission.rs",
+          "tests": "first_mission_e2e.rs, first_mission_kill_resume.rs",
+          "known_limitations": "The repair is specification-directed, not model-invented; that limitation is recorded as a HYPOTHESIS, never as verified.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        },
+        {
+          "id": "P-05",
+          "name": "Artifact bus (lifecycle, lineage, retention)",
+          "description": "Artifacts with propose→generate→advance→verify, lineage, and retention enforcement.",
+          "status": "TESTED",
+          "evidence": "core/artifact_bus.rs (831 lines); ArtifactKind/Lifecycle/RetentionPolicy/VerificationStatus.",
+          "dependencies": [],
+          "user_surface": "ArtifactViewer",
+          "backend_implementation": "zylcode-core/src/artifact_bus.rs",
+          "tests": "artifact_bus tests",
+          "known_limitations": "Retention is time-based; no policy engine.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        },
+        {
+          "id": "P-06",
+          "name": "Factory orchestrator (role-specialised, lifecycle-driven)",
+          "description": "A durable orchestrator running a factory job through named roles and lifecycle stages.",
+          "status": "SCAFFOLDED",
+          "evidence": "Before this wave: no orchestrator. This wave adds a minimal durable runner executing a dependency-aware graph with real tools and evidence; full role specialisation is design-only.",
+          "dependencies": ["F-03", "F-04", "P-02"],
+          "user_surface": "None yet",
+          "backend_implementation": "crates/zylcode-core/src/factory/",
+          "tests": "factory module + integration test",
+          "known_limitations": "Roles are modelled as task kinds, not autonomous agents. That is deliberate.",
+          "target_maturity": "TESTED"
+        }
+      ]
+    },
+    "Q_UIUX_DESIGN": {
+      "capabilities": [
+        {
+          "id": "Q-01",
+          "name": "Design canvas (intelligence/canvas.rs)",
+          "description": "A design-representation module in the intelligence layer.",
+          "status": "SCAFFOLDED",
+          "evidence": "intelligence/canvas.rs (12.6 KB). No product surface renders an editable canvas; no code generation from a canvas.",
+          "dependencies": [],
+          "user_surface": "None",
+          "backend_implementation": "zylcode-core/src/intelligence/canvas.rs",
+          "tests": "Module tests only",
+          "known_limitations": "Vision Studio is PROPOSED in the architecture table. Do not describe as a builder.",
+          "target_maturity": "WIRED"
+        },
+        {
+          "id": "Q-02",
+          "name": "Design tokens / information architecture",
+          "description": "Token system and IA for generated UI.",
+          "status": "NOT_IMPLEMENTED",
+          "evidence": "No design-token model exists. Brand governance is prose (CODEX_BRAND_FOUNDATION_WORK_ORDER.md).",
+          "dependencies": ["Q-01"],
+          "user_surface": "None",
+          "backend_implementation": "n/a",
+          "tests": "n/a",
+          "known_limitations": "Design-only.",
+          "target_maturity": "SCAFFOLDED"
+        },
+        {
+          "id": "Q-03",
+          "name": "Embedded preview surface",
+          "description": "In-app preview of built artifacts.",
+          "status": "TESTED",
+          "evidence": "commit 96aa8a4 'embedded preview renders content-only — kills the second menu system'; RuntimeLab/ArtifactViewer.",
+          "dependencies": ["P-05"],
+          "user_surface": "Preview panel",
+          "backend_implementation": "desktop components + HTTP",
+          "tests": "frontend tests",
+          "known_limitations": "Preview of a static artifact; not a live app runtime.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        },
+        {
+          "id": "Q-04",
+          "name": "Accessibility review + visual regression",
+          "description": "Automated a11y and visual-diff gating in the UI factory.",
+          "status": "NOT_IMPLEMENTED",
+          "evidence": "No a11y test, no visual-regression tool in the repo.",
+          "dependencies": ["Q-01"],
+          "user_surface": "None",
+          "backend_implementation": "n/a",
+          "tests": "n/a",
+          "known_limitations": "Design-only.",
+          "target_maturity": "SCAFFOLDED"
+        }
+      ]
+    },
+    "R_COLLABORATION": {
+      "capabilities": [
+        {
+          "id": "R-01",
+          "name": "Human-in-the-loop approval gates",
+          "description": "Approval-required states and resume-after-approval for missions.",
+          "status": "TESTED",
+          "evidence": "missions.rs request_approval/approve (tested); mcp/permission.rs RequireApproval; agent RequestApproval decision.",
+          "dependencies": ["F-01"],
+          "user_surface": "Mission composer; approval prompts",
+          "backend_implementation": "zylcode-core/src/missions.rs, mcp/permission.rs",
+          "tests": "missions.rs approval_gate test; decision_proptest.rs",
+          "known_limitations": "Approval is per-mission; there is no risk-tier policy object. The factory runner adds per-task approval.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        },
+        {
+          "id": "R-02",
+          "name": "Multi-user / team collaboration",
+          "description": "Shared projects, roles, concurrent human review.",
+          "status": "NOT_IMPLEMENTED",
+          "evidence": "No auth, no user model, no server-side multi-tenancy in crates/.",
+          "dependencies": [],
+          "user_surface": "None",
+          "backend_implementation": "n/a",
+          "tests": "n/a",
+          "known_limitations": "Single-user desktop application today. Institutional multi-user is design-only.",
+          "target_maturity": "SCAFFOLDED"
+        },
+        {
+          "id": "R-03",
+          "name": "Actor attribution on actions",
+          "description": "Every tool invocation attributes to a named actor or is explicitly unidentified.",
+          "status": "TESTED",
+          "evidence": "mcp/actor.rs with_actor/current_actor; ToolEvidence.actor; dispatch falls back to least-privilege when unidentified. process_intent now sets the actor.",
+          "dependencies": ["H-05"],
+          "user_surface": "Evidence records",
+          "backend_implementation": "crates/zylcode-mcp/src/actor.rs",
+          "tests": "actor tests; evidence tests",
+          "known_limitations": "Attribution is per-process task-local; a multi-user server would need it bound to a request identity.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        }
+      ]
+    },
+    "S_GOVERNANCE": {
+      "capabilities": [
+        {
+          "id": "S-01",
+          "name": "Proof graph R0–R5 ladder",
+          "description": "The definition of 'proven' governing every capability claim.",
+          "status": "WIRED",
+          "evidence": "docs/governance/ZYLCODE_PROOF_GRAPH.md GOVERNING; capability registry carries rung fields.",
+          "dependencies": [],
+          "user_surface": "Repository",
+          "backend_implementation": "n/a (document + registry)",
+          "tests": "Registry consistency is reviewed, not automatically enforced end to end",
+          "known_limitations": "Two live R-ladders (claim ladder R0–R7, capability rung R0–R5). Reconciliation is a recorded governance task; until then ambiguity is itself a defect.",
+          "target_maturity": "WIRED"
+        },
+        {
+          "id": "S-02",
+          "name": "Capability registry with dispute history",
+          "description": "Machine-readable capability registry preserving status_before_audit and dispute reasons.",
+          "status": "WIRED",
+          "evidence": "docs/capability-registry.json v1.4.1-audited: 37 entries, 22 GREEN, 12 DISPUTED, 1 EXTERNAL_BLOCKER, 2 PARTIAL; audit status UNDER CORRECTION.",
+          "dependencies": [],
+          "user_surface": "Repository",
+          "backend_implementation": "docs/capability-registry.json",
+          "tests": "None automated",
+          "known_limitations": "Registry is not accepted as accurate; 12 entries are DISPUTED and Phase 2A remains RE-OPENED.",
+          "target_maturity": "WIRED"
+        },
+        {
+          "id": "S-03",
+          "name": "Agent operating protocol",
+          "description": "Pre-flight, rules, report format and anti-patterns for implementation agents.",
+          "status": "WIRED",
+          "evidence": "docs/governance/ZYLCODE_AGENT_OPERATING_PROTOCOL.md; the mandatory preamble is enforced by convention in every work order.",
+          "dependencies": [],
+          "user_surface": "Repository",
+          "backend_implementation": "n/a (document)",
+          "tests": "None automated",
+          "known_limitations": "Convention, not machinery.",
+          "target_maturity": "WIRED"
+        },
+        {
+          "id": "S-04",
+          "name": "Institutional policy objects (provider/tool/retention policy)",
+          "description": "Machine-readable policy an institution can set: allowed providers/tools, residency, offline mode, retention.",
+          "status": "NOT_IMPLEMENTED",
+          "evidence": "No policy engine exists. PermissionPolicy is per-runtime and tool-scoped only.",
+          "dependencies": ["D-01", "H-04"],
+          "user_surface": "None",
+          "backend_implementation": "n/a",
+          "tests": "n/a",
+          "known_limitations": "Design-only; see INSTITUTIONAL_MODE_ARCHITECTURE.",
+          "target_maturity": "SCAFFOLDED"
+        }
+      ]
+    },
+    "T_BUILD_RELEASE_DEPLOY": {
+      "capabilities": [
+        {
+          "id": "T-01",
+          "name": "Build pipeline (workspace build)",
+          "description": "Real build pipeline with named steps.",
+          "status": "TESTED",
+          "evidence": "core/delivery.rs default_build_pipeline/build_workspace; commit bf7d66e 'real build pipeline + release packaging end to end'; /api/build + DeliveryPanel.",
+          "dependencies": ["J-02"],
+          "user_surface": "Delivery panel; HTTP /api/build",
+          "backend_implementation": "zylcode-core/src/delivery.rs",
+          "tests": "delivery tests",
+          "known_limitations": "CI release workflow is BLOCKED by the external billing lock; local build works.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        },
+        {
+          "id": "T-02",
+          "name": "Release packaging (installers)",
+          "description": "Tauri build pipeline producing NSIS/DMG/DEB/RPM.",
+          "status": "BLOCKED",
+          "evidence": "release.yml configured for tauri-action; GitHub Actions jobs fail with zero executed steps ('account is locked due to a billing issue').",
+          "dependencies": ["T-01"],
+          "user_surface": "GitHub Releases",
+          "backend_implementation": ".github/workflows/release.yml",
+          "tests": "None executable while CI is locked",
+          "known_limitations": "Cannot be claimed as working. Local packaging path exists; remote release does not run.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        },
+        {
+          "id": "T-03",
+          "name": "Deployment / DevOps agent",
+          "description": "Automated deployment to a target environment with verification.",
+          "status": "NOT_IMPLEMENTED",
+          "evidence": "delivery.rs deploy_targets() enumerates targets; there is no deploy executor and no deployment verification.",
+          "dependencies": ["T-01"],
+          "user_surface": "None",
+          "backend_implementation": "delivery.rs (enumeration only)",
+          "tests": "None for deployment",
+          "known_limitations": "Enumeration is not deployment. A DEVOPS role is designed, not built.",
+          "target_maturity": "SCAFFOLDED"
+        },
+        {
+          "id": "T-04",
+          "name": "Remote CI",
+          "description": "GitHub Actions running fmt/lint/test on push.",
+          "status": "BLOCKED",
+          "evidence": "ci.yml exists and includes the retracted-claim guard; runs trigger but jobs execute zero steps due to the account billing lock (EXTERNAL_BLOCKER in the registry).",
+          "dependencies": [],
+          "user_surface": "GitHub Actions",
+          "backend_implementation": ".github/workflows/ci.yml",
+          "tests": "n/a",
+          "known_limitations": "The local battery is the only verification authority until an org owner clears the lock.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        }
+      ]
+    },
+    "U_INSTITUTIONAL_EDUCATION": {
+      "capabilities": [
+        {
+          "id": "U-01",
+          "name": "Institutional mode (org/lab/course/roles/policies)",
+          "description": "Organisation, laboratory, course, research group, members, roles, templates, policies, resource limits.",
+          "status": "NOT_IMPLEMENTED",
+          "evidence": "grep -ri 'institution|education|classroom' over crates/**/*.rs returns nothing.",
+          "dependencies": ["R-02", "S-04"],
+          "user_surface": "None",
+          "backend_implementation": "n/a",
+          "tests": "n/a",
+          "known_limitations": "Design-only; see INSTITUTIONAL_MODE_ARCHITECTURE.",
+          "target_maturity": "SCAFFOLDED"
+        },
+        {
+          "id": "U-02",
+          "name": "Education mode (EXPLAIN/GUIDE/PAIR/ASSESS/REVIEW/AUTONOMOUS)",
+          "description": "Policy-controlled AI assistance levels so a student is not handed a finished solution.",
+          "status": "NOT_IMPLEMENTED",
+          "evidence": "No assistance-level concept exists.",
+          "dependencies": ["U-01"],
+          "user_surface": "None",
+          "backend_implementation": "n/a",
+          "tests": "n/a",
+          "known_limitations": "Design-only.",
+          "target_maturity": "SCAFFOLDED"
+        },
+        {
+          "id": "U-03",
+          "name": "Research-to-product pipeline",
+          "description": "Provenance-preserving path from research question to released product.",
+          "status": "NOT_IMPLEMENTED",
+          "evidence": "No pipeline artifact exists. The evidence graph is the correct substrate to carry the chain.",
+          "dependencies": ["O-01", "P-02"],
+          "user_surface": "None",
+          "backend_implementation": "n/a",
+          "tests": "n/a",
+          "known_limitations": "Design-only.",
+          "target_maturity": "SCAFFOLDED"
+        }
+      ]
+    },
+    "V_LOCAL_PRIVATE_SOVEREIGN": {
+      "capabilities": [
+        {
+          "id": "V-01",
+          "name": "Local model provider (Ollama)",
+          "description": "Run a local model for offline/diagnostic use.",
+          "status": "WIRED",
+          "evidence": "router.rs declares an Ollama provider kind (requires_api_key: false). Governance permits LOCAL_DIAGNOSTIC/NON-GATE use only.",
+          "dependencies": ["D-02"],
+          "user_surface": "Provider settings",
+          "backend_implementation": "zylcode-core/src/router/*",
+          "tests": "router tests (declaration)",
+          "known_limitations": "MUST NOT be used to declare AGENT-01 passed. Local model availability is not cloud-gate compliance.",
+          "target_maturity": "WIRED"
+        },
+        {
+          "id": "V-02",
+          "name": "Air-gapped / offline mode",
+          "description": "Operate with no network egress.",
+          "status": "SCAFFOLDED",
+          "evidence": "docs/AIR_GAPPED.md exists; the SyntheticOffline provider supports deterministic offline operation; no network-policy enforcement layer exists.",
+          "dependencies": ["V-01"],
+          "user_surface": "None",
+          "backend_implementation": "Partial (provider level)",
+          "tests": "SyntheticOffline used in tests",
+          "known_limitations": "No egress firewall, no per-project network policy. Design-only beyond the provider double.",
+          "target_maturity": "WIRED"
+        },
+        {
+          "id": "V-03",
+          "name": "Provider policy (allowed/prohibited, residency, retention, logging)",
+          "description": "Machine-readable provider policy distinct from provider capability.",
+          "status": "NOT_IMPLEMENTED",
+          "evidence": "No provider policy object exists.",
+          "dependencies": ["D-01", "S-04"],
+          "user_surface": "None",
+          "backend_implementation": "n/a",
+          "tests": "n/a",
+          "known_limitations": "Design-only. Provider capability and governance are separate concerns and must not be conflated.",
+          "target_maturity": "SCAFFOLDED"
+        },
+        {
+          "id": "V-04",
+          "name": "Container-sandboxed execution",
+          "description": "Candidate execution in a throwaway container with only its worktree writable.",
+          "status": "TESTED",
+          "evidence": "core/sandbox.rs container_argv + SandboxedWorktreeVerifier; tests assert the mount policy.",
+          "dependencies": ["B-04"],
+          "user_surface": "Best-of-N path",
+          "backend_implementation": "zylcode-core/src/sandbox.rs",
+          "tests": "sandbox.rs #[cfg(test)]",
+          "known_limitations": "Requires a container runtime on the host; falls back to worktree-only otherwise.",
+          "target_maturity": "RUNTIME_VERIFIED"
+        }
+      ]
+    }
+  },
+  "summary": {
+    "categories": 22,
+    "capabilities": 66,
+    "by_status": {
+      "RUNTIME_VERIFIED": 28,
+      "TESTED": 20,
+      "WIRED": 8,
+      "SCAFFOLDED": 9,
+      "UI_ONLY": 2,
+      "NOT_IMPLEMENTED": 12,
+      "BLOCKED": 3,
+      "DEPRECATED": 0
+    },
+    "note": "Counts are computed from the entries above. TESTED means exercised by a committed test; RUNTIME_VERIFIED means exercised against a real process/network/filesystem with the outcome captured. No entry claims a rung above what this session's evidence supports."
+  },
+  "open_gates": [
+    {
+      "id": "AGENT-01",
+      "state": "BLOCKED",
+      "reason": "No usable approved cloud provider: OpenRouter/Anthropic 401, DeepSeek 402, OpenRouter key is a literal placeholder."
+    },
+    {
+      "id": "GATE0-HISTORY",
+      "state": "OPEN — OWNER DECISION",
+      "reason": "Diverged Gate-0 history; reconciliation forensic report untracked; merge not executed."
+    },
+    {
+      "id": "CI-BILLING",
+      "state": "BLOCKED_EXTERNAL",
+      "reason": "GitHub Actions account billing lock; jobs execute zero steps."
+    },
+    {
+      "id": "PHASE-2A",
+      "state": "RE-OPENED",
+      "reason": "Phase 2A not accepted; 12 registry entries remain DISPUTED pending independent re-acceptance."
+    },
+    {
+      "id": "LADDER-COLLISION",
+      "state": "OPEN",
+      "reason": "Claim ladder R0–R7 and capability rung R0–R5 share a prefix; artifacts must name their ladder."
+    },
+    {
+      "id": "COMPUTER-USE",
+      "state": "SIMULATION FACADE",
+      "reason": "Computer-Use Engine remains sleep-based simulation with simulated-success comments. Replace, do not extend."
+    }
+  ]
+}
