@@ -100,6 +100,40 @@ The competition branch must not weaken the product.
 * The branch must remain separable: removing `competition/` and one `lib.rs` line must leave the
   product byte-identical to its pre-competition state.
 
+### 6.1 A pre-existing flake was exposed, and it is recorded here rather than smoothed over
+
+On the first full workspace battery of this branch, one **pre-existing** test failed:
+
+```
+router::tests::d1_vector_cache_cross_prompt_contamination_guard
+  assertion `left == right` failed: the D1 guard test must not perform network egress
+  left: 6   right: 5
+```
+
+It is a **test-isolation defect, not a regression from the competition work.** The evidence:
+
+| Check | Result |
+|---|---|
+| Does the competition module reference the router or the counter? | No — zero references. It cannot increment `NETWORK_EGRESS_COUNT`. |
+| `NETWORK_EGRESS_COUNT` | a **process-global** `static AtomicU64`, incremented only inside `call_provider` (`router.rs:1088`) |
+| The test alone | passes (1 passed / 0 failed) |
+| Full lib suite, single-threaded | passes (459 / 0) |
+| Full lib suite, parallel re-run, same configuration that failed | **passes** (459 / 0) |
+| Full lib suite, parallel, competition tests skipped | passes (441 / 0) |
+
+The test reads the global counter before and after its own scenario and asserts the two are equal.
+Any sibling test that dispatches to a real provider concurrently increments the same counter, so the
+assertion is unsound under parallel execution. It is a latent race that this branch's added tests
+made slightly more likely to surface; it did not introduce it.
+
+**It was not fixed here**, deliberately: the fix belongs in `router.rs`, which this phase must not
+modify, and serialising tests that share process-global state is a product-side change outside the
+competition's scope. It is reported to the owner as a finding.
+
+**Consequence for the competition:** a submission must not present a battery run as green evidence
+unless it actually was. If the battery is red, re-run and record the true outcome — including this
+known flake, named as such.
+
 ---
 
 ## 7. External beta validation (protocol only — no testers yet)
