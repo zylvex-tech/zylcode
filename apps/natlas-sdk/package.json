@@ -1,0 +1,30 @@
+{
+  "name": "@zylvex/natlas-bridge",
+  "version": "0.1.0",
+  "description": "ZylCode x N-ATLAS Developer Bridge SDK - talk to a local N-ATLAS runtime from JavaScript/TypeScript, with evidence and no silent fallback.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "keywords": [
+    "zylcode",
+    "n-atlas",
+    "natlas",
+    "developer-infrastructure",
+    "llm"
+  ],
+  "private": true
+}
