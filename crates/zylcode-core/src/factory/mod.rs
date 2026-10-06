@@ -46,8 +46,13 @@
 
 pub mod graph;
 pub mod job;
+pub mod runner;
 pub mod store;
 
 pub use graph::{TaskAction, TaskGraph, TaskKind, TaskNode, TaskState};
 pub use job::{FactoryJob, JobStage};
+pub use runner::{
+    FactoryRunner, FactoryRunnerConfig, RunReport, RunStatus, BLOCKED_PROVIDER,
+    DEFAULT_TASK_TIMEOUT_SECS, RECOMMENDED_RISK_CEILING,
+};
 pub use store::{jobs_dir, JobStore};
