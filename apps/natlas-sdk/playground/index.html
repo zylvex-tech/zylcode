@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ZylCode x N-ATLAS — Developer Playground</title>
+<!--
+  A self-contained developer playground for the ZylCode x N-ATLAS Developer Bridge.
+
+  It has no build step and no dependencies: open it in a browser and it works.
+
+  HONESTY CONTRACT (enforced in the code below, not just documented):
+    * It never shows "connected", "success", "N-ATLAS" or "verified" unless a
+      real HTTP call to the configured runtime actually succeeded.
+    * The model identity shown is whatever the SERVER reports.
+    * The built-in offline demo is labelled TEST DOUBLE everywhere it appears.
+    * Errors are shown verbatim. Nothing is smoothed over.
+
+  Note: the playground demonstrates the boundary up to the human approval gate.
+  Actual file operations and test execution happen in the ZylCode core
+  (see docs/competition/natlas/developer/FIRST_WORKFLOW.md).
+-->
+<style>
+  :root{
+    --bg:#f6f7f9; --panel:#ffffff; --ink:#14181f; --muted:#5b6472;
+    --line:#dfe3e8; --accent:#1f5fd0; --ok:#137a3f; --warn:#8a5a00;
+    --bad:#b3261e; --chip:#eef1f5;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:14px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  header{padding:20px 24px;border-bottom:1px solid var(--line);background:var(--panel)}
+  h1{margin:0;font-size:18px;letter-spacing:-.01em}
+  h1 span{color:var(--muted);font-weight:400}
+  .sub{color:var(--muted);margin-top:4px;font-size:13px}
+  main{display:grid;grid-template-columns:minmax(320px,420px) 1fr;gap:16px;padding:16px;align-items:start}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
+  .panel h2{margin:0 0 12px;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+  label{display:block;margin:10px 0 4px;font-size:12px;color:var(--muted)}
+  input,select,textarea{width:100%;padding:8px 10px;border:1px solid var(--line);
+       border-radius:7px;font:inherit;background:#fff;color:var(--ink)}
+  textarea{min-height:76px;resize:vertical}
+  button{padding:9px 14px;border-radius:7px;border:1px solid var(--line);background:#fff;
+       color:var(--ink);font:inherit;cursor:pointer}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+  .banner{border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:13px;border:1px solid}
+  .banner.blocked{background:#fff8e6;border-color:#f0d79a;color:#6b4a00}
+  .banner.ok{background:#eaf7ef;border-color:#bfe3cd;color:#0f5c31}
+  .banner.bad{background:#fdecea;border-color:#f3c2bd;color:#8c1d18}
+  .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;
+       font-weight:600;letter-spacing:.03em;background:var(--chip);color:var(--muted)}
+  .badge.ok{background:#e6f4ec;color:var(--ok)}
+  .badge.bad{background:#fdecea;color:var(--bad)}
+  .badge.warn{background:#fff4dd;color:var(--warn)}
+  .badge.double{background:#efe6ff;color:#5b21b6}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  td{padding:6px 0;border-bottom:1px solid var(--line);vertical-align:top}
+  td:first-child{color:var(--muted);width:170px}
+  pre{background:#0f141b;color:#d7e0ea;padding:12px;border-radius:8px;overflow:auto;
+      font-size:12px;line-height:1.45;max-height:280px}
+  .muted{color:var(--muted)}
+  .stack>*+*{margin-top:14px}
+  .kv{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;word-break:break-all}
+  ol.steps{margin:6px 0 0;padding-left:20px}
+  ol.steps li{margin:4px 0}
+  .gate{border:1px dashed var(--line);border-radius:8px;padding:10px;margin-top:10px;background:#fbfcfd}
+</style>
+</head>
+<body>
+<header>
+  <h1>ZylCode &times; N-ATLAS <span>— Developer Playground</span></h1>
+  <div class="sub">Phase C1 · Developer Infrastructure (PS1) · the boundary up to the human approval gate</div>
+</header>
+
+<main>
+  <!-- ------------------------------- LEFT ------------------------------- -->
+  <section class="stack">
+    <div class="panel">
+      <h2>Runtime configuration</h2>
+      <label for="baseUrl">Base URL</label>
+      <input id="baseUrl" value="http://127.0.0.1:11434" />
+      <label for="requestPath">Request path</label>
+      <input id="requestPath" value="/v1/chat/completions" />
+      <label for="model">Model</label>
+      <input id="model" value="n-atlas:latest" />
+      <label for="apiKey">API key <span class="muted">(optional for a local runtime; never logged)</span></label>
+      <input id="apiKey" type="password" placeholder="leave empty for a local runtime" />
+      <div class="row">
+        <button id="btnProbe">Check runtime status</button>
+        <button id="btnDemo">Use offline demo</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Developer request</h2>
+      <label for="language">Language</label>
+      <select id="language">
+        <option value="en-NG">English (Nigerian-accented)</option>
+        <option value="ha">Hausa</option>
+        <option value="yo">Yoruba</option>
+        <option value="ig">Igbo</option>
+      </select>
+      <label for="instruction">Engineering instruction</label>
+      <textarea id="instruction">Add a health-check endpoint to the router and a test for it.</textarea>
+      <label for="ctxPath">Repository context — path (optional)</label>
+      <input id="ctxPath" placeholder="src/routes.rs" />
+      <label for="ctxExcerpt">Repository context — excerpt (optional)</label>
+      <textarea id="ctxExcerpt" placeholder="pub fn router() { /* ... */ }"></textarea>
+      <div class="row">
+        <button id="btnInvoke" class="primary">Invoke N-ATLAS</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>What this playground does not do</h2>
+      <div class="muted" style="font-size:13px">
+        Executing the approved change and running the verification command happen in the
+        <strong>ZylCode core</strong>, not in a browser. This page demonstrates the boundary
+        through the approval gate. See <span class="kv">docs/competition/natlas/developer/FIRST_WORKFLOW.md</span>.
+      </div>
+    </div>
+  </section>
+
+  <!-- ------------------------------- RIGHT ------------------------------ -->
+  <section class="stack">
+    <div id="banner" class="banner blocked">
+      <strong>N-ATLAS has not been contacted.</strong>
+      No runtime has been reached yet. Configure a runtime above and press
+      <em>Check runtime status</em>. Nothing on this page will claim success until a real call succeeds.
+    </div>
+
+    <div class="panel">
+      <h2>Runtime status</h2>
+      <table>
+        <tr><td>Status</td><td id="stStatus"><span class="badge">NOT CHECKED</span></td></tr>
+        <tr><td>Reachable</td><td id="stReachable" class="muted">—</td></tr>
+        <tr><td>Model identity <span class="muted">(from server)</span></td><td id="stModel" class="kv muted">—</td></tr>
+        <tr><td>Models reported</td><td id="stModels" class="kv muted">—</td></tr>
+        <tr><td>Detail</td><td id="stDetail" class="muted">—</td></tr>
+      </table>
+    </div>
+
+    <div class="panel">
+      <h2>Invocation</h2>
+      <table>
+        <tr><td>Outcome</td><td id="ivStatus"><span class="badge">NOT RUN</span></td></tr>
+        <tr><td>Model identity <span class="muted">(from server)</span></td><td id="ivModel" class="kv muted">—</td></tr>
+        <tr><td>Request id</td><td id="ivReqId" class="kv muted">—</td></tr>
+        <tr><td>Latency</td><td id="ivLatency" class="muted">—</td></tr>
+        <tr><td>Language</td><td id="ivLang" class="muted">—</td></tr>
+        <tr><td>Evidence id</td><td id="ivEvidenceId" class="kv muted">—</td></tr>
+        <tr><td>Error</td><td id="ivError" class="muted">—</td></tr>
+      </table>
+    </div>
+
+    <div class="panel">
+      <h2>Structured engineering intent</h2>
+      <div id="intentSummary" class="muted">No intent yet.</div>
+      <ol class="steps" id="intentSteps"></ol>
+    </div>
+
+    <div class="panel">
+      <h2>Proposed operation &amp; approval gate</h2>
+      <div id="proposal" class="muted">No proposal yet.</div>
+      <div class="gate">
+        <div id="gateText" class="muted">The approval gate is not active.</div>
+        <div class="row">
+          <button id="btnApprove" disabled>Approve</button>
+          <button id="btnReject" disabled>Reject</button>
+        </div>
+        <div id="gateOutcome" class="muted" style="margin-top:8px"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Evidence record</h2>
+      <pre id="evidence">{}</pre>
+    </div>
+  </section>
+</main>
+
+<script>
+/* -------------------------------------------------------------------------
+   This playground mirrors the TypeScript SDK (apps/natlas-sdk/src/index.ts).
+   It is inlined so the page runs with no build step.
+   ------------------------------------------------------------------------- */
+
+const $ = (id) => document.getElementById(id);
+const OPENAI_CHAT_PATH = "/v1/chat/completions";
+
+/** Demo mode uses a TEST DOUBLE. It is never presented as N-ATLAS. */
+let DEMO_MODE = false;
+let PENDING_INTENT = null;
+const EVIDENCE_LOG = [];
+
+function classify(intent) {
+  const t = intent.toLowerCase();
+  const has = (w) => w.some((x) => t.includes(x));
+  if (has(["implement", "add ", "fix", "refactor", "write ", "create ", "rename"])) return "implementation";
+  if (has(["test", "assert", "coverage"])) return "testing";
+  if (has(["explain", "why", "what is", "how does", "document", "describe"])) return "analysis";
+  return "general";
+}
+
+function redact(text, secrets) {
+  let out = text, count = 0;
+  for (const s of secrets) {
+    if (!s || s.length < 4) continue;
+    const parts = out.split(s);
+    if (parts.length > 1) { count += parts.length - 1; out = parts.join("[REDACTED]"); }
+  }
+  return { text: out, count };
+}
+
+function config() {
+  return {
+    baseUrl: $("baseUrl").value.trim(),
+    requestPath: $("requestPath").value.trim() || OPENAI_CHAT_PATH,
+    model: $("model").value.trim(),
+    apiKey: $("apiKey").value,
+  };
+}
+
+function endpoint(c) {
+  const base = c.baseUrl.replace(/\/+$/, "");
+  const path = c.requestPath.startsWith("/") ? c.requestPath : "/" + c.requestPath;
+  return base + path;
+}
+
+/* ------------------------------ probe ------------------------------ */
+
+async function probe() {
+  const c = config();
+  const base = c.baseUrl.replace(/\/+$/, "");
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 3000);
+
+  const attempt = async (url) => {
+    try {
+      const res = await fetch(url, { signal: controller.signal });
+      if (!res.ok) return undefined;
+      const json = await res.json();
+      if (Array.isArray(json.models)) {
+        return json.models.map((m) => m.name || m.model).filter(Boolean);
+      }
+      if (Array.isArray(json.data)) return json.data.map((m) => m.id).filter(Boolean);
+      return undefined;
+    } catch { return undefined; }
+  };
+
+  try {
+    let models = await attempt(base + "/api/tags");
+    let detail = "reachable (Ollama /api/tags)";
+    if (!models) { models = await attempt(base + "/v1/models"); detail = "reachable (OpenAI-compatible /v1/models)"; }
+
+    if (models) {
+      const present = models.some((m) => m === c.model || m.startsWith(c.model + ":"));
+      setStatus("ok", "REACHABLE", true, present, models, detail);
+      banner("ok", `Runtime reachable at <span class="kv">${base}</span>. ` +
+        (present ? `Model <span class="kv">${c.model}</span> is present.`
+                 : `Model <span class="kv">${c.model}</span> was NOT reported by the server.`));
+    } else {
+      setStatus("bad", "UNREACHABLE", false, undefined, [], `no runtime answered at ${base}`);
+      banner("blocked", `<strong>No runtime answered at <span class="kv">${base}</span>.</strong> ` +
+        `Nothing will be invoked. Start a local N-ATLAS runtime, or use the offline demo (clearly labelled TEST DOUBLE).`);
+    }
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function setStatus(kind, label, reachable, modelPresent, models, detail) {
+  $("stStatus").innerHTML = `<span class="badge ${kind}">${label}</span>`;
+  $("stReachable").textContent = reachable ? "yes" : "no";
+  $("stModel").textContent = modelPresent === undefined ? "—" : (modelPresent ? "present (see list)" : "NOT present");
+  $("stModels").textContent = models.length ? models.join(", ") : "—";
+  $("stDetail").textContent = detail;
+}
+
+function banner(kind, html) {
+  $("banner").className = "banner " + kind;
+  $("banner").innerHTML = html;
+}
+
+/* ----------------------------- invoke ------------------------------ */
+
+async function invoke() {
+  const c = config();
+  const instruction = $("instruction").value.trim();
+  const language = $("language").value;
+  const ctxPath = $("ctxPath").value.trim();
+  const ctxExcerpt = $("ctxExcerpt").value;
+
+  $("ivStatus").innerHTML = '<span class="badge">RUNNING…</span>';
+  $("btnInvoke").disabled = true;
+  $("intentSummary").textContent = "No intent yet.";
+  $("intentSteps").innerHTML = "";
+  $("proposal").textContent = "No proposal yet.";
+  resetGate();
+
+  const started = Date.now();
+  const base = {
+    timestamp: new Date().toISOString(),
+    provider: "natlas",
+    model: c.model,
+    requestClassification: classify(instruction),
+    language,
+    promptChars: instruction.length + ctxExcerpt.length,
+    responseChars: 0,
+    secretRedactions: 0,
+  };
+
+  try {
+    let raw;
+    if (DEMO_MODE) {
+      // TEST DOUBLE — not N-ATLAS. Labelled as such everywhere.
+      await new Promise((r) => setTimeout(r, 350));
+      raw = JSON.stringify({
+        id: "TEST-DOUBLE-0001",
+        model: "TEST-DOUBLE (not N-ATLAS)",
+        choices: [{ index: 0, finish_reason: "stop",
+          message: { role: "assistant", content: JSON.stringify({
+            summary: "Add a health-check endpoint and a test (TEST DOUBLE OUTPUT)",
+            steps: [
+              { kind: "analyse", description: "Inspect the router module" },
+              { kind: "implement", description: "Add GET /health", target_path: ctxPath || "src/routes.rs" },
+              { kind: "test", description: "Run the suite" },
+              { kind: "approve", description: "Reviewer sign-off" },
+            ],
+          }) } }],
+        usage: { prompt_tokens: 40, completion_tokens: 60 },
+      });
+      showResult(raw, started, base, true);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 60000);
+    const headers = { "content-type": "application/json" };
+    if (c.apiKey) headers["authorization"] = "Bearer " + c.apiKey;
+
+    let user = "";
+    if (ctxExcerpt.trim()) {
+      user += "Repository context (read-only excerpts):\n\n--- " + (ctxPath || "(unnamed)") + " ---\n" + ctxExcerpt + "\n\nDeveloper request:\n";
+    }
+    user += instruction;
+
+    let res;
+    try {
+      res = await fetch(endpoint(c), {
+        method: "POST", headers, signal: controller.signal,
+        body: JSON.stringify({
+          model: c.model,
+          messages: [
+            { role: "system", content: SYSTEM_PREAMBLE },
+            { role: "user", content: user },
+          ],
+          stream: false, max_tokens: 4096, temperature: 0,
+        }),
+      });
+    } catch (e) {
+      clearTimeout(timer);
+      const aborted = e && e.name === "AbortError";
+      showFailure(aborted ? "TIMEOUT" : "TRANSPORT",
+        aborted ? "N-ATLAS request timed out." : ("could not reach the runtime: " + e.message),
+        started, base, undefined);
+      return;
+    } finally { clearTimeout(timer); }
+
+    const text = await res.text();
+    if (!res.ok) {
+      showFailure("HTTP_STATUS", `N-ATLAS returned HTTP ${res.status}`, started, base, res.status, text);
+      return;
+    }
+    showResult(text, started, base, false, res.status);
+
+  } catch (e) {
+    showFailure("MALFORMED_RESPONSE", String(e.message || e), started, base, undefined);
+  } finally {
+    $("btnInvoke").disabled = false;
+  }
+}
+
+const SYSTEM_PREAMBLE = [
+  "You are an engineering assistant inside ZylCode.",
+  "Answer ONLY with a JSON object, no prose and no markdown fence, in this exact shape:",
+  '{"summary": string, "steps": [{"kind": "analyse"|"implement"|"test"|"document"|"approve",',
+  '"description": string, "target_path": string?}]}',
+  "Every step must have a non-empty description. Use only the listed kinds.",
+].join(" ");
+
+function showResult(raw, started, base, isDouble, httpStatus) {
+  let parsed;
+  try { parsed = JSON.parse(raw); }
+  catch (e) { showFailure("MALFORMED_RESPONSE", "reply was not valid JSON", started, base, httpStatus, raw); return; }
+
+  const choice = parsed.choices && parsed.choices[0];
+  const content = choice && choice.message && choice.message.content;
+  const model = parsed.model;
+
+  if (typeof model !== "string" || !model.trim()) {
+    showFailure("MALFORMED_RESPONSE", "the runtime did not report a model identity — the reply is rejected.", started, base, httpStatus, raw);
+    return;
+  }
+  if (typeof content !== "string" || !content.trim()) {
+    showFailure("MALFORMED_RESPONSE", "the runtime returned empty content.", started, base, httpStatus, raw);
+    return;
+  }
+
+  const latency = Date.now() - started;
+  const evidence = {
+    ...base, status: "succeeded", success: true, latencyMs: latency, httpStatus,
+    requestId: parsed.id, model,
+    responseChars: content.length,
+    testDouble: isDouble,
+  };
+  evidence.evidenceId = "natlas-" + new Date(evidence.timestamp).getTime() + "-" + Math.random().toString(36).slice(2, 8);
+  EVIDENCE_LOG.push(evidence);
+
+  const kind = isDouble ? "double" : "ok";
+  $("ivStatus").innerHTML = `<span class="badge ${kind}">${isDouble ? "SUCCEEDED (TEST DOUBLE)" : "SUCCEEDED"}</span>`;
+  $("ivModel").textContent = model;
+  $("ivReqId").textContent = parsed.id || "—";
+  $("ivLatency").textContent = latency + " ms";
+  $("ivLang").textContent = $("language").selectedOptions[0].textContent;
+  $("ivEvidenceId").textContent = evidence.evidenceId;
+  $("ivError").textContent = "—";
+
+  if (isDouble) {
+    banner("blocked", '<strong>This result came from the built-in TEST DOUBLE, not N-ATLAS.</strong> ' +
+      'It is not evidence of integration. Use it only to explore the interface.');
+  } else {
+    banner("ok", `Genuine response received from <span class="kv">${model}</span> in ${latency} ms. ` +
+      `Evidence id <span class="kv">${evidence.evidenceId}</span>.`);
+  }
+
+  renderIntent(content, isDouble);
+  renderProposal(content, isDouble);
+  $("evidence").textContent = JSON.stringify(evidence, null, 2);
+}
+
+function renderIntent(text, isDouble) {
+  let intent;
+  try { intent = parseIntent(text); }
+  catch (e) {
+    $("intentSummary").innerHTML = `<span class="badge bad">CONTRACT NOT HONOURED</span> ${escapeHtml(e.message)}`;
+    $("intentSteps").innerHTML = "";
+    return;
+  }
+  $("intentSummary").textContent = intent.summary;
+  $("intentSteps").innerHTML = intent.steps
+    .map((s) => `<li><strong>${escapeHtml(s.kind)}</strong> — ${escapeHtml(s.description)}` +
+      (s.targetPath ? ` <span class="kv muted">(${escapeHtml(s.targetPath)})</span>` : "") + `</li>`)
+    .join("");
+}
+
+function renderProposal(text, isDouble) {
+  let intent;
+  try { intent = parseIntent(text); }
+  catch { $("proposal").textContent = "No executable proposal: the reply did not satisfy the intent contract."; return; }
+
+  PENDING_INTENT = intent;
+  const ops = intent.steps.filter((s) => s.kind === "implement" || s.kind === "test");
+  $("proposal").innerHTML = ops.length
+    ? `<div>${ops.length} operation(s) would require execution in the ZylCode core:</div>
+       <ol class="steps">${ops.map((s) => `<li><strong>${escapeHtml(s.kind)}</strong> ${escapeHtml(s.description)}</li>`).join("")}</ol>`
+    : "No implementation or test step was proposed.";
+
+  $("gateText").innerHTML = isDouble
+    ? '<span class="badge double">TEST DOUBLE</span> The gate is active, but this proposal is not genuine.'
+    : 'A human decision is required before anything executes.';
+  $("btnApprove").disabled = false;
+  $("btnReject").disabled = false;
+  $("gateOutcome").textContent = "";
+}
+
+function parseIntent(text) {
+  let t = text.trim();
+  if (t.startsWith("```")) {
+    const nl = t.indexOf("\n");
+    if (nl !== -1) { t = t.slice(nl + 1); const end = t.lastIndexOf("```"); if (end !== -1) t = t.slice(0, end); }
+  }
+  const obj = JSON.parse(t.trim());
+  if (!obj || typeof obj.summary !== "string" || !obj.summary.trim()) throw new Error("intent requires a non-empty summary");
+  if (!Array.isArray(obj.steps) || obj.steps.length === 0) throw new Error("intent requires a non-empty steps array");
+  const kinds = ["analyse", "implement", "test", "document", "approve"];
+  return {
+    summary: obj.summary,
+    steps: obj.steps.map((s, i) => {
+      if (!kinds.includes(s.kind)) throw new Error(`step ${i} has unknown kind ${s.kind}`);
+      if (typeof s.description !== "string" || !s.description.trim()) throw new Error(`step ${i} is missing a description`);
+      return { kind: s.kind, description: s.description, targetPath: s.target_path };
+    }),
+  };
+}
+
+function showFailure(code, message, started, base, httpStatus, raw) {
+  const latency = Date.now() - started;
+  const { text, count } = redact(message + (raw ? " :: " + raw.slice(0, 300) : ""), [config().apiKey]);
+  const evidence = {
+    ...base, status: "failed", success: false, latencyMs: latency, httpStatus,
+    errorCode: code, errorDetail: text, secretRedactions: count,
+  };
+  evidence.evidenceId = "natlas-" + new Date(evidence.timestamp).getTime() + "-" + Math.random().toString(36).slice(2, 8);
+  EVIDENCE_LOG.push(evidence);
+
+  $("ivStatus").innerHTML = `<span class="badge bad">FAILED — ${code}</span>`;
+  $("ivModel").textContent = "—";
+  $("ivReqId").textContent = "—";
+  $("ivLatency").textContent = latency + " ms";
+  $("ivEvidenceId").textContent = evidence.evidenceId;
+  $("ivError").textContent = message;
+  $("evidence").textContent = JSON.stringify(evidence, null, 2);
+  banner("bad", `<strong>${code}.</strong> ${escapeHtml(message)}`);
+  resetGate();
+}
+
+function resetGate() {
+  PENDING_INTENT = null;
+  $("gateText").textContent = "The approval gate is not active.";
+  $("btnApprove").disabled = true;
+  $("btnReject").disabled = true;
+  $("gateOutcome").textContent = "";
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+/* ------------------------------ wiring ----------------------------- */
+
+$("btnProbe").addEventListener("click", () => { DEMO_MODE = false; probe(); });
+$("btnDemo").addEventListener("click", () => {
+  DEMO_MODE = true;
+  banner("blocked", '<strong>Offline demo mode is ON.</strong> Any result you see is produced by the built-in ' +
+    '<span class="badge double">TEST DOUBLE</span> and is <strong>not</strong> N-ATLAS. Press ' +
+    '<em>Check runtime status</em> to leave demo mode.');
+});
+$("btnInvoke").addEventListener("click", invoke);
+$("btnApprove").addEventListener("click", () => {
+  $("gateOutcome").innerHTML = '<span class="badge ok">APPROVED</span> Recorded. Execution and verification run in the ZylCode core (see FIRST_WORKFLOW.md).';
+  $("btnApprove").disabled = true; $("btnReject").disabled = true;
+});
+$("btnReject").addEventListener("click", () => {
+  $("gateOutcome").innerHTML = '<span class="badge bad">REJECTED</span> No operation will be executed. Nothing was changed.';
+  $("btnApprove").disabled = true; $("btnReject").disabled = true;
+});
+</script>
+</body>
+</html>
