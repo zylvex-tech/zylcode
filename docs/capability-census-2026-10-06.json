@@ -602,9 +602,9 @@
         {
           "id": "K-01",
           "name": "Workspace test battery",
-          "description": "cargo test --workspace --all-targets with 17 test binaries.",
+          "description": "cargo test --workspace --all-targets across the workspace test binaries and benches (25 test-result groups on 2026-10-06).",
           "status": "RUNTIME_VERIFIED",
-          "evidence": "575 passed / 0 failed / 0 ignored recorded 2026-09-28. Re-run in this session to establish the 2026-10-06 baseline.",
+          "evidence": "575 passed / 0 failed / 0 ignored recorded 2026-09-28. Re-run on 2026-10-06 for this wave's baseline: 730 passed / 0 failed / 1 ignored across 25 test-result groups, exit 0. The one ignored test is live_commissioning_probe ('makes real provider calls; run explicitly with --ignored'), so no network egress occurred.",
           "dependencies": [],
           "user_surface": "CLI / CI",
           "backend_implementation": "crates/*/tests",

@@ -142,7 +142,7 @@ research, institutional and security* surfaces are designed, not built.
 
 | ID | Capability | Status | Dependencies | Evidence | Known limitations | Target |
 |---|---|---|---|---|---|---|
-| K-01 | Workspace test battery | `RUNTIME_VERIFIED` | — | 575/0/0 recorded 2026-09-28; **re-run for this wave's baseline** | Remote CI **BLOCKED** (billing lock) | RUNTIME_VERIFIED |
+| K-01 | Workspace test battery | `RUNTIME_VERIFIED` | — | 575/0/0 recorded 2026-09-28; **re-run 2026-10-06: 730/0/1 across 25 groups, exit 0** (the 1 ignored is the live provider probe) | Remote CI **BLOCKED** (billing lock) | RUNTIME_VERIFIED |
 | K-02 | Property-based tests | `TESTED` | — | `decision_proptest.rs`, `pipeline_proptest.rs` | Narrow coverage (2 subsystems) | RUNTIME_VERIFIED |
 | K-03 | Fault-injection suite | `TESTED` | H-04 | `fault_injection.rs` | Adversarial *evidence* tests are PARTIAL | RUNTIME_VERIFIED |
 | K-04 | Agent behaviour evaluation framework | `NOT_IMPLEMENTED` | E-01 | No harness; First Mission is one scenario, not a scored framework | Design-only | TESTED |
