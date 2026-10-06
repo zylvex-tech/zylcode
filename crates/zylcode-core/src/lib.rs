@@ -16,6 +16,7 @@ pub mod computer_use;
 pub mod context_builder;
 pub mod delivery;
 pub mod evidence_graph;
+pub mod factory;
 pub mod failure;
 pub mod first_mission;
 pub mod gitops;
