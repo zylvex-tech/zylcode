@@ -11,6 +11,7 @@ pub mod best_of_n;
 pub mod cache;
 pub mod claim;
 pub mod cli;
+pub mod competition;
 pub mod compression;
 pub mod computer_use;
 pub mod context_builder;
