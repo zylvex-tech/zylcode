@@ -31,13 +31,13 @@ the tool catalogue is pinned by a test; no entry claims a higher rung than the e
 | | |
 |---|---|
 | Categories | **22** (A–V) |
-| Capabilities recorded | **66** |
-| `RUNTIME_VERIFIED` | 28 |
-| `TESTED` | 20 |
-| `WIRED` | 8 |
-| `SCAFFOLDED` | 9 |
+| Capabilities recorded | **86** |
+| `RUNTIME_VERIFIED` | 6 |
+| `TESTED` | 47 |
+| `WIRED` | 5 |
+| `SCAFFOLDED` | 4 |
 | `UI_ONLY` | 2 |
-| `NOT_IMPLEMENTED` | 12 |
+| `NOT_IMPLEMENTED` | 19 |
 | `BLOCKED` | 3 |
 | `DEPRECATED` | 0 |
 
@@ -189,7 +189,7 @@ research, institutional and security* surfaces are designed, not built.
 | P-03 | Proof records (deterministic) | `TESTED` | — | `proof_engine.rs`; `.zylcode/proofs.json` | Honest negatives: `Blocked`, `RuntimeNotReached`, `EvidenceMissing` | RUNTIME_VERIFIED |
 | P-04 | End-to-end mission runner (First Mission) | `RUNTIME_VERIFIED` | P-01…P-02, G-01, H-02 | `first_mission.rs` (2689 LOC); e2e + real kill/resume | Repair is **specification-directed**, recorded as a HYPOTHESIS | RUNTIME_VERIFIED |
 | P-05 | Artifact bus (lifecycle/lineage/retention) | `TESTED` | — | `artifact_bus.rs` (831 LOC) | Time-based retention; no policy engine | RUNTIME_VERIFIED |
-| P-06 | **Factory orchestrator** | **`SCAFFOLDED` → `TESTED`** | F-03, F-04, P-02 | **Created this wave:** `factory/runner.rs` executes a dependency-aware graph through the real gated tool runtime, records evidence, resumes, blocks honestly | Role *specialisation* is DESIGNED; the runner executes task kinds | TESTED |
+| P-06 | **Factory orchestrator** | **`TESTED`** | F-03, F-04, P-02 | **Created this wave:** `factory/runner.rs` executes a dependency-aware graph through the real gated tool runtime, records evidence, resumes, blocks honestly. Was `SCAFFOLDED` before this wave | Role *specialisation* is DESIGNED; the runner executes task kinds | TESTED |
 
 ## Q. UI/UX DESIGN
 
