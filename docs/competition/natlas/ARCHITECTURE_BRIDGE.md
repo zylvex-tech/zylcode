@@ -13,8 +13,10 @@
 ## 1. What the Developer Bridge is
 
 ZylCode is an evidence-first Software Creation OS. The N-ATLAS Developer Bridge lets a Nigerian
-developer drive ZylCode's Agent Kernel in **Yoruba, Hausa, Igbo, or Nigerian-accented English** and
-receive real engineering work — not chat. The sovereign N-ATLAI model (NCAIR / Awarri / NITDA) is
+developer drive ZylCode's Agent Kernel in **Yoruba, Hausa, Igbo, or English** and receive real
+engineering work — not chat. (N-ATLAS also targets *Nigerian-accented English* and *Nigerian
+Pidgin*; these are model target languages but are **not yet independently validated by us** — see
+EV-015 / EV-016.) The sovereign N-ATLAS model (NCAIR / Awarri / NITDA) is
 the reasoning engine; ZylCode's execution + proof engine does the actual repo changes, tests, and
 evidence capture.
 

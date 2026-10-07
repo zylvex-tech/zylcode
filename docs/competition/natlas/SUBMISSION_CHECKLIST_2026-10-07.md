@@ -13,13 +13,16 @@ Status: ✅ done/real · 🔧 in progress · ⛔ blocked (human action required)
 ## 2. N-ATLAS Integration Evidence
 - ✅ `NATLAS_CONTRACT_VERIFICATION_2026-10-07.md` (3 verified contracts).
 - ✅ Apache-2.0 fork of `samuelolubukun/NATLaS-Sovereign-Engine`; model `NCAIR1/N-ATLaS`.
-- ✅ B1 inference gate (EV-014, L3) + multilingual round-trip (EV-015, L3).
+- ✅ B1 inference gate (EV-014, L3) + multilingual round-trip (EV-015, L3) + Pidgin comprehension (EV-016, L3, non-target bonus).
 - 🔧 `ARCHITECTURE_BRIDGE.md` write-up (C3).
 
 ## 3. Real-World Validation
 - ✅ Live benchmark: real inference gate `NATLAS_ZYLCODE_OK` (B1 gate, **EV-014, L3**).
 - ✅ Multilingual round-trip proven: EN/YO/HA/IG programming prompts → genuine, language-correct
   model output through our own endpoint (**EV-015, L3**).
+- ✅ Nigerian Pidgin comprehension proven: Pidgin programming prompt → model understood + answered
+  coherently (output in standard English; generation-in-Pidgin untested) (**EV-016, L3**, bonus — Pidgin
+  is not one of N-ATLAS's four stated target languages).
 - ⛔ **≥2 external beta testers (PS1 hard requirement)** — owner must recruit. We provide the
   invite + feedback template + a `/gradio` or local harness. **Cannot be self-issued.**
 - 🔧 Repo-changing C3 task demo (multilingual prompt → actual code change) pending harness.
@@ -46,7 +49,7 @@ Status: ✅ done/real · 🔧 in progress · ⛔ blocked (human action required)
 |---|---|---|
 | Working Artefact & Rigour | ✅ | endpoint + integration real |
 | N-ATLAS Integration | ✅ | genuine, not a wrapper (disqualification avoided) |
-| Real-World Validation | ✅ | gate (EV-014) + multilingual (EV-015) genuine; beta testers pending (human) |
+| Real-World Validation | ✅ | gate (EV-014) + multilingual (EV-015) + Pidgin comprehension (EV-016) genuine; beta testers pending (human) |
 | Impact Potential | ✅ | sovereign dev-infra narrative |
 | Scalability & Sustainability | 🔧 | ZeroGPU quota risk documented; dedicate-GPU path noted |
 | Team Capability | ⛔ | profile pending (human) |
