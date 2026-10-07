@@ -144,6 +144,22 @@ fn intent_with_unknown_kind_is_rejected() {
     assert_eq!(err.code(), "MALFORMED_RESPONSE");
 }
 
+#[test]
+fn triple_quoted_model_output_is_repaired_and_parsed() {
+    // The EV-017 defect: model emitted """...""" with raw newlines.
+    let bad = r#"{"summary":"s","steps":[{"kind":"implement","description":"d","path":"f.py","content":"""line1
+line2"""}]}"#;
+    let (intent, was_repaired) = NatlasEngineeringIntent::parse_with_repair(bad).unwrap();
+    assert!(was_repaired, "must record that normalization occurred");
+    assert_eq!(intent.steps[0].content.as_deref(), Some("line1\nline2"));
+}
+
+#[test]
+fn unrecoverable_malformed_intent_fails_closed_even_with_repair() {
+    let unrecoverable = r#"{"summary":"s","steps":["#;
+    assert!(NatlasEngineeringIntent::parse_with_repair(unrecoverable).is_err());
+}
+
 // ---------------------------------------------------------------------------
 // Approval enforcement: no real mutation before human approval
 // ---------------------------------------------------------------------------

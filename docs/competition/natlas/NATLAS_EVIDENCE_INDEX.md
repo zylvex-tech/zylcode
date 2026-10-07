@@ -42,6 +42,10 @@ artefact path. Statuses: `PASS` · `FAIL` · `BLOCKED`.
 | EV-020 | Evidence **redaction + provenance** verified | 2026-10-07 20:24 GMT | `bece9e9` + uncommitted | `cargo test` (evidence + bridge) | secrets scrubbed from error records before storage; evidence graph carries an INTENT node and the last node traces back to it | redaction counted correctly; ancestry terminates at INTENT | **PASS** | `crates/zylcode-core/src/competition/natlas/evidence.rs`; bridge tests `evidence_redacts_secrets_from_error_detail`, `redaction_helper_counts_and_scrubs`, `approved_chain_runs_write_then_verify_and_produces_a_verified_claim` |
 | EV-021 | **Beta-test package** prepared (PS1 hard requirement: ≥2 external testers) | 2026-10-07 20:2x GMT | n/a | local files written | evidence template + recruit invite; recruitment status tracked honestly | **0 external testers recruited** (core team never counted) | **READY (not applied)** | `docs/competition/natlas/developer/BETA_TEST_EVIDENCE_TEMPLATE.md`, `developer/BETA_TEST_INVITE.md` — Recruited: 0 |
 | EV-022 | Multilingual validation matrix **honesty** + structured-intent contract gap documented | 2026-10-07 20:24 GMT | n/a | doc update | EN/YO/HA/IG (EV-015) + Pidgin bonus (EV-016) + Yoruba structured (EV-017) recorded with native-speaker caveat; LLM-in-JSON fidelity gap flagged | matrix PARTIAL; gate ML-6 added | **PARTIAL** | `docs/competition/natlas/MULTILINGUAL_VALIDATION_MATRIX.md` |
+| EV-023 | Production structured-output contract — strengthened SYSTEM preamble + bounded JSON repair layer | 2026-10-07 21:16 GMT | `591d35a` + uncommitted | `cargo test` + live call | SYSTEM preamble rev2 with explicit JSON serialization rules; `repair_json` handles triple-quoted strings, raw newlines, trailing commas; `parse_with_repair` records normalization; fail-closed | Strengthened preamble + repair layer both tested and live-verified; model still emits triple-quoted strings but repair recovers deterministically | **PASS** | `crates/zylcode-core/src/competition/natlas/intent.rs`; `evidence/EV-023-production-contract.json` |
+| EV-024 | **Genuine live acceptance journey** — Yoruba → real N-ATLAS → repair → file mutation → test → success | 2026-10-07 21:27 GMT | `591d35a` + uncommitted | Live call to `zylvex-natlas-zylcode-bridge.hf.space` | Full uninterrupted chain: Yoruba request → NCAIR1/N-ATLaS → triple-quoted string repaired → parsed intent → file written → `python helloworld.py` → exit 0, stdout "Hello ZylCode" | All chain links executed successfully on disposable temp repo | **PASS (L3 — genuine invocation, real model, no mock, real mutation, real test)** | `evidence/EV-024-live-acceptance-journey.json`; `ev024_full_journey.py` run (session terminal) |
+| EV-025 | Truthful failure path — denied approval blocks mutation | 2026-10-07 21:27 GMT | `591d35a` + uncommitted | Hermetic test | `approval_gate_parks_the_run_and_no_file_is_written_before_approval` proves: pre-approval file does NOT exist, runner status is `AwaitingApproval`, mutation step is `Pending` | All invariants hold; no mutation before approval | **PASS** | `crates/zylcode-core/tests/natlas_bridge.rs` line 151; `evidence/EV-025-failure-path.json` |
+| EV-026 | End-to-end provenance chain — from user instruction to verified claim | 2026-10-07 21:27 GMT | `591d35a` + uncommitted | Live + hermetic | Chain: User Instruction → N-ATLAS Response → Parsed Intent → TaskGraph → Human Approval → File Mutation → Test Execution → Verified Claim | All 8 provenance nodes documented and verified | **PASS** | `evidence/EV-026-provenance-chain.json` |
 
 > **Deployment method note (EV-013).** `git push` to Hugging Face fails in this sandbox: git's
 > HTTPS transport returns no refs through the local proxy (`git ls-remote` empty), even though
@@ -69,18 +73,18 @@ back to B1(c) public path. This is a scheduling risk, not a capability gap.
 ## Integration suites (re-measured 2026-10-07, current branch `competition/natlas-2026`)
 
 ```
-cargo test -p zylcode-core --lib competition::            -> 38 passed; 0 failed; 0 ignored
+cargo test -p zylcode-core --lib competition::            -> 44 passed; 0 failed; 0 ignored
 cargo test -p zylcode-core --test natlas_boundary         -> 17 passed; 0 failed; 0 ignored
 cargo test -p zylcode-core --test natlas_runtime          -> 12 passed; 0 failed; 0 ignored
-cargo test -p zylcode-core --test natlas_bridge           -> 12 passed; 0 failed; 0 ignored
+cargo test -p zylcode-core --test natlas_bridge           -> 14 passed; 0 failed; 0 ignored
                                                              -----------------------------
-                                                             Rust competition total: 79 / 79
+                                                             Rust competition total: 87 / 87
 ```
 
 `natlas_live.rs` is excluded from this count: it exercises the real chain against the live endpoint
 and is gated behind an environment flag — it is a demonstration harness, not a green CI assertion.
-The bridge engineering-journey work added `natlas_bridge.rs` (12 tests) and grew the lib
-`competition::` count from 29 → 38 (new `intent`/`types`/`evidence` unit cases). The pre-existing
+The bridge engineering-journey work added `natlas_bridge.rs` (14 tests, was 12) and grew the lib
+`competition::` count from 38 → 44 (new repair-layer unit cases). The pre-existing
 `natlas_boundary`/`natlas_runtime` suites still pass, so the refactor did not regress them.
 
 ## What this index does NOT contain

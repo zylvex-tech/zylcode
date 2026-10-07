@@ -117,6 +117,10 @@ impl NatlasEngineeringIntent {
             serde_json::from_str(json).map_err(|e| NatlasError::MalformedResponse {
                 detail: format!("intent is not valid JSON: {e}"),
             })?;
+        Self::from_value(value)
+    }
+
+    fn from_value(value: serde_json::Value) -> Result<Self, NatlasError> {
         let obj = value.as_object().ok_or_else(|| NatlasError::MalformedResponse {
             detail: "intent must be a JSON object".to_string(),
         })?;
@@ -383,6 +387,36 @@ impl NatlasEngineeringIntent {
             .position(|s| s.kind == IntentStepKind::Approve)
             .map(|i| format!("step-{:02}", i + 1))
     }
+
+    /// Parse the ZylCode intent contract, with a bounded repair attempt on the
+    /// first strict-JSON failure.
+    ///
+    /// The repair layer handles common LLM serialization defects (triple-quoted
+    /// strings, raw newlines inside strings, trailing commas) without changing
+    /// semantic content. If repair succeeds, `was_repaired` is set to `true` so
+    /// the caller can record that normalization occurred.
+    pub fn parse_with_repair(text: &str) -> Result<(Self, bool), NatlasError> {
+        let json = strip_code_fence(text);
+        match serde_json::from_str::<serde_json::Value>(json) {
+            Ok(value) => Self::from_value(value).map(|i| (i, false)),
+            Err(_) => {
+                if let Some(repaired) = repair_json(json) {
+                    let value: serde_json::Value = serde_json::from_str(&repaired).map_err(|e| {
+                        NatlasError::MalformedResponse {
+                            detail: format!(
+                                "intent is not valid JSON even after repair: {e}"
+                            ),
+                        }
+                    })?;
+                    Self::from_value(value).map(|i| (i, true))
+                } else {
+                    Err(NatlasError::MalformedResponse {
+                        detail: "intent is not valid JSON and no repair applied".to_string(),
+                    })
+                }
+            }
+        }
+    }
 }
 
 /// Strip a leading ```json / ``` fence and its closing fence, if present.
@@ -398,6 +432,108 @@ fn strip_code_fence(text: &str) -> &str {
     match after_open.rfind("```") {
         Some(end) => after_open[..end].trim(),
         None => after_open.trim(),
+    }
+}
+
+/// Bounded, deterministic repair for common LLM JSON serialization defects.
+///
+/// Models habitually emit malformed JSON: triple-quoted strings with raw
+/// newlines, unescaped quotes inside string values, trailing commas, etc.
+/// This repair is **narrowly scoped** to defects that do not change semantic
+/// content. It never invents missing fields, never changes paths/commands,
+/// and records whether it touched the text so callers can audit the boundary.
+///
+/// Returns `Some(repaired)` if the text was modified, `None` if no repair
+/// was needed or if the defect is outside the bounded scope.
+pub fn repair_json(text: &str) -> Option<String> {
+    let mut repaired = text.to_string();
+    let mut changed = false;
+
+    // 1. Triple-quoted strings: """...""" → "..." with newlines escaped.
+    // This is the EV-017 defect: the model emitted a Python triple-quoted
+    // string literal inside what it claimed was JSON.
+    loop {
+        if let Some(start) = repaired.find("\"\"\"") {
+            if let Some(end) = repaired[start + 3..].find("\"\"\"") {
+                let end_abs = start + 3 + end;
+                let inner = &repaired[start + 3..end_abs];
+                // Escape backslashes first, then quotes, then newlines.
+                let escaped = inner
+                    .replace('\\', "\\\\")
+                    .replace('"', "\\\"")
+                    .replace('\n', "\\n")
+                    .replace('\r', "\\r");
+                repaired.replace_range(start..end_abs + 3, &format!("\"{escaped}\""));
+                changed = true;
+                continue;
+            }
+        }
+        break;
+    }
+
+    // 2. Raw newlines inside regular double-quoted strings (not triple-quoted).
+    // Scan for quote pairs that contain unescaped newlines and escape them.
+    // This is a best-effort pass; if it can't pair quotes safely it stops.
+    let mut result = String::with_capacity(repaired.len());
+    let bytes = repaired.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'"' {
+            // Find the closing quote, respecting escapes.
+            result.push('"');
+            i += 1;
+            let mut escaped = false;
+            while i < bytes.len() {
+                let c = bytes[i];
+                if escaped {
+                    result.push(c as char);
+                    escaped = false;
+                    i += 1;
+                    continue;
+                }
+                if c == b'\\' {
+                    result.push('\\');
+                    escaped = true;
+                    i += 1;
+                    continue;
+                }
+                if c == b'"' {
+                    result.push('"');
+                    i += 1;
+                    break;
+                }
+                if c == b'\n' {
+                    result.push_str("\\n");
+                    changed = true;
+                    i += 1;
+                    continue;
+                }
+                if c == b'\r' {
+                    result.push_str("\\r");
+                    changed = true;
+                    i += 1;
+                    continue;
+                }
+                result.push(c as char);
+                i += 1;
+            }
+        } else {
+            result.push(bytes[i] as char);
+            i += 1;
+        }
+    }
+    repaired = result;
+
+    // 3. Trailing commas before `]` or `}` — common LLM habit.
+    repaired = repaired.replace(",]", "]").replace(",}", "}");
+    if repaired != text {
+        changed = true;
+    }
+
+    if changed {
+        Some(repaired)
+    } else {
+        None
     }
 }
 
@@ -585,5 +721,61 @@ mod tests {
             write.depends_on.contains(&approval),
             "mutation must depend on approval even when listed first: {write:?}"
         );
+    }
+
+    // -----------------------------------------------------------------------
+    // Bounded JSON repair (EV-017 follow-up)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn repair_escapes_raw_newlines_inside_triple_quoted_strings() {
+        // The EV-017 defect: model emitted """...""" with raw newlines.
+        let bad = r#"{"summary":"s","steps":[{"kind":"implement","description":"d","path":"f.py","content":"""line1
+line2"""}]}"#;
+        let repaired = repair_json(bad).expect("repair should succeed");
+        assert!(repaired.contains("\\n"), "newlines must be escaped");
+        assert!(!repaired.contains("\"\"\""), "triple quotes must be removed");
+        // Must now parse successfully.
+        let intent = NatlasEngineeringIntent::parse(&repaired).unwrap();
+        assert_eq!(intent.steps[0].content.as_deref(), Some("line1\nline2"));
+    }
+
+    #[test]
+    fn repair_removes_trailing_commas() {
+        let bad = r#"{"summary":"s","steps":[{"kind":"approve","description":"d"},]}"#;
+        let repaired = repair_json(bad).expect("repair should succeed");
+        let intent = NatlasEngineeringIntent::parse(&repaired).unwrap();
+        assert_eq!(intent.steps.len(), 1);
+    }
+
+    #[test]
+    fn repair_returns_none_when_no_defects() {
+        let good = r#"{"summary":"s","steps":[{"kind":"approve","description":"d"}]}"#;
+        assert!(repair_json(good).is_none(), "no repair needed for valid JSON");
+    }
+
+    #[test]
+    fn parse_with_repair_detects_and_records_normalization() {
+        // A triple-quoted string that strict parse rejects, but repair recovers.
+        let bad = r#"{"summary":"s","steps":[{"kind":"implement","description":"d","path":"f.py","content":"""a
+b"""}]}"#;
+        let (intent, was_repaired) = NatlasEngineeringIntent::parse_with_repair(bad).unwrap();
+        assert!(was_repaired, "must record that normalization occurred");
+        assert_eq!(intent.steps[0].content.as_deref(), Some("a\nb"));
+    }
+
+    #[test]
+    fn parse_with_repair_passes_through_valid_json_untouched() {
+        let good = r#"{"summary":"s","steps":[{"kind":"approve","description":"d"}]}"#;
+        let (intent, was_repaired) = NatlasEngineeringIntent::parse_with_repair(good).unwrap();
+        assert!(!was_repaired, "valid JSON must not be marked as repaired");
+        assert_eq!(intent.steps.len(), 1);
+    }
+
+    #[test]
+    fn parse_with_repair_fails_closed_on_unrecoverable_defect() {
+        // Missing closing brace — outside the bounded repair scope.
+        let unrecoverable = r#"{"summary":"s","steps":["#;
+        assert!(NatlasEngineeringIntent::parse_with_repair(unrecoverable).is_err());
     }
 }

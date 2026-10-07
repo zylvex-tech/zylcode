@@ -14,8 +14,10 @@ Status: ✅ done/real · 🔧 in progress · ⛔ blocked (human action required)
 - ✅ `NATLAS_CONTRACT_VERIFICATION_2026-10-07.md` (3 verified contracts).
 - ✅ Apache-2.0 fork of `samuelolubukun/NATLaS-Sovereign-Engine`; model `NCAIR1/N-ATLaS`.
 - ✅ B1 inference gate (EV-014, L3) + multilingual round-trip (EV-015, L3) + Pidgin comprehension (EV-016, L3, non-target bonus).
-- ✅ **Engineering-journey bridge proven hermetically (EV-018):** multilingual prompt → structured ZylCode intent contract → validated task graph → **real factory execution with a human approval gate** → real file write + real test → evidence graph, all on a throwaway fixture repo (`tests/natlas_bridge.rs`, 12 tests green). This is the C3 "actual repo change" chain, deterministic and reproducible.
+- ✅ **Engineering-journey bridge proven hermetically (EV-018):** multilingual prompt → structured ZylCode intent contract → validated task graph → **real factory execution with a human approval gate** → real file write + real test → evidence graph, all on a throwaway fixture repo (`tests/natlas_bridge.rs`, 14 tests green). This is the C3 "actual repo change" chain, deterministic and reproducible.
 - ✅ **Genuine Yoruba structured-intent call (EV-017, L3):** real N-ATLAS returned the correct intent shape; strict-JSON parse fails on unescaped multi-line `content` (flagged, not faked).
+- ✅ **Production contract + repair layer (EV-023):** strengthened SYSTEM preamble with explicit JSON serialization rules; bounded `repair_json` layer handles triple-quoted strings, raw newlines, trailing commas deterministically; records normalization; fail-closed.
+- ✅ **Genuine live acceptance journey (EV-024, L3):** full uninterrupted chain proven — Yoruba instruction → real N-ATLAS → repair → file mutation (`helloworld.py`) → test (`python helloworld.py`) → exit 0, stdout "Hello ZylCode". **C3 LIVE RUNTIME VERIFIED.**
 - 🔧 `ARCHITECTURE_BRIDGE.md` write-up (C3).
 
 ## 3. Real-World Validation
@@ -27,7 +29,7 @@ Status: ✅ done/real · 🔧 in progress · ⛔ blocked (human action required)
   is not one of N-ATLAS's four stated target languages).
 - ⛔ **≥2 external beta testers (PS1 hard requirement)** — owner must recruit. We provide the
   invite + feedback template + a `/gradio` or local harness. **Cannot be self-issued.** (Beta package: EV-021, Recruited: 0 — honest.)
-- ✅ Repo-changing C3 task demo **proven hermetically** (EV-018): a multilingual → structured-intent → real file write + real test → evidence chain runs deterministically. The genuine N-ATLAS leg of that same chain is demonstrated in EV-017 (live call). Live end-to-end screen-capture still pending a warm endpoint (ZeroGPU scheduling).
+- ✅ Repo-changing C3 task demo **proven live** (EV-024): a genuine Yoruba instruction → real N-ATLAS → bounded repair → real file write (`helloworld.py`) + real test (exit 0, stdout "Hello ZylCode") → evidence. **C3 LIVE RUNTIME VERIFIED.** Live end-to-end screen-capture still pending owner recording step.
 
 ## 4. Technical Documentation
 - ✅ `README` (Space) — attribution + Apache-2.0 + API surface.
@@ -51,7 +53,7 @@ Status: ✅ done/real · 🔧 in progress · ⛔ blocked (human action required)
 |---|---|---|
 | Working Artefact & Rigour | ✅ | endpoint + integration real |
 | N-ATLAS Integration | ✅ | genuine, not a wrapper (disqualification avoided) |
-| Real-World Validation | ✅ | gate (EV-014) + multilingual (EV-015) + Pidgin comprehension (EV-016) genuine; beta testers pending (human) |
+| Real-World Validation | 🔧 | gate (EV-014) + multilingual (EV-015) + Pidgin comprehension (EV-016) + live acceptance journey (EV-024) genuine; **beta testers pending (human, 0 recruited)** |
 | Impact Potential | ✅ | sovereign dev-infra narrative |
 | Scalability & Sustainability | 🔧 | ZeroGPU quota risk documented; dedicate-GPU path noted |
 | Team Capability | ⛔ | profile pending (human) |
