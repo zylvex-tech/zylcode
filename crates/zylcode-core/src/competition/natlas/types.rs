@@ -150,6 +150,71 @@ impl std::fmt::Display for NatlasError {
 
 impl std::error::Error for NatlasError {}
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn http_status_classifies_auth_quota_and_cold_starts() {
+        assert_eq!(
+            NatlasResilienceState::from_http(401, ""),
+            NatlasResilienceState::AuthFailure
+        );
+        assert_eq!(
+            NatlasResilienceState::from_http(429, "quota exceeded"),
+            NatlasResilienceState::Quota
+        );
+        // A 503 that names a load is "loading"; a bare one is "warming".
+        assert_eq!(
+            NatlasResilienceState::from_http(503, "model is loading"),
+            NatlasResilienceState::Loading
+        );
+        assert_eq!(
+            NatlasResilienceState::from_http(502, "bad gateway"),
+            NatlasResilienceState::Warming
+        );
+        assert_eq!(
+            NatlasResilienceState::from_http(500, "boom"),
+            NatlasResilienceState::Failed
+        );
+    }
+
+    #[test]
+    fn error_classification_matches_transport_and_blocked() {
+        assert_eq!(
+            NatlasResilienceState::from_error(&NatlasError::Transport {
+                message: "conn refused".into()
+            }),
+            NatlasResilienceState::Unavailable
+        );
+        assert_eq!(
+            NatlasResilienceState::from_error(&NatlasError::Timeout { timeout_ms: 5 }),
+            NatlasResilienceState::Timeout
+        );
+        assert_eq!(
+            NatlasResilienceState::from_error(&NatlasError::BlockedNatlasAccess {
+                reason: "no transport".into()
+            }),
+            NatlasResilienceState::Blocked
+        );
+        // An HTTP error routes through the same mapper.
+        assert_eq!(
+            NatlasResilienceState::from_error(&NatlasError::HttpStatus {
+                status: 401,
+                body_excerpt: "".into()
+            }),
+            NatlasResilienceState::AuthFailure
+        );
+    }
+
+    #[test]
+    fn only_ok_is_operational() {
+        assert!(NatlasResilienceState::Ok.is_operational());
+        assert!(!NatlasResilienceState::Warming.is_operational());
+        assert!(!NatlasResilienceState::AuthFailure.is_operational());
+    }
+}
+
 /// The outcome state of an N-ATLAS invocation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -182,5 +247,95 @@ impl NatlasStatus {
     /// the transport was the real one.
     pub fn is_verified_success(self) -> bool {
         matches!(self, Self::Succeeded)
+    }
+}
+
+/// The honest state of the N-ATLAS endpoint, as observed by ZylCode.
+///
+/// Every variant is a *stated* condition. There is deliberately **no** "falling
+/// back to another model" state, because substituting a different model would be
+/// fabrication. When the endpoint is not `Ok`, ZylCode reports the true state
+/// and does nothing with a synthetic answer.
+///
+/// This is what the UI and evidence surface should show, so a reviewer sees
+/// "warming" or "auth_failure" rather than a silent degraded experience.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum NatlasResilienceState {
+    /// A response was received and parsed successfully.
+    Ok,
+    /// Endpoint is cold; shared GPU is spinning up (typically HTTP 502/503 with
+    /// no load message). No model is substituted.
+    Warming,
+    /// Model is loading into memory (HTTP 503 that names a load). No model is
+    /// substituted.
+    Loading,
+    /// The request exceeded our configured timeout.
+    Timeout,
+    /// Rate-limited or out of quota (HTTP 429), or a known ZeroGPU quota message.
+    Quota,
+    /// Authentication/authorisation failed (HTTP 401/403).
+    AuthFailure,
+    /// Transport-level failure: DNS, connection refused, proxy error.
+    Unavailable,
+    /// Configured values are absent; the integration cannot be attempted.
+    Blocked,
+    /// Any other failure (HTTP 4xx/5xx not otherwise classified, bad body, …).
+    Failed,
+}
+
+impl NatlasResilienceState {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Ok => "OK",
+            Self::Warming => "WARMING",
+            Self::Loading => "LOADING",
+            Self::Timeout => "TIMEOUT",
+            Self::Quota => "QUOTA",
+            Self::AuthFailure => "AUTH_FAILURE",
+            Self::Unavailable => "UNAVAILABLE",
+            Self::Blocked => "BLOCKED",
+            Self::Failed => "FAILED",
+        }
+    }
+
+    /// True only for [`NatlasResilienceState::Ok`]. Every other state means the
+    /// request did not yield a usable N-ATLAS answer.
+    pub fn is_operational(self) -> bool {
+        matches!(self, Self::Ok)
+    }
+
+    /// Classify an HTTP status (with an optional body excerpt that may name a
+    /// load) into a resilience state. Never returns `Ok` — use
+    /// [`NatlasResilienceState::Ok`] directly for a 2xx.
+    pub fn from_http(status: u16, body_excerpt: &str) -> Self {
+        let b = body_excerpt.to_ascii_lowercase();
+        match status {
+            401 | 403 => Self::AuthFailure,
+            429 => Self::Quota,
+            502 | 503 => {
+                if b.contains("load") || b.contains("starting") || b.contains("boot") {
+                    Self::Loading
+                } else {
+                    Self::Warming
+                }
+            }
+            400 | 404 | 405 | 500 | 501 => Self::Failed,
+            _ => Self::Unavailable,
+        }
+    }
+
+    /// Classify a [`NatlasError`] into a resilience state.
+    pub fn from_error(error: &NatlasError) -> Self {
+        match error {
+            NatlasError::NotConfigured { .. } => Self::Blocked,
+            NatlasError::BlockedNatlasAccess { .. } => Self::Blocked,
+            NatlasError::Transport { .. } => Self::Unavailable,
+            NatlasError::Timeout { .. } => Self::Timeout,
+            NatlasError::HttpStatus { status, body_excerpt } => {
+                Self::from_http(*status, body_excerpt)
+            }
+            NatlasError::MalformedResponse { .. } => Self::Failed,
+        }
     }
 }

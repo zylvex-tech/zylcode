@@ -13,11 +13,22 @@
 //! # What the handoff does *not* invent
 //!
 //! A step that would need real content — the body of a patch, the exact test
-//! command — is mapped to a side-effect-free [`TaskAction::Note`] in Phase C0,
-//! because fabricating file contents or commands would be worse than not
-//! executing them. The one exception is [`IntentStepKind::Approve`], which maps
-//! to a **real** [`TaskAction::Approval`] gate: a human decision needs no
-//! invented content, so it is executed for real.
+//! command — is mapped to a side-effect-free [`TaskAction::Note`] **unless the
+//! model actually supplied it** in the contract. A `kind: implement` step whose
+//! `content`/`path` are absent is recorded as a note; we do not fabricate file
+//! bodies. The one step that never needs invented content is
+//! [`IntentStepKind::Approve`], which maps to a **real** [`TaskAction::Approval`]
+//! gate: a human decision needs no invented content, so it is executed for real.
+//!
+//! # Approval gates every real mutation (structurally)
+//!
+//! A [`TaskAction::WriteFile`], [`TaskAction::RunCommand`] or [`TaskAction::Verify`]
+//! is *only* emitted when the model supplied the concrete `content`/`path` or
+//! `command`. Every such side-effect node is made to depend on the first
+//! [`IntentStepKind::Approve`] node, so the graph cannot execute a mutation
+//! before a human approves the plan — regardless of the order the model listed
+//! the steps in. This is the competition's "no mutation before approval" rule,
+//! enforced by the DAG, not by hope.
 
 use serde::{Deserialize, Serialize};
 
@@ -32,6 +43,9 @@ pub enum IntentStepKind {
     Implement,
     Test,
     Document,
+    /// Run an arbitrary command (build, execute). Maps to [`TaskAction::RunCommand`]
+    /// when the model supplied a `command`.
+    Run,
     Approve,
 }
 
@@ -42,6 +56,7 @@ impl IntentStepKind {
             "implement" => Some(Self::Implement),
             "test" => Some(Self::Test),
             "document" => Some(Self::Document),
+            "run" => Some(Self::Run),
             "approve" => Some(Self::Approve),
             _ => None,
         }
@@ -53,6 +68,7 @@ impl IntentStepKind {
             Self::Implement => "implement",
             Self::Test => "test",
             Self::Document => "document",
+            Self::Run => "run",
             Self::Approve => "approve",
         }
     }
@@ -63,8 +79,23 @@ impl IntentStepKind {
 pub struct NatlasIntentStep {
     pub kind: IntentStepKind,
     pub description: String,
+    /// Legacy/optional free-form path hint (not used for the write target).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub target_path: Option<String>,
+    /// File path for an `implement`/`document` step that carries real content.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub path: Option<String>,
+    /// Real file content. Absent ⇒ the step is recorded as a [`TaskAction::Note`]
+    /// (no fabricated content).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub content: Option<String>,
+    /// `argv` for a `test`/`run` step. Present ⇒ the step becomes a real command.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub command: Option<Vec<String>>,
+    /// For a `test` step: when true the command is a verification
+    /// ([`TaskAction::Verify`]); otherwise a plain [`TaskAction::RunCommand`].
+    #[serde(default)]
+    pub verify: bool,
 }
 
 /// A structured engineering intent derived from an N-ATLAS response.
@@ -113,20 +144,26 @@ impl NatlasEngineeringIntent {
 
         let mut steps = Vec::with_capacity(steps_value.len());
         for (i, raw) in steps_value.iter().enumerate() {
-            let kind_str = raw.get("kind").and_then(|v| v.as_str()).ok_or_else(|| {
-                NatlasError::MalformedResponse {
+            let obj_i = raw
+                .as_object()
+                .ok_or_else(|| NatlasError::MalformedResponse {
+                    detail: format!("step {i} must be a JSON object"),
+                })?;
+            let kind_str = obj_i
+                .get("kind")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| NatlasError::MalformedResponse {
                     detail: format!("step {i} is missing a string `kind`"),
-                }
-            })?;
+                })?;
             let kind = IntentStepKind::parse(kind_str).ok_or_else(|| {
                 NatlasError::MalformedResponse {
                     detail: format!(
                         "step {i} has unknown kind `{kind_str}`; expected one of \
-                         analyse|implement|test|document|approve"
+                         analyse|implement|test|document|run|approve"
                     ),
                 }
             })?;
-            let description = raw
+            let description = obj_i
                 .get("description")
                 .and_then(|v| v.as_str())
                 .filter(|s| !s.trim().is_empty())
@@ -134,14 +171,41 @@ impl NatlasEngineeringIntent {
                     detail: format!("step {i} is missing a non-empty `description`"),
                 })?
                 .to_string();
-            let target_path = raw
+
+            let target_path = obj_i
                 .get("target_path")
                 .and_then(|v| v.as_str())
                 .map(|s| s.to_string());
+            let path = obj_i
+                .get("path")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+            let content = obj_i
+                .get("content")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+            let command = obj_i
+                .get("command")
+                .and_then(|v| v.as_array())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|x| x.as_str().map(|s| s.to_string()))
+                        .collect::<Vec<_>>()
+                })
+                .filter(|c| !c.is_empty());
+            let verify = obj_i
+                .get("verify")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+
             steps.push(NatlasIntentStep {
                 kind,
                 description,
                 target_path,
+                path,
+                content,
+                command,
+                verify,
             });
         }
 
@@ -153,39 +217,101 @@ impl NatlasEngineeringIntent {
     ///
     /// The graph is what the existing `FactoryRunner` consumes, so this is the
     /// seam between the competition work and the product's durable workflow.
+    ///
+    /// Approval gating is structural: every real side-effect node
+    /// (WriteFile / RunCommand / Verify) depends on the first `approve` step,
+    /// so a mutation can never execute before a human approves — no matter how
+    /// the model ordered the steps.
     pub fn to_task_graph(&self) -> Result<TaskGraph, NatlasError> {
+        // The approval gate id, computed upfront so a side-effect node can depend
+        // on it no matter where in the step list the approval appears — a mutation
+        // listed *before* the approval is still correctly gated on it.
+        let approval_id = self.approval_step_id();
+
         let mut graph = TaskGraph::new();
-        let mut previous: Option<String> = None;
+        let mut note_prev: Option<String> = None;
+        let mut effect_prev: Option<String> = None;
 
         for (i, step) in self.steps.iter().enumerate() {
             let id = format!("step-{:02}", i + 1);
-            let (kind, action) = match step.kind {
-                // Side-effect-free in C0: the description is recorded, nothing
-                // is executed, because no real content or command is known yet.
+
+            let (task_kind, action) = match step.kind {
+                // Side-effect-free: recorded, nothing executed.
                 IntentStepKind::Analyse => (
                     TaskKind::RepositoryContext,
                     TaskAction::Note {
                         text: format!("analyse: {}", step.description),
                     },
                 ),
-                IntentStepKind::Implement => (
-                    TaskKind::Implementation,
-                    TaskAction::Note {
-                        text: format!("implement (content not supplied): {}", step.description),
-                    },
-                ),
-                IntentStepKind::Test => (
-                    TaskKind::Test,
-                    TaskAction::Note {
-                        text: format!("test (command not supplied): {}", step.description),
-                    },
-                ),
-                IntentStepKind::Document => (
-                    TaskKind::Documentation,
-                    TaskAction::Note {
-                        text: format!("document: {}", step.description),
-                    },
-                ),
+                // A real file write, only when content + path were supplied.
+                IntentStepKind::Implement | IntentStepKind::Document => {
+                    if let (Some(path), Some(content)) = (&step.path, &step.content) {
+                        let kind = if step.kind == IntentStepKind::Document {
+                            TaskKind::Documentation
+                        } else {
+                            TaskKind::Implementation
+                        };
+                        (
+                            kind,
+                            TaskAction::WriteFile {
+                                path: path.clone(),
+                                content: content.clone(),
+                            },
+                        )
+                    } else {
+                        let (kind, label) = if step.kind == IntentStepKind::Document {
+                            (TaskKind::Documentation, "document")
+                        } else {
+                            (TaskKind::Implementation, "implement")
+                        };
+                        (
+                            kind,
+                            TaskAction::Note {
+                                text: format!("{label} (content not supplied): {}", step.description),
+                            },
+                        )
+                    }
+                }
+                // A verification command (test) or a plain command (run/build).
+                IntentStepKind::Test | IntentStepKind::Run => {
+                    match &step.command {
+                        Some(argv) if !argv.is_empty() => {
+                            let command = argv[0].clone();
+                            let args = argv[1..].to_vec();
+                            match step.kind {
+                                IntentStepKind::Test if step.verify => (
+                                    TaskKind::Test,
+                                    TaskAction::Verify { command, args },
+                                ),
+                                _ => (
+                                    if step.kind == IntentStepKind::Test {
+                                        TaskKind::Test
+                                    } else {
+                                        TaskKind::Implementation
+                                    },
+                                    TaskAction::RunCommand {
+                                        command,
+                                        args,
+                                        expect_exit: 0,
+                                    },
+                                ),
+                            }
+                        }
+                        _ => {
+                            let (kind, label) = if step.kind == IntentStepKind::Test {
+                                (TaskKind::Test, "test")
+                            } else {
+                                (TaskKind::Implementation, "run")
+                            };
+                            (
+                                kind,
+                                TaskAction::Note {
+                                    text: format!("{label} (command not supplied): {}", step.description),
+                                },
+                            )
+                        }
+                    }
+                }
                 // A real gate: no invented content is required, so this action
                 // genuinely parks the job until a human approves.
                 IntentStepKind::Approve => (
@@ -196,22 +322,66 @@ impl NatlasEngineeringIntent {
                 ),
             };
 
-            let mut node = TaskNode::new(id.clone(), kind, step.description.clone(), action);
-            if let Some(prev) = &previous {
-                node = node.depends_on(&[prev.as_str()]);
+            // Decide dependencies.
+            let mut depends: Vec<String> = match &action {
+                TaskAction::Approval { .. } => note_prev.clone().into_iter().collect(),
+                TaskAction::WriteFile { .. }
+                | TaskAction::RunCommand { .. }
+                | TaskAction::Verify { .. } => {
+                    if let Some(a) = &approval_id {
+                        vec![a.clone()]
+                    } else if let Some(p) = &effect_prev {
+                        vec![p.clone()]
+                    } else {
+                        note_prev.clone().into_iter().collect()
+                    }
+                }
+                TaskAction::Note { .. } => note_prev.clone().into_iter().collect(),
+                _ => Vec::new(),
+            };
+            depends.retain(|d| d != &id);
+            depends.sort();
+            depends.dedup();
+
+            let mut node = TaskNode::new(id.clone(), task_kind, step.description.clone(), action);
+            if !depends.is_empty() {
+                node = node.depends_on(&depends.iter().map(|s| s.as_str()).collect::<Vec<_>>());
             }
             graph
                 .add_node(node)
                 .map_err(|e| NatlasError::MalformedResponse {
                     detail: format!("task graph rejected step {id}: {e}"),
                 })?;
-            previous = Some(id);
+
+            match graph.get(&id).unwrap().action {
+                TaskAction::WriteFile { .. }
+                | TaskAction::RunCommand { .. }
+                | TaskAction::Verify { .. } => {
+                    effect_prev = Some(id.clone());
+                }
+                TaskAction::Approval { .. } => {
+                    // The approval gate does not advance the note/effect chain;
+                    // later side effects still gate on it via `approval_id`.
+                }
+                _ => {
+                    note_prev = Some(id.clone());
+                }
+            }
         }
 
         graph.validate().map_err(|e| NatlasError::MalformedResponse {
             detail: format!("intent produced an invalid task graph: {e}"),
         })?;
         Ok(graph)
+    }
+
+    /// The id of the first approval step, if the intent contains one. Exposed so
+    /// callers (and tests) can assert that side effects are gated on it.
+    pub fn approval_step_id(&self) -> Option<String> {
+        self.steps
+            .iter()
+            .position(|s| s.kind == IntentStepKind::Approve)
+            .map(|i| format!("step-{:02}", i + 1))
     }
 }
 
@@ -261,6 +431,27 @@ mod tests {
     }
 
     #[test]
+    fn parses_optional_content_and_command_fields() {
+        let json = r#"{
+            "summary": "build a counter",
+            "steps": [
+                {"kind": "implement", "description": "write the module",
+                 "path": "lib.rs", "content": "pub fn x() {}\n"},
+                {"kind": "test", "description": "run the suite",
+                 "command": ["cargo", "test"], "verify": true},
+                {"kind": "run", "description": "format the code",
+                 "command": ["cargo", "fmt"]}
+            ]
+        }"#;
+        let intent = NatlasEngineeringIntent::parse(json).unwrap();
+        assert_eq!(intent.steps[0].path.as_deref(), Some("lib.rs"));
+        assert_eq!(intent.steps[0].content.as_deref(), Some("pub fn x() {}\n"));
+        assert_eq!(intent.steps[1].command.as_ref().unwrap(), &vec!["cargo", "test"]);
+        assert!(intent.steps[1].verify);
+        assert!(matches!(intent.steps[2].kind, IntentStepKind::Run));
+    }
+
+    #[test]
     fn rejects_unknown_step_kinds() {
         let bad = r#"{"summary":"s","steps":[{"kind":"deploy","description":"x"}]}"#;
         let err = NatlasEngineeringIntent::parse(bad).unwrap_err();
@@ -297,5 +488,102 @@ mod tests {
     fn handoff_graph_is_rejected_if_a_step_is_missing_a_description() {
         let bad = r#"{"summary":"s","steps":[{"kind":"analyse"}]}"#;
         assert!(NatlasEngineeringIntent::parse(bad).is_err());
+    }
+
+    #[test]
+    fn content_maps_to_a_real_writefile_action() {
+        let json = r#"{
+            "summary": "add a module",
+            "steps": [
+                {"kind": "approve", "description": "owner sign-off"},
+                {"kind": "implement", "description": "write the file",
+                 "path": "lib.rs", "content": "pub fn value() -> u32 { 42 }\n"}
+            ]
+        }"#;
+        let graph = NatlasEngineeringIntent::parse(json).unwrap().to_task_graph().unwrap();
+        let write = graph.get("step-02").unwrap();
+        match &write.action {
+            TaskAction::WriteFile { path, content } => {
+                assert_eq!(path, "lib.rs");
+                assert!(content.contains("fn value"));
+            }
+            other => panic!("expected WriteFile, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_step_with_verify_maps_to_verify_action() {
+        let json = r#"{
+            "summary": "verify the suite",
+            "steps": [
+                {"kind": "approve", "description": "owner sign-off"},
+                {"kind": "test", "description": "run the suite",
+                 "command": ["cargo", "test"], "verify": true}
+            ]
+        }"#;
+        let graph = NatlasEngineeringIntent::parse(json).unwrap().to_task_graph().unwrap();
+        assert!(matches!(
+            graph.get("step-02").unwrap().action,
+            TaskAction::Verify { .. }
+        ));
+    }
+
+    #[test]
+    fn run_step_maps_to_runcommand_action() {
+        let json = r#"{
+            "summary": "format",
+            "steps": [
+                {"kind": "approve", "description": "owner sign-off"},
+                {"kind": "run", "description": "format the code",
+                 "command": ["cargo", "fmt"]}
+            ]
+        }"#;
+        let graph = NatlasEngineeringIntent::parse(json).unwrap().to_task_graph().unwrap();
+        let run = graph.get("step-02").unwrap();
+        assert!(matches!(run.action, TaskAction::RunCommand { .. }));
+        if let TaskAction::RunCommand { command, args, expect_exit } = &run.action {
+            assert_eq!(command, "cargo");
+            assert_eq!(args, &vec!["fmt"]);
+            assert_eq!(*expect_exit, 0);
+        }
+    }
+
+    #[test]
+    fn missing_content_falls_back_to_note_not_a_fabricated_write() {
+        // An implement step with no content must NOT invent a file body.
+        let json = r#"{
+            "summary": "add a module",
+            "steps": [
+                {"kind": "approve", "description": "owner sign-off"},
+                {"kind": "implement", "description": "write the file"}
+            ]
+        }"#;
+        let graph = NatlasEngineeringIntent::parse(json).unwrap().to_task_graph().unwrap();
+        assert!(matches!(
+            graph.get("step-02").unwrap().action,
+            TaskAction::Note { .. }
+        ));
+    }
+
+    #[test]
+    fn approval_gates_every_side_effect_regardless_of_order() {
+        // Even when the model lists the mutation BEFORE the approval, the side
+        // effect must depend on the approval node — no mutation before approval.
+        let json = r#"{
+            "summary": "add a module",
+            "steps": [
+                {"kind": "implement", "description": "write the file",
+                 "path": "lib.rs", "content": "x\n"},
+                {"kind": "approve", "description": "owner sign-off"}
+            ]
+        }"#;
+        let intent = NatlasEngineeringIntent::parse(json).unwrap();
+        let graph = intent.to_task_graph().unwrap();
+        let approval = intent.approval_step_id().expect("has approval");
+        let write = graph.get("step-01").unwrap();
+        assert!(
+            write.depends_on.contains(&approval),
+            "mutation must depend on approval even when listed first: {write:?}"
+        );
     }
 }

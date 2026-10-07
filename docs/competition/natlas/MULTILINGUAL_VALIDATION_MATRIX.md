@@ -50,8 +50,9 @@
 | Igbo | 2026-10-07 ~19:35 GMT | same | controlled endpoint, "what is a loop?" prompt | same | N/A | explanation in Igbo | N/A | genuine Igbo reply, HTTP 200 | ~ZeroGPU | fluent Igbo | prompt authored by team, not native speaker | EV-015 |
 | English (Nigerian) | 2026-10-07 ~19:35 GMT | same | controlled endpoint, Rust trait prompt | same | N/A | explanation in English | N/A | genuine English reply, HTTP 200 | ~ZeroGPU | standard English | — | EV-015 |
 | Nigerian Pidgin *(non-target bonus)* | 2026-10-07 20:02 GMT | same | controlled endpoint, "wetin be variable?" prompt | `pidgin_test.py` run | N/A | explanation | N/A | model understood Pidgin + replied coherently, HTTP 200 | ~ZeroGPU | **understood Pidgin; replied in standard English** | generation-in-Pidgin untested | EV-016 |
+| Yoruba *(structured intent)* | 2026-10-07 20:23 GMT | same | controlled endpoint, Yoruba *"Jọwọ, ṣẹda faili wordcount.py…"* + English SYSTEM preamble requesting the ZylCode JSON intent contract | `ev017_engineer_intent.py` run; `evidence/EV-017-yoruba-structured-intent.json` | **NO — strict parse fails** (model embedded a Python triple-quoted string with raw newlines as the `content` value; not valid JSON) | `implement` (path+content) + `test` (command+`verify:true`) | gated by approve | **schema SHAPE correct**, HTTP 200, real `NCAIR1/N-ATLaS` | ~ZeroGPU | fluent Yoruba comprehension; LLM-in-JSON fidelity gap | production preamble must forbid multi-line/triple-quoted `content` | EV-017 |
 
-**Rows recorded: 5** (4 competition targets via EV-015; 1 non-target bonus via EV-016).
+**Rows recorded: 6** (4 competition targets via EV-015; 1 non-target Pidgin bonus via EV-016; 1 Yoruba structured-intent via EV-017).
 
 > **Honesty note on native-speaker authorship.** The Yoruba/Hausa/Igbo prompts in EV-015 were
 > authored by the team, not by a native speaker. They genuinely exercised the model in those
@@ -66,11 +67,12 @@
 
 | Gate | Description | State |
 |---|---|---|
-| ML-1 | Yoruba tested with genuine N-ATLAS | 🟡 validated-comprehension (EV-015) — native-speaker prompt recommended |
+| ML-1 | Yoruba tested with genuine N-ATLAS | 🟡 validated-comprehension (EV-015) — native-speaker prompt recommended; **structured intent also exercised (EV-017)** |
 | ML-2 | Hausa tested with genuine N-ATLAS | 🟡 validated-comprehension (EV-015) — native-speaker prompt recommended |
 | ML-3 | Igbo tested with genuine N-ATLAS | 🟡 validated-comprehension (EV-015) — native-speaker prompt recommended |
 | ML-4 | English / Nigerian-English tested and evidenced | ✅ validated (EV-015) |
 | ML-5 | *(bonus)* Pidgin comprehension tested with genuine N-ATLAS | ✅ validated-comprehension (EV-016, non-target) |
+| ML-6 | *(new)* Structured-intent contract emitted by model in a target language | 🟡 PARTIAL (EV-017) — schema shape correct, but strict JSON parse fails on unescaped multi-line `content`; preamble must tighten |
 
 The previous blocker — a reachable genuine N-ATLAS runtime — is resolved (EV-013/014/015/016).
 The remaining item is *quality*, not *availability*: native-speaker-authored target prompts.

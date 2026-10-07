@@ -36,6 +36,12 @@ artefact path. Statuses: `PASS` · `FAIL` · `BLOCKED`.
 | EV-014 | B1 inference gate: genuine N-ATLAS returns the challenge token through *our* endpoint | 2026-10-07 ~19:27 GMT+1 | `bece9e9` | Win11 + local proxy | `POST /v1/chat/completions` → `zylvex-natlas-zylcode-bridge.hf.space` with `Authorization: Bearer <NATLAS_API_KEY>`, prompt *"Return exactly: NATLAS_ZYLCODE_OK"* | model returns the token | HTTP 200; `choices[0].message.content == "NATLAS_ZYLCODE_OK"` | **PASS (L3 — genuine invocation, real model, no mock)** | `gate.py` run (session terminal); no secret-bearing artefacts committed |
 | EV-015 | Genuine multilingual N-ATLAS developer-assistance through our endpoint (C3 seed) | 2026-10-07 ~19:35 GMT+1 | `bece9e9` | Win11 + local proxy | `POST /v1/chat/completions` ×4 (EN/YO/HA/IG) with programming-concept prompts to the controlled endpoint | coherent, language-appropriate answers | EN: Rust trait; YO: 'function' in Yoruba; HA: 'variable' in Hausa (+Python example); IG: 'loop' in Igbo — all HTTP 200, real model output, correct target language | **PASS (L3)** | `c3_multiling.py` run (session terminal) |
 | EV-016 | N-ATLAS **comprehends** Nigerian Pidgin input and answers a programming question coherently | 2026-10-07 20:02 GMT | `bece9e9` | Win11 + local proxy | `GET /healthz` + `POST /v1/chat/completions` to `zylvex-natlas-zylcode-bridge.hf.space` with Pidgin prompt *"Abeg, explain for me wetin be 'variable' for computer programming, make e simple and give small example."* | model understands Pidgin and replies sensibly | healthz 200 (model `NCAIR1/N-ATLaS`); PIDGIN_HTTP 200; reply correctly explains "variable" via a bag-of-apples analogy — **output in standard English, not Pidgin** | **PASS (L3 — genuine invocation)** | `pidgin_test.py` run (session terminal). Pidgin is **not** one of N-ATLAS's four stated target languages; this is an empirical bonus — *comprehension* validated, *generation in Pidgin* not tested |
+| EV-017 | Genuine multilingual N-ATLAS → ZylCode **structured engineering intent** (Yoruba → contract) | 2026-10-07 20:23 GMT | `bece9e9` | Win11 + local proxy | `POST /v1/chat/completions` to `zylvex-natlas-zylcode-bridge.hf.space`; Yoruba request *"Jọwọ, ṣẹda faili wordcount.py…"* + English SYSTEM preamble asking for the JSON intent contract | model comprehends Yoruba and returns the contract shape | healthz 200 (model `NCAIR1/N-ATLaS`); HTTP 200; model returned `summary` + `steps` with `implement` (path+content) and `test` (command+`verify:true`) — **correct schema shape**; BUT `content` is a Python triple-quoted string with raw newlines ⇒ **not strictly valid JSON** (`NatlasEngineeringIntent::parse` correctly rejects it) | **PARTIAL (L3 — genuine invocation)** | `evidence/EV-017-yoruba-structured-intent.json`; `ev017_engineer_intent.py` run (session). Comprehension + schema intent proven; strict contract parse fails on unescaped content → production preamble must tighten this |
+| EV-018 | The N-ATLAS → ZylCode engineering **bridge mechanics** are proven hermetically (no live endpoint) | 2026-10-07 20:24 GMT | `bece9e9` + uncommitted | `cargo test -p zylcode-core --test natlas_bridge` | 12 tests: intent translation, malformed rejection, unknown-kind rejection, approval enforcement, no-mutation-before-approval, approved mutation, execution failure, test failure, endpoint unavailable, auth failure, evidence redaction, provenance, no synthetic fallback | all 12 pass deterministically on a throwaway fixture repo | **PASS** | `crates/zylcode-core/tests/natlas_bridge.rs`; `cargo test -p zylcode-core --test natlas_bridge` → 12 passed; 0 failed |
+| EV-019 | Endpoint **resilience states** are stated truthfully; no synthetic model is ever substituted | 2026-10-07 20:24 GMT | `bece9e9` + uncommitted | `cargo test` (types + bridge) | `NatlasResilienceState` (Ok/Warming/Loading/Timeout/Quota/AuthFailure/Unavailable/Blocked/Failed) + `from_http`/`from_error`; mock 503→Warming/Loading, 401→AuthFailure; bridge confirms no synthetic response on 503/401 | all classify correctly; no fabricated answer on failure | **PASS** | `crates/zylcode-core/src/competition/natlas/types.rs`; bridge tests `endpoint_unavailable_is_blocked_with_no_synthetic_response`, `auth_failure_is_stated_not_substituted` |
+| EV-020 | Evidence **redaction + provenance** verified | 2026-10-07 20:24 GMT | `bece9e9` + uncommitted | `cargo test` (evidence + bridge) | secrets scrubbed from error records before storage; evidence graph carries an INTENT node and the last node traces back to it | redaction counted correctly; ancestry terminates at INTENT | **PASS** | `crates/zylcode-core/src/competition/natlas/evidence.rs`; bridge tests `evidence_redacts_secrets_from_error_detail`, `redaction_helper_counts_and_scrubs`, `approved_chain_runs_write_then_verify_and_produces_a_verified_claim` |
+| EV-021 | **Beta-test package** prepared (PS1 hard requirement: ≥2 external testers) | 2026-10-07 20:2x GMT | n/a | local files written | evidence template + recruit invite; recruitment status tracked honestly | **0 external testers recruited** (core team never counted) | **READY (not applied)** | `docs/competition/natlas/developer/BETA_TEST_EVIDENCE_TEMPLATE.md`, `developer/BETA_TEST_INVITE.md` — Recruited: 0 |
+| EV-022 | Multilingual validation matrix **honesty** + structured-intent contract gap documented | 2026-10-07 20:24 GMT | n/a | doc update | EN/YO/HA/IG (EV-015) + Pidgin bonus (EV-016) + Yoruba structured (EV-017) recorded with native-speaker caveat; LLM-in-JSON fidelity gap flagged | matrix PARTIAL; gate ML-6 added | **PARTIAL** | `docs/competition/natlas/MULTILINGUAL_VALIDATION_MATRIX.md` |
 
 > **Deployment method note (EV-013).** `git push` to Hugging Face fails in this sandbox: git's
 > HTTPS transport returns no refs through the local proxy (`git ls-remote` empty), even though
@@ -60,17 +66,22 @@ quota-limited (cf. EV-002/003/004 on the public engine). One genuine round trip 
 against *our own* endpoint; for demo-day repeatability we may need to re-warm the Space or fall
 back to B1(c) public path. This is a scheduling risk, not a capability gap.
 
-## Integration suites (measured 2026-10-07)
+## Integration suites (re-measured 2026-10-07, current branch `competition/natlas-2026`)
 
 ```
-cargo test -p zylcode-core --lib competition::            -> 29 passed; 0 failed; 0 ignored
+cargo test -p zylcode-core --lib competition::            -> 38 passed; 0 failed; 0 ignored
 cargo test -p zylcode-core --test natlas_boundary         -> 17 passed; 0 failed; 0 ignored
 cargo test -p zylcode-core --test natlas_runtime          -> 12 passed; 0 failed; 0 ignored
+cargo test -p zylcode-core --test natlas_bridge           -> 12 passed; 0 failed; 0 ignored
                                                              -----------------------------
-                                                             Rust competition total: 58 / 58
+                                                             Rust competition total: 79 / 79
 ```
 
-This **independently reproduces** the Phase C1 report's `58 / 0 / 0` claim. The claim was true.
+`natlas_live.rs` is excluded from this count: it exercises the real chain against the live endpoint
+and is gated behind an environment flag — it is a demonstration harness, not a green CI assertion.
+The bridge engineering-journey work added `natlas_bridge.rs` (12 tests) and grew the lib
+`competition::` count from 29 → 38 (new `intent`/`types`/`evidence` unit cases). The pre-existing
+`natlas_boundary`/`natlas_runtime` suites still pass, so the refactor did not regress them.
 
 ## What this index does NOT contain
 
