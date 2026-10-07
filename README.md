@@ -2,7 +2,7 @@
 
 **NAIC PS1 — Developer Infrastructure | Track B — Innovation & Enterprise**
 
-> A sovereign, evidence-first Engineering OS that takes software from intent to verified deliverable — in English, Yoruba, Hausa, Igbo, and Nigerian Pidgin — powered by the genuine `NCAIR1/N-ATLaS` model.
+> A sovereign, evidence-first Engineering OS that takes software from intent to verified deliverable — in English, Yoruba, Hausa, and Igbo — powered by the genuine `NCAIR1/N-ATLaS` model. Nigerian Pidgin comprehension is validated as a non-target bonus.
 
 ---
 
@@ -241,7 +241,7 @@ cargo test -p zylcode-core --test natlas_live -- --ignored
 
 ## Repository Structure
 
-This branch (`competition/natlas-2026`) contains the N-ATLAS developer bridge and all competition evidence. It diverges from `main` at `b4d13ab` and carries 5 competition-specific commits.
+This branch (`competition/natlas-2026`) contains the N-ATLAS developer bridge and all competition evidence.
 
 ```
 zylcode/
@@ -284,7 +284,7 @@ zylcode/
 | Team profile | Names, affiliations, roles |
 | CAC certificate (Track B) | Upload |
 | Final video screen-capture | 3–5 min end-to-end demo recording |
-| `ARCHITECTURE_BRIDGE.md` | Technical write-up of the bridge |
+| `BETA_TESTER_QUICKSTART.md` | External tester entry point and journey |
 
 ---
 
