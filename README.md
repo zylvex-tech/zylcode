@@ -327,7 +327,7 @@ Mapped to the 7 mandatory submission components (official rubric):
 | 1. Working Artefact | ✅ | Controlled endpoint live; repo branch `competition/natlas-2026` |
 | 2. N-ATLAS Integration Evidence | ✅ | This README §N-ATLAS Integration; `NATLAS_CONTRACT_VERIFICATION_2026-10-07.md` |
 | 3. Real-World Validation | 🔧 | Live benchmarks (EV-014/015/016/024) genuine; **beta testers pending (0 recruited)** |
-| 4. Technical Documentation | 🔧 | This README; `C3_LIVE_RUNTIME_VERIFICATION_REPORT.md`; `ARCHITECTURE_BRIDGE.md` pending |
+| 4. Technical Documentation | ✅ | This README; `C3_LIVE_RUNTIME_VERIFICATION_REPORT.md`; `ARCHITECTURE_BRIDGE.md` (verified current architecture) |
 | 5. Video Demonstration | 🔧 | Script + storyboard ready; screen-capture pending owner recording |
 | 6. Team Profile | ⛔ | Owner-supplied |
 | 7. Endorsement / Registration | ⛔ | CAC certificate — owner-supplied |

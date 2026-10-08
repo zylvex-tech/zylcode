@@ -83,16 +83,33 @@ cargo test -p zylcode-core --test natlas_bridge
 
 ---
 
-## 5. Live Endpoint Verification (Optional, 2 minutes)
+## 5. What You Can Independently Verify vs. What Requires Credentials
 
-If you want to verify the **genuine N-ATLAS endpoint** is serving the real model:
+### A. Hermetic Validation (no credentials, no network to N-ATLAS)
+
+The 61 tests above prove the **ZylCode-side bridge mechanics** deterministically:
+
+| What is proven | How | Evidence level |
+|---|---|---|
+| Intent parsing + bounded JSON repair | 18 unit tests | Deterministic |
+| Transport contract enforcement | 17 boundary tests | Deterministic |
+| HTTP error/timeout handling | 12 runtime tests | Deterministic |
+| Approval gating + factory execution | 14 bridge tests | Deterministic |
+| Path traversal rejection | `fs.write` containment test | Deterministic |
+| Secret redaction | `redact_secrets` test | Deterministic |
+| Bounded repair records normalization | `parse_with_repair` tests | Deterministic |
+| Provenance chain integrity | Evidence ancestry tests | Deterministic |
+
+**These tests do NOT require a live N-ATLAS endpoint.** They prove the bridge is engineered correctly and honestly — but they do not prove the model itself answers.
+
+### B. Live Endpoint Identity (no credentials needed)
 
 ```bash
 # No API key needed for the public health endpoint
 curl -s https://zylvex-natlas-zylcode-bridge.hf.space/healthz
 ```
 
-**Expected response (excerpt):**
+**Expected response:**
 ```json
 {
   "status": "healthy",
@@ -102,7 +119,29 @@ curl -s https://zylvex-natlas-zylcode-bridge.hf.space/healthz
 }
 ```
 
-**This proves:** The endpoint is live, serving the genuine `NCAIR1/N-ATLaS` weights, and attribution to Awarri + FMCIDE is preserved.
+**What this proves:** The endpoint is live, configured to serve the genuine `NCAIR1/N-ATLaS` weights, and attribution to Awarri + FMCIDE is preserved.
+
+**What this does NOT prove:** That the model actually answers a prompt correctly. Health checks return static metadata from the engine wrapper, not a model inference. A genuine inference requires sending a prompt to `/v1/chat/completions`.
+
+### C. Genuine Live N-ATLAS Inference (requires `NATLAS_API_KEY`)
+
+A **real inference** — sending a prompt and receiving a model-generated response — requires:
+
+```bash
+export NATLAS_URL=https://zylvex-natlas-zylcode-bridge.hf.space/v1
+export NATLAS_API_KEY=<your-key>
+```
+
+The `NATLAS_API_KEY` is **not publicly distributed** in this repository. It is an endpoint authentication secret. Testers who are provided the key by the project team can run:
+
+```bash
+# Optional — only if you have been given a NATLAS_API_KEY
+cargo test -p zylcode-core --test natlas_live -- --ignored
+```
+
+This exercises the real chain against the live endpoint. Without the key, the hermetic tests (§4) and health check (§5B) are the full independent verification available.
+
+**Do not attempt to bypass authentication.** The endpoint returns 503 if the key is unset and 401 if it is wrong. There is no mock, synthetic fallback, or substitute model.
 
 ---
 
