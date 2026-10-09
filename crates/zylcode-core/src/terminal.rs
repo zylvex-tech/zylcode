@@ -113,6 +113,72 @@ fn tail(s: &str) -> (String, bool) {
     (s[cut..].to_string(), true)
 }
 
+/// Which platform shell the wrapper script is built for.
+///
+/// The wrapper exists so one `sh -c` / `cmd /C` invocation can run the user's
+/// command *and* report the directory it ended in. That report is only useful
+/// if the command's own effects — above all `cd` — are still in force when the
+/// marker is printed, so how the command is grouped matters.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Shell {
+    /// Windows `cmd.exe /V:ON /C`.
+    Cmd,
+    /// POSIX `sh -c`.
+    Posix,
+}
+
+impl Shell {
+    /// Build `(program, program args, script)` for one wrapped command.
+    ///
+    /// The script runs the command, prints `<CWD_MARKER><dir>`, and exits with
+    /// the command's own status — a trailing `echo` alone would reset it to 0
+    /// and mask real failures.
+    fn wrap(self, command: &str) -> (String, Vec<String>, String) {
+        match self {
+            // cmd needs /V:ON because %CD%/%ERRORLEVEL% would otherwise
+            // expand at PARSE time (before `cd` runs, and before the
+            // command's exit code exists); !CD!/!ERRORLEVEL! expand at
+            // execution. cmd.exe has no subshell, so `( ... )` groups the
+            // whole command for the appended `&` chain *without* forking —
+            // `cd` still applies to the trailing `& echo !CD!`, and the
+            // group keeps those markers out of a `for ... do` body (where
+            // cmd's `&` would bind to the loop body and terminate it on the
+            // first iteration).
+            Shell::Cmd => (
+                "cmd.exe".to_string(),
+                vec!["/V:ON".to_string(), "/C".to_string()],
+                format!("({command}) & echo {CWD_MARKER}!CD! & exit /b !ERRORLEVEL!"),
+            ),
+            // A POSIX `( ... )` IS a subshell: the `cd` inside dies with it,
+            // `$PWD` still reports the session directory, and the session
+            // would never advance — `cwd_persists_across_commands_in_a_session`
+            // failed on the Linux and macOS runners for exactly this reason.
+            // `{ ... }` groups in the *current* shell, so `cd` survives to the
+            // marker echo while still closing the group as a whole (a `for`
+            // loop therefore cannot swallow the markers into its body).
+            //
+            // The closing brace sits on its own line so a trailing `#` comment
+            // in the user's command cannot eat it: `(echo hi # note)` is a
+            // syntax error that fails the whole command, whereas
+            // `{ echo hi # note\n}` still closes.
+            Shell::Posix => (
+                "sh".to_string(),
+                vec!["-c".to_string()],
+                format!("{{ {command}\n}}; __zyl_rc=$?; echo {CWD_MARKER}$PWD; exit $__zyl_rc"),
+            ),
+        }
+    }
+
+    /// The shell this build actually runs commands through.
+    fn host() -> Shell {
+        if cfg!(target_family = "windows") {
+            Shell::Cmd
+        } else {
+            Shell::Posix
+        }
+    }
+}
+
 /// Session store shared by the HTTP service and the Tauri command.
 pub struct TerminalHub {
     root: PathBuf,
@@ -176,32 +242,10 @@ impl TerminalHub {
         }
         let timeout = Duration::from_secs(req.timeout_secs.unwrap_or(DEFAULT_TIMEOUT_SECS));
 
-        // Wrap the user command and echo the resulting cwd behind a marker.
-        // cmd needs /V:ON because %CD%/%ERRORLEVEL% would otherwise expand
-        // at PARSE time (before `cd` runs, and before the command's exit
-        // code exists); !CD!/!ERRORLEVEL! expand at execution. The trailing
-        // exit preserves the command's exit code — a bare trailing echo
-        // would reset it to 0 and mask real failures.
-        #[cfg(target_family = "windows")]
-        let (program, pre, post) = (
-            "cmd.exe",
-            vec!["/V:ON".to_string(), "/C".to_string()],
-            ") & echo __ZYLCODE_CWD__!CD! & exit /b !ERRORLEVEL!".to_string(),
-        );
-        #[cfg(not(target_family = "windows"))]
-        let (program, pre, post) = (
-            "sh",
-            vec!["-c".to_string()],
-            "); __zyl_rc=$?; echo __ZYLCODE_CWD__$PWD; exit $__zyl_rc".to_string(),
-        );
-        // Parenthesize the user command so the wrapper appends to the
-        // WHOLE command, not to a compound body: without grouping, a `for`
-        // loop would swallow the cwd echo and exit markers into its first
-        // iteration and terminate the loop (found by test).
-        let wrapped = format!("({}{}", req.command, post);
+        let (program, pre, wrapped) = Shell::host().wrap(&req.command);
 
         let started = std::time::Instant::now();
-        let child = tokio::process::Command::new(program)
+        let child = tokio::process::Command::new(&program)
             .args(&pre)
             .arg(wrapped)
             .current_dir(&base)
@@ -274,6 +318,21 @@ mod tests {
         (dir, root)
     }
 
+    /// Compare a reported cwd with the directory it is supposed to name.
+    ///
+    /// macOS hands `tempfile` `/var/folders/...` while the shell that ran the
+    /// command reports the physical `/private/var/folders/...`; both name one
+    /// directory, so resolve symlinks before comparing. If either side will
+    /// not resolve, fall back to the exact comparison this assertion used
+    /// before — never to a looser one.
+    fn same_path(reported: &str, expected: &Path) -> bool {
+        let reported = PathBuf::from(reported);
+        match (reported.canonicalize(), expected.canonicalize()) {
+            (Ok(a), Ok(b)) => a == b,
+            _ => reported == expected.to_path_buf(),
+        }
+    }
+
     #[tokio::test]
     async fn echo_runs_and_reports_exit_zero() {
         let (_dir, root) = temp_repo();
@@ -289,7 +348,12 @@ mod tests {
             .unwrap();
         assert_eq!(out.exit_code, Some(0));
         assert!(out.stdout_tail.contains("hello_zylcode"), "{out:?}");
-        assert_eq!(out.cwd, root.to_string_lossy());
+        assert!(
+            same_path(&out.cwd, &root),
+            "expected cwd {}, got {}",
+            root.display(),
+            out.cwd
+        );
         assert!(!out.stdout_tail.contains(CWD_MARKER));
         assert_eq!(out.session_ids_check(), ());
     }
@@ -312,7 +376,7 @@ mod tests {
             .await
             .unwrap();
         assert!(
-            first.cwd.ends_with("sub"),
+            same_path(&first.cwd, &root.join("sub")),
             "expected cwd inside sub, got {}",
             first.cwd
         );
@@ -325,7 +389,70 @@ mod tests {
             })
             .await
             .unwrap();
-        assert!(second.cwd.ends_with("sub"), "{second:?}");
+        assert!(
+            same_path(&second.cwd, &root.join("sub")),
+            "the second command must run in the directory the first left it in, got {}",
+            second.cwd
+        );
+    }
+
+    // -- wrapper shape ---------------------------------------------------
+    //
+    // These are the invariants that keep the two runtime tests above honest.
+    // They are pure string assertions so they run on every platform; the
+    // behavioural half of the proof is `cwd_persists_across_commands_in_a_session`
+    // executing for real through `sh` on the Linux and macOS CI runners.
+
+    #[test]
+    fn posix_wrapper_groups_without_forking_so_cd_survives() {
+        let (program, args, script) = Shell::Posix.wrap("cd sub");
+        assert_eq!(program, "sh");
+        assert_eq!(args, vec!["-c".to_string()]);
+        assert!(
+            script.starts_with("{ cd sub\n}"),
+            "the command must be grouped by a current-shell {{ }} group, not a \
+             subshell: a `( ... )` group dies before the marker echo and the \
+             session never advances. got {script:?}"
+        );
+        assert!(
+            !script.starts_with('('),
+            "a parenthesised group forks on POSIX: got {script:?}"
+        );
+        assert!(
+            script.contains(&format!("echo {CWD_MARKER}$PWD")),
+            "missing cwd marker: {script:?}"
+        );
+        assert!(
+            script.ends_with("exit $__zyl_rc"),
+            "the wrapper must exit with the command's own status: {script:?}"
+        );
+    }
+
+    #[test]
+    fn posix_wrapper_closing_brace_survives_a_trailing_comment() {
+        // `{ echo hi # note\n}` closes on the next line; `(echo hi # note)`
+        // puts the `)` inside the comment and fails the whole command.
+        let (_, _, script) = Shell::Posix.wrap("echo hi # note");
+        assert!(
+            script.contains("\n}; "),
+            "the group must close on its own line so a trailing comment cannot \
+             swallow it: {script:?}"
+        );
+        assert!(
+            !script.contains("(echo hi # note)"),
+            "the subshell form fails this command outright: {script:?}"
+        );
+    }
+
+    #[test]
+    fn cmd_wrapper_keeps_its_group_and_delayed_expansion() {
+        let (program, args, script) = Shell::Cmd.wrap("cd sub");
+        assert_eq!(program, "cmd.exe");
+        assert_eq!(args, vec!["/V:ON".to_string(), "/C".to_string()]);
+        assert_eq!(
+            script,
+            format!("(cd sub) & echo {CWD_MARKER}!CD! & exit /b !ERRORLEVEL!")
+        );
     }
 
     #[cfg(target_family = "windows")]

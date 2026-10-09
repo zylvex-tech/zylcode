@@ -24,3 +24,12 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 tauri = { version = "2", features = [] }
 tauri-plugin-shell = "2"
 rusqlite = { version = "0.31", features = ["bundled"] }
+
+[features]
+# Production / standalone builds. The Tauri CLI enables this feature
+# automatically for `tauri build`; when it is off (as in plain
+# `cargo build` and `tauri dev`), the app loads `devUrl` (the Vite dev
+# server) instead of the embedded `frontendDist` assets — so an exe built
+# without it shows "localhost refused to connect" unless `pnpm dev` is
+# running. See GitHub issue #1.
+custom-protocol = ["tauri/custom-protocol"]

@@ -762,8 +762,77 @@ impl AgentLoop {
                 // The agent loop will stop here until approval is granted
             }
             AgentState::Executing => {
-                // Get the next tool call from the model
-                let tool_call = self.get_next_tool_call().await?;
+                // Ask the model what to do next. FIX D2: its answer is honoured
+                // as given and is never rewritten into an invented tool call.
+                //  - ToolCall: execute it (path below, unchanged).
+                //  - Complete / Verify: the model says the work is done or asks
+                //    for verification. Claiming success is still verification's
+                //    call, so the run moves to Verifying rather than trusting
+                //    the declaration.
+                //  - Fail: the model declares failure; record it and stop.
+                //  - anything else, including a provider error: the run ends
+                //    honestly as Failed with the reason recorded in the
+                //    session - the same treatment this loop already gives the
+                //    other cannot-continue conditions (timeout, step limit,
+                //    tool not found). No branch below can execute a tool the
+                //    model did not request or report a success nobody verified.
+                let tool_call = match self.get_next_execution_decision().await {
+                    Ok(AgentDecision::ToolCall {
+                        tool_id,
+                        arguments,
+                        reason,
+                        expected_result,
+                    }) => ToolCallRequest {
+                        tool_id,
+                        arguments,
+                        reason,
+                        expected_result,
+                    },
+                    Ok(AgentDecision::Complete {
+                        summary,
+                        evidence,
+                        remaining_limitations: _,
+                    }) => {
+                        self.add_system_message(format!(
+                            "Model declared completion during execution: {summary} \
+                             (evidence: {evidence:?})"
+                        ));
+                        self.transition_to(AgentState::Verifying).await?;
+                        return Ok(());
+                    }
+                    Ok(AgentDecision::Verify { checks }) => {
+                        self.add_system_message(format!(
+                            "Model requested verification during execution ({} checks)",
+                            checks.len()
+                        ));
+                        self.transition_to(AgentState::Verifying).await?;
+                        return Ok(());
+                    }
+                    Ok(AgentDecision::Fail {
+                        reason,
+                        error,
+                        repair_suggestions: _,
+                    }) => {
+                        self.add_system_message(format!(
+                            "Model declared failure during execution: {reason} - {error}"
+                        ));
+                        self.transition_to(AgentState::Failed).await?;
+                        return Ok(());
+                    }
+                    Ok(other) => {
+                        self.add_system_message(format!(
+                            "Tool selection failed: model returned {other:?} instead of a \
+                             ToolCall; refusing to fabricate a tool call"
+                        ));
+                        self.transition_to(AgentState::Failed).await?;
+                        return Ok(());
+                    }
+                    Err(e) => {
+                        self.add_system_message(format!("Tool selection failed: {e}"));
+                        self.transition_to(AgentState::Failed).await?;
+                        return Ok(());
+                    }
+                };
 
                 // Check if approval is required for this tool
                 if self.requires_approval(&tool_call) {
@@ -1491,9 +1560,16 @@ present an inference as a graph fact.",
         matches!(risk, RiskLevel::Destructive | RiskLevel::Release)
     }
 
-    /// Get the next tool call from the model
-    async fn get_next_tool_call(&mut self) -> Result<ToolCallRequest> {
-        // Call model to get tool call
+    /// Ask the model for its next execution decision.
+    ///
+    /// FIX D2: the decision is returned exactly as the model gave it, or the
+    /// provider error is propagated. This used to fall back to an invented
+    /// `fs.read Cargo.toml` call whenever the answer was not a ToolCall,
+    /// which wrote tool intent the model never expressed into the ledger and
+    /// then executed it as real work. Deciding what a non-ToolCall answer
+    /// means is the caller's job (see the `AgentState::Executing` arm of
+    /// `step`).
+    async fn get_next_execution_decision(&mut self) -> Result<AgentDecision> {
         let prompt = format!(
             "You are executing a plan. The current plan is: {:?}\n\n\
              Based on the plan and current state, select the next tool to execute.\n\
@@ -1502,39 +1578,10 @@ present an inference as a graph fact.",
         );
 
         match self.call_model(&prompt).await {
-            Ok(decision) => {
-                match decision {
-                    AgentDecision::ToolCall {
-                        tool_id,
-                        arguments,
-                        reason,
-                        expected_result,
-                    } => Ok(ToolCallRequest {
-                        tool_id,
-                        arguments,
-                        reason,
-                        expected_result,
-                    }),
-                    _ => {
-                        // Default to reading Cargo.toml
-                        Ok(ToolCallRequest {
-                            tool_id: "fs.read".to_string(),
-                            arguments: serde_json::json!({"action": "read", "path": "Cargo.toml"}),
-                            reason: "Default tool call".to_string(),
-                            expected_result: None,
-                        })
-                    }
-                }
-            }
-            Err(e) => {
-                // Default to reading Cargo.toml
-                Ok(ToolCallRequest {
-                    tool_id: "fs.read".to_string(),
-                    arguments: serde_json::json!({"action": "read", "path": "Cargo.toml"}),
-                    reason: format!("Fallback due to model error: {}", e),
-                    expected_result: None,
-                })
-            }
+            Ok(decision) => Ok(decision),
+            // FIX D2: a provider error is an error, not an excuse to invent a
+            // tool call. Propagate it unchanged.
+            Err(e) => Err(e.context("model call failed while requesting the next tool call")),
         }
     }
 
@@ -1746,52 +1793,21 @@ present an inference as a graph fact.",
         // Try to parse as AgentDecision
         match serde_json::from_str::<AgentDecision>(json_str.trim()) {
             Ok(decision) => Ok(decision),
+            // FIX D2: unparseable model output is never rewritten into a
+            // Plan/ToolCall/Complete that the model did not write. It becomes
+            // an honest Think carrying the raw text, so the caller sees the
+            // response as reasoning and can decide what to do with it. The
+            // parse error itself is logged (without the response body, which
+            // the Think already records in the session).
             Err(e) => {
-                // If parsing fails, try to create a default decision
-                // This handles cases where the model doesn't return perfect JSON
                 tracing::warn!(
-                    "Failed to parse model response as AgentDecision: {}. Response: {}",
-                    e,
-                    response
+                    error = %e,
+                    "model response was not valid AgentDecision JSON; \
+                     surfacing it as an honest Think decision"
                 );
-
-                // Try to extract action from response
-                if response.contains("\"action\": \"Plan\"")
-                    || response.contains("\"action\":\"Plan\"")
-                {
-                    // Try to parse as plan
-                    Ok(AgentDecision::Plan { steps: vec![] })
-                } else if response.contains("\"action\": \"ToolCall\"")
-                    || response.contains("\"action\":\"ToolCall\"")
-                {
-                    // Try to parse as tool call
-                    Ok(AgentDecision::ToolCall {
-                        tool_id: "fs.read".to_string(),
-                        arguments: serde_json::json!({"action": "read", "path": "Cargo.toml"}),
-                        reason: "Fallback tool call".to_string(),
-                        expected_result: None,
-                    })
-                } else if response.contains("\"action\": \"Complete\"")
-                    || response.contains("\"action\":\"Complete\"")
-                {
-                    Ok(AgentDecision::Complete {
-                        summary: "Task completed".to_string(),
-                        evidence: vec![],
-                        remaining_limitations: vec![],
-                    })
-                } else if response.contains("<zylcode-response>") || response.contains("artifact") {
-                    // Old XML format — treat as completion with evidence
-                    Ok(AgentDecision::Complete {
-                        summary: "Task completed (XML response)".to_string(),
-                        evidence: vec!["XML response received".to_string()],
-                        remaining_limitations: vec!["Response in old XML format".to_string()],
-                    })
-                } else {
-                    // Default to thinking
-                    Ok(AgentDecision::Think {
-                        thought: response.clone(),
-                    })
-                }
+                Ok(AgentDecision::Think {
+                    thought: response.clone(),
+                })
             }
         }
     }

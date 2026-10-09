@@ -22,6 +22,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Full history, not the default depth 1: Repository Intelligence
+          # derives co-change evidence from `git log`, and a single-commit
+          # checkout has no history to derive it from — the ranked context
+          # then loses every co-change-backed file and
+          # `context_builder_uses_intelligence_ranking` fails on all three OS.
+          fetch-depth: 0
 
       - name: Install Linux dependencies (Tauri)
         if: runner.os == 'Linux'

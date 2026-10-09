@@ -11,7 +11,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tracing::{info, warn};
 
-use crate::cache::{mock_embed, VectorCacheStore};
+use crate::cache::{mock_embed, prompt_hash, VectorCacheStore};
 pub use cache::SpeculativeCache;
 
 /// Test-only spy: counts every attempt to send an HTTP request to a model
@@ -773,11 +773,28 @@ impl TokenRouter {
             let emb = mock_embed(prompt, 32);
             match vstore.find_similar(&emb, 0.88) {
                 Ok(Some(hit)) => {
-                    info!(event = "telemetry:cache_hit", prompt_hash = %hit.prompt_hash, threshold = 0.88, "vector cache hit — returning cached response without provider call");
-                    self.metrics
-                        .record_saved((hit.response_text.len() / 4) as u64);
-                    self.cache.insert(cache_key, hit.response_text.clone());
-                    return Ok(hit.response_text);
+                    // FIX D1: reject similarity hits whose prompt_hash differs from the
+                    // current prompt. The 0.88 threshold can return a different prompt's
+                    // cached response (e.g., the plan response served for tool-call/verification
+                    // prompts), causing cross-contamination: fabricated tool calls, verification
+                    // failures, and spurious success:false reports.
+                    // `prompt_hash` is the same helper `insert_entry` stores with, so the
+                    // comparison is exact by construction (one hashing implementation).
+                    let current_hash = prompt_hash(prompt);
+                    if current_hash == hit.prompt_hash {
+                        info!(event = "telemetry:cache_hit", prompt_hash = %hit.prompt_hash, "vector cache hit — returning cached response without provider call");
+                        self.metrics
+                            .record_saved((hit.response_text.len() / 4) as u64);
+                        self.cache.insert(cache_key, hit.response_text.clone());
+                        return Ok(hit.response_text);
+                    } else {
+                        tracing::debug!(
+                            event = "telemetry:cache_miss_similarity_hash_mismatch",
+                            "vector cache similarity hit rejected: stored_hash={} current_hash={}",
+                            &hit.prompt_hash[..16],
+                            &current_hash[..16]
+                        );
+                    }
                 }
                 Ok(None) => {
                     tracing::debug!(
@@ -1617,5 +1634,173 @@ mod tests {
         ] {
             assert!((estimate_cost(&provider, 0, 0)).abs() < 1e-9);
         }
+    }
+
+    // ------------------------------------------------------------------------
+    // D1 — cross-prompt vector-cache contamination guard
+    // ------------------------------------------------------------------------
+    // Defect: `find_similar(&emb, 0.88)` served a *different* prompt's cached
+    // response within one turn. Forensics on `./vector_cache.db` showed every
+    // hit carrying one prompt_hash (a single 1778-char plan row) while the
+    // plan prompt itself was called once. The guard accepts a similarity hit
+    // only when `prompt_hash(current prompt) == hit.prompt_hash`.
+    //
+    // `ModelProvider::SyntheticOffline` short-circuits BEFORE the vector-cache
+    // branch, so these cases use the keyless OpenRouter/Anthropic chain — the
+    // same hermetic pattern as
+    // `non_synthetic_provider_without_keys_still_degrades_offline`: dispatch
+    // reaches the vector-cache branch, then degrades to the offline synthetic
+    // response. Zero network egress is asserted at the end.
+    #[tokio::test]
+    async fn d1_vector_cache_cross_prompt_contamination_guard() {
+        // Env mutation is process-global; serialise against sibling tests.
+        let _guard = DISPATCH_MUTEX.lock().await;
+
+        const VARS: [&str; 2] = ["OPENROUTER_API_KEY", "ANTHROPIC_API_KEY"];
+        let saved: Vec<(&str, Option<String>)> =
+            VARS.iter().map(|k| (*k, std::env::var(k).ok())).collect();
+        for (k, _) in &saved {
+            std::env::remove_var(k);
+        }
+
+        let egress_before = NETWORK_EGRESS_COUNT.load(Ordering::SeqCst);
+        let tmp = |tag: &str| {
+            std::env::temp_dir().join(format!(
+                "zylcode_d1_guard_{}_{}.db",
+                std::process::id(),
+                tag
+            ))
+        };
+        let cfg = RouterConfig {
+            primary_provider: ModelProvider::OpenRouter,
+            fallback_provider: ModelProvider::Anthropic, // neither is Ollama
+            ..RouterConfig::default()                    // no configured keys
+        };
+        let build = |store: Option<VectorCacheStore>| {
+            let router = TokenRouter::without_vector_cache(cfg.clone()).unwrap();
+            match store {
+                Some(s) => router.with_vector_cache(s),
+                None => router,
+            }
+        };
+
+        let prompt_a = "increment the counter and report the new value";
+        let prompt_b = "increment the counter and report the new value in detail";
+        let prompt_c = "sum the integers from one to ten";
+        let sentinel = "D1_SENTINEL_RESPONSE_BELONGING_TO_A_DIFFERENT_PROMPT";
+        let cached_a = "D1_CASE1_CACHED_RESPONSE_FOR_PROMPT_A";
+        let sys = "test-system";
+        let emb_a = mock_embed(prompt_a, 32);
+
+        // Controls: identical config, no vector cache => pure provider path.
+        let control_a = build(None).dispatch_prompt(prompt_a, sys).await.unwrap();
+        let control_c = build(None).dispatch_prompt(prompt_c, sys).await.unwrap();
+
+        // Case 1 — same prompt + matching hash permits legitimate reuse.
+        let store_1 = VectorCacheStore::new(tmp("a")).unwrap();
+        store_1.insert_entry(prompt_a, cached_a, &emb_a).unwrap();
+        let router_1 = build(Some(store_1));
+        let first = router_1.dispatch_prompt(prompt_a, sys).await.unwrap();
+        let second = router_1.dispatch_prompt(prompt_a, sys).await.unwrap();
+
+        // Cases 2/3 — seed prompt_b's response under prompt_a's embedding, so
+        // similarity is 1.0 (>= 0.88): a threshold-only lookup WOULD serve
+        // prompt_b's answer for prompt_a. Capture the raw lookup first.
+        let store_2 = VectorCacheStore::new(tmp("b")).unwrap();
+        store_2.insert_entry(prompt_b, sentinel, &emb_a).unwrap();
+        let hit = store_2
+            .find_similar(&emb_a, 0.88)
+            .unwrap()
+            .expect("precondition: the seeded row must be reachable by similarity");
+        let hit_response = hit.response_text.clone();
+        let hit_hash = hit.prompt_hash.clone();
+        let router_2 = build(Some(store_2));
+        let got = router_2.dispatch_prompt(prompt_a, sys).await.unwrap();
+
+        // Case 4 — within-turn sequence against a freshly poisoned router.
+        let store_4 = VectorCacheStore::new(tmp("d")).unwrap();
+        store_4.insert_entry(prompt_b, sentinel, &emb_a).unwrap();
+        let router_4 = build(Some(store_4));
+        let d1 = router_4.dispatch_prompt(prompt_a, sys).await.unwrap();
+        let d2 = router_4.dispatch_prompt(prompt_a, sys).await.unwrap();
+        let d3 = router_4.dispatch_prompt(prompt_c, sys).await.unwrap();
+
+        let egress_after = NETWORK_EGRESS_COUNT.load(Ordering::SeqCst);
+
+        // Restore ambient credentials BEFORE asserting: a failed assertion must
+        // not leak cleared env vars into sibling tests. Remove temp DBs too.
+        for (k, v) in saved {
+            match v {
+                Some(v) => std::env::set_var(k, v),
+                None => std::env::remove_var(k),
+            }
+        }
+        for tag in ["a", "b", "d"] {
+            let _ = std::fs::remove_file(tmp(tag));
+        }
+
+        assert_eq!(
+            egress_after, egress_before,
+            "the D1 guard test must not perform network egress"
+        );
+
+        // Preconditions — without the guard, the raw similarity lookup serves
+        // another prompt's response. That is the defect this test pins down.
+        assert_eq!(
+            hit_response, sentinel,
+            "precondition: similarity lookup returns the seeded wrong-prompt response"
+        );
+        assert_ne!(
+            hit_hash,
+            crate::cache::prompt_hash(prompt_a),
+            "precondition: the hit carries a different prompt hash"
+        );
+        assert_eq!(
+            hit_hash,
+            crate::cache::prompt_hash(prompt_b),
+            "precondition: the stored hash belongs to prompt_b"
+        );
+
+        // Case 1: same prompt + matching hash permits legitimate reuse.
+        assert_eq!(
+            first, cached_a,
+            "Case 1: matching hash must reuse the stored response"
+        );
+        assert_eq!(
+            second, first,
+            "Case 1: repeat dispatch of the same prompt is stable"
+        );
+
+        // Case 2: different prompt + high similarity + different hash rejected.
+        assert_ne!(
+            got, sentinel,
+            "Case 2: a similar-but-different prompt's cached response must be rejected"
+        );
+
+        // Case 3: rejection falls through to the normal provider path.
+        assert!(
+            !got.is_empty(),
+            "Case 3: fall-through response must be non-empty"
+        );
+        assert_eq!(
+            got, control_a,
+            "Case 3: rejected hit must fall through to the provider path"
+        );
+
+        // Case 4: no within-turn cross-prompt contamination.
+        assert_eq!(
+            d1, control_a,
+            "Case 4: first prompt answered from the provider path"
+        );
+        assert_eq!(d2, d1, "Case 4: repeat dispatch within the turn is stable");
+        assert_eq!(
+            d3, control_c,
+            "Case 4: a second distinct prompt gets its own answer"
+        );
+        assert_ne!(d1, d3, "Case 4: responses stay prompt-specific (no bleed)");
+        assert!(
+            d1 != sentinel && d3 != sentinel,
+            "Case 4: the seeded sentinel never leaks"
+        );
     }
 }

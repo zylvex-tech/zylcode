@@ -1,14 +1,19 @@
 name: Release
+# Tag-driven only. With a `branches:` filter present, `github.ref_name`
+# resolves to the branch, so every push to main tried to cut a release tagged
+# `main` (and `tagName: ${{ github.ref_name }}` below would have published it).
+# A release is only ever cut from an explicit `v*` tag.
 on:
   push:
-    branches:
-      - main
     tags:
       - 'v*'
 
+# `contents: write` is what lets the token create a release. There is no
+# `releases` permission — GitHub rejects a workflow that names an unknown
+# one, which is why every run of this file finished `failure` with zero jobs
+# before any step could start.
 permissions:
   contents: write
-  releases: write
 
 jobs:
   release:

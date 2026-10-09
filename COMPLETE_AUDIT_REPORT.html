@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZylCode Complete Audit Report</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1c2128;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --red: #f85149;
+    --red-bg: #3d1414;
+    --orange: #d29922;
+    --orange-bg: #3d2e00;
+    --yellow: #eac54f;
+    --green: #3fb950;
+    --green-bg: #143b14;
+    --blue: #58a6ff;
+    --purple: #bc8cff;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 1.8rem; margin-bottom: 0.25rem; }
+  h2 { font-size: 1.35rem; margin-top: 2.5rem; margin-bottom: 0.75rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 1.1rem; margin-top: 1.5rem; margin-bottom: 0.5rem; color: var(--blue); }
+  .meta { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 2rem; }
+  .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin: 1.5rem 0; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; text-align: center; }
+  .stat .num { font-size: 2rem; font-weight: 700; }
+  .stat .label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .stat.crit .num { color: var(--red); }
+  .stat.high .num { color: var(--orange); }
+  .stat.med .num { color: var(--yellow); }
+  .stat.low .num { color: var(--green); }
+  .finding { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 1rem; overflow: hidden; }
+  .finding-header { padding: 0.75rem 1rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+  .finding-header.crit { background: var(--red-bg); border-bottom: 1px solid #6d2222; }
+  .finding-header.high { background: var(--orange-bg); border-bottom: 1px solid #6d4a00; }
+  .finding-header.med { background: var(--surface2); border-bottom: 1px solid var(--border); }
+  .finding-header.low { background: var(--green-bg); border-bottom: 1px solid #2a5a2a; }
+  .badge { font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 4px; font-weight: 700; text-transform: uppercase; }
+  .badge.crit { background: var(--red); color: #fff; }
+  .badge.high { background: var(--orange); color: #000; }
+  .badge.med { background: var(--yellow); color: #000; }
+  .badge.low { background: var(--green); color: #000; }
+  .badge.ok { background: var(--green); color: #000; }
+  .badge.fixed { background: var(--blue); color: #000; }
+  .finding-body { padding: 1rem; }
+  .finding-body p { margin-bottom: 0.5rem; }
+  .finding-body p:last-child { margin-bottom: 0; }
+  .file-ref { font-family: "SFMono-Regular", Consolas, monospace; font-size: 0.85rem; background: var(--surface2); padding: 0.1rem 0.35rem; border-radius: 4px; color: var(--blue); }
+  .loc { color: var(--text-muted); font-size: 0.8rem; }
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+  th, td { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+  th { color: var(--text-muted); text-transform: uppercase; font-size: 0.75rem; }
+  td code { font-family: "SFMono-Regular", Consolas, monospace; color: var(--blue); }
+  .verdict { background: var(--surface); border: 2px solid var(--red); border-radius: 8px; padding: 1.5rem; margin: 2rem 0; }
+  .verdict h2 { border: none; margin-top: 0; color: var(--red); }
+  ul { margin-left: 1.5rem; margin-bottom: 0.5rem; }
+  li { margin-bottom: 0.25rem; }
+  code { font-family: "SFMono-Regular", Consolas, monospace; }
+</style>
+</head>
+<body>
+
+<h1>ZylCode — Complete Project Audit</h1>
+<p class="meta">Auditor: Independent Architecture Owner Session &middot; Date: 2026-09-21 &middot; HEAD: 639dbbb &middot; origin/main: 1338d0b</p>
+
+<div class="summary-grid">
+  <div class="stat crit"><div class="num">7</div><div class="label">Critical (Simulated Success)</div></div>
+  <div class="stat high"><div class="num">6</div><div class="label">High (Missing / Incomplete)</div></div>
+  <div class="stat med"><div class="num">3</div><div class="label">Medium (Partial / Stubs)</div></div>
+  <div class="stat low"><div class="num">2</div><div class="label">Low / Honest Labels</div></div>
+</div>
+
+<div class="verdict">
+  <h2>Verdict: NOT ACCEPTABLE</h2>
+  <p>~3,500 lines of production code across 18 files are pure simulation facades — they sleep, update stat counters, and return <code>Ok</code> with hardcoded results. The tool catalogue has <strong>0 tools at R3</strong>. The Computer-Use Engine, AI Input processors, Skills System, and Plugin Marketplace are all non-functional shells. The remediated <code>enhanced_bridge.rs</code> / <code>tool.rs</code> dispatch path is the one bright spot — the old fabricated-success pattern has been correctly eliminated there.</p>
+</div>
+
+<h2>CRITICAL — Simulated Success Paths</h2>
+<p>These modules return <code>Ok(...)</code> with fabricated results while performing zero real work. A caller cannot distinguish a fabricated success from a real one.</p>
+
+<!-- Finding 1 -->
+<div class="finding">
+  <div class="finding-header crit"><span class="badge crit">C1</span> Computer-Use Engine — Entire module is a simulation facade</div>
+  <div class="finding-body">
+    <p><strong>~1,567 lines across 6 files.</strong> Every method does nothing but <code>sleep()</code> + increment a stats counter, then returns <code>Ok</code>. No platform API is called. No real input is sent. No real screen is captured.</p>
+    <table>
+      <tr><th>File</th><th>Lines</th><th>What's fake</th></tr>
+      <tr><td><code>computer_use/gui_automation.rs</code></td><td>191</td><td>All 7 methods (move_mouse, click, type_text, press_hotkey, manage_window, copy/paste clipboard) sleep + return Ok. <code>paste_from_clipboard()</code> returns <code>"Simulated clipboard content"</code>.</td></tr>
+      <tr><td><code>computer_use/screen_capture.rs</code></td><td>154</td><td>All 3 capture methods return <code>vec![0; w*h*4]</code> as fake image data. Hardcoded 1920&times;1080.</td></tr>
+      <tr><td><code>computer_use/vision_ai.rs</code></td><td>283</td><td>All "AI" analysis hardcoded: returns fake UI elements ("Submit", "Enter text...", "Welcome to ZylCode"), fake color palettes, complexity/readability based on pixel dimensions.</td></tr>
+      <tr><td><code>computer_use/input_controller.rs</code></td><td>244</td><td><code>play_recording()</code> loops events with empty match arms: <code>// Simulate mouse move</code>, <code>// Simulate mouse click</code>, etc. Each arm is a no-op.</td></tr>
+      <tr><td><code>computer_use/workflow_engine.rs</code></td><td>234</td><td><code>execute_workflow()</code> sleeps 100ms/step, records "success" for each. <code>schedule_workflow()</code> is a no-op that just checks the workflow exists.</td></tr>
+      <tr><td><code>computer_use/mod.rs</code></td><td>186</td><td>ComputerUseSystem facade delegates to all of the above.</td></tr>
+    </table>
+    <p>Tests assert <code>assert!(result.is_ok())</code> against the simulation — they pass but prove nothing.</p>
+  </div>
+</div>
+
+<!-- Finding 2 -->
+<div class="finding">
+  <div class="finding-header crit"><span class="badge crit">C2</span> AI Input Processors — All simulated</div>
+  <div class="finding-body">
+    <p><strong>~2,913 lines across 6 files.</strong> Voice, vision, and context processors return hardcoded results. Injected dependencies are stored in <code>_</code>-prefixed fields and never read.</p>
+    <table>
+      <tr><th>File</th><th>Lines</th><th>What's fake</th></tr>
+      <tr><td><code>ai_input/voice_processor.rs</code></td><td>271</td><td><code>simulate_stt()</code> returns hardcoded text based on audio duration ("Hello", "Create a new React component", etc.). <code>_text_processor</code> injected but never used. Voice analysis returns constant values (tone=Neutral, rate=150 wpm, volume=0.7, pitch=150Hz).</td></tr>
+      <tr><td><code>ai_input/vision_processor.rs</code></td><td>277</td><td>All analysis hardcoded: descriptions based on image dimensions, fake OCR returns <code>"function main() {...}"</code>, fake UI elements, hardcoded color palette, complexity=0.6, readability=0.8.</td></tr>
+      <tr><td><code>ai_input/text_processor.rs</code></td><td>326</td><td>Regex intent matching works. <code>_context_manager</code> injected but never used. Confidence = heuristic formula (0.5 base + bonuses), not ML.</td></tr>
+      <tr><td><code>ai_input/intent_engine.rs</code></td><td>467</td><td><code>_context_manager</code> injected but never used. <code>_confidence_threshold</code> field exists, set to 0.5 everywhere, never read.</td></tr>
+      <tr><td><code>ai_input/context_manager.rs</code></td><td>192</td><td>ContextEvent has <code>_context</code>, <code>_timestamp</code>, <code>_trigger</code> — populated but never consumed.</td></tr>
+      <tr><td><code>ai_input/file_processor.rs</code></td><td>354</td><td>Hardcoded confidence values (0.9, 0.95, 0.7 base + 0.1 bonuses).</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- Finding 3 -->
+<div class="finding">
+  <div class="finding-header crit"><span class="badge crit">C3</span> Skills System — Simulated execution</div>
+  <div class="finding-body">
+    <p><span class="file-ref">crates/zylcode-mcp/src/skills_system.rs</span> <span class="loc">327 lines</span></p>
+    <p><code>BuiltinSkill::execute()</code> sleeps 100ms and returns hardcoded JSON: <code>"analysis": "Sample analysis output"</code>, <code>"suggestions": ["Suggestion 1", "Suggestion 2"]</code>, <code>"complexity": 5, "maintainability": 85, "test_coverage": 72</code>. No skill does any real work.</p>
+  </div>
+</div>
+
+<!-- Finding 4 -->
+<div class="finding">
+  <div class="finding-header crit"><span class="badge crit">C4</span> Plugin Marketplace — Simulated execution</div>
+  <div class="finding-body">
+    <p><span class="file-ref">crates/zylcode-mcp/src/plugin_marketplace.rs</span> <span class="loc">483 lines</span></p>
+    <p><code>PreShippedPlugin::execute()</code> sleeps 50ms and returns <code>"data": "Sample output data"</code>. <code>activate()</code> / <code>deactivate()</code> just <code>tracing::info!</code> and return <code>Ok(())</code>. No real plugin loading, no real execution.</p>
+  </div>
+</div>
+
+<!-- Finding 5 -->
+<div class="finding">
+  <div class="finding-header crit"><span class="badge crit">C5</span> Enhanced Plugin Marketplace — Fake payment gateway</div>
+  <div class="finding-body">
+    <p><span class="file-ref">crates/zylcode-mcp/src/enhanced_plugin_marketplace.rs</span> <span class="loc">770 lines</span></p>
+    <p><code>process_payment()</code> instantly marks transactions as <code>TransactionStatus::Completed</code> without any payment processing. <code>PaymentGateway</code> has hardcoded <code>_provider: "stripe"</code>, <code>_api_key: "sk_test_..."</code>, <code>_sandbox_mode: true</code> — all unused. <code>RecommendationEngine::get_recommendations()</code> returns <code>vec![]</code>. <code>CollaborativeFiltering</code> has all <code>_</code>-prefixed fields.</p>
+  </div>
+</div>
+
+<!-- Finding 6 -->
+<div class="finding">
+  <div class="finding-header crit"><span class="badge crit">C6</span> Enhanced Skills — Simulated composition</div>
+  <div class="finding-body">
+    <p><span class="file-ref">crates/zylcode-mcp/src/enhanced_skills.rs</span> <span class="loc">672 lines</span></p>
+    <p><code>execute_composition()</code> logs skill IDs but doesn't execute them, returns <code>success: true</code>. Multiple <code>_</code>-prefixed unused fields: <code>_rules</code>, <code>_templates</code>, <code>_payouts</code>. <code>RevenueTracker</code> tracks revenue for simulated transactions.</p>
+  </div>
+</div>
+
+<!-- Finding 7 -->
+<div class="finding">
+  <div class="finding-header crit"><span class="badge crit">C7</span> System Integration — Unused injected dependencies</div>
+  <div class="finding-body">
+    <p><span class="file-ref">crates/zylcode-mcp/src/system_integration.rs</span> <span class="loc">391 lines</span></p>
+    <p><code>SkillsPluginIntegration</code> stores <code>_skills_system</code> and <code>_integration_config</code> but never reads them. The integration layer exists structurally but doesn't actually integrate anything.</p>
+  </div>
+</div>
+
+<h2>HIGH — Missing Core Systems / Incomplete</h2>
+
+<!-- Finding 8 -->
+<div class="finding">
+  <div class="finding-header high"><span class="badge high">H1</span> Agent Loop — Broken hash chain and unimplemented states</div>
+  <div class="finding-body">
+    <p><span class="file-ref">crates/zylcode-core/src/agent.rs</span></p>
+    <ul>
+      <li><strong>Line 625:</strong> <code>prev_hash: "TODO".to_string()</code> — the ledger hash chain is broken. Every auto-approved entry uses the literal string "TODO" as its previous hash.</li>
+      <li><strong>Line 597:</strong> <code>AwaitingApproval</code> state does nothing — no mechanism to receive or grant approval. The agent loop dead-ends here.</li>
+      <li><strong>Line 946:</strong> Verification checks are not actually run; everything is marked UNVERIFIED/Failed.</li>
+      <li><strong>Line 1251:</strong> <code>requires_approval()</code> uses a hardcoded risk classifier, not a configurable policy.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- Finding 9 -->
+<div class="finding">
+  <div class="finding-header high"><span class="badge high">H2</span> lib.rs — Artifacts never extracted, model override ignored</div>
+  <div class="finding-body">
+    <p><span class="file-ref">crates/zylcode-core/src/lib.rs</span></p>
+    <ul>
+      <li><strong>Line 317:</strong> <code>artifacts: Vec::new()</code> — the intent result always reports zero artifacts, even after a "successful" run.</li>
+      <li><strong>Line 327:</strong> <code>process_intent_with_model()</code> accepts <code>_model_override</code> but ignores it entirely — calls <code>process_intent()</code> without passing the override.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- Finding 10 -->
+<div class="finding">
+  <div class="finding-header high"><span class="badge high">H3</span> Tool Catalogue — 0 tools at R3, actor identity absent, evidence dropped</div>
+  <div class="finding-body">
+    <p><span class="file-ref">crates/zylcode-mcp/src/tool_catalogue.rs</span></p>
+    <table>
+      <tr><th>Metric</th><th>Count</th><th>Status</th></tr>
+      <tr><td>Definitions</td><td>38</td><td>OK</td></tr>
+      <tr><td>Executable</td><td>12</td><td>OK</td></tr>
+      <tr><td>Tested</td><td>2</td><td>Only fs.read + shell.execute</td></tr>
+      <tr><td>Product-reachable</td><td>11</td><td>git.commit excluded</td></tr>
+      <tr><td><strong>R3-verified</strong></td><td><strong>0</strong></td><td><strong>No tool has captured evidence through a product surface</strong></td></tr>
+    </table>
+    <ul>
+      <li><strong>Actor identity:</strong> The <code>actor</code> field exists in <code>ToolContext</code> but every production dispatch site passes <code>None</code>.</li>
+      <li><strong>Evidence persistence:</strong> Evidence is returned from <code>dispatch()</code> and immediately dropped — never written to the JSONL evidence log in production paths.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- Finding 11 -->
+<div class="finding">
+  <div class="finding-header high"><span class="badge high">H4</span> Audit Trail — Placeholder chain hash</div>
+  <div class="finding-body">
+    <p><span class="file-ref">crates/zylcode-mcp/src/audit.rs:217</span></p>
+    <p><code>chain_hash: String::new()</code> is used as a placeholder during serialization. The actual hash is computed afterward and assigned, but the intermediate serialized form is structurally invalid — it means the hash is computed over a representation that differs from the final stored entry.</p>
+  </div>
+</div>
+
+<!-- Finding 12 -->
+<div class="finding">
+  <div class="finding-header high"><span class="badge high">H5</span> CLI Marketplace — Install/Publish are no-ops</div>
+  <div class="finding-body">
+    <p><span class="file-ref">crates/zylcode-cli/src/main.rs:318-348</span></p>
+    <p><code>MarketplaceCommands::Install</code> prints "queued for installation" without installing. <code>Publish</code> prints "Published successfully" without hitting any API. Both are explicitly labeled as placeholders in comments.</p>
+  </div>
+</div>
+
+<!-- Finding 13 -->
+<div class="finding">
+  <div class="finding-header high"><span class="badge high">H6</span> Telemetry — Empty propagation module</div>
+  <div class="finding-body">
+    <p><span class="file-ref">crates/zylcode-mcp/src/telemetry.rs:147</span></p>
+    <p>The <code>propagation</code> submodule is an empty placeholder: <code>// Placeholder for future HTTP/SSE context propagation</code>. No distributed tracing context is propagated.</p>
+  </div>
+</div>
+
+<h2>MEDIUM — Partial / Structural</h2>
+
+<!-- Finding 14 -->
+<div class="finding">
+  <div class="finding-header med"><span class="badge med">M1</span> Frontend — 6 placeholder panels + COMING SOON surfaces</div>
+  <div class="finding-body">
+    <p><span class="file-ref">apps/zylcode-desktop/src/components/</span></p>
+    <ul>
+      <li><code>shell/BottomPanel.tsx</code> — All 6 tabs (Terminal, Output, Problems, Tests, Evidence, DevTools) render placeholder components. Terminal says "Terminal not yet implemented."</li>
+      <li><code>shell/SurfaceHost.tsx</code> — Design Studio, Multi-agent board marked "COMING SOON". Fallback: "Surface not implemented".</li>
+      <li><code>shell/ContextSidebar.tsx</code> — "Extension management coming soon".</li>
+      <li><code>MissionComposer.tsx</code> — Skills marked "coming soon", disabled in dropdown.</li>
+    </ul>
+    <p>Note: The frontend is more honest than the backend — it explicitly labels unimplemented features. This is good practice.</p>
+  </div>
+</div>
+
+<!-- Finding 15 -->
+<div class="finding">
+  <div class="finding-header med"><span class="badge med">M2</span> Config Hot-Reload — Watcher stored but never invoked</div>
+  <div class="finding-body">
+    <p><span class="file-ref">crates/zylcode-mcp/src/config.rs:109-143</span></p>
+    <p>The <code>HotReloadHandle</code> stores <code>_watcher</code>, <code>_path</code>, <code>_cb</code> — all underscore-prefixed and never read. The notify watcher is created but no event handler is wired; the callback is never invoked.</p>
+  </div>
+</div>
+
+<!-- Finding 16 -->
+<div class="finding">
+  <div class="finding-header med"><span class="badge med">M3</span> mock_embed — Deterministic mock used in router tests</div>
+  <div class="finding-body">
+    <p><span class="file-ref">crates/zylcode-core/src/cache.rs</span></p>
+    <p><code>mock_embed()</code> is a deterministic hash-to-vector function used by the router's speculative cache. It's labeled "mock" and used in production code paths (<code>router.rs</code> calls <code>mock_embed()</code> in 7 locations). A real embedding model is never plugged in.</p>
+  </div>
+</div>
+
+<h2>LOW — Honest Labels / Not Defects</h2>
+
+<!-- Finding 17 -->
+<div class="finding">
+  <div class="finding-header low"><span class="badge low">L1</span> symbols.rs todo!() — In test fixtures, not code</div>
+  <div class="finding-body">
+    <p><span class="file-ref">crates/zylcode-core/src/intelligence/symbols.rs:399,421,425</span></p>
+    <p>The <code>todo!()</code> calls are in <strong>test string literals</strong> — the symbol parser is being tested against Rust source code that contains <code>todo!()</code>. This is correct usage, not a defect.</p>
+  </div>
+</div>
+
+<!-- Finding 18 -->
+<div class="finding">
+  <div class="finding-header low"><span class="badge low">L2</span> Forge.tsx — Honest "not implemented" labels</div>
+  <div class="finding-body">
+    <p><span class="file-ref">apps/zylcode-desktop/src/components/Forge.tsx</span></p>
+    <p>Explicitly labels concepts as "Concept — not implemented" and demo missions as "PROPOSED". States: "no simulated success is shown today." This is the correct pattern — honest labeling rather than fake functionality.</p>
+  </div>
+</div>
+
+<h2>REMEDIATED — Previously Fabricated, Now Fixed</h2>
+
+<div class="finding">
+  <div class="finding-header" style="background: var(--surface2); border-bottom: 1px solid var(--border);">
+    <span class="badge fixed">FIXED</span> enhanced_bridge.rs — BuiltinTool::call
+  </div>
+  <div class="finding-body">
+    <p>The old pattern (sleep 10ms + return <code>{"success": true}</code>) has been replaced with real executor dispatch through <code>real_tools::dispatch()</code>. Definition-only tools now fail closed. Tests verify <code>bridge_never_fabricates_success()</code>.</p>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="finding-header" style="background: var(--surface2); border-bottom: 1px solid var(--border);">
+    <span class="badge fixed">FIXED</span> tool.rs — DynamicTool::call
+  </div>
+  <div class="finding-body">
+    <p>The old <code>unsupported_mock</code> echo (returning <code>Ok(json!({"status": "unsupported_mock", "echo": params}))</code>) has been replaced with fail-closed dispatch. Tests verify <code>dynamic_tool_without_executor_fails_closed()</code> and <code>dynamic_tool_propagates_executor_failure()</code>.</p>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="finding-header" style="background: var(--surface2); border-bottom: 1px solid var(--border);">
+    <span class="badge fixed">FIXED</span> tool_catalogue.rs — Fabricated count assertions
+  </div>
+  <div class="finding-body">
+    <p>The old <code>assert!(count > 100)</code> / <code>assert!(count >= 150)</code> assertions have been replaced with semantic invariants: <code>definition_count == 38</code>, <code>executable_count == 12</code>, <code>r3_verified_count == 0</code>. The catalogue now honestly distinguishes DefinitionOnly from Executable.</p>
+  </div>
+</div>
+
+<h2>Summary by Numbers</h2>
+<table>
+  <tr><th>Category</th><th>Files</th><th>~Lines</th><th>Severity</th></tr>
+  <tr><td>Computer-Use simulation facade</td><td>6</td><td>1,567</td><td>Critical</td></tr>
+  <tr><td>AI Input simulation</td><td>6</td><td>2,913</td><td>Critical</td></tr>
+  <tr><td>Skills/Plugin simulation</td><td>4</td><td>2,252</td><td>Critical</td></tr>
+  <tr><td>Agent loop defects</td><td>1</td><td>4</td><td>High</td></tr>
+  <tr><td>Tool catalogue (R0)</td><td>1</td><td>881</td><td>High</td></tr>
+  <tr><td>CLI placeholders</td><td>1</td><td>2</td><td>High</td></tr>
+  <tr><td>Frontend stubs</td><td>5+</td><td>~500</td><td>Medium</td></tr>
+  <tr><td>Config hot-reload dead</td><td>1</td><td>3 fields</td><td>Medium</td></tr>
+  <tr><td><strong>Total simulated/fake production code</strong></td><td><strong>~23</strong></td><td><strong>~6,732</strong></td><td></td></tr>
+</table>
+
+<h2>Recommended Next Steps</h2>
+<ol>
+  <li><strong>Label the Computer-Use Engine as PROPOSED/SIMULATION</strong> — do not let it return <code>Ok</code> in production paths. Either wire it to a real automation crate (e.g., <code>enigo</code>, <code>scrap</code>) or make it return <code>Err</code> until replaced.</li>
+  <li><strong>Replace <code>BuiltinSkill::execute()</code> and <code>PreShippedPlugin::execute()</code></strong> with either real implementations or explicit <code>Err("not implemented")</code> returns. The current sleep+return-success pattern is the same defect class that was fixed in <code>enhanced_bridge.rs</code>.</li>
+  <li><strong>Fix the agent hash chain</strong> — <code>prev_hash: "TODO"</code> breaks the integrity guarantee the ledger is supposed to provide.</li>
+  <li><strong>Wire evidence persistence</strong> — the evidence returned from <code>dispatch()</code> must be written to the JSONL log, not dropped.</li>
+  <li><strong>Populate <code>actor</code> identity</strong> at all production dispatch sites, or remove the field if it's not needed.</li>
+  <li><strong>Delete or label the Enhanced Plugin Marketplace payment code</strong> — <code>"sk_test_..."</code> fake credentials and instant <code>Completed</code> status in a payment path is a liability.</li>
+  <li><strong>Remove <code>_</code>-prefixed unused fields</strong> or add <code>// TODO: wire</code> comments with tracking — they create the impression of integration that doesn't exist.</li>
+</ol>
+
+</body>
+</html>

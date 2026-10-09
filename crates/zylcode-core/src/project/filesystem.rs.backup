@@ -1,0 +1,668 @@
+﻿use crate::project::types::*;
+use anyhow::{Context, Result};
+use sha2::{Digest, Sha256};
+use std::fs;
+use std::io;
+use std::path::{Path, PathBuf};
+
+const MAX_TREE_DEPTH: usize = 10;
+const MAX_DIR_ENTRIES: usize = 1000;
+const MAX_FILE_SIZE_FOR_EDITOR: u64 = 10 * 1024 * 1024;
+const MAX_FILE_SIZE_FOR_METADATA: u64 = 1024 * 1024 * 1024;
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum FileClassification {
+    TEXT,
+    BINARY,
+    TOO_LARGE,
+    UNSUPPORTED_ENCODING,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ClassifiedFileContent {
+    pub path: String,
+    pub absolute_path: String,
+    pub content: Option<String>,
+    pub content_hash: String,
+    pub size: u64,
+    pub modified: String,
+    pub language: Option<String>,
+    pub classification: FileClassification,
+    pub line_count: Option<usize>,
+}
+
+pub struct ProjectFilesystem {
+    project_root: PathBuf,
+}
+impl ProjectFilesystem {
+    pub fn new(project_root: impl AsRef<Path>) -> Self {
+        Self {
+            project_root: project_root.as_ref().to_path_buf(),
+        }
+    }
+
+    pub fn project_root(&self) -> &Path {
+        &self.project_root
+    }
+
+    pub fn build_file_tree(&self, max_depth: Option<usize>) -> Result<FileTreeNode> {
+        let max_depth = max_depth.unwrap_or(MAX_TREE_DEPTH);
+        self.build_tree_recursive(&self.project_root, "", 0, max_depth)
+    }
+
+    fn build_tree_recursive(
+        &self,
+        dir: &Path,
+        relative_path: &str,
+        current_depth: usize,
+        max_depth: usize,
+    ) -> Result<FileTreeNode> {
+        if current_depth >= max_depth {
+            return Ok(FileTreeNode {
+                name: dir.file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("...")
+                    .to_string(),
+                path: relative_path.to_string(),
+                absolute_path: dir.to_string_lossy().to_string(),
+                is_directory: true,
+                is_file: false,
+                extension: None,
+                size: None,
+                modified: None,
+                children: vec![],
+                is_expanded: current_depth == 0,
+                is_selected: false,
+                is_active: false,
+            });
+        }
+
+        let mut entries: Vec<_> = fs::read_dir(dir)?
+            .filter_map(|e| e.ok())
+            .collect();
+
+        entries.sort_by(|a, b| {
+            let a_is_dir = a.file_type().map(|ft| ft.is_dir()).unwrap_or(false);
+            let b_is_dir = b.file_type().map(|ft| ft.is_dir()).unwrap_or(false);
+            match (a_is_dir, b_is_dir) {
+                (true, false) => std::cmp::Ordering::Less,
+                (false, true) => std::cmp::Ordering::Greater,
+                _ => a.file_name().cmp(&b.file_name()),
+            }
+        );
+
+        if entries.len() > MAX_DIR_ENTRIES {
+            entries.truncate(MAX_DIR_ENTRIES);
+        }
+
+        let mut children = Vec::new();
+        for entry in entries {
+            let path = entry.path();
+            let name = entry.file_name().to_string_lossy().to_string();
+            let metadata = match entry.metadata() {
+                Ok(m) => m,
+                Err(_) => continue,
+            };
+
+            let is_dir = metadata.is_dir();
+            let rel_path = if relative_path.is_empty() {
+                name.clone()
+            } else {
+                format!("{}/{}", relative_path, name)
+            };
+
+            if is_dir {
+                if should_skip_directory(&name) {
+                    continue;
+                }
+                match self.build_tree_recursive(&path, &rel_path, current_depth + 1, MAX_TREE_DEPTH) {
+                    Ok(node) => children.push(node),
+                    Err(_) => continue,
+                }
+            } else if metadata.len() <= MAX_FILE_SIZE_FOR_METADATA {
+                let ext = path.extension().and_then(|e| e.to_str()).map(|s| s.to_lowercase());
+                children.push(FileTreeNode {
+                    name,
+                    path: rel_path,
+                    absolute_path: path.to_string_lossy().to_string(),
+                    is_directory: false,
+                    is_file: true,
+                    extension: ext,
+                    size: Some(metadata.len()),
+                    modified: metadata.modified().ok().map(|t| {
+                        chrono::DateTime::<chrono::Utc>::from(t).to_rfc3339()
+                    }),
+                    children: vec![],
+                    is_expanded: false,
+                    is_selected: false,
+                    is_active: false,
+                });
+            }
+        }
+
+        let name = dir.file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("root")
+            .to_string();
+
+        Ok(FileTreeNode {
+            name,
+            path: relative_path.to_string(),
+            absolute_path: dir.to_string_lossy().to_string(),
+            is_directory: true,
+            is_file: false,
+            extension: None,
+            size: None,
+            modified: None,
+            children,
+            is_expanded: current_depth == 0,
+            is_selected: false,
+            is_active: false,
+        })
+    }
+}
+    pub fn classify_file(&self, relative_path: &str) -> Result<FileClassification> {
+        let path = self.project_root.join(relative_path);
+        
+        if !path.exists() {
+            return Err(anyhow::anyhow!("File not found: {}", relative_path));
+        }
+        
+        if !path.is_file() {
+            return Err(anyhow::anyhow!("Path is not a file: {}", relative_path));
+        }
+
+        let metadata = fs::metadata(&path)?;
+        
+        if metadata.len() > 1024 * 1024 * 1024 {
+            return Ok(FileClassification::TOO_LARGE);
+        }
+
+        if metadata.len() > MAX_FILE_SIZE_FOR_EDITOR {
+            return Ok(FileClassification::TOO_LARGE);
+        }
+
+        let content = fs::read(&path)?;
+        
+        if content.contains(&0) {
+            return Ok(FileClassification::BINARY);
+        }
+
+        match std::str::from_utf8(&content) {
+            Ok(_) => Ok(FileClassification::TEXT),
+            Err(_) => Ok(FileClassification::UNSUPPORTED_ENCODING),
+        }
+    }
+
+    pub fn read_file_classified(&self, relative_path: &str) -> Result<ClassifiedFileContent> {
+        let path = self.project_root.join(relative_path);
+        
+        if !path.exists() {
+            return Err(anyhow::anyhow!("File not found: {}", relative_path));
+        }
+        
+        if !path.is_file() {
+            return Err(anyhow::anyhow!("Path is not a file: {}", relative_path));
+        }
+
+        let metadata = fs::metadata(&path)?;
+        
+        if metadata.len() > 1024 * 1024 * 1024 {
+            return Err(anyhow::anyhow!("File too large for any operation: {} bytes", metadata.len()));
+        }
+
+        if metadata.len() > MAX_FILE_SIZE_FOR_EDITOR {
+            let mut hasher = Sha256::new();
+            let mut file = fs::File::open(&path)?;
+            std::io::copy(&mut file, &mut hasher)?;
+            let hash = format!("{:x}", hasher.finalize());
+            
+            return Ok(ClassifiedFileContent {
+                path: relative_path.to_string(),
+                absolute_path: path.to_string_lossy().to_string(),
+                content: None,
+                content_hash: hash,
+                size: metadata.len(),
+                modified: metadata.modified()
+                    .ok()
+                    .map(|t| chrono::DateTime::<chrono::Utc>::from(t).to_rfc3339())
+                    .unwrap_or_else(|| chrono::Utc::now().to_rfc3339()),
+                language: None,
+                classification: FileClassification::TOO_LARGE,
+                line_count: None,
+            });
+        }
+
+        let content_bytes = fs::read(&path)?;
+        let mut hasher = Sha256::new();
+        hasher.update(&content_bytes);
+        let content_hash = format!("{:x}", hasher.finalize());
+
+        let is_binary = content_bytes.contains(&0);
+        
+        let (content, language, classification, line_count) = if is_binary {
+            (None, None, FileClassification::BINARY, None)
+        } else {
+            match std::str::from_utf8(&content_bytes) {
+                Ok(text) => {
+                    let ext = std::path::Path::new(relative_path)
+                        .extension()
+                        .and_then(|e| e.to_str())
+                        .map(|s| s.to_lowercase());
+                    let language = ext.as_ref().map(|e| detect_language(e));
+                    let line_count = text.lines().count();
+                    (Some(text.to_string()), language, FileClassification::TEXT, Some(text.lines().count()))
+                }
+                Err(_) => (None, None, FileClassification::UNSUPPORTED_ENCODING, None),
+            }
+        };
+
+        let mut hasher = Sha256::new();
+        hasher.update(&content_bytes);
+        let content_hash = format!("{:x}", hasher.finalize());
+
+        let metadata = fs::metadata(&self.project_root.join(relative_path))?;
+
+        Ok(ClassifiedFileContent {
+            path: relative_path.to_string(),
+            absolute_path: self.project_root.join(relative_path).to_string_lossy().to_string(),
+            content,
+            content_hash,
+            size: metadata.len(),
+            modified: metadata.modified()
+                .ok()
+                .map(|t| chrono::DateTime::<chrono::Utc>::from(t).to_rfc3339())
+                .unwrap_or_else(|| chrono::Utc::now().to_rfc3339()),
+            language,
+            classification,
+            line_count,
+        })
+    }
+
+    pub fn read_file(&self, relative_path: &str) -> Result<FileContent> {
+        let classified = self.read_file_classified(relative_path)?;
+        
+        match classified.classification {
+            FileClassification::TEXT => {
+                Ok(FileContent {
+                    path: classified.path,
+                    absolute_path: classified.absolute_path,
+                    content: classified.content.unwrap_or_default(),
+                    content_hash: classified.content_hash,
+                    size: classified.size,
+                    modified: classified.modified,
+                    language: classified.language,
+                    line_count: classified.line_count.unwrap_or(0),
+                })
+            }
+            FileClassification::BINARY => Err(anyhow::anyhow!("Binary file cannot be opened as text")),
+            FileClassification::TOO_LARGE => Err(anyhow::anyhow!("File too large for editor")),
+            FileClassification::UNSUPPORTED_ENCODING => Err(anyhow::anyhow!("Unsupported encoding")),
+        }
+    }
+
+    pub fn compute_content_hash(&self, relative_path: &str) -> Result<String> {
+        let path = self.project_root.join(relative_path);
+        let mut hasher = Sha256::new();
+        let mut file = fs::File::open(&path)?;
+        std::io::copy(&mut file, &mut hasher)?;
+        Ok(format!("{:x}", hasher.finalize()))
+    }
+
+    pub fn write_file(&self, relative_path: &str, content: &str) -> Result<()> {
+        let path = self.project_root.join(relative_path);
+        
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+
+        let temp_path = self.project_root.join(format!(".tmp.{}.tmp", uuid::Uuid::new_v4()));
+        
+        fs::write(&temp_path, content)
+            .with_context(|| format!("Failed to write temp file: {}", relative_path))?;
+
+        fs::rename(&temp_path, &path)
+            .with_context(|| format!("Failed to move temp file to destination: {}", relative_path))?;
+
+        Ok(())
+    }
+
+    pub fn write_file_atomic(&self, relative_path: &str, content: &str, expected_hash: Option<&str>) -> Result<String> {
+        let path = self.project_root.join(relative_path);
+        
+        if path.exists() {
+            let current_hash = self.compute_content_hash(relative_path)?;
+            if let Some(expected) = expected_hash {
+                if current_hash != expected {
+                    return Err(anyhow::anyhow!("FILE_CHANGED_ON_DISK"));
+                }
+            }
+        }
+
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+
+        let temp_path = self.project_root.join(format!(".tmp.{}.tmp", uuid::Uuid::new_v4()));
+        
+        fs::write(&temp_path, content)
+            .with_context(|| format!("Failed to write temp file: {}", relative_path))?;
+
+        fs::rename(&temp_path, &self.project_root.join(relative_path))
+            .with_context(|| format!("Failed to move temp file to destination: {}", relative_path))?;
+
+        let mut hasher = Sha256::new();
+        let mut file = fs::File::open(&self.project_root.join(relative_path))?;
+        std::io::copy(&mut file, &mut hasher)?;
+        Ok(format!("{:x}", hasher.finalize()))
+    }
+
+    pub fn compute_content_hash(&self, relative_path: &str) -> Result<String> {
+        let path = self.project_root.join(relative_path);
+        let mut hasher = Sha256::new();
+        let mut file = fs::File::open(&path)?;
+        std::io::copy(&mut file, &mut hasher)?;
+        Ok(format!("{:x}", hasher.finalize()))
+    }
+
+    pub fn create_file(&self, relative_path: &str, content: &str) -> Result<String> {
+        let requested = self.project_root.join(relative_path);
+        
+        let canonical_project = self.project_root.canonicalize()
+            .context("Failed to canonicalize project root")?;
+        
+        let parent = requested.parent()
+            .ok_or_else(|| anyhow::anyhow!("Invalid path: no parent directory"))?;
+        
+        let canonical_parent = if parent.exists() {
+            parent.canonicalize()
+                .context("Failed to canonicalize parent directory")?
+        } else {
+            let mut current = parent.clone();
+            while !current.exists() {
+                current = current.parent().ok_or_else(|| anyhow::anyhow!("No existing parent directory"))?;
+            }
+            current.canonicalize()
+                .context("Failed to canonicalize nearest existing parent")?
+        };
+
+        if !canonical_parent.starts_with(&self.project_root.canonicalize()?) {
+            return Err(anyhow::anyhow!("PATH_OUTSIDE_PROJECT"));
+        }
+
+        let remaining = relative_path.trim_start_matches(&format!("{}/", 
+            canonical_parent.strip_prefix(&self.project_root)?.to_string_lossy()))
+            .trim_start_matches('/');
+
+        let mut components = remaining.split('/').peekable();
+        let mut current_path = canonical_parent;
+        
+        while let Some(component) = components.next() {
+            if component.is_empty() || component == "." {
+                continue;
+            }
+            if component == ".." {
+                return Err(anyhow::anyhow!("PATH_OUTSIDE_PROJECT"));
+            }
+            
+            current_path = current_path.join(component);
+            
+            if components.peek().is_none() {
+                if current_path.exists() {
+                    return Err(anyhow::anyhow!("File already exists"));
+                }
+                
+                if let Some(parent) = current_path.parent() {
+                    fs::create_dir_all(parent)?;
+                }
+                
+                let temp_path = self.project_root.join(format!(".tmp.{}.tmp", uuid::Uuid::new_v4()));
+                fs::write(&temp_path, content)?;
+                fs::rename(&temp_path, &current_path)?;
+            } else {
+                if !current_path.exists() {
+                    fs::create_dir_all(&current_path)?;
+                } else if !current_path.is_dir() {
+                    return Err(anyhow::anyhow!("Path component is not a directory"));
+                }
+                current_path = current_path.join(component);
+            }
+        }
+
+        Ok(self.compute_content_hash(relative_path)?)
+    }
+
+    pub fn file_exists(&self, relative_path: &str) -> bool {
+        self.project_root.join(relative_path).exists()
+    }
+
+    pub fn get_metadata(&self, relative_path: &str) -> Result<fs::Metadata> {
+        let path = self.project_root.join(relative_path);
+        fs::metadata(&path).with_context(|| format!("Failed to get metadata: {}", relative_path))
+    }
+
+    pub fn list_directory(&self, relative_path: &str) -> Result<Vec<FileTreeNode>> {
+        let path = self.project_root.join(relative_path);
+        let mut nodes = Vec::new();
+
+        for entry in fs::read_dir(&path)? {
+            let entry = entry?;
+            let name = entry.file_name().to_string_lossy().to_string();
+            let path = entry.path();
+            let metadata = entry.metadata()?;
+            
+            let is_dir = metadata.is_dir();
+            let rel_path = if relative_path.is_empty() {
+                name.clone()
+            } else {
+                format!("{}/{}", relative_path.trim_end_matches('/'), name)
+            };
+
+            if is_dir {
+                nodes.push(FileTreeNode {
+                    name,
+                    path: rel_path,
+                    absolute_path: path.to_string_lossy().to_string(),
+                    is_directory: true,
+                    is_file: false,
+                    extension: None,
+                    size: None,
+                    modified: metadata.modified().ok().map(|t| {
+                        chrono::DateTime::<chrono::Utc>::from(t).to_rfc3339()
+                    }),
+                    children: vec![],
+                    is_expanded: false,
+                    is_selected: false,
+                    is_active: false,
+                });
+            } else {
+                let ext = path.extension().and_then(|e| e.to_str()).map(|s| s.to_lowercase());
+                nodes.push(FileTreeNode {
+                    name,
+                    path: rel_path,
+                    absolute_path: path.to_string_lossy().to_string(),
+                    is_directory: false,
+                    is_file: true,
+                    extension: ext,
+                    size: Some(metadata.len()),
+                    modified: metadata.modified().ok().map(|t| {
+                        chrono::DateTime::<chrono::Utc>::from(t).to_rfc3339()
+                    }),
+                    children: vec![],
+                    is_expanded: false,
+                    is_selected: false,
+                    is_active: false,
+                });
+            }
+        }
+
+        nodes.sort_by(|a, b| {
+            match (a.is_directory, b.is_directory) {
+                (true, false) => std::cmp::Ordering::Less,
+                (false, true) => std::cmp::Ordering::Greater,
+                _ => a.name.cmp(&b.name),
+            }
+        });
+
+        Ok(nodes)
+    }
+
+    pub fn get_git_status(&self) -> Result<Vec<FileGitStatus>> {
+        let output = std::process::Command::new("git")
+            .args(["status", "--porcelain"])
+            .current_dir(&self.project_root)
+            .output()
+            .context("Failed to run git status")?;
+
+        if !output.status.success() {
+            return Ok(vec![]);
+        }
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let mut statuses = Vec::new();
+
+        for line in stdout.lines() {
+            if line.len() < 3 {
+                continue;
+            }
+            let status_code = &line[..2];
+            let path = &line[3..].trim();
+
+            let status = match &status_code[0..1] {
+                "M" => GitFileStatus::Modified,
+                "A" => GitFileStatus::Added,
+                "D" => GitFileStatus::Deleted,
+                "R" => GitFileStatus::Renamed,
+                "?" => GitFileStatus::Untracked,
+                "!" => GitFileStatus::Ignored,
+                "U" => GitFileStatus::Conflict,
+                _ => GitFileStatus::Unmodified,
+            };
+
+            let staged = &status_code[1..2] != " " && &status_code[1..2] != "?";
+
+            statuses.push(FileGitStatus {
+                path: path.to_string(),
+                status,
+                staged,
+            });
+        }
+
+        Ok(statuses)
+    }
+
+    pub fn canonicalize_and_validate(&self, relative_path: &str) -> Result<PathBuf> {
+        let requested = self.project_root.join(relative_path);
+        
+        let canonical_project = self.project_root.canonicalize()
+            .context("Failed to canonicalize project root")?;
+        
+        let canonical_requested = if relative_path.is_empty() || relative_path == "." {
+            canonical_project.clone()
+        } else {
+            let requested_path = self.project_root.join(relative_path);
+            if requested_path.exists() {
+                requested_path.canonicalize()
+                    .context("Failed to canonicalize requested path")?
+            } else {
+                let mut current = self.project_root.join(relative_path);
+                while !current.exists() {
+                    current = current.parent().ok_or_else(|| anyhow::anyhow!("No existing parent directory"))?;
+                }
+                let canonical_parent = current.canonicalize()?;
+                let remaining = relative_path.trim_start_matches(
+                    &canonical_parent.strip_prefix(&self.project_root)?.to_string_lossy()
+                ).trim_start_matches('/');
+                
+                let mut current_path = canonical_parent;
+                for component in remaining.split('/') {
+                    if component.is_empty() || component == "." {
+                        continue;
+                    }
+                    if component == ".." {
+                        return Err(anyhow::anyhow!("PATH_OUTSIDE_PROJECT"));
+                    }
+                    current_path = current_path.join(component);
+                }
+                current_path
+            };
+        }
+
+        if !canonical_requested.starts_with(&canonical_project) {
+            return Err(anyhow::anyhow!("PATH_OUTSIDE_PROJECT"));
+        }
+
+        Ok(canonical_requested)
+    }
+}
+fn should_skip_directory(name: &str) -> bool {
+    matches!(
+        name,
+        "target" | "node_modules" | ".git" | ".svn" | ".hg" | "dist" | "build" 
+        | "out" | "bin" | "obj" | ".idea" | ".vscode" | ".vs" 
+        | "__pycache__" | ".pytest_cache" | ".mypy_cache" | ".ruff_cache"
+        | "vendor" | "bower_components" | "jspm_packages" 
+        | ".gradle" | ".maven" | "gradle" | "target" | "out"
+        | ".next" | ".nuxt" | ".output" | ".vercel" | ".netlify"
+    ) || name.starts_with('.') && name != ".github" && name != ".gitignore"
+}
+
+fn detect_language(ext: &str) -> String {
+    match ext {
+        "rs" => "rust",
+        "ts" | "tsx" => "typescript",
+        "js" | "jsx" | "mjs" | "cjs" => "javascript",
+        "py" => "python",
+        "java" => "java",
+        "cpp" | "cc" | "cxx" => "cpp",
+        "c" => "c",
+        "h" | "hpp" => "cpp",
+        "go" => "go",
+        "rb" => "ruby",
+        "php" => "php",
+        "swift" => "swift",
+        "kt" | "kts" => "kotlin",
+        "scala" => "scala",
+        "clj" | "cljs" | "cljc" => "clojure",
+        "hs" => "haskell",
+        "ml" | "mli" => "ocaml",
+        "fs" | "fsx" | "fsi" => "fsharp",
+        "json" => "json",
+        "yaml" | "yml" => "yaml",
+        "toml" => "toml",
+        "xml" => "xml",
+        "html" | "htm" => "html",
+        "css" => "css",
+        "scss" => "scss",
+        "sass" => "sass",
+        "less" => "less",
+        "md" | "mdx" => "markdown",
+        "txt" => "plaintext",
+        "sh" | "bash" | "zsh" | "fish" => "shell",
+        "ps1" => "powershell",
+        "bat" | "cmd" => "batch",
+        "dockerfile" => "dockerfile",
+        "sql" => "sql",
+        "graphql" | "gql" => "graphql",
+        "proto" => "protobuf",
+        "vue" => "vue",
+        "svelte" => "svelte",
+        "astro" => "astro",
+        "elm" => "elm",
+        "ex" | "exs" => "elixir",
+        "erl" | "hrl" => "erlang",
+        "lua" => "lua",
+        "pl" | "pm" => "perl",
+        "r" => "r",
+        "jl" => "julia",
+        "nim" => "nim",
+        "zig" => "zig",
+        _ => "plaintext",
+    }.to_string()
+}
+
+pub fn get_file_language(path: &Path) -> Option<String> {
+    path.extension()
+        .and_then(|e| e.to_str())
+        .map(|ext| detect_language(ext))
+}
