@@ -1,6 +1,6 @@
 # Beta Tester Quickstart — N-ATLAS × ZylCode Developer Bridge
 
-**Version:** 2026-10-08  
+**Version:** 2026-10-10  
 **Branch:** `competition/natlas-2026`  
 **Target tester:** External developer with basic Rust and Git experience  
 **Estimated time:** 15–20 minutes  
@@ -70,15 +70,20 @@ cargo test -p zylcode-core --test natlas_runtime
 # 4d. Engineering bridge — intent → factory execution with approval gate
 cargo test -p zylcode-core --test natlas_bridge
 # Expected: 14 passed; 0 failed; 0 ignored
+
+# 4e. Multilingual regression — a language tag is recorded, never guessed
+cargo test -p zylcode-core --test natlas_multilingual
+# Expected: 7 passed; 0 failed; 0 ignored
 ```
 
-**Total competition hermetic tests: 61 / 61 expected passing.**
+**Total competition hermetic tests: 68 / 68 expected passing.**
 
 ### What these tests prove
 
 - `natlas_boundary` (17 tests): The transport contract is enforced — malformed responses are rejected, secrets are redacted, auth failures are stated honestly, no synthetic substitution.
 - `natlas_runtime` (12 tests): The client handles HTTP errors, timeouts, and unreachable endpoints without fabricating success.
 - `natlas_bridge` (14 tests): A structured intent from N-ATLAS is correctly converted into an approval-gated task graph, and a file is only written **after** human approval is recorded.
+- `natlas_multilingual` (7 tests): A stated language code survives the request → evidence round trip, is trimmed, is never inferred from prompt text, and is recorded on the failure path too.
 - `intent` (18 tests): The JSON repair layer handles triple-quoted strings, raw newlines, and trailing commas deterministically; unrecoverable defects fail closed.
 
 ---
@@ -87,7 +92,7 @@ cargo test -p zylcode-core --test natlas_bridge
 
 ### A. Hermetic Validation (no credentials, no network to N-ATLAS)
 
-The 61 tests above prove the **ZylCode-side bridge mechanics** deterministically:
+The 68 tests above prove the **ZylCode-side bridge mechanics** deterministically:
 
 | What is proven | How | Evidence level |
 |---|---|---|
@@ -122,6 +127,8 @@ curl -s https://zylvex-natlas-zylcode-bridge.hf.space/healthz
 **What this proves:** The endpoint is live, configured to serve the genuine `NCAIR1/N-ATLaS` weights, and attribution to Awarri + FMCIDE is preserved.
 
 **What this does NOT prove:** That the model actually answers a prompt correctly. Health checks return static metadata from the engine wrapper, not a model inference. A genuine inference requires sending a prompt to `/v1/chat/completions`.
+
+> **Important, measured on 2026-10-10:** `/healthz` returned `"healthy"` **while generation was failing** with an exhausted ZeroGPU quota. The health endpoint does **not** reflect GPU quota state. Do not conclude from a `healthy` health check that inference will work. See `KNOWN_LIMITATIONS.md` L-2.
 
 ### C. Genuine Live N-ATLAS Inference (requires `NATLAS_API_KEY`)
 
@@ -180,7 +187,7 @@ This is tested hermetically in `natlas_bridge.rs`:
 
 Please capture the following and send back:
 
-1. **Screenshot of hermetic test results** — all 4 suites green.
+1. **Screenshot of hermetic test results** — all 5 suites green.
 2. **Screenshot of healthz response** — showing `model: NCAIR1/N-ATLaS`.
 3. **Your operating system + Rust version** (`rustc --version`).
 4. **Any compilation warnings or errors** you encountered.
@@ -188,13 +195,14 @@ Please capture the following and send back:
 
 Optional but valuable:
 6. **Live test result** — if you have a `NATLAS_API_KEY`, run `cargo test -p zylcode-core --test natlas_live -- --ignored` and share the output.
+7. **A live inference attempt** through the browser playground, naming the language you tested in.
 
 ---
 
 ## 9. Feedback Questions
 
 1. Were the setup instructions clear? If not, what was confusing?
-2. Did all 61 hermetic tests pass on your machine?
+2. Did all 68 hermetic tests pass on your machine?
 3. How long did the first compilation take?
 4. Is the human-approval gating behaviour clearly documented and testable?
 5. Does the README answer "what challenge, what was built, how to verify" in the first screen?

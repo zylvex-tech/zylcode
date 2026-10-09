@@ -79,6 +79,43 @@ The remaining item is *quality*, not *availability*: native-speaker-authored tar
 
 ---
 
+## Claim separation (2026-10-10)
+
+Multilingual capability is three **different** claims that are easy to conflate. They are
+separated here so that no reader can mistake one for another.
+
+| Claim | Statement | What would prove it | Current state |
+|---|---|---|---|
+| **A. Metadata transmitted** | The harness carries a `language` tag from request to evidence record, unchanged and not inferred. | A regression test that round-trips each target code. | ✅ **VERIFIED** — `cargo test -p zylcode-core --test natlas_multilingual` → **7 passed, 0 failed** (fresh, 2026-10-10); SDK smoke covers the same on the TypeScript side. |
+| **B. Model understands** | N-ATLAS comprehends a prompt written in the target language and answers relevantly. | A genuine live call in that language with the raw response recorded. | 🟡 **EVIDENCED, NOT RE-RUN TODAY** — EV-015 (2026-10-07) recorded genuine in-language replies for Yoruba/Hausa/Igbo. Prompts were team-authored, not native-speaker-authored. |
+| **C. Model generates** | N-ATLAS *produces* fluent target-language text (not English). | Raw output in the target language. | 🟡 **EVIDENCED for Yoruba/Hausa/Igbo** (EV-015 replies were in-language). **NOT evidenced for Pidgin** — EV-016 understood Pidgin but replied in standard English. |
+
+**These are not interchangeable.** Claim A is a property of *our code*; claims B and C are
+properties of *the model*. A passing test in row A says **nothing** about rows B or C.
+
+### Live re-check on 2026-10-10 (EV-028)
+
+A live attempt to re-confirm B/C today produced:
+
+| Language | Result |
+|---|---|
+| English | ✅ genuine reply — *"The sum of 2 and 2 is 4."* |
+| Yoruba | ⛔ `event: error` |
+| Hausa | ⛔ `event: error` |
+| Igbo | ⛔ `event: error` |
+| Nigerian-English | ⛔ `event: error` |
+| English (retry) | ⛔ `event: error` |
+
+English **also** failed on retry, so the failure is a **capacity/quota condition**, not a
+language-specific failure. **No multilingual claim is upgraded or downgraded by this
+attempt** — it is recorded as *BLOCKED by quota*, not as a language result. See
+`DEPLOYMENT_VERIFICATION.md` §4–§5.
+
+> **Rule reaffirmed:** a quota error is not evidence about a language. It is evidence
+> about the GPU pool.
+
+---
+
 ## Harness readiness
 
 The toolkit is ready to run these tests the moment the runtime is up:

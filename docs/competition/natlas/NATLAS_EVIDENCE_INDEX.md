@@ -87,10 +87,36 @@ The bridge engineering-journey work added `natlas_bridge.rs` (14 tests, was 12) 
 `competition::` count from 38 → 44 (new repair-layer unit cases). The pre-existing
 `natlas_boundary`/`natlas_runtime` suites still pass, so the refactor did not regress them.
 
+## EV-027 / EV-028 — added 2026-10-10
+
+| Id | Claim | Action | Observed | Status |
+|---|---|---|---|---|
+| **EV-027** | Competition verification battery, re-run fresh at `8216738` | 10 gates | 498 lib / **68 competition** / 16 SDK / clippy exit 0 / guard OK | ✅ PASS |
+| **EV-028** | Live deployment verified | Probe + drive deployed frontend | `NCAIR1/N-ATLaS` reachable; **1 genuine reply**; subsequent calls quota-blocked | 🟡 PARTIAL |
+
+Raw artefacts:
+- `evidence/EV-027-competition-verification-2026-10-10.log`
+- `evidence/EV-028-live-deployment-verification-2026-10-10.json`
+
+### Reconciled test totals (2026-10-10)
+
+Two different totals are quoted in this repository. They measure different things and are
+**both** correct:
+
+| Total | Composition | Meaning |
+|---|---|---|
+| **68** | intent 18 + boundary 17 + runtime 12 + bridge 14 + multilingual 7 | Competition-relevant suites |
+| **87** | `competition::` lib 44 + boundary 17 + runtime 12 + bridge 14 | Everything under `competition::` plus the three integration suites |
+
+The "68" figure is the one used in the README and submission checklist.
+
 ## What this index does NOT contain
 
-- No fabricated tester rows (there are **zero** external testers).
-- No claim of sustained N-ATLAS availability. A genuine round trip is now recorded against *our own*
+- No fabricated tester rows. **Two external testers** submitted responses (reconciled in
+  `EXTERNAL_BETA_TEST_REPORT.md`); **neither session was re-run by us**, and only one cited a
+  commit. The one checkable claim (18 passed / 0 failed at `5599392`) **was** reproduced.
+- No claim of sustained N-ATLAS availability. A genuine round trip is recorded against *our own*
   controlled endpoint (EV-014, L3), but it runs on shared ZeroGPU — repeatable/demo-day calls are
-  quota-limited (cf. EV-002/003/004). This is a scheduling risk, not a capability gap.
+  quota-limited (cf. EV-002/003/004). **Observed again on 2026-10-10 (EV-028):** one success, then
+  errors. This is a scheduling risk, not a capability gap.
 - No screenshot standing in for a log.

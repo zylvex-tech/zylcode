@@ -69,6 +69,16 @@ human-readable sentence explaining the cause and the next step. Quote both when
 you report. The tester-001 remediation is recorded in
 [`docs/competition/natlas/TRACK_A_TESTER_001_RELEASE_2026-10-09.md`](docs/competition/natlas/TRACK_A_TESTER_001_RELEASE_2026-10-09.md).
 
+**Two external testers** have submitted responses (Ibrahim Abdulrahman — Borno; Auwal —
+Kano). Both spreadsheets are reconciled, with tester PII withheld, in
+[`EXTERNAL_BETA_TEST_REPORT.md`](docs/competition/natlas/EXTERNAL_BETA_TEST_REPORT.md).
+
+> **Quota is real and observable.** On 2026-10-10 the first live call succeeded and every
+> call after it failed — including a retry in English, proving the failure is capacity,
+> not language. `GET /healthz` still said `healthy` while generation was failing. Both
+> facts are recorded in [`DEPLOYMENT_VERIFICATION.md`](docs/competition/natlas/DEPLOYMENT_VERIFICATION.md)
+> and [`KNOWN_LIMITATIONS.md`](docs/competition/natlas/KNOWN_LIMITATIONS.md).
+
 ---
 
 ## Solution Architecture
@@ -242,6 +252,8 @@ Every claim below states the action, the expected result, the observed result, a
 | EV-024 | **Genuine live acceptance journey** | 2026-10-07 | Full chain via Python script | File write + test pass | `helloworld.py` written; `python helloworld.py` → exit 0, stdout "Hello ZylCode" | ✅ **PASS (L3)** |
 | EV-025 | Truthful failure path | 2026-10-07 | Hermetic test | Denied approval blocks mutation | Pre-approval: file absent, runner `AwaitingApproval` | ✅ PASS |
 | EV-026 | End-to-end provenance chain | 2026-10-07 | Live + hermetic | 8 traceable nodes | All 8 nodes documented | ✅ PASS |
+| EV-027 | **Fresh competition verification battery** | 2026-10-10 | 10 gates re-run at `8216738` | All green | 498 lib / 68 competition / 16 SDK / clippy 0 / guard OK | ✅ **PASS** |
+| EV-028 | **Live deployment verification** | 2026-10-10 | Probe endpoint + drive deployed frontend | Reachable, genuine reply | `NCAIR1/N-ATLaS`; 1 genuine reply; then quota-blocked | 🟡 **PARTIAL** |
 
 > **L3** = genuine invocation, real model, no mock.  
 > **L2** = hermetic test / test double.  
@@ -329,8 +341,17 @@ zylcode/
 │   ├── MULTILINGUAL_VALIDATION_MATRIX.md         # Language gate status
 │   ├── LOCAL_RUNTIME_FALLBACK.md                 # What to do when the GPU quota is spent
 │   ├── TRACK_A_TESTER_001_RELEASE_2026-10-09.md  # Tester-001 remediation record
-│   ├── NATLAS_EVIDENCE_INDEX.md                  # EV-000 through EV-026
-│   └── evidence/                                 # Raw capture artefacts (.gitignore'd)
+│   ├── EXTERNAL_BETA_TEST_REPORT.md              # Reconciles both tester spreadsheets (PII-safe)
+│   ├── COMPETITION_TEST_EVIDENCE.md              # Fresh 10-gate battery (2026-10-10)
+│   ├── DEPLOYMENT_VERIFICATION.md                # Live endpoint, hosting, commit, quota
+│   ├── KNOWN_LIMITATIONS.md                      # What is not proven
+│   ├── SUBMISSION_READINESS_CHECKLIST.md         # 18-item matrix
+│   ├── DEMONSTRATION_VIDEO_PACKAGE.md            # Video script + shot list (NOT recorded)
+│   ├── COMPETITION_FINAL_RELEASE_REPORT.md       # Final A–R classification
+│   ├── NATLAS_EVIDENCE_INDEX.md                  # EV-000 through EV-028
+│   └── evidence/                                 # Raw capture artefacts
+│       ├── EV-027-competition-verification-2026-10-10.log
+│       └── EV-028-live-deployment-verification-2026-10-10.json
 └── README.md                                     # This file (challenge-specific)
 ```
 
@@ -348,11 +369,10 @@ zylcode/
 
 | Blocker | Owner Action |
 |---|---|
-| ≥2 external beta testers | 1 of ≥2 received (tester 001, 2026-10-09). Recruit one more + collect feedback (PS1 hard requirement) |
+| ≥2 external beta testers | ✅ **Met on distinct-person count** — 2 testers (Ibrahim Abdulrahman, Auwal) submitted via two spreadsheets; see [`EXTERNAL_BETA_TEST_REPORT.md`](docs/competition/natlas/EXTERNAL_BETA_TEST_REPORT.md). Caveat: their sessions were not independently reproduced by us. |
 | Team profile | Names, affiliations, roles |
 | CAC certificate (Track B) | Upload |
-| Final video screen-capture | 3–5 min end-to-end demo recording |
-| `BETA_TESTER_QUICKSTART.md` | External tester entry point and journey |
+| Final video screen-capture | 3–5 min end-to-end demo recording — see [`DEMONSTRATION_VIDEO_PACKAGE.md`](docs/competition/natlas/DEMONSTRATION_VIDEO_PACKAGE.md) (**not recorded**) |
 
 ---
 
@@ -394,11 +414,14 @@ Mapped to the 7 mandatory submission components (official rubric):
 |---|---|---|
 | 1. Working Artefact | ✅ | Controlled endpoint live; repo branch `competition/natlas-2026` |
 | 2. N-ATLAS Integration Evidence | ✅ | This README §N-ATLAS Integration; `NATLAS_CONTRACT_VERIFICATION_2026-10-07.md` |
-| 3. Real-World Validation | 🔧 | Live benchmarks (EV-014/015/016/024) genuine; **1 of ≥2 external testers (tester 001) feedback received and actioned** — see `TRACK_A_TESTER_001_RELEASE_2026-10-09.md` |
-| 4. Technical Documentation | ✅ | This README; `C3_LIVE_RUNTIME_VERIFICATION_REPORT.md`; `ARCHITECTURE_BRIDGE.md` (verified current architecture) |
-| 5. Video Demonstration | 🔧 | Script + storyboard ready; screen-capture pending owner recording |
+| 3. Real-World Validation | 🟡 | Live benchmarks (EV-014/015/016/024) genuine; **2 external testers** submitted (see `EXTERNAL_BETA_TEST_REPORT.md`); multilingual remains **PARTIAL** |
+| 4. Technical Documentation | ✅ | This README; `C3_LIVE_RUNTIME_VERIFICATION_REPORT.md`; `ARCHITECTURE_BRIDGE.md`; `DEPLOYMENT_VERIFICATION.md`; `KNOWN_LIMITATIONS.md` |
+| 5. Video Demonstration | 🔧 | Script + storyboard ready (`DEMONSTRATION_VIDEO_PACKAGE.md`); **not recorded, not uploaded** |
 | 6. Team Profile | ⛔ | Owner-supplied |
 | 7. Endorsement / Registration | ⛔ | CAC certificate — owner-supplied |
+
+Full 18-item readiness matrix: [`SUBMISSION_READINESS_CHECKLIST.md`](docs/competition/natlas/SUBMISSION_READINESS_CHECKLIST.md).
+Final classification: [`COMPETITION_FINAL_RELEASE_REPORT.md`](docs/competition/natlas/COMPETITION_FINAL_RELEASE_REPORT.md).
 
 ---
 
