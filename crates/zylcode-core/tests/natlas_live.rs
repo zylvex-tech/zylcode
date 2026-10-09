@@ -32,7 +32,6 @@
 //! build. It does **not** mean N-ATLAS is generally available, and it is not a
 //! substitute for capturing the exchange as an evidence artefact.
 
-use std::path::Path;
 use std::sync::Arc;
 
 use zylcode_core::competition::natlas::{

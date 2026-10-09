@@ -205,6 +205,55 @@ function classify(intent) {
   return "general";
 }
 
+/* -------------------------------------------------------------------------
+   Resilience state — mirrors the Rust NatlasResilienceState and the SDK.
+   The quota check runs BEFORE the cold-start check so a ZeroGPU quota body is
+   never mislabelled "warming", which would invite a retry that cannot succeed
+   and leave the tester staring at a spinner (NAT-A-001 / NAT-A-002).
+   ------------------------------------------------------------------------- */
+function classifyHttp(status, bodyExcerpt) {
+  const b = (bodyExcerpt || "").toLowerCase();
+  if (status === 401 || status === 403) return "AUTH_FAILURE";
+  if (status === 429 || status === 402) return "QUOTA";
+  if (status === 502 || status === 503) {
+    if (b.includes("quota") || b.includes("exceeded") || b.includes("rate limit") || b.includes("too many requests")) return "QUOTA";
+    if (b.includes("load") || b.includes("starting") || b.includes("boot")) return "LOADING";
+    return "WARMING";
+  }
+  if ([400, 404, 405, 500, 501].includes(status)) return "FAILED";
+  return "UNAVAILABLE";
+}
+
+const GUIDANCE = {
+  WARMING: "The shared GPU is waking up. This is normal on a cold start; retrying shortly usually succeeds.",
+  LOADING: "The model is loading into memory. Wait for it to finish, then retry.",
+  TIMEOUT: "The request took longer than the configured timeout. The shared GPU may be busy; retry, or raise the timeout.",
+  QUOTA: "The endpoint's shared GPU quota is exhausted. No code change fixes this — wait for the quota to reset, or run the bridge against a local OpenAI-compatible runtime (see docs/competition/natlas/LOCAL_RUNTIME_FALLBACK.md).",
+  AUTH_FAILURE: "Authentication failed. Check that the API key is set and correct; the endpoint returns 401 for a wrong key.",
+  UNAVAILABLE: "The runtime could not be reached (DNS, connection refused, or a proxy). Check the base URL and any HTTP_PROXY setting.",
+  FAILED: "The endpoint returned an error that is not a transient condition. Inspect the recorded body excerpt.",
+};
+
+function guidanceFor(state) {
+  return GUIDANCE[state] || "The request did not complete. Inspect the error above.";
+}
+
+/* A bounded, visible processing state. The elapsed counter proves the page is
+   still working rather than hung, and the ceiling is stated up front. */
+const REQUEST_TIMEOUT_MS = 60000;
+
+function startProcessingTicker(started, note) {
+  const el = $("ivStatus");
+  const render = () => {
+    const s = Math.round((Date.now() - started) / 1000);
+    const max = Math.round(REQUEST_TIMEOUT_MS / 1000);
+    el.innerHTML = `<span class="badge">RUNNING… ${s}s / ${max}s</span>` +
+      (note ? ` <span class="muted">${escapeHtml(note)}</span>` : "");
+  };
+  render();
+  return setInterval(render, 1000);
+}
+
 function redact(text, secrets) {
   let out = text, count = 0;
   for (const s of secrets) {
@@ -294,14 +343,16 @@ async function invoke() {
   const ctxPath = $("ctxPath").value.trim();
   const ctxExcerpt = $("ctxExcerpt").value;
 
-  $("ivStatus").innerHTML = '<span class="badge">RUNNING…</span>';
+  const started = Date.now();
   $("btnInvoke").disabled = true;
   $("intentSummary").textContent = "No intent yet.";
   $("intentSteps").innerHTML = "";
   $("proposal").textContent = "No proposal yet.";
   resetGate();
 
-  const started = Date.now();
+  let ticker = startProcessingTicker(started, DEMO_MODE ? "(offline demo — TEST DOUBLE)" : "waiting for the runtime…");
+  const stopTicker = () => { if (ticker) { clearInterval(ticker); ticker = null; } };
+
   const base = {
     timestamp: new Date().toISOString(),
     provider: "natlas",
@@ -334,11 +385,12 @@ async function invoke() {
         usage: { prompt_tokens: 40, completion_tokens: 60 },
       });
       showResult(raw, started, base, true);
+      stopTicker();
       return;
     }
 
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 60000);
+    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     const headers = { "content-type": "application/json" };
     if (c.apiKey) headers["authorization"] = "Bearer " + c.apiKey;
 
@@ -366,7 +418,7 @@ async function invoke() {
       const aborted = e && e.name === "AbortError";
       showFailure(aborted ? "TIMEOUT" : "TRANSPORT",
         aborted ? "N-ATLAS request timed out." : ("could not reach the runtime: " + e.message),
-        started, base, undefined);
+        started, base, undefined, aborted ? "TIMEOUT" : "UNAVAILABLE");
       return;
     } finally { clearTimeout(timer); }
 
@@ -378,8 +430,9 @@ async function invoke() {
     showResult(text, started, base, false, res.status);
 
   } catch (e) {
-    showFailure("MALFORMED_RESPONSE", String(e.message || e), started, base, undefined);
+    showFailure("MALFORMED_RESPONSE", String(e.message || e), started, base, undefined, "FAILED");
   } finally {
+    stopTicker();
     $("btnInvoke").disabled = false;
   }
 }
@@ -497,24 +550,30 @@ function parseIntent(text) {
   };
 }
 
-function showFailure(code, message, started, base, httpStatus, raw) {
+function showFailure(code, message, started, base, httpStatus, raw, providedState) {
   const latency = Date.now() - started;
+  const state = providedState
+    || (code === "HTTP_STATUS" ? classifyHttp(httpStatus || 0, raw || "")
+        : code === "TIMEOUT" ? "TIMEOUT"
+        : code === "TRANSPORT" ? "UNAVAILABLE"
+        : "FAILED");
+  const guidance = guidanceFor(state);
   const { text, count } = redact(message + (raw ? " :: " + raw.slice(0, 300) : ""), [config().apiKey]);
   const evidence = {
     ...base, status: "failed", success: false, latencyMs: latency, httpStatus,
-    errorCode: code, errorDetail: text, secretRedactions: count,
+    resilienceState: state, errorCode: code, errorDetail: text, secretRedactions: count,
   };
   evidence.evidenceId = "natlas-" + new Date(evidence.timestamp).getTime() + "-" + Math.random().toString(36).slice(2, 8);
   EVIDENCE_LOG.push(evidence);
 
-  $("ivStatus").innerHTML = `<span class="badge bad">FAILED — ${code}</span>`;
+  $("ivStatus").innerHTML = `<span class="badge bad">FAILED — ${state}</span>`;
   $("ivModel").textContent = "—";
   $("ivReqId").textContent = "—";
   $("ivLatency").textContent = latency + " ms";
   $("ivEvidenceId").textContent = evidence.evidenceId;
-  $("ivError").textContent = message;
+  $("ivError").innerHTML = escapeHtml(message) + `<br><span class="muted">${escapeHtml(guidance)}</span>`;
   $("evidence").textContent = JSON.stringify(evidence, null, 2);
-  banner("bad", `<strong>${code}.</strong> ${escapeHtml(message)}`);
+  banner("bad", `<strong>${state}.</strong> ${escapeHtml(message)}<br><span class="muted">${escapeHtml(guidance)}</span>`);
   resetGate();
 }
 

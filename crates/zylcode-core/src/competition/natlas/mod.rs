@@ -49,7 +49,7 @@ pub mod remote;
 pub mod transport;
 pub mod types;
 
-pub use client::{NatlasClient, NatlasInvocation};
+pub use client::{NatlasClient, NatlasInvocation, RetryPolicy};
 pub use config::{NatlasConfig, NatlasConfigError, RedactedNatlasConfig};
 pub use evidence::{redact_secrets, NatlasEvidence, NATLAS_PROVIDER};
 pub use intent::{IntentStepKind, NatlasEngineeringIntent, NatlasIntentStep};
@@ -57,7 +57,8 @@ pub use local::{probe, LocalNatlasTransport, LocalRuntimeHealth};
 pub use remote::HttpNatlasTransport;
 pub use transport::{BlockedNatlasTransport, NatlasRawResponse, NatlasTransport};
 pub use types::{
-    NatlasContextChunk, NatlasError, NatlasRequest, NatlasResponse, NatlasStatus, NatlasUsage,
+    NatlasContextChunk, NatlasError, NatlasRequest, NatlasResponse, NatlasResilienceState,
+    NatlasStatus, NatlasUsage,
 };
 
 /// The greppable reason string used wherever N-ATLAS access is unavailable.

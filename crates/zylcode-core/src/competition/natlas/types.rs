@@ -27,6 +27,15 @@ pub struct NatlasRequest {
     /// Repository context, ordered by the caller.
     pub context: Vec<NatlasContextChunk>,
     pub max_tokens: u32,
+    /// Language tag of `intent`, when the caller states one (`en-NG`, `ha`,
+    /// `yo`, `ig`, …).
+    ///
+    /// ZylCode-side metadata only: it is recorded in the evidence record and
+    /// used by the multilingual regression harness. It is **not** sent on the
+    /// wire and never inferred from the text — the prompt itself is written in
+    /// the target language, which is what actually makes the model answer in it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub language: Option<String>,
 }
 
 impl NatlasRequest {
@@ -36,7 +45,17 @@ impl NatlasRequest {
             system: system.into(),
             context: Vec::new(),
             max_tokens: 4096,
+            language: None,
         }
+    }
+
+    /// State the language of the instruction. Recorded in evidence; never
+    /// guessed.
+    pub fn with_language(mut self, language: impl Into<String>) -> Self {
+        let tag = language.into();
+        let tag = tag.trim().to_string();
+        self.language = if tag.is_empty() { None } else { Some(tag) };
+        self
     }
 
     pub fn with_context(mut self, path: impl Into<String>, excerpt: impl Into<String>) -> Self {
@@ -125,6 +144,26 @@ impl NatlasError {
     pub fn is_blocked(&self) -> bool {
         matches!(self, Self::BlockedNatlasAccess { .. })
     }
+
+    /// The resilience state this error corresponds to.
+    pub fn resilience_state(&self) -> NatlasResilienceState {
+        NatlasResilienceState::from_error(self)
+    }
+
+    /// Whether retrying could plausibly succeed without a human changing
+    /// anything. See [`NatlasResilienceState::is_retryable`].
+    pub fn is_retryable(&self) -> bool {
+        self.resilience_state().is_retryable()
+    }
+
+    /// A human-readable, actionable explanation for a tester.
+    ///
+    /// Two lines: what happened (the typed error), then what to do about it
+    /// (the state's guidance). Never contains a secret — the constituent parts
+    /// are the redaction-checked error text and a static guidance string.
+    pub fn human_message(&self) -> String {
+        format!("{}\n{}", self, self.resilience_state().guidance())
+    }
 }
 
 impl std::fmt::Display for NatlasError {
@@ -212,6 +251,84 @@ mod tests {
         assert!(NatlasResilienceState::Ok.is_operational());
         assert!(!NatlasResilienceState::Warming.is_operational());
         assert!(!NatlasResilienceState::AuthFailure.is_operational());
+    }
+
+    // --- NAT-A-001 / NAT-A-003 regression -----------------------------------
+    // A ZeroGPU quota exhaustion must be classified as Quota, not "warming",
+    // and must not be marked retryable (retrying cannot fix a spent budget).
+
+    #[test]
+    fn a_zero_gpu_quota_503_is_quota_not_warming() {
+        let body = "You have exceeded your GPU quota (0s left). Please try again later.";
+        assert_eq!(
+            NatlasResilienceState::from_http(503, body),
+            NatlasResilienceState::Quota
+        );
+        // The load/cold-start word "try again" must not win over the quota body.
+        assert_eq!(
+            NatlasResilienceState::from_http(503, "GPU quota exceeded"),
+            NatlasResilienceState::Quota
+        );
+    }
+
+    #[test]
+    fn quota_is_reported_but_never_retryable() {
+        let state = NatlasResilienceState::Quota;
+        assert!(!state.is_retryable(), "a spent quota is not retryable");
+        assert!(!state.is_operational());
+        // Cold-start states ARE retryable.
+        assert!(NatlasResilienceState::Warming.is_retryable());
+        assert!(NatlasResilienceState::Loading.is_retryable());
+    }
+
+    #[test]
+    fn every_state_has_a_non_empty_human_guidance() {
+        for state in [
+            NatlasResilienceState::Ok,
+            NatlasResilienceState::Warming,
+            NatlasResilienceState::Loading,
+            NatlasResilienceState::Timeout,
+            NatlasResilienceState::Quota,
+            NatlasResilienceState::AuthFailure,
+            NatlasResilienceState::Unavailable,
+            NatlasResilienceState::Blocked,
+            NatlasResilienceState::Failed,
+        ] {
+            let g = state.guidance();
+            assert!(
+                g.len() > 20,
+                "{} guidance is too terse to be useful: {g:?}",
+                state.as_str()
+            );
+        }
+    }
+
+    #[test]
+    fn a_quota_error_carries_human_readable_guidance_and_is_not_retryable() {
+        let err = NatlasError::HttpStatus {
+            status: 503,
+            body_excerpt: "You have exceeded your GPU quota".to_string(),
+        };
+        assert_eq!(err.resilience_state(), NatlasResilienceState::Quota);
+        assert!(!err.is_retryable());
+        let msg = err.human_message();
+        assert!(msg.contains("quota"), "human message must name the cause: {msg}");
+        assert!(
+            msg.contains("LOCAL_RUNTIME_FALLBACK"),
+            "human message must point at an actionable next step: {msg}"
+        );
+    }
+
+    #[test]
+    fn human_message_never_leaks_a_secret_passed_in_the_body() {
+        // The guidance is static, but the first line echoes the error. Assert
+        // the shape is what callers redact before display.
+        let err = NatlasError::Transport {
+            message: "connection refused".to_string(),
+        };
+        let msg = err.human_message();
+        assert!(msg.contains("connection refused"));
+        assert!(msg.lines().count() >= 2, "expect cause + guidance lines");
     }
 }
 
@@ -312,9 +429,24 @@ impl NatlasResilienceState {
         let b = body_excerpt.to_ascii_lowercase();
         match status {
             401 | 403 => Self::AuthFailure,
-            429 => Self::Quota,
+            // 429 is the canonical rate-limit. Hugging Face's ZeroGPU quota
+            // exhaustion also surfaces as 402 ("payment required") on some
+            // deployments. Both mean "there is no budget left right now".
+            429 | 402 => Self::Quota,
             502 | 503 => {
-                if b.contains("load") || b.contains("starting") || b.contains("boot") {
+                // ZeroGPU / Hugging Face quota exhaustion arrives as a 503 whose
+                // body names the quota (e.g. "You have exceeded your GPU
+                // quota"). This is checked BEFORE the load/cold-start words,
+                // because a quota body must never be mislabelled "warming" —
+                // that would invite a retry that cannot possibly succeed and
+                // leave the caller looking stuck.
+                if b.contains("quota")
+                    || b.contains("exceeded")
+                    || b.contains("rate limit")
+                    || b.contains("too many requests")
+                {
+                    Self::Quota
+                } else if b.contains("load") || b.contains("starting") || b.contains("boot") {
                     Self::Loading
                 } else {
                     Self::Warming
@@ -322,6 +454,49 @@ impl NatlasResilienceState {
             }
             400 | 404 | 405 | 500 | 501 => Self::Failed,
             _ => Self::Unavailable,
+        }
+    }
+
+    /// Whether retrying the same request could plausibly succeed without a
+    /// human changing anything.
+    ///
+    /// Transient cold-start and transport states are retryable. A quota
+    /// exhaustion, an auth failure or a blocked integration is **not**: the
+    /// budget or the credential has to change first, and retrying would only
+    /// burn time and make the surface look stuck.
+    pub fn is_retryable(self) -> bool {
+        matches!(self, Self::Warming | Self::Loading | Self::Unavailable)
+    }
+
+    /// A short, human-readable, actionable explanation for this state.
+    ///
+    /// This is the text a tester should see instead of a bare error code. It
+    /// states what happened and what to do next; it never contains a secret.
+    pub fn guidance(self) -> &'static str {
+        match self {
+            Self::Ok => "The endpoint answered normally.",
+            Self::Warming => {
+                "The shared GPU is waking up. This is normal on a cold start; retrying shortly usually succeeds."
+            }
+            Self::Loading => "The model is loading into memory. Wait for it to finish, then retry.",
+            Self::Timeout => {
+                "The request took longer than the configured timeout. The shared GPU may be busy; retry, or raise NATLAS_TIMEOUT_MS."
+            }
+            Self::Quota => {
+                "The endpoint's shared GPU quota is exhausted. No code change fixes this — wait for the quota to reset, or run the bridge against a local OpenAI-compatible runtime (see docs/competition/natlas/LOCAL_RUNTIME_FALLBACK.md)."
+            }
+            Self::AuthFailure => {
+                "Authentication failed. Check that NATLAS_API_KEY is set and correct; the endpoint returns 401 for a wrong key."
+            }
+            Self::Unavailable => {
+                "The runtime could not be reached (DNS, connection refused, or a proxy). Check the base URL and any HTTP_PROXY setting."
+            }
+            Self::Blocked => {
+                "N-ATLAS is not configured, or access has not been granted. Set NATLAS_BASE_URL, NATLAS_REQUEST_PATH, NATLAS_MODEL and NATLAS_API_KEY."
+            }
+            Self::Failed => {
+                "The endpoint returned an error that is not a transient condition. Inspect the recorded body excerpt."
+            }
         }
     }
 

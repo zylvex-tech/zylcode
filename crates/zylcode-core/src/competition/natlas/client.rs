@@ -15,6 +15,74 @@ use super::types::{NatlasError, NatlasRequest, NatlasResponse, NatlasStatus, Nat
 /// Maximum number of response-body characters retained in an error record.
 const BODY_EXCERPT_LIMIT: usize = 300;
 
+/// A bounded retry policy for transient N-ATLAS failures.
+///
+/// Only *transient* states are retried: a cold-starting shared GPU
+/// (`Warming`, `Loading`) or a transport-level blip (`Unavailable`). A spent
+/// GPU quota, a bad credential or a blocked integration is **not** retried —
+/// the cause has to change first, and retrying would only burn time and make
+/// the surface look stuck (NAT-A-001 / NAT-A-002).
+///
+/// The policy is bounded twice over: a maximum attempt count **and** a
+/// wall-clock budget. A run therefore always terminates with a stated outcome,
+/// which is what lets a UI show a real processing state instead of an
+/// indefinite spinner.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RetryPolicy {
+    /// Total attempts, including the first. `1` disables retrying.
+    pub max_attempts: u32,
+    /// Delay before the second attempt, in milliseconds.
+    pub base_delay_ms: u64,
+    /// Upper bound on a single delay, in milliseconds.
+    pub max_delay_ms: u64,
+    /// Hard wall-clock budget for all attempts, in milliseconds.
+    pub budget_ms: u64,
+}
+
+impl RetryPolicy {
+    /// No retrying: exactly one attempt. This is the default, so existing
+    /// callers keep their previous single-shot semantics.
+    pub const NONE: Self = Self {
+        max_attempts: 1,
+        base_delay_ms: 0,
+        max_delay_ms: 0,
+        budget_ms: 0,
+    };
+
+    /// The policy for an interactive / demo run: three attempts with
+    /// 1s → 2s exponential backoff, inside a 30s wall-clock budget.
+    pub const fn demo() -> Self {
+        Self {
+            max_attempts: 3,
+            base_delay_ms: 1_000,
+            max_delay_ms: 8_000,
+            budget_ms: 30_000,
+        }
+    }
+
+    /// The delay to apply before attempt `attempt` (1-based). Attempt 1 has no
+    /// delay; later attempts back off exponentially, capped at `max_delay_ms`.
+    pub fn delay_for_attempt(&self, attempt: u32) -> Duration {
+        if attempt <= 1 || self.base_delay_ms == 0 {
+            return Duration::from_millis(0);
+        }
+        let shift = (attempt - 2).min(16);
+        let delay = self.base_delay_ms.saturating_mul(1u64 << shift);
+        Duration::from_millis(delay.min(self.max_delay_ms))
+    }
+
+    /// The wall-clock budget as a `Duration`.
+    pub fn budget(&self) -> Duration {
+        Duration::from_millis(self.budget_ms)
+    }
+}
+
+impl Default for RetryPolicy {
+    fn default() -> Self {
+        Self::NONE
+    }
+}
+
 /// Everything one invocation produced.
 #[derive(Debug, Clone)]
 pub struct NatlasInvocation {
@@ -22,6 +90,10 @@ pub struct NatlasInvocation {
     pub response: Option<NatlasResponse>,
     pub error: Option<NatlasError>,
     pub evidence: NatlasEvidence,
+    /// How many attempts were made, including the first. `1` means no retry
+    /// occurred. Recorded so a reader can tell "it worked first time" from
+    /// "it recovered after a cold start".
+    pub attempts: u32,
 }
 
 impl NatlasInvocation {
@@ -39,6 +111,7 @@ pub struct NatlasClient<T: NatlasTransport> {
     config: NatlasConfig,
     transport: T,
     actor: String,
+    retry: RetryPolicy,
 }
 
 impl<T: NatlasTransport> NatlasClient<T> {
@@ -47,7 +120,21 @@ impl<T: NatlasTransport> NatlasClient<T> {
             config,
             transport,
             actor: actor.into(),
+            retry: RetryPolicy::NONE,
         }
+    }
+
+    /// Set the retry policy. Without this the client makes exactly one attempt,
+    /// which preserves the original single-shot behaviour for every existing
+    /// caller.
+    pub fn with_retry_policy(mut self, retry: RetryPolicy) -> Self {
+        self.retry = retry;
+        self
+    }
+
+    /// The retry policy in force.
+    pub fn retry_policy(&self) -> RetryPolicy {
+        self.retry
     }
 
     /// Build from the environment. Fails with [`NatlasError::NotConfigured`]
@@ -66,11 +153,13 @@ impl<T: NatlasTransport> NatlasClient<T> {
         &self.actor
     }
 
-    /// Invoke N-ATLAS once.
+    /// Invoke N-ATLAS once, retrying only transient failures per the configured
+    /// [`RetryPolicy`].
     ///
     /// Always returns an invocation; a failure is represented in the returned
     /// value, never by panicking and never by substituting a synthetic
-    /// response.
+    /// response. The loop is bounded by **both** an attempt count and a
+    /// wall-clock budget, so it always terminates with a stated outcome.
     pub async fn invoke(&self, request: &NatlasRequest) -> NatlasInvocation {
         let started = Instant::now();
         let prompt_chars = request.intent.len()
@@ -78,8 +167,80 @@ impl<T: NatlasTransport> NatlasClient<T> {
             + request.context.iter().map(|c| c.excerpt.len()).sum::<usize>();
         let classification = request.classification();
         let secrets = [self.config.api_key.as_str()];
+        let language = request.language.clone();
 
-        let outcome: Result<NatlasResponse, NatlasError> = match tokio::time::timeout(
+        let mut attempts: u32 = 0;
+        let outcome: Result<NatlasResponse, NatlasError> = loop {
+            attempts += 1;
+            let result = self.attempt(request).await;
+
+            let retryable = match &result {
+                Err(e) => {
+                    e.is_retryable()
+                        && attempts < self.retry.max_attempts
+                        && started.elapsed() < self.retry.budget()
+                }
+                Ok(_) => false,
+            };
+
+            if retryable {
+                let delay = self.retry.delay_for_attempt(attempts + 1);
+                if started.elapsed() + delay <= self.retry.budget() {
+                    tokio::time::sleep(delay).await;
+                    continue;
+                }
+            }
+            break result;
+        };
+
+        let latency_ms = started.elapsed().as_millis() as u64;
+
+        match outcome {
+            Ok(response) => {
+                let mut evidence = NatlasEvidence::for_success(
+                    &response,
+                    classification,
+                    latency_ms,
+                    prompt_chars,
+                );
+                if let Some(lang) = &language {
+                    evidence = evidence.with_language(lang.clone());
+                }
+                NatlasInvocation {
+                    status: NatlasStatus::Succeeded,
+                    evidence,
+                    response: Some(response),
+                    error: None,
+                    attempts,
+                }
+            }
+            Err(error) => {
+                let mut evidence = NatlasEvidence::for_failure(
+                    self.config.model.clone(),
+                    classification,
+                    &error,
+                    latency_ms,
+                    prompt_chars,
+                    &secrets,
+                );
+                if let Some(lang) = &language {
+                    evidence = evidence.with_language(lang.clone());
+                }
+                let status = evidence.status;
+                NatlasInvocation {
+                    status,
+                    response: None,
+                    error: Some(error),
+                    evidence,
+                    attempts,
+                }
+            }
+        }
+    }
+
+    /// One attempt: enforce the timeout, send, interpret. Never retries.
+    async fn attempt(&self, request: &NatlasRequest) -> Result<NatlasResponse, NatlasError> {
+        match tokio::time::timeout(
             Duration::from_millis(self.config.timeout_ms),
             self.transport.send(&self.config, request),
         )
@@ -90,39 +251,6 @@ impl<T: NatlasTransport> NatlasClient<T> {
             }),
             Ok(Err(e)) => Err(e),
             Ok(Ok(raw)) => interpret_raw(raw),
-        };
-
-        let latency_ms = started.elapsed().as_millis() as u64;
-
-        match outcome {
-            Ok(response) => NatlasInvocation {
-                status: NatlasStatus::Succeeded,
-                evidence: NatlasEvidence::for_success(
-                    &response,
-                    classification,
-                    latency_ms,
-                    prompt_chars,
-                ),
-                response: Some(response),
-                error: None,
-            },
-            Err(error) => {
-                let evidence = NatlasEvidence::for_failure(
-                    self.config.model.clone(),
-                    classification,
-                    &error,
-                    latency_ms,
-                    prompt_chars,
-                    &secrets,
-                );
-                let status = evidence.status;
-                NatlasInvocation {
-                    status,
-                    response: None,
-                    error: Some(error),
-                    evidence,
-                }
-            }
         }
     }
 }
@@ -270,5 +398,150 @@ mod tests {
         };
         let err = interpret_raw(raw).unwrap_err();
         assert_eq!(err.code(), "HTTP_STATUS");
+    }
+
+    // --- NAT-A-001 / NAT-A-002 regression: bounded, selective retry ----------
+
+    use std::sync::atomic::{AtomicU32, Ordering};
+
+    use crate::competition::natlas::types::NatlasResilienceState;
+
+    fn test_config() -> NatlasConfig {
+        NatlasConfig::from_parts("http://127.0.0.1:1", "/v1/chat/completions", "m", "k").unwrap()
+    }
+
+    /// Fails with a chosen error for the first `failures` calls, then returns a
+    /// valid canonical response. Counts every call.
+    struct FlakyTransport {
+        failures: u32,
+        calls: AtomicU32,
+        error: fn() -> NatlasError,
+    }
+
+    #[async_trait::async_trait]
+    impl NatlasTransport for FlakyTransport {
+        async fn send(
+            &self,
+            _config: &NatlasConfig,
+            _request: &NatlasRequest,
+        ) -> Result<NatlasRawResponse, NatlasError> {
+            let n = self.calls.fetch_add(1, Ordering::SeqCst);
+            if n < self.failures {
+                return Err((self.error)());
+            }
+            Ok(NatlasRawResponse {
+                status: 200,
+                body: r#"{"text":"ok","model":"natlas-test","request_id":"r1",
+                          "usage":{"input_tokens":1,"output_tokens":1},"finish_reason":"stop"}"#
+                    .to_string(),
+            })
+        }
+    }
+
+    fn fast_policy() -> RetryPolicy {
+        RetryPolicy {
+            max_attempts: 3,
+            base_delay_ms: 1,
+            max_delay_ms: 2,
+            budget_ms: 5_000,
+        }
+    }
+
+    #[tokio::test]
+    async fn a_transient_failure_is_retried_and_recovers() {
+        let client = NatlasClient::new(
+            test_config(),
+            FlakyTransport {
+                failures: 2,
+                calls: AtomicU32::new(0),
+                error: || NatlasError::Transport {
+                    message: "cold start".into(),
+                },
+            },
+            "tester",
+        )
+        .with_retry_policy(fast_policy());
+
+        let inv = client.invoke(&NatlasRequest::new("hi", "sys")).await;
+        assert!(inv.succeeded(), "must recover: {:?}", inv.error);
+        assert_eq!(inv.attempts, 3, "should have retried twice");
+    }
+
+    #[tokio::test]
+    async fn a_spent_quota_is_not_retried() {
+        let client = NatlasClient::new(
+            test_config(),
+            FlakyTransport {
+                failures: 9,
+                calls: AtomicU32::new(0),
+                error: || NatlasError::HttpStatus {
+                    status: 503,
+                    body_excerpt: "You have exceeded your GPU quota".into(),
+                },
+            },
+            "tester",
+        )
+        .with_retry_policy(fast_policy());
+
+        let inv = client.invoke(&NatlasRequest::new("hi", "sys")).await;
+        assert!(!inv.succeeded());
+        assert_eq!(inv.attempts, 1, "a spent quota must not be retried");
+        assert_eq!(
+            inv.error.as_ref().unwrap().resilience_state(),
+            NatlasResilienceState::Quota
+        );
+    }
+
+    #[tokio::test]
+    async fn retries_stop_at_the_attempt_cap() {
+        let client = NatlasClient::new(
+            test_config(),
+            FlakyTransport {
+                failures: 99,
+                calls: AtomicU32::new(0),
+                error: || NatlasError::Transport {
+                    message: "still cold".into(),
+                },
+            },
+            "tester",
+        )
+        .with_retry_policy(fast_policy());
+
+        let inv = client.invoke(&NatlasRequest::new("hi", "sys")).await;
+        assert!(!inv.succeeded());
+        assert_eq!(inv.attempts, 3, "must stop at max_attempts, not spin");
+    }
+
+    #[tokio::test]
+    async fn the_default_policy_makes_exactly_one_attempt() {
+        let client = NatlasClient::new(
+            test_config(),
+            FlakyTransport {
+                failures: 1,
+                calls: AtomicU32::new(0),
+                error: || NatlasError::Transport {
+                    message: "x".into(),
+                },
+            },
+            "tester",
+        );
+        assert_eq!(client.retry_policy(), RetryPolicy::NONE);
+        let inv = client.invoke(&NatlasRequest::new("hi", "sys")).await;
+        assert_eq!(inv.attempts, 1, "default must not retry");
+    }
+
+    #[test]
+    fn backoff_delays_grow_then_cap() {
+        let p = RetryPolicy {
+            max_attempts: 5,
+            base_delay_ms: 100,
+            max_delay_ms: 400,
+            budget_ms: 10_000,
+        };
+        assert_eq!(p.delay_for_attempt(1).as_millis(), 0);
+        assert_eq!(p.delay_for_attempt(2).as_millis(), 100);
+        assert_eq!(p.delay_for_attempt(3).as_millis(), 200);
+        assert_eq!(p.delay_for_attempt(4).as_millis(), 400);
+        assert_eq!(p.delay_for_attempt(9).as_millis(), 400, "must cap at max");
     }
 }

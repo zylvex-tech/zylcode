@@ -51,6 +51,127 @@ export class NatlasError extends Error {
 }
 
 // ---------------------------------------------------------------------------
+// Resilience state — the honest state of the endpoint, mirroring the Rust
+// `NatlasResilienceState`. This is what a UI should show a tester instead of a
+// bare error code (NAT-A-001 / NAT-A-002 / NAT-A-003).
+// ---------------------------------------------------------------------------
+
+/**
+ * The observed state of the endpoint.
+ *
+ * There is deliberately **no** "fell back to another model" state: substituting
+ * a model would be fabrication. When the endpoint is not `"ok"`, the caller
+ * reports the true state and does nothing with a synthetic answer.
+ */
+export type NatlasResilienceState =
+  | "ok"
+  | "warming"
+  | "loading"
+  | "timeout"
+  | "quota"
+  | "auth_failure"
+  | "unavailable"
+  | "blocked"
+  | "failed";
+
+/**
+ * Classify an HTTP status (plus a body excerpt that may name a quota or a load)
+ * into a resilience state. Mirrors the Rust `NatlasResilienceState::from_http`.
+ *
+ * The quota check runs **before** the cold-start check, because a ZeroGPU quota
+ * body (e.g. *"You have exceeded your GPU quota"*) must never be mislabelled
+ * "warming" — that would invite a retry that cannot succeed and leave the
+ * tester looking at a spinner that never resolves (NAT-A-001 / NAT-A-002).
+ */
+export function classifyHttp(status: number, bodyExcerpt = ""): NatlasResilienceState {
+  const b = bodyExcerpt.toLowerCase();
+  if (status === 401 || status === 403) return "auth_failure";
+  // 429 is the canonical rate-limit; HF ZeroGPU quota exhaustion also surfaces
+  // as 402 on some deployments. Both mean "no budget left right now".
+  if (status === 429 || status === 402) return "quota";
+  if (status === 502 || status === 503) {
+    if (
+      b.includes("quota") ||
+      b.includes("exceeded") ||
+      b.includes("rate limit") ||
+      b.includes("too many requests")
+    ) {
+      return "quota";
+    }
+    if (b.includes("load") || b.includes("starting") || b.includes("boot")) return "loading";
+    return "warming";
+  }
+  if ([400, 404, 405, 500, 501].includes(status)) return "failed";
+  return "unavailable";
+}
+
+/** The resilience state an {@link NatlasError} corresponds to. */
+export function resilienceStateOf(err: NatlasError): NatlasResilienceState {
+  switch (err.code) {
+    case "NOT_CONFIGURED":
+    case "BLOCKED_NATLAS_ACCESS":
+      return "blocked";
+    case "TRANSPORT":
+      return "unavailable";
+    case "TIMEOUT":
+      return "timeout";
+    case "HTTP_STATUS": {
+      const m = /HTTP (\d{3})/.exec(err.message);
+      return classifyHttp(m ? Number.parseInt(m[1] ?? "", 10) : 0, err.detail ?? "");
+    }
+    case "MALFORMED_RESPONSE":
+      return "failed";
+  }
+}
+
+/**
+ * Whether retrying the same request could plausibly succeed without a human
+ * changing anything. Transient cold-start and transport states are retryable;
+ * a spent quota, a bad credential or a blocked integration are **not**.
+ */
+export function isRetryable(state: NatlasResilienceState): boolean {
+  return state === "warming" || state === "loading" || state === "unavailable";
+}
+
+/**
+ * A short, human-readable, actionable explanation for a state.
+ *
+ * This is the text a tester should see instead of a bare error code
+ * (NAT-A-003). It states what happened and what to do next, and never contains
+ * a secret.
+ */
+export function guidance(state: NatlasResilienceState): string {
+  switch (state) {
+    case "ok":
+      return "The endpoint answered normally.";
+    case "warming":
+      return "The shared GPU is waking up. This is normal on a cold start; retrying shortly usually succeeds.";
+    case "loading":
+      return "The model is loading into memory. Wait for it to finish, then retry.";
+    case "timeout":
+      return "The request took longer than the configured timeout. The shared GPU may be busy; retry, or raise NATLAS_TIMEOUT_MS.";
+    case "quota":
+      return "The endpoint's shared GPU quota is exhausted. No code change fixes this — wait for the quota to reset, or run the bridge against a local OpenAI-compatible runtime (see docs/competition/natlas/LOCAL_RUNTIME_FALLBACK.md).";
+    case "auth_failure":
+      return "Authentication failed. Check that NATLAS_API_KEY is set and correct; the endpoint returns 401 for a wrong key.";
+    case "unavailable":
+      return "The runtime could not be reached (DNS, connection refused, or a proxy). Check the base URL and any HTTP_PROXY setting.";
+    case "blocked":
+      return "N-ATLAS is not configured, or access has not been granted. Set NATLAS_BASE_URL, NATLAS_REQUEST_PATH, NATLAS_MODEL and NATLAS_API_KEY.";
+    case "failed":
+      return "The endpoint returned an error that is not a transient condition. Inspect the recorded body excerpt.";
+  }
+}
+
+/**
+ * A two-line, human-readable message for an error: what happened, then what to
+ * do about it. Never contains a secret.
+ */
+export function humanMessage(err: NatlasError): string {
+  return `${err.message}\n${guidance(resilienceStateOf(err))}`;
+}
+
+// ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
 
@@ -142,6 +263,16 @@ export interface NatlasRequest {
   system: string;
   context?: ContextChunk[];
   maxTokens?: number;
+  /**
+   * BCP-47-ish tag of the language the instruction is written in (`en-NG`,
+   * `ha`, `yo`, `ig`, …).
+   *
+   * Recorded in the evidence record so a multilingual run is auditable. It is
+   * **never inferred from the text** and **never sent on the wire** — the prompt
+   * itself is written in the target language, which is what makes the model
+   * answer in it.
+   */
+  language?: string;
 }
 
 export interface NatlasResponse {
@@ -159,6 +290,11 @@ export interface NatlasEvidence {
   model: string;
   requestId?: string;
   requestClassification: string;
+  /**
+   * Language tag of the developer's instruction, when the caller stated one.
+   * Absent when the caller did not — never guessed from the prompt text.
+   */
+  language?: string;
   status: "succeeded" | "failed";
   httpStatus?: number;
   latencyMs: number;
@@ -305,6 +441,12 @@ export async function probeRuntime(baseUrl: string, model?: string): Promise<Run
 
 export interface Invocation {
   status: "succeeded" | "failed";
+  /**
+   * The endpoint's observed state. `"ok"` only on a genuine success; on failure
+   * this is the classified reason (quota, warming, auth_failure, …) so a caller
+   * can show a human-readable message instead of a bare code.
+   */
+  state: NatlasResilienceState;
   response?: NatlasResponse;
   error?: NatlasError;
   evidence: NatlasEvidence;
@@ -391,6 +533,7 @@ export class NatlasBridge {
       provider: "natlas",
       model: this.config.model,
       requestClassification: classification,
+      language: normaliseLanguage(request.language),
       latencyMs: 0,
       promptChars,
       responseChars: 0,
@@ -460,7 +603,7 @@ export class NatlasBridge {
         model: response.model, // the server's identity, not ours
         responseChars: response.text.length,
       };
-      return { status: "succeeded", response, evidence };
+      return { status: "succeeded", state: "ok", response, evidence };
     } catch (e) {
       const err =
         e instanceof NatlasError
@@ -512,7 +655,7 @@ export class NatlasBridge {
     // `text` is intentionally unused beyond redaction accounting: we store the
     // code, not the message, so a server cannot smuggle a secret into evidence.
     void text;
-    return { status: "failed", error: err, evidence };
+    return { status: "failed", state: resilienceStateOf(err), error: err, evidence };
   }
 }
 
@@ -527,6 +670,17 @@ function classify(intent: string): string {
   if (has(["test", "assert", "coverage"])) return "testing";
   if (has(["explain", "why", "what is", "how does", "document", "describe"])) return "analysis";
   return "general";
+}
+
+/**
+ * Trim a language tag, treating a blank string as "not stated" (`undefined`).
+ *
+ * A blank tag must not be stored: an empty string would later read as
+ * "language was recorded" when it was not.
+ */
+function normaliseLanguage(tag: string | undefined): string | undefined {
+  const trimmed = tag?.trim();
+  return trimmed ? trimmed : undefined;
 }
 
 /**

@@ -14,8 +14,13 @@ import {
   NatlasError,
   OPENAI_CHAT_PATH,
   INTENT_SYSTEM_PREAMBLE,
+  classifyHttp,
+  guidance,
+  humanMessage,
+  isRetryable,
   parseEngineeringIntent,
   redactSecrets,
+  resilienceStateOf,
   translateOpenAiReply,
 } from "../src/index.ts";
 
@@ -200,6 +205,102 @@ await test("config: fromEnv lists every missing variable rather than defaulting"
     () => NatlasBridge.fromEnv({}),
     (e) => e instanceof NatlasError && e.code === "NOT_CONFIGURED" && e.message.includes("NATLAS_BASE_URL"),
   );
+});
+
+// --- NAT-A-001 / NAT-A-003: quota classification + human-readable guidance ----
+
+await test("resilience: a ZeroGPU quota 503 is QUOTA, not warming", () => {
+  const body = "You have exceeded your GPU quota (0s left). Please try again later.";
+  assert.equal(classifyHttp(503, body), "quota");
+  assert.equal(classifyHttp(503, "GPU quota exceeded"), "quota");
+  assert.equal(classifyHttp(402, ""), "quota");
+  assert.equal(classifyHttp(429, "slow down"), "quota");
+  // A genuine cold start is still warming / loading.
+  assert.equal(classifyHttp(503, "model is loading"), "loading");
+  assert.equal(classifyHttp(502, "bad gateway"), "warming");
+});
+
+await test("resilience: a spent quota is not retryable; a cold start is", () => {
+  assert.equal(isRetryable("quota"), false);
+  assert.equal(isRetryable("auth_failure"), false);
+  assert.equal(isRetryable("blocked"), false);
+  assert.equal(isRetryable("warming"), true);
+  assert.equal(isRetryable("loading"), true);
+});
+
+await test("resilience: every state has non-empty, actionable guidance", () => {
+  const states = [
+    "ok",
+    "warming",
+    "loading",
+    "timeout",
+    "quota",
+    "auth_failure",
+    "unavailable",
+    "blocked",
+    "failed",
+  ];
+  for (const s of states) {
+    const g = guidance(s);
+    assert.ok(g.length > 20, `${s} guidance is too terse: ${JSON.stringify(g)}`);
+  }
+  assert.ok(guidance("quota").includes("LOCAL_RUNTIME_FALLBACK"), "quota guidance must point somewhere real");
+});
+
+await test("resilience: an HTTP_STATUS error carries a human message, not a bare code", () => {
+  const err = new NatlasError("HTTP_STATUS", "N-ATLAS returned HTTP 503", "You have exceeded your GPU quota");
+  assert.equal(resilienceStateOf(err), "quota");
+  const msg = humanMessage(err);
+  assert.ok(msg.includes("quota"), "human message must name the cause");
+  assert.ok(msg.split("\n").length >= 2, "human message must have cause + guidance lines");
+});
+
+// --- NAT-A-002 / NAT-A-004: state on the invocation + language propagation ----
+
+await test("invoke: a 503 quota body yields state=quota, not a fabricated success", async () => {
+  const stub = await startStub((req, res) => {
+    res.writeHead(503, { "content-type": "text/plain" });
+    res.end("You have exceeded your GPU quota (0s left).");
+  });
+  try {
+    const bridge = NatlasBridge.configure({
+      baseUrl: stub.url,
+      requestPath: OPENAI_CHAT_PATH,
+      model: "n-atlas-stub",
+    });
+    const inv = await bridge.invoke({ intent: "x", system: "y" });
+    assert.equal(inv.status, "failed");
+    assert.equal(inv.state, "quota");
+    assert.equal(inv.response, undefined, "a quota failure must never carry a response");
+  } finally {
+    stub.close();
+  }
+});
+
+await test("invoke: a stated language is recorded in evidence; an unstated one is omitted", async () => {
+  const stub = await startStub((req, res) => {
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(OPENAI_REPLY);
+  });
+  try {
+    const bridge = NatlasBridge.configure({
+      baseUrl: stub.url,
+      requestPath: OPENAI_CHAT_PATH,
+      model: "n-atlas-stub",
+    });
+
+    const withLang = await bridge.invoke({ intent: "x", system: "y", language: "ig" });
+    assert.equal(withLang.evidence.language, "ig", "Igbo must be recorded");
+
+    const blank = await bridge.invoke({ intent: "x", system: "y", language: "   " });
+    assert.equal(blank.evidence.language, undefined, "a blank tag is not a language");
+    assert.ok(!JSON.stringify(blank.evidence).includes('"language"'), "an unstated language must be omitted");
+
+    const none = await bridge.invoke({ intent: "x", system: "y" });
+    assert.equal(none.evidence.language, undefined, "language must never be inferred");
+  } finally {
+    stub.close();
+  }
 });
 
 // ---------------------------------------------------------------------------

@@ -61,6 +61,15 @@ pub struct NatlasEvidence {
     pub request_id: Option<String>,
     /// Coarse classification of the request (see `NatlasRequest::classification`).
     pub request_classification: String,
+    /// BCP-47-ish language tag of the developer's instruction, when the caller
+    /// states one (`en-NG`, `ha`, `yo`, `ig`, …).
+    ///
+    /// This mirrors the `language` field the TypeScript SDK already records. It
+    /// is `None` when the caller does not supply one — never guessed from the
+    /// text, because guessing a language is exactly the kind of unmeasured
+    /// claim this record exists to prevent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub language: Option<String>,
     pub status: NatlasStatus,
     pub http_status: Option<u16>,
     pub latency_ms: u64,
@@ -105,6 +114,7 @@ impl NatlasEvidence {
             model: model.into(),
             request_id: None,
             request_classification: classification.into(),
+            language: None,
             status,
             http_status: None,
             latency_ms,
@@ -133,6 +143,7 @@ impl NatlasEvidence {
             model: response.model.clone(),
             request_id: response.request_id.clone(),
             request_classification: classification.into(),
+            language: None,
             status: NatlasStatus::Succeeded,
             http_status: Some(200),
             latency_ms,
@@ -151,6 +162,17 @@ impl NatlasEvidence {
     /// Attach what ZylCode did as a result, and how it was checked.
     pub fn with_operation(mut self, operation: impl Into<String>) -> Self {
         self.resulting_operation = Some(operation.into());
+        self
+    }
+
+    /// Record the language tag of the developer's instruction.
+    ///
+    /// Set by the caller that actually knows the language (e.g. the CLI or the
+    /// multilingual harness). Never inferred from the text.
+    pub fn with_language(mut self, language: impl Into<String>) -> Self {
+        let tag = language.into();
+        let tag = tag.trim().to_string();
+        self.language = if tag.is_empty() { None } else { Some(tag) };
         self
     }
 
@@ -277,5 +299,35 @@ mod tests {
         assert_eq!(node.kind, NodeKind::Decision);
         assert_eq!(node.model.as_deref(), Some("natlas/natlas-model-x"));
         assert_eq!(node.actor, "tester");
+    }
+
+    // --- NAT-A-004 regression: language is recorded, never guessed -----------
+
+    #[test]
+    fn language_is_absent_until_the_caller_states_it() {
+        let err = NatlasError::Timeout { timeout_ms: 5 };
+        let ev = NatlasEvidence::for_failure("m", "general", &err, 5, 10, &[]);
+        assert_eq!(ev.language, None, "language must never be inferred");
+    }
+
+    #[test]
+    fn language_is_recorded_when_stated_and_blank_is_ignored() {
+        let err = NatlasError::Timeout { timeout_ms: 5 };
+        let ev = NatlasEvidence::for_failure("m", "general", &err, 5, 10, &[])
+            .with_language("ig");
+        assert_eq!(ev.language.as_deref(), Some("ig"));
+
+        let blank = NatlasEvidence::for_failure("m", "general", &err, 5, 10, &[])
+            .with_language("   ");
+        assert_eq!(blank.language, None, "a blank tag is not a language");
+    }
+
+    #[test]
+    fn language_survives_the_jsonl_round_trip() {
+        let err = NatlasError::Timeout { timeout_ms: 5 };
+        let ev =
+            NatlasEvidence::for_failure("m", "general", &err, 5, 10, &[]).with_language("yo");
+        let value = ev.to_json();
+        assert_eq!(value["language"], "yo");
     }
 }

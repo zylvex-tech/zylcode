@@ -22,6 +22,55 @@ ZylCode is an evidence-first Software Creation OS that receives a programming in
 
 ---
 
+## Live Demo & External Testing
+
+> **This section is for reviewers and external testers.** Everything below is
+> reproducible from a browser with no build step and no local toolchain.
+
+### The live demonstration endpoint
+
+**URL:** `https://zylvex-natlas-zylcode-bridge.hf.space`
+**Health:** `GET /healthz` → `200`, reporting `model: NCAIR1/N-ATLaS`
+**Inference:** `POST /v1/chat/completions` (OpenAI-compatible)
+
+The endpoint runs the genuine gated `NCAIR1/N-ATLaS` weights on Hugging Face
+ZeroGPU. **ZeroGPU is a shared, quota-metered pool.** When its daily budget is
+spent, the endpoint returns `503` with a quota body. ZylCode classifies that as
+`QUOTA`, states it plainly, and **does not retry** — retrying cannot create
+budget. See [`docs/competition/natlas/LOCAL_RUNTIME_FALLBACK.md`](docs/competition/natlas/LOCAL_RUNTIME_FALLBACK.md)
+for what to do when the quota is spent.
+
+### Test it yourself — three ways
+
+| Way | What you need | Entry point |
+|---|---|---|
+| **A. Browser playground** | a browser only | `apps/natlas-sdk/playground/index.html` — open it; no build step |
+| **B. TypeScript SDK** | Node ≥ 18 | `node --experimental-strip-types apps/natlas-sdk/test/smoke.mjs` |
+| **C. Rust boundary** | a Rust toolchain | `cargo test -p zylcode-core --test natlas_boundary` |
+
+The playground has a **language selector** (`en-NG`, `ha`, `yo`, `ig`), a
+**runtime-status probe**, a **live elapsed-time indicator** while a request is in
+flight (so the processing state is never an ambiguous spinner), and a
+**human-readable message** for every failure state. It never shows
+*"connected"*, *"success"*, or *"verified"* unless a real HTTP call actually
+succeeded; its offline mode is labelled **TEST DOUBLE** everywhere it appears.
+
+### What a tester should record
+
+Use [`BETA_TEST_EVIDENCE_TEMPLATE.md`](docs/competition/natlas/BETA_TEST_EVIDENCE_TEMPLATE.md).
+A useful report distinguishes **what you observed** from **what you concluded**,
+and names the language you tested in.
+
+### Reporting a problem
+
+Every failure carries a stable state — `QUOTA`, `WARMING`, `LOADING`,
+`TIMEOUT`, `AUTH_FAILURE`, `UNAVAILABLE`, `BLOCKED`, `FAILED` — and a
+human-readable sentence explaining the cause and the next step. Quote both when
+you report. The tester-001 remediation is recorded in
+[`docs/competition/natlas/TRACK_A_TESTER_001_RELEASE_2026-10-09.md`](docs/competition/natlas/TRACK_A_TESTER_001_RELEASE_2026-10-09.md).
+
+---
+
 ## Solution Architecture
 
 ```mermaid
@@ -220,9 +269,21 @@ cargo test -p zylcode-core --test natlas_runtime
 # Engineering bridge (intent → factory execution with approval gate)
 cargo test -p zylcode-core --test natlas_bridge
 # Expected: 14 passed; 0 failed; 0 ignored
+
+# Multilingual regression (NAT-A-004): language recorded, never guessed
+cargo test -p zylcode-core --test natlas_multilingual
+# Expected: 7 passed; 0 failed; 0 ignored
 ```
 
-**Competition test total: 61 / 61 passing.**
+**Competition test total: 68 / 68 passing** (18 + 17 + 12 + 14 + 7).
+
+### JavaScript SDK
+
+```bash
+cd apps/natlas-sdk
+npx --no-install tsc --noEmit                         # typecheck
+node --experimental-strip-types test/smoke.mjs        # 16 passed, 0 failed
+```
 
 ### Live Tests (gated behind environment variables)
 
@@ -255,12 +316,19 @@ zylcode/
 │   ├── natlas_boundary.rs                        # 17 boundary tests
 │   ├── natlas_runtime.rs                         # 12 runtime tests
 │   ├── natlas_bridge.rs                          # 14 bridge tests (incl. C3 journey)
+│   ├── natlas_multilingual.rs                    # 7 multilingual regression tests (NAT-A-004)
 │   └── natlas_live.rs                            # 2 live tests (ignored, env-gated)
+├── apps/natlas-sdk/
+│   ├── src/index.ts                              # TypeScript SDK (resilience states + guidance)
+│   ├── test/smoke.mjs                            # 16 SDK tests (real HTTP round trip)
+│   └── playground/index.html                     # zero-build browser playground
 ├── docs/competition/natlas/                      # All competition docs + evidence
 │   ├── NATLAS_CHALLENGE_RUBRIC_2026-10-07.md     # Official judging rules (verbatim)
 │   ├── SUBMISSION_CHECKLIST_2026-10-07.md        # 7-component checklist
 │   ├── C3_LIVE_RUNTIME_VERIFICATION_REPORT.md    # EV-024 full report
 │   ├── MULTILINGUAL_VALIDATION_MATRIX.md         # Language gate status
+│   ├── LOCAL_RUNTIME_FALLBACK.md                 # What to do when the GPU quota is spent
+│   ├── TRACK_A_TESTER_001_RELEASE_2026-10-09.md  # Tester-001 remediation record
 │   ├── NATLAS_EVIDENCE_INDEX.md                  # EV-000 through EV-026
 │   └── evidence/                                 # Raw capture artefacts (.gitignore'd)
 └── README.md                                     # This file (challenge-specific)
@@ -280,7 +348,7 @@ zylcode/
 
 | Blocker | Owner Action |
 |---|---|
-| ≥2 external beta testers | Recruit + collect feedback (PS1 hard requirement) |
+| ≥2 external beta testers | 1 of ≥2 received (tester 001, 2026-10-09). Recruit one more + collect feedback (PS1 hard requirement) |
 | Team profile | Names, affiliations, roles |
 | CAC certificate (Track B) | Upload |
 | Final video screen-capture | 3–5 min end-to-end demo recording |
@@ -326,7 +394,7 @@ Mapped to the 7 mandatory submission components (official rubric):
 |---|---|---|
 | 1. Working Artefact | ✅ | Controlled endpoint live; repo branch `competition/natlas-2026` |
 | 2. N-ATLAS Integration Evidence | ✅ | This README §N-ATLAS Integration; `NATLAS_CONTRACT_VERIFICATION_2026-10-07.md` |
-| 3. Real-World Validation | 🔧 | Live benchmarks (EV-014/015/016/024) genuine; **beta testers pending (0 recruited)** |
+| 3. Real-World Validation | 🔧 | Live benchmarks (EV-014/015/016/024) genuine; **1 of ≥2 external testers (tester 001) feedback received and actioned** — see `TRACK_A_TESTER_001_RELEASE_2026-10-09.md` |
 | 4. Technical Documentation | ✅ | This README; `C3_LIVE_RUNTIME_VERIFICATION_REPORT.md`; `ARCHITECTURE_BRIDGE.md` (verified current architecture) |
 | 5. Video Demonstration | 🔧 | Script + storyboard ready; screen-capture pending owner recording |
 | 6. Team Profile | ⛔ | Owner-supplied |

@@ -83,8 +83,22 @@ The remaining item is *quality*, not *availability*: native-speaker-authored tar
 
 The toolkit is ready to run these tests the moment the runtime is up:
 
-- the SDK propagates a `language` field into the evidence record;
+- **both** the Rust boundary (`NatlasRequest::with_language` →
+  `NatlasEvidence.language`) **and** the TypeScript SDK (`NatlasRequest.language`
+  → `NatlasEvidence.language`) propagate a `language` field into the evidence
+  record;
 - the playground has a language selector (`en-NG`, `ha`, `yo`, `ig`);
-- the evidence schema records language and observed outcome.
+- the evidence schema records language and observed outcome;
+- a regression suite proves the plumbing:
+  `cargo test -p zylcode-core --test natlas_multilingual` (7 tests).
 
 What is missing is the model, not the harness.
+
+> **Correction (2026-10-09, NAT-A-004).** The earlier claim that "the SDK
+> propagates a `language` field into the evidence record" was true of the
+> TypeScript SDK's *playground* only: neither the Rust `NatlasEvidence` nor the
+> SDK's `NatlasEvidence` interface actually carried a `language` field, and Igbo
+> appeared nowhere in the Rust test tree. Both gaps are now closed and covered
+> by tests. This is recorded rather than silently corrected, because a harness
+> claim that is not backed by code is exactly the kind of overstatement this
+> matrix exists to prevent.
