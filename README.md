@@ -209,7 +209,7 @@ flowchart TB
 
     subgraph "Boundary Layer"
         B1[repair_json<br/>bounded normalization]
-        B2[parse_with_repair<br/>returns (intent, was_repaired)]
+        B2["parse_with_repair<br/>returns (intent, was_repaired)"]
         B3[NatlasResilienceState<br/>no fallback]
     end
 
