@@ -7,6 +7,7 @@ import { StatusBadge } from "./CapabilityStatus";
 import ProviderSettings from "./ProviderSettings";
 import McpInspector from "./McpInspector";
 import ToolsCataloguePanel from "./ToolsCataloguePanel";
+import ToolRunnerPanel from "./ToolRunnerPanel";
 import { ThemeSelector } from "./ui";
 
 type SectionId =
@@ -327,6 +328,9 @@ export const SettingsSurface: React.FC<SettingsSurfaceProps> = ({
                 <div className="border border-border rounded-lg p-3">
                   <h4 className="text-sm font-medium mb-2">MCP Tool Catalogue</h4>
                   <ToolsCataloguePanel />
+                </div>
+                <div className="border border-border rounded-lg p-3">
+                  <ToolRunnerPanel />
                 </div>
                 {IS_DESKTOP && (
                   <div className="border border-border rounded-lg p-3">

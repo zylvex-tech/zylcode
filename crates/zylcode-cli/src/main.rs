@@ -1047,6 +1047,61 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
         }
     }
 
+    /// POST /api/execute-tool — transport parity for the `execute_tool` IPC
+    /// command. Body: `{ "id": "fs.read", "params": { "path": "src/lib.rs" } }`.
+    ///
+    /// The workspace is bound for the invocation (`with_workspace_root`), the
+    /// actor is attributed (`user:serve-intel`), and the restrictive
+    /// permission gate + JSONL evidence sink apply exactly as on the desktop.
+    /// Tool ids with no real executor fail closed here — the HTTP surface
+    /// cannot become a second, more permissive runtime.
+    async fn execute_tool(
+        State(root): State<Arc<std::path::PathBuf>>,
+        axum::Json(body): axum::Json<serde_json::Value>,
+    ) -> Json<serde_json::Value> {
+        let id = body["id"].as_str().unwrap_or("").to_string();
+        let params = match body.get("params") {
+            Some(v @ serde_json::Value::Object(_)) => v.clone(),
+            _ => serde_json::json!({}),
+        };
+
+        if id.trim().is_empty() {
+            return Json(serde_json::json!({
+                "error": "body must include a tool id",
+            }));
+        }
+        // Fail closed before dispatch for ids the process has no real
+        // executor for — same contract as the catalogue's `executor_bound`
+        // flag, which the UI treats as "not runnable".
+        if zylcode_mcp::get_real_tool(&id).is_none() {
+            return Json(serde_json::json!({
+                "error": format!("no real executor is bound to '{id}' — fails closed"),
+            }));
+        }
+
+        let config = zylcode_mcp::config::McpToolConfig {
+            id: id.clone(),
+            command: "builtin".to_string(),
+            transport: Default::default(),
+            env: Default::default(),
+            enabled: true,
+            description: None,
+        };
+        let tool = zylcode_mcp::DynamicTool::new(config);
+
+        let outcome = zylcode_mcp::workspace::with_workspace_root(
+            root.as_ref().clone(),
+            zylcode_mcp::with_actor("user:serve-intel", zylcode_mcp::Tool::call(&tool, params)),
+        )
+        .await;
+        match outcome {
+            Ok(value) => Json(value),
+            Err(e) => Json(serde_json::json!({
+                "error": format!("tool '{id}' failed: {e:#}"),
+            })),
+        }
+    }
+
     /// POST /api/artifact/save — editor-save transport parity for the
     /// browser preview (the desktop uses the `save_workspace_artifact`
     /// command). Both transports call the same `save_file_payload`, so
@@ -1404,6 +1459,7 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
         .route("/api/evidence", get(evidence))
         .route("/api/terminal/exec", axum::routing::post(terminal_exec))
         .route("/api/terminal/reset", axum::routing::post(terminal_reset))
+        .route("/api/execute-tool", axum::routing::post(execute_tool))
         .route(
             "/api/missions",
             axum::routing::get(missions_list).post(missions_enqueue),
