@@ -1135,7 +1135,8 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
                 context: None,
                 correlation_id,
             };
-            tokio::runtime::Handle::current().block_on(engine.process_intent(intent))
+            tokio::runtime::Handle::current()
+                .block_on(engine.process_intent(intent))
                 .map(|r| serde_json::to_value(r).unwrap_or_default())
                 .unwrap_or_else(|e| serde_json::json!({ "error": format!("intent failed: {e:#}") }))
         })

@@ -164,7 +164,11 @@ impl<T: NatlasTransport> NatlasClient<T> {
         let started = Instant::now();
         let prompt_chars = request.intent.len()
             + request.system.len()
-            + request.context.iter().map(|c| c.excerpt.len()).sum::<usize>();
+            + request
+                .context
+                .iter()
+                .map(|c| c.excerpt.len())
+                .sum::<usize>();
         let classification = request.classification();
         let secrets = [self.config.api_key.as_str()];
         let language = request.language.clone();
@@ -289,21 +293,22 @@ pub fn interpret_raw(raw: NatlasRawResponse) -> Result<NatlasResponse, NatlasErr
 /// independent of N-ATLAS's own wire format. Translating N-ATLAS bytes into
 /// this shape is the transport's job and is not implemented in Phase C0.
 pub fn parse_canonical_response(body: &str) -> Result<NatlasResponse, NatlasError> {
-    let value: serde_json::Value = serde_json::from_str(body).map_err(|e| {
-        NatlasError::MalformedResponse {
+    let value: serde_json::Value =
+        serde_json::from_str(body).map_err(|e| NatlasError::MalformedResponse {
             detail: format!("not valid JSON: {e}"),
-        }
-    })?;
-    let obj = value.as_object().ok_or_else(|| NatlasError::MalformedResponse {
-        detail: "expected a JSON object at the top level".to_string(),
-    })?;
-
-    let text = obj
-        .get("text")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| NatlasError::MalformedResponse {
-            detail: "missing string field `text`".to_string(),
         })?;
+    let obj = value
+        .as_object()
+        .ok_or_else(|| NatlasError::MalformedResponse {
+            detail: "expected a JSON object at the top level".to_string(),
+        })?;
+
+    let text =
+        obj.get("text")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| NatlasError::MalformedResponse {
+                detail: "missing string field `text`".to_string(),
+            })?;
     if text.trim().is_empty() {
         return Err(NatlasError::MalformedResponse {
             detail: "field `text` is empty".to_string(),

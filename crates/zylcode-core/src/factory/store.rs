@@ -78,8 +78,7 @@ impl JobStore {
         let path = self.path_for(&job.id);
         let tmp = path.with_extension("json.tmp");
         let body = serde_json::to_string_pretty(job)?;
-        std::fs::write(&tmp, body)
-            .with_context(|| format!("writing {}", tmp.display()))?;
+        std::fs::write(&tmp, body).with_context(|| format!("writing {}", tmp.display()))?;
         std::fs::rename(&tmp, &path)
             .with_context(|| format!("renaming into {}", path.display()))?;
         Ok(path)
@@ -93,10 +92,13 @@ impl JobStore {
         }
         let raw = std::fs::read_to_string(&path)?;
         if raw.trim().is_empty() {
-            bail!("factory job file {} is empty — refusing to read it as a job", path.display());
+            bail!(
+                "factory job file {} is empty — refusing to read it as a job",
+                path.display()
+            );
         }
-        let job: FactoryJob = serde_json::from_str(&raw)
-            .with_context(|| format!("parsing {}", path.display()))?;
+        let job: FactoryJob =
+            serde_json::from_str(&raw).with_context(|| format!("parsing {}", path.display()))?;
         Ok(job)
     }
 
@@ -216,7 +218,10 @@ mod tests {
         std::fs::create_dir_all(store.dir()).unwrap();
         std::fs::write(store.dir().join("bad.json"), "{ not json").unwrap();
         let err = store.list();
-        assert!(err.is_err(), "a corrupt record must not be silently dropped");
+        assert!(
+            err.is_err(),
+            "a corrupt record must not be silently dropped"
+        );
     }
 
     #[test]
@@ -232,7 +237,9 @@ mod tests {
                     "t2",
                     TaskKind::Test,
                     "run the suite",
-                    TaskAction::Note { text: "test".into() },
+                    TaskAction::Note {
+                        text: "test".into(),
+                    },
                 )
                 .depends_on(&["t1"]),
             )

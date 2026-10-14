@@ -112,19 +112,13 @@ impl NatlasTransport for HttpNatlasTransport {
         })?;
 
         let status = response.status().as_u16();
-        let text = response
-            .text()
-            .await
-            .map_err(|e| NatlasError::Transport {
-                message: format!("remote N-ATLAS reply could not be read: {e}"),
-            })?;
+        let text = response.text().await.map_err(|e| NatlasError::Transport {
+            message: format!("remote N-ATLAS reply could not be read: {e}"),
+        })?;
 
         // No translation, no fallback: the canonical parser above decides
         // whether this is a valid response.
-        Ok(NatlasRawResponse {
-            status,
-            body: text,
-        })
+        Ok(NatlasRawResponse { status, body: text })
     }
 }
 

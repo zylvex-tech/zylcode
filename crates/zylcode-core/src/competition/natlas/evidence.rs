@@ -234,7 +234,10 @@ mod tests {
 
     #[test]
     fn redaction_removes_the_secret_and_counts_it() {
-        let (out, n) = redact_secrets("token=abc123SECRET and abc123SECRET again", &["abc123SECRET"]);
+        let (out, n) = redact_secrets(
+            "token=abc123SECRET and abc123SECRET again",
+            &["abc123SECRET"],
+        );
         assert_eq!(n, 2);
         assert!(!out.contains("abc123SECRET"));
         assert!(out.contains("[REDACTED]"));
@@ -253,14 +256,8 @@ mod tests {
         let err = NatlasError::Transport {
             message: "connect failed with key sk-super-secret-value".to_string(),
         };
-        let ev = NatlasEvidence::for_failure(
-            "m",
-            "general",
-            &err,
-            12,
-            100,
-            &["sk-super-secret-value"],
-        );
+        let ev =
+            NatlasEvidence::for_failure("m", "general", &err, 12, 100, &["sk-super-secret-value"]);
         let detail = ev.error_detail.unwrap();
         assert!(!detail.contains("sk-super-secret-value"));
         assert_eq!(ev.secret_redactions, 1);
@@ -313,20 +310,18 @@ mod tests {
     #[test]
     fn language_is_recorded_when_stated_and_blank_is_ignored() {
         let err = NatlasError::Timeout { timeout_ms: 5 };
-        let ev = NatlasEvidence::for_failure("m", "general", &err, 5, 10, &[])
-            .with_language("ig");
+        let ev = NatlasEvidence::for_failure("m", "general", &err, 5, 10, &[]).with_language("ig");
         assert_eq!(ev.language.as_deref(), Some("ig"));
 
-        let blank = NatlasEvidence::for_failure("m", "general", &err, 5, 10, &[])
-            .with_language("   ");
+        let blank =
+            NatlasEvidence::for_failure("m", "general", &err, 5, 10, &[]).with_language("   ");
         assert_eq!(blank.language, None, "a blank tag is not a language");
     }
 
     #[test]
     fn language_survives_the_jsonl_round_trip() {
         let err = NatlasError::Timeout { timeout_ms: 5 };
-        let ev =
-            NatlasEvidence::for_failure("m", "general", &err, 5, 10, &[]).with_language("yo");
+        let ev = NatlasEvidence::for_failure("m", "general", &err, 5, 10, &[]).with_language("yo");
         let value = ev.to_json();
         assert_eq!(value["language"], "yo");
     }

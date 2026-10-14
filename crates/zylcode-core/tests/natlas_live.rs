@@ -34,10 +34,8 @@
 
 use std::sync::Arc;
 
-use zylcode_core::competition::natlas::{
-    LocalNatlasTransport, NatlasClient, NatlasRequest,
-};
 use zylcode_core::competition::natlas::intent::NatlasEngineeringIntent;
+use zylcode_core::competition::natlas::{LocalNatlasTransport, NatlasClient, NatlasRequest};
 use zylcode_core::factory::{
     FactoryJob, FactoryRunner, FactoryRunnerConfig, RunStatus, TaskAction, TaskState,
 };
@@ -147,16 +145,16 @@ async fn live_acceptance_journey() {
         invocation.error
     );
 
-    let response = invocation.response.expect("succeeded invocation has response");
+    let response = invocation
+        .response
+        .expect("succeeded invocation has response");
     println!("--- LIVE ACCEPTANCE JOURNEY ---");
     println!("model  : {}", response.model);
     println!("raw    : {}", response.text);
 
     // 2. Parse with repair (handles triple-quoted strings, raw newlines)
-    let (intent, was_repaired) =
-        NatlasEngineeringIntent::parse_with_repair(&response.text).unwrap_or_else(|e| {
-            panic!("model output must be parseable after repair: {e}")
-        });
+    let (intent, was_repaired) = NatlasEngineeringIntent::parse_with_repair(&response.text)
+        .unwrap_or_else(|e| panic!("model output must be parseable after repair: {e}"));
     println!("repaired: {}", was_repaired);
     println!("summary : {}", intent.summary);
     println!("steps   : {}", intent.steps.len());
@@ -262,7 +260,10 @@ async fn live_acceptance_journey() {
 
     // 12. Verify test claim
     let claims = runner.claim_store().list().unwrap();
-    let verified: Vec<_> = claims.iter().filter(|c| c.status == zylcode_core::claim::ClaimStatus::Verified).collect();
+    let verified: Vec<_> = claims
+        .iter()
+        .filter(|c| c.status == zylcode_core::claim::ClaimStatus::Verified)
+        .collect();
     println!("verified claims: {}", verified.len());
     assert!(
         verified.iter().any(|c| c.statement.contains("exited 0")),
@@ -271,7 +272,10 @@ async fn live_acceptance_journey() {
 
     // 13. Evidence graph provenance
     let doc = runner.graph_store().document().unwrap();
-    assert!(doc.nodes.iter().any(|n| n.kind == zylcode_core::evidence_graph::NodeKind::Intent));
+    assert!(doc
+        .nodes
+        .iter()
+        .any(|n| n.kind == zylcode_core::evidence_graph::NodeKind::Intent));
     println!("evidence graph has INTENT node — provenance chain intact");
 
     println!("=== LIVE ACCEPTANCE JOURNEY PASSED ===");

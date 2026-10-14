@@ -193,9 +193,9 @@ impl TaskAction {
             TaskAction::ReadFile { .. } => Some("fs.read"),
             TaskAction::WriteFile { .. } => Some("fs.write"),
             TaskAction::RunCommand { .. } | TaskAction::Verify { .. } => Some("shell.execute"),
-            TaskAction::ModelTask { .. } | TaskAction::Approval { .. } | TaskAction::Note { .. } => {
-                None
-            }
+            TaskAction::ModelTask { .. }
+            | TaskAction::Approval { .. }
+            | TaskAction::Note { .. } => None,
         }
     }
 
@@ -208,7 +208,10 @@ impl TaskAction {
                 command,
                 args,
                 expect_exit,
-            } => format!("run `{command} {}` (expect exit {expect_exit})", args.join(" ")),
+            } => format!(
+                "run `{command} {}` (expect exit {expect_exit})",
+                args.join(" ")
+            ),
             TaskAction::Verify { command, args } => {
                 format!("verify `{command} {}`", args.join(" "))
             }
@@ -389,7 +392,10 @@ impl TaskGraph {
         for n in &self.nodes {
             for dep in &n.depends_on {
                 *indegree.entry(n.id.as_str()).or_insert(0) += 1;
-                adjacency.entry(dep.as_str()).or_default().push(n.id.as_str());
+                adjacency
+                    .entry(dep.as_str())
+                    .or_default()
+                    .push(n.id.as_str());
             }
         }
         let mut queue: Vec<&str> = indegree
@@ -424,11 +430,9 @@ impl TaskGraph {
             .iter()
             .filter(|n| n.state == TaskState::Pending)
             .filter(|n| {
-                n.depends_on.iter().all(|dep| {
-                    self.get(dep)
-                        .map(|d| d.state.is_success())
-                        .unwrap_or(false)
-                })
+                n.depends_on
+                    .iter()
+                    .all(|dep| self.get(dep).map(|d| d.state.is_success()).unwrap_or(false))
             })
             .map(|n| n.id.clone())
             .collect()
@@ -484,9 +488,7 @@ impl TaskGraph {
                         .map(|d| {
                             matches!(
                                 d.state,
-                                TaskState::Failed
-                                    | TaskState::Blocked
-                                    | TaskState::Cancelled
+                                TaskState::Failed | TaskState::Blocked | TaskState::Cancelled
                             )
                         })
                         .unwrap_or(true)
@@ -570,7 +572,8 @@ mod tests {
         g.add_node(note("root")).unwrap();
         g.add_node(note("left").depends_on(&["root"])).unwrap();
         g.add_node(note("right").depends_on(&["root"])).unwrap();
-        g.add_node(note("join").depends_on(&["left", "right"])).unwrap();
+        g.add_node(note("join").depends_on(&["left", "right"]))
+            .unwrap();
         g.validate().unwrap();
 
         // Only the root is ready initially.

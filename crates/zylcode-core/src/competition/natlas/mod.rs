@@ -57,7 +57,7 @@ pub use local::{probe, LocalNatlasTransport, LocalRuntimeHealth};
 pub use remote::HttpNatlasTransport;
 pub use transport::{BlockedNatlasTransport, NatlasRawResponse, NatlasTransport};
 pub use types::{
-    NatlasContextChunk, NatlasError, NatlasRequest, NatlasResponse, NatlasResilienceState,
+    NatlasContextChunk, NatlasError, NatlasRequest, NatlasResilienceState, NatlasResponse,
     NatlasStatus, NatlasUsage,
 };
 

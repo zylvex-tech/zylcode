@@ -132,8 +132,7 @@ fn missing_configuration_lists_every_absent_variable() {
 
 #[test]
 fn missing_api_key_is_a_configuration_error_not_a_default() {
-    let err =
-        NatlasConfig::from_parts("https://natlas.invalid", "/v1/infer", "m", "").unwrap_err();
+    let err = NatlasConfig::from_parts("https://natlas.invalid", "/v1/infer", "m", "").unwrap_err();
     assert_eq!(err.missing, vec!["NATLAS_API_KEY"]);
 }
 
@@ -181,7 +180,9 @@ async fn blocked_transport_yields_blocked_natlas_access_not_failure() {
 #[tokio::test]
 async fn a_well_formed_response_is_parsed_and_recorded() {
     let c = client(respond(canonical("hello from the double")), 1000);
-    let inv = c.invoke(&NatlasRequest::new("implement a thing", "sys")).await;
+    let inv = c
+        .invoke(&NatlasRequest::new("implement a thing", "sys"))
+        .await;
 
     assert_eq!(inv.status, NatlasStatus::Succeeded);
     let resp = inv.response.as_ref().expect("parsed response");
@@ -247,7 +248,10 @@ async fn a_malformed_body_is_rejected_rather_than_partially_accepted() {
     let c = client(respond("this is not json".to_string()), 1000);
     let inv = c.invoke(&NatlasRequest::new("x", "y")).await;
 
-    assert_eq!(inv.evidence.error_code.as_deref(), Some("MALFORMED_RESPONSE"));
+    assert_eq!(
+        inv.evidence.error_code.as_deref(),
+        Some("MALFORMED_RESPONSE")
+    );
     assert!(inv.response.is_none());
 }
 
@@ -257,7 +261,10 @@ async fn a_response_without_model_identity_is_rejected() {
     let c = client(respond(body), 1000);
     let inv = c.invoke(&NatlasRequest::new("x", "y")).await;
 
-    assert_eq!(inv.evidence.error_code.as_deref(), Some("MALFORMED_RESPONSE"));
+    assert_eq!(
+        inv.evidence.error_code.as_deref(),
+        Some("MALFORMED_RESPONSE")
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -271,7 +278,10 @@ async fn a_secret_in_a_failure_message_is_redacted_before_storage() {
     let inv = c.invoke(&NatlasRequest::new("x", "y")).await;
 
     let detail = inv.evidence.error_detail.clone().unwrap_or_default();
-    assert!(!detail.contains(MOCK_KEY), "the key must not survive: {detail}");
+    assert!(
+        !detail.contains(MOCK_KEY),
+        "the key must not survive: {detail}"
+    );
     assert!(inv.evidence.secret_redactions >= 1);
 }
 
@@ -289,15 +299,24 @@ fn redaction_is_counted_and_reported() {
 #[tokio::test]
 async fn evidence_is_written_as_jsonl_and_contains_no_secret() {
     let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join(".zylcode").join("competition").join("natlas.jsonl");
+    let path = dir
+        .path()
+        .join(".zylcode")
+        .join("competition")
+        .join("natlas.jsonl");
 
     let c = client(respond(canonical("ok")), 1000);
-    let inv = c.invoke(&NatlasRequest::new("explain the parser", "sys")).await;
+    let inv = c
+        .invoke(&NatlasRequest::new("explain the parser", "sys"))
+        .await;
     inv.evidence.append_jsonl(&path).unwrap();
 
     let body = std::fs::read_to_string(&path).unwrap();
     assert_eq!(body.lines().count(), 1);
-    assert!(!body.contains(MOCK_KEY), "no secret may reach the evidence log");
+    assert!(
+        !body.contains(MOCK_KEY),
+        "no secret may reach the evidence log"
+    );
     assert!(body.contains("\"provider\":\"natlas\""));
     assert!(body.contains("\"status\":\"succeeded\""));
     // `explain` classifies as analysis, not implementation.
@@ -327,11 +346,16 @@ async fn a_response_becomes_a_validated_factory_task_graph() {
     let inv = c
         .invoke(&NatlasRequest::new("implement a health endpoint", "sys"))
         .await;
-    assert!(inv.succeeded(), "precondition: the boundary parsed the response");
+    assert!(
+        inv.succeeded(),
+        "precondition: the boundary parsed the response"
+    );
 
     let text = &inv.response.unwrap().text;
     let intent = NatlasEngineeringIntent::parse(text).expect("intent contract holds");
-    let graph = intent.to_task_graph().expect("handoff produces a valid graph");
+    let graph = intent
+        .to_task_graph()
+        .expect("handoff produces a valid graph");
 
     let summary = graph.summary();
     assert_eq!(summary.total, 5);

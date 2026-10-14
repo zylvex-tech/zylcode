@@ -22,11 +22,11 @@
 use std::path::Path;
 use std::sync::Arc;
 
+use zylcode_core::factory::graph::TaskKind;
 use zylcode_core::factory::{
     FactoryJob, FactoryRunner, FactoryRunnerConfig, JobStage, JobStore, RunStatus, TaskAction,
     TaskNode, TaskState, BLOCKED_PROVIDER,
 };
-use zylcode_core::factory::graph::TaskKind;
 use zylcode_mcp::{JsonlEvidenceSink, PermissionGate, PermissionPolicy, RiskLevel, ToolRuntime};
 
 /// A runtime that permits read/write/execute and records evidence to disk.
@@ -167,9 +167,7 @@ async fn the_slice_executes_in_dependency_order_with_real_tools_and_evidence() {
         .filter(|c| c.status == zylcode_core::claim::ClaimStatus::Verified)
         .collect();
     assert!(
-        verified
-            .iter()
-            .any(|c| c.statement.contains("exited 0")),
+        verified.iter().any(|c| c.statement.contains("exited 0")),
         "a real exit-0 command must yield a verified test claim: {:?}",
         claims.iter().map(|c| &c.statement).collect::<Vec<_>>()
     );
@@ -282,7 +280,13 @@ async fn a_human_approval_gate_parks_and_then_resumes() {
     let second = runner.run().await.unwrap();
     assert_eq!(second.status, RunStatus::Completed);
     assert_eq!(
-        runner.job.graph.get("approve").unwrap().approved_by.as_deref(),
+        runner
+            .job
+            .graph
+            .get("approve")
+            .unwrap()
+            .approved_by
+            .as_deref(),
         Some("supervisor")
     );
 }
@@ -319,7 +323,10 @@ async fn a_failed_dependency_cancels_its_dependents() {
     let report = runner.run().await.unwrap();
 
     assert_eq!(report.status, RunStatus::Blocked);
-    assert_eq!(runner.job.graph.get("bad").unwrap().state, TaskState::Failed);
+    assert_eq!(
+        runner.job.graph.get("bad").unwrap().state,
+        TaskState::Failed
+    );
     assert_eq!(
         runner.job.graph.get("after").unwrap().state,
         TaskState::Cancelled,

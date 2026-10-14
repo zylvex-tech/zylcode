@@ -27,8 +27,8 @@ use std::thread;
 use std::time::Duration;
 
 use zylcode_core::competition::natlas::{
-    local, NatlasClient, NatlasConfig, NatlasEngineeringIntent, NatlasRequest, NatlasStatus,
-    LocalNatlasTransport,
+    local, LocalNatlasTransport, NatlasClient, NatlasConfig, NatlasEngineeringIntent,
+    NatlasRequest, NatlasStatus,
 };
 
 // ---------------------------------------------------------------------------
@@ -77,8 +77,13 @@ impl StubServer {
 }
 
 fn config(base_url: &str) -> NatlasConfig {
-    NatlasConfig::from_parts(base_url, local::OPENAI_CHAT_PATH, "n-atlas-stub", "stub-key-1234")
-        .expect("test config")
+    NatlasConfig::from_parts(
+        base_url,
+        local::OPENAI_CHAT_PATH,
+        "n-atlas-stub",
+        "stub-key-1234",
+    )
+    .expect("test config")
 }
 
 /// A canned OpenAI-compatible reply whose content is a valid ZylCode intent.
@@ -102,7 +107,11 @@ fn request() -> NatlasRequest {
 #[tokio::test]
 async fn local_transport_completes_a_real_http_round_trip() {
     let server = StubServer::spawn("200 OK", openai_reply_with_intent(), 1);
-    let client = NatlasClient::new(config(&server.base_url), LocalNatlasTransport::new(), "tester");
+    let client = NatlasClient::new(
+        config(&server.base_url),
+        LocalNatlasTransport::new(),
+        "tester",
+    );
 
     let inv = client.invoke(&request()).await;
 
@@ -119,7 +128,11 @@ async fn local_transport_completes_a_real_http_round_trip() {
 #[tokio::test]
 async fn a_response_traverses_the_intent_boundary_into_a_valid_task_graph() {
     let server = StubServer::spawn("200 OK", openai_reply_with_intent(), 1);
-    let client = NatlasClient::new(config(&server.base_url), LocalNatlasTransport::new(), "tester");
+    let client = NatlasClient::new(
+        config(&server.base_url),
+        LocalNatlasTransport::new(),
+        "tester",
+    );
 
     let inv = client.invoke(&request()).await;
     let response = inv.response.expect("a response");
@@ -139,8 +152,16 @@ async fn a_response_traverses_the_intent_boundary_into_a_valid_task_graph() {
 
 #[tokio::test]
 async fn a_500_reply_is_an_http_status_error_never_a_success() {
-    let server = StubServer::spawn("500 Internal Server Error", "{\"error\":\"boom\"}".to_string(), 1);
-    let client = NatlasClient::new(config(&server.base_url), LocalNatlasTransport::new(), "tester");
+    let server = StubServer::spawn(
+        "500 Internal Server Error",
+        "{\"error\":\"boom\"}".to_string(),
+        1,
+    );
+    let client = NatlasClient::new(
+        config(&server.base_url),
+        LocalNatlasTransport::new(),
+        "tester",
+    );
 
     let inv = client.invoke(&request()).await;
 
@@ -153,7 +174,11 @@ async fn a_500_reply_is_an_http_status_error_never_a_success() {
 #[tokio::test]
 async fn a_malformed_reply_is_rejected_rather_than_partially_accepted() {
     let server = StubServer::spawn("200 OK", "this is not json at all".to_string(), 1);
-    let client = NatlasClient::new(config(&server.base_url), LocalNatlasTransport::new(), "tester");
+    let client = NatlasClient::new(
+        config(&server.base_url),
+        LocalNatlasTransport::new(),
+        "tester",
+    );
 
     let inv = client.invoke(&request()).await;
 
@@ -167,7 +192,11 @@ async fn a_reply_without_model_identity_is_rejected() {
     // produced it cannot be evidence.
     let body = r#"{"id":"x","choices":[{"message":{"content":"hi"},"finish_reason":"stop"}]}"#;
     let server = StubServer::spawn("200 OK", body.to_string(), 1);
-    let client = NatlasClient::new(config(&server.base_url), LocalNatlasTransport::new(), "tester");
+    let client = NatlasClient::new(
+        config(&server.base_url),
+        LocalNatlasTransport::new(),
+        "tester",
+    );
 
     let inv = client.invoke(&request()).await;
 
@@ -203,13 +232,20 @@ async fn an_absent_runtime_never_produces_a_synthetic_answer() {
 #[tokio::test]
 async fn evidence_records_the_servers_model_identity_and_the_measured_latency() {
     let server = StubServer::spawn("200 OK", openai_reply_with_intent(), 1);
-    let client = NatlasClient::new(config(&server.base_url), LocalNatlasTransport::new(), "tester");
+    let client = NatlasClient::new(
+        config(&server.base_url),
+        LocalNatlasTransport::new(),
+        "tester",
+    );
 
     let inv = client.invoke(&request()).await;
     let ev = &inv.evidence;
 
     assert_eq!(ev.provider, "natlas");
-    assert_eq!(ev.model, "n-atlas-stub:latest", "identity must be the server's");
+    assert_eq!(
+        ev.model, "n-atlas-stub:latest",
+        "identity must be the server's"
+    );
     assert_eq!(ev.status, NatlasStatus::Succeeded);
     assert!(ev.success);
     assert!(ev.response_chars > 0);
@@ -226,7 +262,11 @@ async fn a_secret_echoed_in_a_server_error_is_redacted_before_storage() {
         "{\"error\":\"bad key stub-key-1234 rejected\"}".to_string(),
         1,
     );
-    let client = NatlasClient::new(config(&server.base_url), LocalNatlasTransport::new(), "tester");
+    let client = NatlasClient::new(
+        config(&server.base_url),
+        LocalNatlasTransport::new(),
+        "tester",
+    );
 
     let inv = client.invoke(&request()).await;
     let json = inv.evidence.to_json().to_string();

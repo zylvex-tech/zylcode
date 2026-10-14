@@ -121,9 +121,11 @@ impl NatlasEngineeringIntent {
     }
 
     fn from_value(value: serde_json::Value) -> Result<Self, NatlasError> {
-        let obj = value.as_object().ok_or_else(|| NatlasError::MalformedResponse {
-            detail: "intent must be a JSON object".to_string(),
-        })?;
+        let obj = value
+            .as_object()
+            .ok_or_else(|| NatlasError::MalformedResponse {
+                detail: "intent must be a JSON object".to_string(),
+            })?;
 
         let summary = obj
             .get("summary")
@@ -134,12 +136,11 @@ impl NatlasEngineeringIntent {
             })?
             .to_string();
 
-        let steps_value = obj
-            .get("steps")
-            .and_then(|v| v.as_array())
-            .ok_or_else(|| NatlasError::MalformedResponse {
+        let steps_value = obj.get("steps").and_then(|v| v.as_array()).ok_or_else(|| {
+            NatlasError::MalformedResponse {
                 detail: "intent requires a `steps` array".to_string(),
-            })?;
+            }
+        })?;
         if steps_value.is_empty() {
             return Err(NatlasError::MalformedResponse {
                 detail: "intent `steps` must not be empty".to_string(),
@@ -153,20 +154,18 @@ impl NatlasEngineeringIntent {
                 .ok_or_else(|| NatlasError::MalformedResponse {
                     detail: format!("step {i} must be a JSON object"),
                 })?;
-            let kind_str = obj_i
-                .get("kind")
-                .and_then(|v| v.as_str())
-                .ok_or_else(|| NatlasError::MalformedResponse {
-                    detail: format!("step {i} is missing a string `kind`"),
-                })?;
-            let kind = IntentStepKind::parse(kind_str).ok_or_else(|| {
+            let kind_str = obj_i.get("kind").and_then(|v| v.as_str()).ok_or_else(|| {
                 NatlasError::MalformedResponse {
+                    detail: format!("step {i} is missing a string `kind`"),
+                }
+            })?;
+            let kind =
+                IntentStepKind::parse(kind_str).ok_or_else(|| NatlasError::MalformedResponse {
                     detail: format!(
                         "step {i} has unknown kind `{kind_str}`; expected one of \
                          analyse|implement|test|document|run|approve"
                     ),
-                }
-            })?;
+                })?;
             let description = obj_i
                 .get("description")
                 .and_then(|v| v.as_str())
@@ -271,51 +270,54 @@ impl NatlasEngineeringIntent {
                         (
                             kind,
                             TaskAction::Note {
-                                text: format!("{label} (content not supplied): {}", step.description),
+                                text: format!(
+                                    "{label} (content not supplied): {}",
+                                    step.description
+                                ),
                             },
                         )
                     }
                 }
                 // A verification command (test) or a plain command (run/build).
-                IntentStepKind::Test | IntentStepKind::Run => {
-                    match &step.command {
-                        Some(argv) if !argv.is_empty() => {
-                            let command = argv[0].clone();
-                            let args = argv[1..].to_vec();
-                            match step.kind {
-                                IntentStepKind::Test if step.verify => (
-                                    TaskKind::Test,
-                                    TaskAction::Verify { command, args },
-                                ),
-                                _ => (
-                                    if step.kind == IntentStepKind::Test {
-                                        TaskKind::Test
-                                    } else {
-                                        TaskKind::Implementation
-                                    },
-                                    TaskAction::RunCommand {
-                                        command,
-                                        args,
-                                        expect_exit: 0,
-                                    },
-                                ),
+                IntentStepKind::Test | IntentStepKind::Run => match &step.command {
+                    Some(argv) if !argv.is_empty() => {
+                        let command = argv[0].clone();
+                        let args = argv[1..].to_vec();
+                        match step.kind {
+                            IntentStepKind::Test if step.verify => {
+                                (TaskKind::Test, TaskAction::Verify { command, args })
                             }
-                        }
-                        _ => {
-                            let (kind, label) = if step.kind == IntentStepKind::Test {
-                                (TaskKind::Test, "test")
-                            } else {
-                                (TaskKind::Implementation, "run")
-                            };
-                            (
-                                kind,
-                                TaskAction::Note {
-                                    text: format!("{label} (command not supplied): {}", step.description),
+                            _ => (
+                                if step.kind == IntentStepKind::Test {
+                                    TaskKind::Test
+                                } else {
+                                    TaskKind::Implementation
                                 },
-                            )
+                                TaskAction::RunCommand {
+                                    command,
+                                    args,
+                                    expect_exit: 0,
+                                },
+                            ),
                         }
                     }
-                }
+                    _ => {
+                        let (kind, label) = if step.kind == IntentStepKind::Test {
+                            (TaskKind::Test, "test")
+                        } else {
+                            (TaskKind::Implementation, "run")
+                        };
+                        (
+                            kind,
+                            TaskAction::Note {
+                                text: format!(
+                                    "{label} (command not supplied): {}",
+                                    step.description
+                                ),
+                            },
+                        )
+                    }
+                },
                 // A real gate: no invented content is required, so this action
                 // genuinely parks the job until a human approves.
                 IntentStepKind::Approve => (
@@ -373,9 +375,11 @@ impl NatlasEngineeringIntent {
             }
         }
 
-        graph.validate().map_err(|e| NatlasError::MalformedResponse {
-            detail: format!("intent produced an invalid task graph: {e}"),
-        })?;
+        graph
+            .validate()
+            .map_err(|e| NatlasError::MalformedResponse {
+                detail: format!("intent produced an invalid task graph: {e}"),
+            })?;
         Ok(graph)
     }
 
@@ -401,13 +405,12 @@ impl NatlasEngineeringIntent {
             Ok(value) => Self::from_value(value).map(|i| (i, false)),
             Err(_) => {
                 if let Some(repaired) = repair_json(json) {
-                    let value: serde_json::Value = serde_json::from_str(&repaired).map_err(|e| {
-                        NatlasError::MalformedResponse {
-                            detail: format!(
-                                "intent is not valid JSON even after repair: {e}"
-                            ),
-                        }
-                    })?;
+                    let value: serde_json::Value =
+                        serde_json::from_str(&repaired).map_err(|e| {
+                            NatlasError::MalformedResponse {
+                                detail: format!("intent is not valid JSON even after repair: {e}"),
+                            }
+                        })?;
                     Self::from_value(value).map(|i| (i, true))
                 } else {
                     Err(NatlasError::MalformedResponse {
@@ -557,7 +560,10 @@ mod tests {
         let intent = NatlasEngineeringIntent::parse(GOOD).unwrap();
         assert_eq!(intent.steps.len(), 5);
         assert_eq!(intent.steps[1].kind, IntentStepKind::Implement);
-        assert_eq!(intent.steps[1].target_path.as_deref(), Some("src/routes.rs"));
+        assert_eq!(
+            intent.steps[1].target_path.as_deref(),
+            Some("src/routes.rs")
+        );
     }
 
     #[test]
@@ -582,7 +588,10 @@ mod tests {
         let intent = NatlasEngineeringIntent::parse(json).unwrap();
         assert_eq!(intent.steps[0].path.as_deref(), Some("lib.rs"));
         assert_eq!(intent.steps[0].content.as_deref(), Some("pub fn x() {}\n"));
-        assert_eq!(intent.steps[1].command.as_ref().unwrap(), &vec!["cargo", "test"]);
+        assert_eq!(
+            intent.steps[1].command.as_ref().unwrap(),
+            &vec!["cargo", "test"]
+        );
         assert!(intent.steps[1].verify);
         assert!(matches!(intent.steps[2].kind, IntentStepKind::Run));
     }
@@ -636,7 +645,10 @@ mod tests {
                  "path": "lib.rs", "content": "pub fn value() -> u32 { 42 }\n"}
             ]
         }"#;
-        let graph = NatlasEngineeringIntent::parse(json).unwrap().to_task_graph().unwrap();
+        let graph = NatlasEngineeringIntent::parse(json)
+            .unwrap()
+            .to_task_graph()
+            .unwrap();
         let write = graph.get("step-02").unwrap();
         match &write.action {
             TaskAction::WriteFile { path, content } => {
@@ -657,7 +669,10 @@ mod tests {
                  "command": ["cargo", "test"], "verify": true}
             ]
         }"#;
-        let graph = NatlasEngineeringIntent::parse(json).unwrap().to_task_graph().unwrap();
+        let graph = NatlasEngineeringIntent::parse(json)
+            .unwrap()
+            .to_task_graph()
+            .unwrap();
         assert!(matches!(
             graph.get("step-02").unwrap().action,
             TaskAction::Verify { .. }
@@ -674,10 +689,18 @@ mod tests {
                  "command": ["cargo", "fmt"]}
             ]
         }"#;
-        let graph = NatlasEngineeringIntent::parse(json).unwrap().to_task_graph().unwrap();
+        let graph = NatlasEngineeringIntent::parse(json)
+            .unwrap()
+            .to_task_graph()
+            .unwrap();
         let run = graph.get("step-02").unwrap();
         assert!(matches!(run.action, TaskAction::RunCommand { .. }));
-        if let TaskAction::RunCommand { command, args, expect_exit } = &run.action {
+        if let TaskAction::RunCommand {
+            command,
+            args,
+            expect_exit,
+        } = &run.action
+        {
             assert_eq!(command, "cargo");
             assert_eq!(args, &vec!["fmt"]);
             assert_eq!(*expect_exit, 0);
@@ -694,7 +717,10 @@ mod tests {
                 {"kind": "implement", "description": "write the file"}
             ]
         }"#;
-        let graph = NatlasEngineeringIntent::parse(json).unwrap().to_task_graph().unwrap();
+        let graph = NatlasEngineeringIntent::parse(json)
+            .unwrap()
+            .to_task_graph()
+            .unwrap();
         assert!(matches!(
             graph.get("step-02").unwrap().action,
             TaskAction::Note { .. }
@@ -734,7 +760,10 @@ mod tests {
 line2"""}]}"#;
         let repaired = repair_json(bad).expect("repair should succeed");
         assert!(repaired.contains("\\n"), "newlines must be escaped");
-        assert!(!repaired.contains("\"\"\""), "triple quotes must be removed");
+        assert!(
+            !repaired.contains("\"\"\""),
+            "triple quotes must be removed"
+        );
         // Must now parse successfully.
         let intent = NatlasEngineeringIntent::parse(&repaired).unwrap();
         assert_eq!(intent.steps[0].content.as_deref(), Some("line1\nline2"));
@@ -751,7 +780,10 @@ line2"""}]}"#;
     #[test]
     fn repair_returns_none_when_no_defects() {
         let good = r#"{"summary":"s","steps":[{"kind":"approve","description":"d"}]}"#;
-        assert!(repair_json(good).is_none(), "no repair needed for valid JSON");
+        assert!(
+            repair_json(good).is_none(),
+            "no repair needed for valid JSON"
+        );
     }
 
     #[test]

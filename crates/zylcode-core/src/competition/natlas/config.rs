@@ -49,7 +49,10 @@ impl fmt::Debug for NatlasConfig {
             .field("request_path", &self.request_path)
             .field("model", &self.model)
             .field("timeout_ms", &self.timeout_ms)
-            .field("api_key", &format!("<redacted; {} chars>", self.api_key.len()))
+            .field(
+                "api_key",
+                &format!("<redacted; {} chars>", self.api_key.len()),
+            )
             .finish()
     }
 }

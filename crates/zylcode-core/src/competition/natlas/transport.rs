@@ -90,8 +90,13 @@ mod tests {
     use super::*;
 
     fn config() -> NatlasConfig {
-        NatlasConfig::from_parts("https://example.invalid", "/v1/infer", "test-model", "secret")
-            .unwrap()
+        NatlasConfig::from_parts(
+            "https://example.invalid",
+            "/v1/infer",
+            "test-model",
+            "secret",
+        )
+        .unwrap()
     }
 
     #[tokio::test]

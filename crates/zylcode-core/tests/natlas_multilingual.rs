@@ -104,8 +104,8 @@ async fn every_target_language_survives_the_request_to_evidence_round_trip() {
     for (tag, name, _target) in COVERED_LANGUAGES {
         // The prompt is written in the target language; the tag merely records
         // which one. (A placeholder is fine here — the mock does not read it.)
-        let request = NatlasRequest::new("<prompt in target language>", "system")
-            .with_language(*tag);
+        let request =
+            NatlasRequest::new("<prompt in target language>", "system").with_language(*tag);
 
         let inv = c.invoke(&request).await;
         assert!(inv.succeeded(), "{name} ({tag}) invocation must succeed");
@@ -165,9 +165,11 @@ async fn language_is_never_inferred_from_the_prompt_text() {
 fn blank_language_tags_normalise_to_none() {
     let err = NatlasError::Timeout { timeout_ms: 5 };
     for blank in ["", "   ", "\t"] {
-        let ev = NatlasEvidence::for_failure("m", "general", &err, 5, 10, &[])
-            .with_language(blank);
-        assert_eq!(ev.language, None, "blank tag {blank:?} must normalise to None");
+        let ev = NatlasEvidence::for_failure("m", "general", &err, 5, 10, &[]).with_language(blank);
+        assert_eq!(
+            ev.language, None,
+            "blank tag {blank:?} must normalise to None"
+        );
     }
 }
 
@@ -175,8 +177,7 @@ fn blank_language_tags_normalise_to_none() {
 #[test]
 fn language_tags_are_trimmed() {
     let err = NatlasError::Timeout { timeout_ms: 5 };
-    let ev = NatlasEvidence::for_failure("m", "general", &err, 5, 10, &[])
-        .with_language("  yo  ");
+    let ev = NatlasEvidence::for_failure("m", "general", &err, 5, 10, &[]).with_language("  yo  ");
     assert_eq!(ev.language.as_deref(), Some("yo"));
 }
 
@@ -239,7 +240,9 @@ fn covered_languages_match_the_documented_competition_targets() {
         "competition targets must be exactly the four in the matrix"
     );
     assert!(
-        COVERED_LANGUAGES.iter().any(|(tag, _, t)| *tag == "pcm" && !*t),
+        COVERED_LANGUAGES
+            .iter()
+            .any(|(tag, _, t)| *tag == "pcm" && !*t),
         "Pidgin must be present but marked non-target"
     );
 }

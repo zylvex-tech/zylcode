@@ -126,9 +126,11 @@ impl LocalNatlasTransport {
             .ok_or_else(|| NatlasError::MalformedResponse {
                 detail: "reply has no `choices` array".to_string(),
             })?;
-        let first = choices.first().ok_or_else(|| NatlasError::MalformedResponse {
-            detail: "reply has an empty `choices` array".to_string(),
-        })?;
+        let first = choices
+            .first()
+            .ok_or_else(|| NatlasError::MalformedResponse {
+                detail: "reply has an empty `choices` array".to_string(),
+            })?;
 
         let text = first
             .get("message")
@@ -196,12 +198,9 @@ impl NatlasTransport for LocalNatlasTransport {
         })?;
 
         let status = response.status().as_u16();
-        let raw_body = response
-            .text()
-            .await
-            .map_err(|e| NatlasError::Transport {
-                message: format!("local runtime reply could not be read: {e}"),
-            })?;
+        let raw_body = response.text().await.map_err(|e| NatlasError::Transport {
+            message: format!("local runtime reply could not be read: {e}"),
+        })?;
 
         if !(200..300).contains(&status) {
             // Hand the raw body up; the client turns this into an HttpStatus
@@ -272,7 +271,11 @@ pub async fn probe(base_url: &str, model: Option<&str>) -> LocalRuntimeHealth {
 
     // Ollama first.
     if let Some(models) = fetch_ollama_models(&client, base).await {
-        let model_present = model.map(|m| models.iter().any(|x| x == m || x.starts_with(&format!("{m}:"))));
+        let model_present = model.map(|m| {
+            models
+                .iter()
+                .any(|x| x == m || x.starts_with(&format!("{m}:")))
+        });
         return LocalRuntimeHealth {
             base_url: base.to_string(),
             reachable: true,
@@ -366,8 +369,14 @@ mod tests {
         assert_eq!(body["messages"][0]["role"], "system");
         assert_eq!(body["messages"][0]["content"], "you are a coding assistant");
         let user = body["messages"][1]["content"].as_str().unwrap();
-        assert!(user.contains("src/main.rs"), "context path must be labelled");
-        assert!(user.contains("add a health check"), "intent must be present");
+        assert!(
+            user.contains("src/main.rs"),
+            "context path must be labelled"
+        );
+        assert!(
+            user.contains("add a health check"),
+            "intent must be present"
+        );
     }
 
     #[test]
@@ -385,7 +394,10 @@ mod tests {
 
         let canonical = LocalNatlasTransport::translate_openai_reply(reply).unwrap();
         let v: Value = serde_json::from_str(&canonical).unwrap();
-        assert_eq!(v["model"], "n-atlas:latest", "identity must come from the server");
+        assert_eq!(
+            v["model"], "n-atlas:latest",
+            "identity must come from the server"
+        );
         assert_eq!(v["request_id"], "chatcmpl-abc");
         assert_eq!(v["finish_reason"], "stop");
         assert_eq!(v["usage"]["input_tokens"], 42);

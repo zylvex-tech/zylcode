@@ -258,9 +258,7 @@ async fn approved_chain_runs_write_then_verify_and_produces_a_verified_claim() {
         .filter(|c| c.status == ClaimStatus::Verified)
         .collect();
     assert!(
-        verified
-            .iter()
-            .any(|c| c.statement.contains("exited 0")),
+        verified.iter().any(|c| c.statement.contains("exited 0")),
         "a real exit-0 command must yield a verified claim: {:?}",
         claims.iter().map(|c| &c.statement).collect::<Vec<_>>()
     );
@@ -294,16 +292,14 @@ async fn a_command_that_misses_its_expected_exit_is_failed_not_silent() {
         "tester",
     );
     job.graph
-        .add_node(
-            zylcode_core::factory::graph::TaskNode::new(
-                "approve",
-                TaskKind::HumanApproval,
-                "owner sign-off",
-                TaskAction::Approval {
-                    reason: "sign-off".to_string(),
-                },
-            ),
-        )
+        .add_node(zylcode_core::factory::graph::TaskNode::new(
+            "approve",
+            TaskKind::HumanApproval,
+            "owner sign-off",
+            TaskAction::Approval {
+                reason: "sign-off".to_string(),
+            },
+        ))
         .unwrap();
     job.graph
         .add_node(
@@ -345,9 +341,7 @@ async fn a_command_that_misses_its_expected_exit_is_failed_not_silent() {
     assert!(report.failures[0].cause.contains("expected exit 7"));
     // The unmet expectation is recorded as a contradicted claim, not dropped.
     let claims = runner.claim_store().list().unwrap();
-    assert!(claims
-        .iter()
-        .any(|c| c.status == ClaimStatus::Contradicted));
+    assert!(claims.iter().any(|c| c.status == ClaimStatus::Contradicted));
 }
 
 // ---------------------------------------------------------------------------
@@ -387,9 +381,7 @@ async fn endpoint_unavailable_is_blocked_with_no_synthetic_response() {
     // No synthetic model text is ever produced.
     assert!(inv.response.is_none());
     // The resilience state is stated truthfully.
-    let state = NatlasResilienceState::from_error(
-        inv.error.as_ref().unwrap(),
-    );
+    let state = NatlasResilienceState::from_error(inv.error.as_ref().unwrap());
     assert!(!state.is_operational());
     assert_eq!(state, NatlasResilienceState::Warming);
 }

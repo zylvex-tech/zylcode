@@ -75,11 +75,21 @@ impl NatlasRequest {
     pub fn classification(&self) -> &'static str {
         let t = self.intent.to_ascii_lowercase();
         let has = |words: &[&str]| words.iter().any(|w| t.contains(w));
-        if has(&["implement", "add ", "fix", "refactor", "write ", "create ", "rename"]) {
+        if has(&[
+            "implement",
+            "add ",
+            "fix",
+            "refactor",
+            "write ",
+            "create ",
+            "rename",
+        ]) {
             "implementation"
         } else if has(&["test", "assert", "coverage"]) {
             "testing"
-        } else if has(&["explain", "why", "what is", "how does", "document", "describe"]) {
+        } else if has(&[
+            "explain", "why", "what is", "how does", "document", "describe",
+        ]) {
             "analysis"
         } else {
             "general"
@@ -177,11 +187,17 @@ impl std::fmt::Display for NatlasError {
             Self::Timeout { timeout_ms } => {
                 write!(f, "N-ATLAS request timed out after {timeout_ms} ms")
             }
-            Self::HttpStatus { status, body_excerpt } => {
+            Self::HttpStatus {
+                status,
+                body_excerpt,
+            } => {
                 write!(f, "N-ATLAS returned HTTP {status}: {body_excerpt}")
             }
             Self::MalformedResponse { detail } => {
-                write!(f, "N-ATLAS response did not match the expected contract: {detail}")
+                write!(
+                    f,
+                    "N-ATLAS response did not match the expected contract: {detail}"
+                )
             }
         }
     }
@@ -312,7 +328,10 @@ mod tests {
         assert_eq!(err.resilience_state(), NatlasResilienceState::Quota);
         assert!(!err.is_retryable());
         let msg = err.human_message();
-        assert!(msg.contains("quota"), "human message must name the cause: {msg}");
+        assert!(
+            msg.contains("quota"),
+            "human message must name the cause: {msg}"
+        );
         assert!(
             msg.contains("LOCAL_RUNTIME_FALLBACK"),
             "human message must point at an actionable next step: {msg}"
@@ -507,9 +526,10 @@ impl NatlasResilienceState {
             NatlasError::BlockedNatlasAccess { .. } => Self::Blocked,
             NatlasError::Transport { .. } => Self::Unavailable,
             NatlasError::Timeout { .. } => Self::Timeout,
-            NatlasError::HttpStatus { status, body_excerpt } => {
-                Self::from_http(*status, body_excerpt)
-            }
+            NatlasError::HttpStatus {
+                status,
+                body_excerpt,
+            } => Self::from_http(*status, body_excerpt),
             NatlasError::MalformedResponse { .. } => Self::Failed,
         }
     }

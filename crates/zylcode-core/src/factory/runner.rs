@@ -37,9 +37,7 @@ use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use crate::claim::{
-    Claim, ClaimKind, ClaimSource, ClaimStore, EvidenceKind, VerificationLevel,
-};
+use crate::claim::{Claim, ClaimKind, ClaimSource, ClaimStore, EvidenceKind, VerificationLevel};
 use crate::evidence_graph::{EdgeKind, EvidenceGraph, EvidenceNode, NodeKind};
 use crate::failure::{Failure, FailureStatus};
 use zylcode_mcp::{dispatch, PermissionDecision, RiskLevel, ToolContext, ToolRuntime};
@@ -226,7 +224,11 @@ impl FactoryRunner {
         if runner.spine.is_none() {
             let intent_node = EvidenceNode::new(
                 NodeKind::Intent,
-                format!("factory job {}: {}", &runner.job.id[..8.min(runner.job.id.len())], runner.job.intent),
+                format!(
+                    "factory job {}: {}",
+                    &runner.job.id[..8.min(runner.job.id.len())],
+                    runner.job.intent
+                ),
                 runner.actor.clone(),
             )
             .with_commit(runner.job.branch.clone());
@@ -570,7 +572,12 @@ impl FactoryRunner {
             }
             Err(e) => {
                 let msg = e.to_string();
-                self.record_failure(node, format!("{tool_id} failed"), FailureStatus::Failed, &msg);
+                self.record_failure(
+                    node,
+                    format!("{tool_id} failed"),
+                    FailureStatus::Failed,
+                    &msg,
+                );
                 NodeOutcome::Failed(format!("{tool_id} failed: {msg}"))
             }
         }
@@ -829,7 +836,12 @@ impl FactoryRunner {
             Err(_) => return,
         };
         f = f.with_mission(self.job.id.clone());
-        if let Some(ev) = self.job.graph.get(&node.id).and_then(|n| n.evidence_node_id.clone()) {
+        if let Some(ev) = self
+            .job
+            .graph
+            .get(&node.id)
+            .and_then(|n| n.evidence_node_id.clone())
+        {
             f.add_evidence(EvidenceKind::Other, ev);
         }
         f.affect_artifact(node.action.describe());
@@ -881,7 +893,10 @@ fn summarize_tool_output(output: &serde_json::Value) -> String {
     if let Some(size) = output.get("size").and_then(|v| v.as_u64()) {
         return format!(
             "{} {} bytes",
-            output.get("action").and_then(|v| v.as_str()).unwrap_or("ok"),
+            output
+                .get("action")
+                .and_then(|v| v.as_str())
+                .unwrap_or("ok"),
             size
         );
     }
