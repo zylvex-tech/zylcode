@@ -150,6 +150,23 @@ fn default_provider_timeout_ms() -> u64 {
     60_000
 }
 
+/// Map a chain-entry `ProviderKind` onto the dispatcher's `ModelProvider`.
+///
+/// The provider chain (`provider_configs`) is keyed by `ProviderKind` while
+/// `call_provider` dispatches on `ModelProvider`; they are the same four
+/// concepts under two names because the config surface is user-facing kinds
+/// and the dispatch path is provider enums. `SyntheticOffline` maps
+/// identity-wise and is honoured unconditionally by `call_provider`, which
+/// is what makes it a sound last chain entry.
+fn kind_to_model_provider(kind: &ProviderKind) -> Option<ModelProvider> {
+    match kind {
+        ProviderKind::Anthropic => Some(ModelProvider::Anthropic),
+        ProviderKind::OpenRouter => Some(ModelProvider::OpenRouter),
+        ProviderKind::Ollama => Some(ModelProvider::LocalOllama),
+        ProviderKind::SyntheticOffline => Some(ModelProvider::SyntheticOffline),
+    }
+}
+
 fn default_provider_configs() -> Vec<ProviderConfig> {
     vec![
         ProviderConfig {
@@ -944,27 +961,87 @@ impl TokenRouter {
                     false,
                     fallback_latency.elapsed_ms(),
                 );
-                // Ultimate offline fallback: if no keys were configured at all,
-                // degrade to synthetic so CI / offline tests remain green.
-                let primary_key = self.config.api_key(&self.config.primary_provider);
-                let fallback_key = self.config.api_key(&self.config.fallback_provider);
-                if primary_key.is_none() && fallback_key.is_none() {
-                    warn!(fallback_error = %fallback_err, "all providers failed in offline mode — returning synthetic response");
-                    let synthetic = Self::synthetic_response(prompt, system);
-                    let inp = ((prompt.len() + system.len()) / 4) as u64;
-                    let out = (synthetic.len() / 4) as u64;
-                    self.metrics.record_usage(inp, out);
-                    self.cache.insert(cache_key, synthetic.clone());
-                    if let Some(vstore) = &self.vector_cache {
-                        let emb = mock_embed(prompt, 32);
-                        if let Err(e) = vstore.insert_entry(prompt, &synthetic, &emb) {
-                            tracing::warn!(error = %e, "vector cache insert failed for fallback synthetic");
+                // CHAIN-CONTINUATION (AGENT-JOURNEY fix): primary + configured
+                // fallback are not the whole chain. `provider_configs` already
+                // advertises an ordered fallback chain ending in
+                // SyntheticOffline, but dispatch used to stop after one
+                // fallback — so a failed primary (401) plus a failed fallback
+                // (Ollama unreachable) killed the run even when the chain
+                // still had usable entries, and stale ambient credentials
+                // (present key => no synthetic degrade) turned a recoverable
+                // provider outage into `Task failed`. Now: walk the enabled
+                // chain entries (skipping primary and fallback already tried);
+                // a chain entry that succeeds wins — and SyntheticOffline as
+                // the last chain entry is honoured unconditionally by
+                // `call_provider`, which makes the offline degrade the
+                // configuration-driven final resort rather than a
+                // "no keys anywhere" special case.
+                let tried = [
+                    Some(self.config.primary_provider.to_string()),
+                    Some(fallback_provider.to_string()),
+                ]
+                .into_iter()
+                .flatten()
+                .collect::<std::collections::HashSet<String>>();
+
+                let mut chain: Vec<&crate::router::ProviderConfig> = self
+                    .config
+                    .provider_configs
+                    .iter()
+                    .filter(|c| c.enabled)
+                    .collect();
+                chain.sort_by_key(|c| c.fallback_order);
+
+                for entry in chain {
+                    let model_provider = match kind_to_model_provider(&entry.kind) {
+                        Some(p) => p,
+                        None => continue,
+                    };
+                    if tried.contains(&model_provider.to_string()) {
+                        continue;
+                    }
+                    info!(
+                        event = "telemetry:provider_failover",
+                        from = %fallback_provider,
+                        to = %entry.kind,
+                        step = "chain continuation",
+                        "continuing the configured provider chain after primary+fallback failed"
+                    );
+                    self.metrics.record_fallback();
+                    let latency = crate::provider_scorecard::LatencyGuard::start();
+                    let model_name = entry.model.clone();
+                    match self
+                        .call_provider(&model_provider, &model_name, prompt, system)
+                        .await
+                    {
+                        Ok(text) => {
+                            self.scorecard.record(
+                                &model_provider.to_string(),
+                                true,
+                                latency.elapsed_ms(),
+                            );
+                            self.cache.insert(cache_key, text.clone());
+                            if let Some(vstore) = &self.vector_cache {
+                                let emb = mock_embed(prompt, 32);
+                                if let Err(e) = vstore.insert_entry(prompt, &text, &emb) {
+                                    tracing::warn!(error = %e, "vector cache insert failed for chain fallback response");
+                                }
+                            }
+                            return Ok(text);
+                        }
+                        Err(e) => {
+                            self.scorecard.record(
+                                &model_provider.to_string(),
+                                false,
+                                latency.elapsed_ms(),
+                            );
+                            warn!(provider = %entry.kind, error = %e, "chain-continuation provider failed; moving on");
                         }
                     }
-                    return Ok(synthetic);
                 }
+
                 let msg = format!(
-                    "all providers failed — primary: {}, fallback ({}): {}",
+                    "all providers failed — primary: {}, fallback ({}): {}, chain exhausted",
                     last_err.map(|e| e.to_string()).unwrap_or_default(),
                     fallback_provider,
                     fallback_err
@@ -1500,6 +1577,59 @@ mod tests {
             "credential-free chain must not attempt egress"
         );
         assert_eq!(text, TokenRouter::synthetic_response("hello", "sys"));
+    }
+
+    /// CHAIN-CONTINUATION regression (AGENT-JOURNEY fix): a stale primary
+    /// credential that is present-but-invalid (401-class failure) plus an
+    /// unreachable fallback must continue down the configured provider chain
+    /// instead of killing the run — the chain's SyntheticOffline entry is the
+    /// honest final resort.
+    #[tokio::test]
+    async fn chain_continuation_reaches_synthetic_offline_after_stale_credential_and_dead_fallback()
+    {
+        // Serialised: mutates env + dispatch concurrent state, and the
+        // process-global egress spy must attribute its delta to this test.
+        let _guard = DISPATCH_MUTEX.lock().await;
+
+        // Hermetic scorecard + vector-cache isolation (same recipe as the
+        // scorecard test above).
+        let dir = tempfile::tempdir().unwrap();
+        std::env::set_var("ZYLCODE_SCORECARD_PATH", dir.path().join("sc.db"));
+
+        // Primary OpenRouter with a credential-shaped ambient value so the
+        // pre-existing `offline_fast` short-circuit cannot fire — the exact
+        // environment shape that used to hard-fail the run. Both chain
+        // roots; fallback is Ollama; remaining entries are walked next —
+        // SyntheticOffline last, which must complete honestly.
+        let mut cfg = RouterConfig {
+            primary_provider: ModelProvider::OpenRouter,
+            fallback_provider: ModelProvider::LocalOllama,
+            ..RouterConfig::default()
+        };
+        cfg.base_url_overrides.insert(
+            ModelProvider::OpenRouter.to_string(),
+            "http://127.0.0.1:59999".to_string(),
+        );
+        // Anthropic must never be walked in a test with egress permission —
+        // disable it so the chain path ends at the SyntheticOffline entry.
+        for entry in cfg.provider_configs.iter_mut() {
+            if entry.kind == crate::router::ProviderKind::Anthropic {
+                entry.enabled = false;
+            }
+        }
+        let router = TokenRouter::without_vector_cache(cfg).unwrap();
+
+        let text = router
+            .dispatch_prompt("read the README", "sys")
+            .await
+            .unwrap();
+        std::env::remove_var("ZYLCODE_SCORECARD_PATH");
+
+        assert_eq!(
+            text,
+            TokenRouter::synthetic_response("read the README", "sys"),
+            "an unreachable provider chain must complete via the SyntheticOffline chain entry, not fail the run"
+        );
     }
 
     #[test]
