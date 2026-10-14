@@ -81,6 +81,53 @@ Kano). Both spreadsheets are reconciled, with tester PII withheld, in
 
 ---
 
+## What actually works today (2026-10-14 — the P14 wave, verified by test suite)
+
+Honest state of the product, as of the current `main`. Anything not listed here is
+library-only, blocked, or simulation — the [capability registry](docs/capability-registry.json)
+carries the full per-entry evidence.
+
+**Working, product-reachable, test-covered:**
+
+* **Agent journey** — one prompt → real context gathering (persisted, ranked
+  repository intelligence + deterministic `zylcode-nav` graph citations) → plan →
+  gated tool execution → verification → evidence ledger. Reachable from the
+  desktop app and via `POST /api/intent` on `zylcode serve-intel`.
+* **Repository intelligence surfaces** — repo navigation (references, call
+  hierarchy, dependency graph, impact; click-to-navigate), the ranked
+  repository overview, and **the 12 repository query methods**
+  (`find_symbol`, `dependencies_of`, `dependents_of`, `entry_points`,
+  `test_targets`, `build_commands`, `recent_changes`, architecture facts…)
+  runnable from the UI, the Tauri commands (`repo_context`, `repo_query`,
+  `nav_query`, `repo_search`), and `GET /api/repo-intel` / `POST /api/nav` /
+  `GET /api/repo-query` on serve-intel. Same engine, same index, everywhere.
+* **Factory × Agent** — a structured engineering intent now decomposes into a
+  durable, dependency-aware task graph and runs through the factory runner with
+  the real permission gate and persisted evidence graph + claims; human
+  approval gates park the job, `/api/factory/approve` continues it.
+  `POST /api/factory/run`, `/api/factory/approve`, `GET /api/factory/job`.
+* **Provider routing** — full-chain failover; a dead primary no longer kills a
+  run while an enabled chain entry can still serve, and offline degrades are
+  configuration-driven and recorded.
+* **Tool runtime** — 12 real executors (filesystem, search, git, shell) behind
+  the permission gate with evidence recording, runnable from the UI catalogue.
+* **N-ATLAS bridge** — live endpoint, four target languages + Pidgin, precise
+  failure states, external beta test reports reconciled.
+
+**Not working / not shipped — stated plainly:**
+
+* **Computer-use automation is a simulation** (`SIMULATION_MODE`, disclosed in
+  the CLI and in every stats payload). Nothing on screen is really driven.
+* **No signed installers released yet** — bundler configured, procedure in
+  [`docs/RELEASE_INSTALLERS.md`](docs/RELEASE_INSTALLERS.md); remote CI is
+  externally blocked by organization billing.
+* **`ModelTask` factory steps block with `BLOCKED_PROVIDER`** until AGENT-01
+  provider approval — by design, never simulated.
+* Four presentation widgets (ResourceGraph, TelemetryDashboard, AuditViewer,
+  BridgeMonitor) are unmounted and make no capability claims.
+
+---
+
 ## Solution Architecture
 
 ```mermaid

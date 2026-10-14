@@ -399,6 +399,13 @@ async fn handle_ai_input(engine: &ZylCodeEngine, args: AiInputArgs) -> Result<()
 }
 
 async fn handle_computer_use(engine: &ZylCodeEngine, args: ComputerUseArgs) -> Result<()> {
+    // SIMULATION_MODE: this build's computer-use engine is the audited R0
+    // simulation. The banner is printed before any output so the program's
+    // own stats can never be mistaken for real GUI automation.
+    println!(
+        "{}",
+        zylcode_core::computer_use::ComputerUseSystem::simulation_notice()
+    );
     match args.command {
         ComputerUseCommands::Stats => {
             let system = engine.computer_use_system().await?;
@@ -542,6 +549,50 @@ fn nav_json(root: &std::path::Path, tool: &str, args: serde_json::Value) -> serd
             "engine": "zylcode-nav",
         }),
     }
+}
+
+/// Shared repository-query handler: the `RepoQuery` methods, one payload
+/// dispatcher, all surfaces (HTTP + Tauri). Read-only.
+fn repo_query_json(root: &std::path::Path, method: &str, arg: Option<&str>) -> serde_json::Value {
+    match zylcode_core::intelligence::api::repo_query_payload(root, method, arg) {
+        Ok(value) => value,
+        Err(e) => serde_json::json!({
+            "error": format!("repository query failed: {e}"),
+        }),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Factory — agent → durable job seam (serve-intel HTTP surface)
+//
+// Three endpoints, one runtime: run an intent as a durable factory job,
+// approve a parked human gate, inspect a job. The runner, gate policy and
+// evidence stores are the engine's own — nothing here is a friendlier
+// second implementation.
+// ---------------------------------------------------------------------------
+
+/// Open a [`FactoryRunner`] for a freshly bridged in-memory job. The runner
+/// seeds the evidence spine and persists the job document at `open`.
+fn open_new_factory_job(
+    root: &Path,
+    job: zylcode_core::factory::FactoryJob,
+) -> Result<zylcode_core::factory::FactoryRunner> {
+    zylcode_core::factory::FactoryRunner::open(zylcode_core::factory::FactoryRunnerConfig {
+        root: root.to_path_buf(),
+        workdir: root.to_path_buf(),
+        job,
+        actor: "user:serve-intel".to_string(),
+        max_steps: 64,
+        runtime: zylcode_core::factory::default_tool_runtime(root),
+    })
+}
+
+/// Open-or-resume a [`FactoryRunner`] from disk for `job_id`.
+fn open_factory_job(root: &Path, job_id: &str) -> Result<zylcode_core::factory::FactoryRunner> {
+    let store = zylcode_core::factory::JobStore::open(root)?;
+    let job = store.load(job_id)?;
+    open_new_factory_job(root, job)
+        .with_context(|| format!("factory job '{job_id}' could not be opened"))
 }
 
 async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()> {
@@ -1474,6 +1525,175 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
         }
     }
 
+    /// POST /api/factory/run — the agent→factory seam. Body:
+    /// `{ "intent": { "summary": ..., "steps": [...] } }` — the structured
+    /// engineering-intent contract. The intent decomposes into a durable
+    /// [`TaskGraph`], the job persists on disk, and the runner executes it
+    /// with the restrictive default gate. A step that the contract marks as
+    /// an approval parks the job in `AwaitingApproval`; only
+    /// `/api/factory/approve` continues it. Failure is returned as the
+    /// engine's own state, never reshaped into success.
+    async fn factory_run(
+        State(root): State<Arc<std::path::PathBuf>>,
+        axum::Json(body): axum::Json<serde_json::Value>,
+    ) -> Json<serde_json::Value> {
+        let intent = body.get("intent").cloned();
+        let root = Arc::clone(&root);
+        let opened = tokio::task::spawn_blocking(move || {
+            let json = match intent {
+                Some(v) => serde_json::to_string(&v)?,
+                None => anyhow::bail!("body must include an 'intent' object"),
+            };
+            let intent =
+                zylcode_core::competition::natlas::intent::NatlasEngineeringIntent::parse(&json)
+                    .map_err(|e| anyhow::anyhow!("intent rejected: {e}"))?;
+            let job = zylcode_core::factory::agent_intent_to_job(
+                &intent,
+                "workspace",
+                root.as_ref().to_string_lossy().as_ref(),
+                "main",
+                "/",
+                "user:serve-intel",
+            )?;
+            let job_id = job.id.clone();
+            let runner = open_new_factory_job(&root, job)?;
+            Ok::<_, anyhow::Error>((job_id, runner))
+        })
+        .await;
+        let result: Result<serde_json::Value> = match opened {
+            Ok(Ok((job_id, mut runner))) => match runner.run().await {
+                Ok(report) => match serde_json::to_value(&report) {
+                    Ok(mut value) => {
+                        value["job_id"] = serde_json::Value::String(job_id.clone());
+                        value["next"] = match report.status {
+                            zylcode_core::factory::RunStatus::AwaitingApproval => {
+                                serde_json::json!({
+                                    "action": "approve",
+                                    "endpoint": "/api/factory/approve",
+                                    "body": { "job_id": job_id, "task_id": "<awaited task id>", "approver": "<you>" }
+                                })
+                            }
+                            _ => {
+                                serde_json::json!({ "action": "status", "endpoint": "/api/factory/job", "job_id": job_id })
+                            }
+                        };
+                        Ok(value)
+                    }
+                    Err(e) => Err(anyhow::Error::from(e)),
+                },
+                Err(e) => Err(e),
+            },
+            Ok(Err(e)) => Err(e),
+            Err(e) => Err(anyhow::anyhow!("factory task failed: {e}")),
+        };
+        match result {
+            Ok(value) => Json(value),
+            Err(e) => Json(serde_json::json!({
+                "error": format!("factory run failed: {e:#}"),
+            })),
+        }
+    }
+
+    /// POST /api/factory/approve — the human gate. Body:
+    /// `{ "job_id": ..., "task_id": ..., "approver": "..." }`.
+    /// Approves the parked task **and re-runs the job** in one call; the
+    /// approval is recorded on the task (`approved_by`) before anything
+    /// executes, so the evidence chain shows who let the work proceed.
+    async fn factory_approve(
+        State(root): State<Arc<std::path::PathBuf>>,
+        axum::Json(body): axum::Json<serde_json::Value>,
+    ) -> Json<serde_json::Value> {
+        let job_id = body["job_id"].as_str().unwrap_or("").to_string();
+        let task_id = body["task_id"].as_str().unwrap_or("").to_string();
+        let approver = body["approver"]
+            .as_str()
+            .unwrap_or("user:serve-intel")
+            .to_string();
+        // Kept outside the closure: the response reports who approved what.
+        let report_approver = approver.clone();
+        let report_task = task_id.clone();
+        let report_job = job_id.clone();
+        let root = Arc::clone(&root);
+        let payload = tokio::task::spawn_blocking(move || {
+            if job_id.trim().is_empty() || task_id.trim().is_empty() {
+                anyhow::bail!("body must include non-empty 'job_id' and 'task_id'");
+            }
+            open_factory_job(&root, &job_id)
+                .map(|mut runner| runner.approve(&task_id, &approver).map(|_| runner))
+                .and_then(|inner| inner)
+        })
+        .await;
+        let result: Result<serde_json::Value> = match payload {
+            Ok(Ok(mut runner)) => match runner.run().await {
+                Ok(report) => match serde_json::to_value(&report) {
+                    Ok(mut value) => {
+                        value["approved"] =
+                            serde_json::Value::String(format!("{report_approver}:{report_task}"));
+                        value["job_id"] = serde_json::Value::String(report_job.clone());
+                        Ok(value)
+                    }
+                    Err(e) => Err(anyhow::Error::from(e)),
+                },
+                Err(e) => Err(e),
+            },
+            Ok(Err(e)) => Err(e),
+            Err(e) => Err(anyhow::anyhow!("factory task failed: {e}")),
+        };
+        match result {
+            Ok(value) => Json(value),
+            Err(e) => Json(serde_json::json!({
+                "error": format!("factory approval failed: {e:#}"),
+            })),
+        }
+    }
+
+    /// GET /api/factory/job?job_id=... — the durable job document: lifecycle
+    /// stage, per-task states, and whether the evidence still verifies when
+    /// re-opened.
+    async fn factory_job_status(
+        State(root): State<Arc<std::path::PathBuf>>,
+        axum::extract::Query(params): axum::extract::Query<
+            std::collections::HashMap<String, String>,
+        >,
+    ) -> Json<serde_json::Value> {
+        let job_id = params.get("job_id").cloned().unwrap_or_default();
+        let root = Arc::clone(&root);
+        let payload = tokio::task::spawn_blocking(move || {
+            if job_id.trim().is_empty() {
+                anyhow::bail!("query must include a non-empty 'job_id'");
+            }
+            let store = zylcode_core::factory::JobStore::open(&root)?;
+            let job = store.load(&job_id)?;
+            serde_json::to_value(&job).map_err(anyhow::Error::from)
+        })
+        .await;
+        match payload {
+            Ok(Ok(value)) => Json(value),
+            Ok(Err(e)) => Json(serde_json::json!({
+                "error": format!("factory job failed: {e:#}"),
+            })),
+            Err(e) => Json(serde_json::json!({ "error": format!("factory task failed: {e}") })),
+        }
+    }
+
+    async fn repo_query(
+        State(root): State<Arc<std::path::PathBuf>>,
+        axum::extract::Query(params): axum::extract::Query<
+            std::collections::HashMap<String, String>,
+        >,
+    ) -> Json<serde_json::Value> {
+        let method = params.get("method").cloned().unwrap_or_default();
+        let arg = params.get("arg").map(String::as_str).map(str::to_string);
+        let root = Arc::clone(&root);
+        let payload =
+            tokio::task::spawn_blocking(move || repo_query_json(&root, &method, arg.as_deref()))
+                .await;
+        match payload {
+            Ok(value) => Json(value),
+            Err(e) => Json(serde_json::json!({ "error": format!("query task failed: {e}") })),
+        }
+    }
+
     // Terminal sessions: cwd state lives for the service's lifetime.
     // FromRef lets each handler extract only the field it needs.
     #[derive(Clone, axum::extract::FromRef)]
@@ -1506,6 +1726,10 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
         .route("/api/terminal/reset", axum::routing::post(terminal_reset))
         .route("/api/execute-tool", axum::routing::post(execute_tool))
         .route("/api/intent", axum::routing::post(agent_intent))
+        .route("/api/repo-query", get(repo_query))
+        .route("/api/factory/run", axum::routing::post(factory_run))
+        .route("/api/factory/approve", axum::routing::post(factory_approve))
+        .route("/api/factory/job", get(factory_job_status))
         .route(
             "/api/missions",
             axum::routing::get(missions_list).post(missions_enqueue),

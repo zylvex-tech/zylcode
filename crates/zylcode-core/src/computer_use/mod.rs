@@ -8,6 +8,12 @@ pub mod workflow_engine;
 use anyhow::Result;
 use std::sync::Arc;
 
+/// TRUE in this build: the computer-use engine is the audited R0 simulation
+/// (sleep-based actions, placeholder captures, hardcoded confidences). This
+/// flag exists so no surface can *forget* to disclose it — see
+/// [`ComputerUseSystem::simulation_notice`] for the user-facing text.
+pub const SIMULATION_MODE: bool = true;
+
 use self::gui_automation::GuiAutomation;
 use self::input_controller::InputController;
 use self::screen_capture::ScreenCapture;
@@ -157,7 +163,15 @@ impl ComputerUseSystem {
             vision_analyses: self.vision_ai.get_stats().await,
             workflows_executed: self.workflow_engine.get_stats().await,
             recordings: self.input_controller.get_stats().await,
+            simulation_mode: SIMULATION_MODE,
         }
+    }
+
+    /// The line every product surface must print before computer-use output.
+    pub fn simulation_notice() -> &'static str {
+        "⚠ SIMULATION_MODE — this build's computer-use engine is a simulation \
+(R0). Actions are recorded but nothing on screen is really driven; treat \
+every 'workflow executed' as evidence of the simulation only."
     }
 }
 

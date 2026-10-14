@@ -467,4 +467,10 @@ pub struct ComputerUseStats {
     pub vision_analyses: u64,
     pub workflows_executed: u64,
     pub recordings: u64,
+    /// This build's computer-use engine is the **audited R0 simulation**:
+    /// actions are sleep-based, screen captures return placeholders, and no
+    /// real GUI automation is performed. Every consumer of this system is
+    /// required to surface this flag; a count from these stats is a count of
+    /// simulated actions, not of real ones.
+    pub simulation_mode: bool,
 }

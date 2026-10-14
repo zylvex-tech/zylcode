@@ -5,6 +5,7 @@ import { ExplorerTree } from "../ExplorerTree";
 import { LiveSearch } from "../LiveSearch";
 import { MissionComposer } from "../MissionComposer";
 import { RepoIntelPanel } from "../RepoIntelPanel";
+import { RepoQueryPanel } from "../RepoQueryPanel";
 import { NavErrorBoundary, RepoNavPanel } from "../RepoNavPanel";
 import { SourceControlPanel } from "../SourceControlPanel";
 import { RuntimeLab } from "../RuntimeLab";
@@ -194,6 +195,7 @@ export function SurfaceHost({
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
             <RepoIntelPanel initialTask="agent loop and evidence ledger" />
             <div className="space-y-3">
+            <RepoQueryPanel />
               <Panel title="WHAT AM I LOOKING AT">
                 <div className="space-y-1.5 text-xs text-text-muted">
                   <p>

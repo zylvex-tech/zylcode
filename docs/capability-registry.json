@@ -1,5 +1,5 @@
 {
-  "version": "1.4.1-audited",
+  "version": "1.5.0-builder",
   "timestamp": "2026-09-16T00:00:00Z",
   "repository": "C:\\Projects\\zylcode",
   "capabilities": {
@@ -122,7 +122,7 @@
       "dispute_reason": "Scope defect (ZYLCODE_CAPABILITY_MODEL.md 3.1/3.2). The capability name implies broad documentation accuracy; the evidence string only covers repo-URL references. The 2026-09-16 README review found further inaccuracies: a removed-as-unsupported '156 tools' claim had reappeared, 'Total: 32 tests passing' understated 341 test attributes and omitted a failure, three doc links pointed at files that have never existed, and the README defined an R0-R5 ladder contradicting ZYLCODE_PROOF_GRAPH.md. Requires re-verification against a stated scope."
     },
     "repository_scanner": {
-      "status": "DISPUTED",
+      "status": "GREEN",
       "evidence": "Scanner indexes 14,973 files in 12.7s with .gitignore and secret-file exclusion",
       "details": "Deterministic file tree walker with language/role classification, content hashing, and Windows path support",
       "status_before_audit": "GREEN",
@@ -137,10 +137,19 @@
         "note": "Windows path-normalization defect fixed (root cause of the audit's 98.9% build-output finding). Still R2: no product surface of its own; consumed via repo-intelligence retrieval.",
         "dispute_history_preserved": true,
         "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
+      },
+      "p14_rebaseline": {
+        "date": "2026-10-14",
+        "rung": "R3",
+        "status_now": "GREEN",
+        "evidence": "Reached by every panel and CLI path through the persisted index; surfaces: repo-context CLI, RepoIntelPanel, RepoQueryPanel, /api/repo-intel.",
+        "note": "Product surface now exists (the audit's defect); status follows the P12 builder-evidence precedent pending independent acceptance. Dispute history preserved.",
+        "dispute_history_preserved": true,
+        "evidence_doc": "docs/governance/P14_SCAFFOLD_SURFACE_REPORT.md"
       }
     },
     "manifest_intelligence": {
-      "status": "DISPUTED",
+      "status": "GREEN",
       "evidence": "Parses Cargo.toml, package.json, pnpm-workspace.yaml; discovers 5 packages and 4 internal dependency edges",
       "details": "Structured manifest parsing with workspace member resolution and dependency extraction",
       "status_before_audit": "GREEN",
@@ -155,10 +164,19 @@
         "note": "Still R2 (library); reachable through repo-context CLI.",
         "dispute_history_preserved": true,
         "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
+      },
+      "p14_rebaseline": {
+        "date": "2026-10-14",
+        "rung": "R3",
+        "status_now": "GREEN",
+        "evidence": "Reached by repo-intel payload packages + entry points on all surfaces.",
+        "note": "Product surface now exists (the audit's defect); status follows the P12 builder-evidence precedent pending independent acceptance. Dispute history preserved.",
+        "dispute_history_preserved": true,
+        "evidence_doc": "docs/governance/P14_SCAFFOLD_SURFACE_REPORT.md"
       }
     },
     "rust_symbol_index": {
-      "status": "DISPUTED",
+      "status": "GREEN",
       "evidence": "Extracts 1,444 symbols from Rust files using regex-based parsing",
       "details": "Supports struct, enum, trait, impl, function, method, constant, type alias, module, macro; QUALITY: DEFINITION_INDEXED",
       "status_before_audit": "GREEN",
@@ -173,10 +191,19 @@
         "note": "Still R2 (library); reachable through repo-context CLI.",
         "dispute_history_preserved": true,
         "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
+      },
+      "p14_rebaseline": {
+        "date": "2026-10-14",
+        "rung": "R3",
+        "status_now": "GREEN",
+        "evidence": "Reached by find_symbol/symbols_in_file surfaces (RepoQueryPanel, /api/repo-query) and the nav panel.",
+        "note": "Product surface now exists (the audit's defect); status follows the P12 builder-evidence precedent pending independent acceptance. Dispute history preserved.",
+        "dispute_history_preserved": true,
+        "evidence_doc": "docs/governance/P14_SCAFFOLD_SURFACE_REPORT.md"
       }
     },
     "typescript_symbol_index": {
-      "status": "DISPUTED",
+      "status": "GREEN",
       "evidence": "Regex-based extraction for class, interface, type, function, variable, component",
       "details": "QUALITY: DEFINITION_INDEXED; full semantic resolution is future work",
       "status_before_audit": "GREEN",
@@ -191,10 +218,19 @@
         "note": "Still R2 (library).",
         "dispute_history_preserved": true,
         "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
+      },
+      "p14_rebaseline": {
+        "date": "2026-10-14",
+        "rung": "R3",
+        "status_now": "GREEN",
+        "evidence": "Same repo_query/nav surfaces; regex-extraction quality label unchanged (DEFINITION_INDEXED).",
+        "note": "Product surface now exists (the audit's defect); status follows the P12 builder-evidence precedent pending independent acceptance. Dispute history preserved.",
+        "dispute_history_preserved": true,
+        "evidence_doc": "docs/governance/P14_SCAFFOLD_SURFACE_REPORT.md"
       }
     },
     "package_dependency_graph": {
-      "status": "DISPUTED",
+      "status": "GREEN",
       "evidence": "Bidirectional queries: dependencies_of(X), dependents_of(X), transitive_dependencies_of(X), packages_using(external_dep)",
       "details": "Built from manifest parsing; supports internal and external dependency edges",
       "status_before_audit": "GREEN",
@@ -209,10 +245,19 @@
         "note": "Still R2 (library); reachable through repo-context CLI.",
         "dispute_history_preserved": true,
         "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
+      },
+      "p14_rebaseline": {
+        "date": "2026-10-14",
+        "rung": "R3",
+        "status_now": "GREEN",
+        "evidence": "Reached by dependencies_of/dependents_of surfaces (RepoQueryPanel, desktop command /api/repo-query).",
+        "note": "Product surface now exists (the audit's defect); status follows the P12 builder-evidence precedent pending independent acceptance. Dispute history preserved.",
+        "dispute_history_preserved": true,
+        "evidence_doc": "docs/governance/P14_SCAFFOLD_SURFACE_REPORT.md"
       }
     },
     "git_change_graph": {
-      "status": "DISPUTED",
+      "status": "GREEN",
       "evidence": "Extracts HEAD, branch, dirty state, recent commits, files changed by commit",
       "details": "Uses git CLI; handles root commits via git show fallback",
       "status_before_audit": "GREEN",
@@ -227,10 +272,19 @@
         "note": "Still R2 (library); reachable through repo-context CLI.",
         "dispute_history_preserved": true,
         "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
+      },
+      "p14_rebaseline": {
+        "date": "2026-10-14",
+        "rung": "R3",
+        "status_now": "GREEN",
+        "evidence": "Reached by recent_changes payloads and co-change reasoning in ranked context, on all surfaces.",
+        "note": "Product surface now exists (the audit's defect); status follows the P12 builder-evidence precedent pending independent acceptance. Dispute history preserved.",
+        "dispute_history_preserved": true,
+        "evidence_doc": "docs/governance/P14_SCAFFOLD_SURFACE_REPORT.md"
       }
     },
     "architecture_fingerprint": {
-      "status": "DISPUTED",
+      "status": "GREEN",
       "evidence": "Detects Rust workspace, Tauri v2, React, TypeScript, pnpm, SQLite, Tokio, MCP, Vite, Tailwind CSS",
       "details": "Each fact has evidence and provenance classification (OBSERVED/PARSED/DERIVED)",
       "status_before_audit": "GREEN",
@@ -245,10 +299,19 @@
         "note": "Still R2 (library).",
         "dispute_history_preserved": true,
         "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
+      },
+      "p14_rebaseline": {
+        "date": "2026-10-14",
+        "rung": "R3",
+        "status_now": "GREEN",
+        "evidence": "Reached by architecture payload in RepoIntelPanel + /api/repo-intel.",
+        "note": "Product surface now exists (the audit's defect); status follows the P12 builder-evidence precedent pending independent acceptance. Dispute history preserved.",
+        "dispute_history_preserved": true,
+        "evidence_doc": "docs/governance/P14_SCAFFOLD_SURFACE_REPORT.md"
       }
     },
     "incremental_indexing": {
-      "status": "DISPUTED",
+      "status": "PARTIAL",
       "evidence": "Content hashing for files; get_changed_files_since() in store",
       "details": "File-level invalidation implemented; symbol-level incremental reindex is future work",
       "status_before_audit": "PARTIAL",
@@ -263,6 +326,15 @@
         "note": "Still PARTIAL in substance; no persisted cache yet.",
         "dispute_history_preserved": true,
         "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
+      },
+      "p14_rebaseline": {
+        "date": "2026-10-14",
+        "rung": "R3",
+        "status_now": "PARTIAL",
+        "evidence": "The persisted content-hash validated index (`intelligence/persisted.rs`) is live and serves repeats of an unchanged tree from cache; warm-start cache under .zylcode is gitignored. Symbol-level incremental reindex remains future work.",
+        "note": "Product surface now exists (the audit's defect); status follows the P12 builder-evidence precedent pending independent acceptance. Dispute history preserved.",
+        "dispute_history_preserved": true,
+        "evidence_doc": "docs/governance/P14_SCAFFOLD_SURFACE_REPORT.md"
       }
     },
     "repository_query_api": {
@@ -340,15 +412,22 @@
       "evidence": "10 consecutive cross-process runs byte-identical (1 unique SHA-256 of full stable output incl. per-query dumps)",
       "details": "Per-HEAD determinism contract: git-history inputs change legitimately with HEAD",
       "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md section 4"
+    },
+    "computer_use_automation": {
+      "status": "PARTIAL",
+      "rung": "R0",
+      "evidence": "SIMULATION_MODE exposed: `ComputerUseSystem::simulation_notice()` + `ComputerUseStats.simulation_mode: true`; the CLI prints the banner before any computer-use output.",
+      "details": "The audited R0 simulation remains the engine — sleep-based actions, placeholder captures. Facade disclosure shipped; real GUI automation is not claimed anywhere.",
+      "evidence_doc": "docs/governance/P14_SCAFFOLD_SURFACE_REPORT.md"
     }
   },
   "summary": {
-    "total": 37,
-    "GREEN": 22,
+    "total": 38,
+    "GREEN": 29,
     "EXTERNAL_BLOCKER": 1,
-    "PARTIAL": 2,
-    "DISPUTED": 12,
-    "note": "Counts computed from entry statuses. p12_rebaseline blocks added 2026-09-19 carry builder evidence for the disputed Phase 2A entries without erasing dispute history; GREEN on repository_query_api/context_retrieval/agent_context_gathering/benchmark_determinism is builder-claimed R3 evidence pending independent acceptance."
+    "PARTIAL": 4,
+    "DISPUTED": 4,
+    "note": "Counts computed from entry statuses after the P14 builder re-baseline. GREEN entries added this wave rest on builder evidence from committed surfaces and tests; independent acceptance remains outstanding (Phase 2A re-acceptance and this-wave evidence)."
   },
   "audit": {
     "status": "UNDER CORRECTION",
@@ -385,5 +464,34 @@
       "tool_system_executable"
     ],
     "rule": "No dispute field erased; no R4 claimed anywhere; Phase 2A remains RE-OPENED."
+  },
+  "p14_not_collectable_surfaces": {
+    "date": "2026-10-14",
+    "components": [
+      "ResourceGraph",
+      "TelemetryDashboard",
+      "AuditViewer",
+      "BridgeMonitor"
+    ],
+    "note": "Present in the widget library but mounted nowhere in the shell; they render parent-provided props and are not product surfaces. Deliberately excluded from capability claims until wired."
+  },
+  "p14_update": {
+    "date": "2026-10-14",
+    "by": "P14 scaffold surface wave (builder; not acceptance authority)",
+    "evidence_doc": "docs/governance/P14_SCAFFOLD_SURFACE_REPORT.md",
+    "changed_entries": [
+      "repository_scanner",
+      "manifest_intelligence",
+      "rust_symbol_index",
+      "typescript_symbol_index",
+      "package_dependency_graph",
+      "git_change_graph",
+      "architecture_fingerprint",
+      "incremental_indexing"
+    ],
+    "new_entries": [
+      "computer_use_automation"
+    ],
+    "rule": "Builder evidence only; dispute history preserved; no acceptance claimed."
   }
 }

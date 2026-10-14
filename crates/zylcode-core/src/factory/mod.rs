@@ -44,11 +44,13 @@
 //! [`ClaimStore`]: crate::claim::ClaimStore
 //! [`Failure`]: crate::failure::Failure
 
+pub mod agent_bridge;
 pub mod graph;
 pub mod job;
 pub mod runner;
 pub mod store;
 
+pub use agent_bridge::{agent_intent_to_job, default_tool_runtime};
 pub use graph::{TaskAction, TaskGraph, TaskKind, TaskNode, TaskState};
 pub use job::{FactoryJob, JobStage};
 pub use runner::{

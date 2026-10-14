@@ -221,6 +221,24 @@ async fn repo_context(
     .map_err(|e| format!("intel task failed: {e}"))?
 }
 
+/// One `RepoQuery` method (the 12 repository-intelligence members) for the
+/// frontend — the same dispatcher `serve-intel`'s `GET /api/repo-query` uses,
+/// so both surfaces answer with the same engine output. Read-only.
+#[tauri::command]
+async fn repo_query(
+    method: String,
+    arg: Option<String>,
+    state: tauri::State<'_, EngineState>,
+) -> Result<serde_json::Value, String> {
+    let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
+    tokio::task::spawn_blocking(move || {
+        zylcode_core::intelligence::api::repo_query_payload(&root, &method, arg.as_deref())
+            .map_err(|e| format!("repository query failed: {e:#}"))
+    })
+    .await
+    .map_err(|e| format!("query task failed: {e}"))?
+}
+
 /// Repository-intelligence navigation: the same `zylcode-nav` engine and the
 /// same process-wide index slot as the `serve-intel` `POST /api/nav` route
 /// and the `nav.*` MCP tools, so every surface answers from one index.
@@ -1241,6 +1259,7 @@ fn main() {
             process_intent_stream,
             preview_execution_plan,
             repo_context,
+            repo_query,
             nav_query,
             git_status,
             terminal_exec,
