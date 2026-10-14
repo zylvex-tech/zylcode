@@ -1102,6 +1102,50 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
         }
     }
 
+    /// POST /api/intent — deterministic agent-journey transport parity for
+    /// the browser preview (the desktop uses the `process_intent` IPC
+    /// command). Body: `{ "prompt": "...", "correlation_id": ...? }`.
+    ///
+    /// Runs the same engine pipeline the desktop does: context gathering
+    /// (real index + navigation citations) → planning → tool execution →
+    /// verification → evidence. The router's provider chain ends at
+    /// SyntheticOffline, so the journey completes offline; every
+    /// provider failover is recorded as telemetry. No simulated success:
+    /// `success: false` surfaces exactly as the loop reported it.
+    async fn agent_intent(
+        State(root): State<Arc<std::path::PathBuf>>,
+        axum::Json(body): axum::Json<serde_json::Value>,
+    ) -> Json<serde_json::Value> {
+        let prompt = body["prompt"].as_str().unwrap_or("").to_string();
+        if prompt.trim().is_empty() {
+            return Json(serde_json::json!({ "error": "body must include a non-empty 'prompt'" }));
+        }
+        let correlation_id = body
+            .get("correlation_id")
+            .and_then(|v| v.as_str().map(str::to_string));
+        let workspace = root.as_ref().to_string_lossy().to_string();
+        let payload = tokio::task::spawn_blocking(move || {
+            let engine = zylcode_core::ZylCodeEngine::new(zylcode_core::EngineConfig {
+                workspace_root: workspace,
+                verbose: false,
+                extra: Default::default(),
+            });
+            let intent = zylcode_core::Intent {
+                prompt,
+                context: None,
+                correlation_id,
+            };
+            tokio::runtime::Handle::current().block_on(engine.process_intent(intent))
+                .map(|r| serde_json::to_value(r).unwrap_or_default())
+                .unwrap_or_else(|e| serde_json::json!({ "error": format!("intent failed: {e:#}") }))
+        })
+        .await;
+        match payload {
+            Ok(value) => Json(value),
+            Err(e) => Json(serde_json::json!({ "error": format!("intent task failed: {e}") })),
+        }
+    }
+
     /// POST /api/artifact/save — editor-save transport parity for the
     /// browser preview (the desktop uses the `save_workspace_artifact`
     /// command). Both transports call the same `save_file_payload`, so
@@ -1460,6 +1504,7 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
         .route("/api/terminal/exec", axum::routing::post(terminal_exec))
         .route("/api/terminal/reset", axum::routing::post(terminal_reset))
         .route("/api/execute-tool", axum::routing::post(execute_tool))
+        .route("/api/intent", axum::routing::post(agent_intent))
         .route(
             "/api/missions",
             axum::routing::get(missions_list).post(missions_enqueue),

@@ -8,6 +8,7 @@ import ProviderSettings from "./ProviderSettings";
 import McpInspector from "./McpInspector";
 import ToolsCataloguePanel from "./ToolsCataloguePanel";
 import ToolRunnerPanel from "./ToolRunnerPanel";
+import AgentTurnPanel from "./AgentTurnPanel";
 import { ThemeSelector } from "./ui";
 
 type SectionId =
@@ -304,6 +305,9 @@ export const SettingsSurface: React.FC<SettingsSurfaceProps> = ({
                   Queued missions never run without an explicit human action — the queue drain in
                   the Tasks panel is the approval mechanism.
                 </p>
+                <div className="border border-border rounded-lg p-3">
+                  <AgentTurnPanel />
+                </div>
               </div>
             )}
 
