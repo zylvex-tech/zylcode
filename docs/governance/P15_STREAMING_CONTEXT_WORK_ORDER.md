@@ -103,7 +103,7 @@ installer signing, registry status flips (those need independent acceptance).
 | Risk | Mitigation |
 |------|------------|
 | Stat-memo poisoned by filesystems with coarse mtime granularity | A2-class test plus the fallback-to-rehash rule for any mismatch |
-| Dirty-set races with concurrent tool executions | dirty set owned by the runner thread; single writer, snapshot-read, snapshot-read by the gather path |
+| Dirty-set races with concurrent tool executions | dirty set owned by the runner thread; single writer, snapshot-read by the gather path |
 | Bigger context blocks crowd the prompt budget | bounded line caps with explicit "… N more omitted" markers, mirroring the ranked-list cap |
 | Cache schema bump breaks old caches silently | versioned cache schema; mismatched version = discard + full rebuild (already the persisted-index policy) |
 
