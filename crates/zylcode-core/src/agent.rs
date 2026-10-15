@@ -305,6 +305,16 @@ pub struct SessionContext {
     /// fabricated empty block.
     #[serde(default)]
     pub navigation_citations: Vec<String>,
+    /// P15 W2: repository paths the agent itself mutated this session (via a
+    /// successful first-class mutating tool execution: write, create,
+    /// delete, rename, move, copy, mkdir). Non-empty means the gathered
+    /// context predates known tree changes; the next Executing turn boundary
+    /// must re-rank before the model decides. Workspace-relative paths as
+    /// named by the tool's own arguments; drained once served.
+    /// `#[serde(default)]` for the same checkpoint-compatibility reason as
+    /// the citations above.
+    #[serde(default)]
+    pub mutated_files: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -439,6 +449,7 @@ impl AgentLoop {
                 verification_status: None,
                 pending_tool_call: None,
                 navigation_citations: Vec::new(),
+                mutated_files: Vec::new(),
             },
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
@@ -762,6 +773,12 @@ impl AgentLoop {
                 // The agent loop will stop here until approval is granted
             }
             AgentState::Executing => {
+                // P15 W2: if the agent's own tool executions mutated the tree
+                // since the last gather, re-rank context *before* the next
+                // model decision — the model must not plan against evidence
+                // the agent itself made stale.
+                self.refresh_context_after_mutations().await?;
+
                 // Ask the model what to do next. FIX D2: its answer is honoured
                 // as given and is never rewritten into an invented tool call.
                 //  - ToolCall: execute it (path below, unchanged).
@@ -895,6 +912,86 @@ impl AgentLoop {
 
     async fn transition_to(&mut self, new_state: AgentState) -> Result<()> {
         self.session.state = new_state;
+        Ok(())
+    }
+
+    /// Does this tool id name an executor tool that mutates the workspace
+    /// tree when it succeeds? First-class mutating tools only, matching the
+    /// ids in `mcp.tools.yaml` and the reconciliation arm above.
+    fn tool_mutates_tree(tool_id: &str) -> bool {
+        [
+            "fs.write",
+            "fs.create",
+            "fs.delete",
+            "fs.remove",
+            "fs.rename",
+            "fs.move",
+            "fs.copy",
+            "fs.mkdir",
+        ]
+        .iter()
+        .any(|p| tool_id.starts_with(p))
+    }
+
+    /// P15 W2: re-rank context after the agent's own tree mutations.
+    ///
+    /// Runs at the Executing turn boundary when `mutated_files` is
+    /// non-empty: the context builder is re-run (cheap now that the
+    /// persisted index serves warm gathers without file reads), the
+    /// deterministic citation block is *replaced*, a re-ranked message and
+    /// fresh contents of the mutated files are added, and the dirty set is
+    /// drained. Nothing here claims a mutation that did not happen, and a
+    /// file deleted by the agent yields no content block — the absence is
+    /// implicit in the re-ranked list, not papered over.
+    async fn refresh_context_after_mutations(&mut self) -> Result<()> {
+        if self.session.context.mutated_files.is_empty() {
+            return Ok(());
+        }
+        let mutated = std::mem::take(&mut self.session.context.mutated_files);
+
+        let task_desc = self.session.messages[0].content.clone();
+        let context = self
+            .context_builder
+            .build(&task_desc, &self.session.context.files_read)
+            .await?;
+        self.session.context.navigation_citations = context.navigation_citations.clone();
+
+        let mut fresh = format!(
+            "Context re-ranked after {} file mutation(s): {:?}\n\
+             Fresh ranked relevant files: {:?}",
+            mutated.len(),
+            mutated,
+            context.relevant_files
+        );
+        if !context.navigation_citations.is_empty() {
+            fresh.push_str(&format!(
+                "\n\nDeterministic repository-graph evidence, refreshed after the mutations:\n{}",
+                context.navigation_citations.join("\n")
+            ));
+        }
+        self.add_system_message(fresh);
+
+        for file in &mutated {
+            match self.context_builder.read_file(file).await {
+                Ok(content) => {
+                    self.add_system_message(format!(
+                        "Content of {} (refreshed after your edit):\n{}",
+                        file, content
+                    ));
+                }
+                Err(_) => {
+                    // The mutated path is unreadable (deleted, renamed by a
+                    // later step, or a directory): state it, never invent a
+                    // content block from a stale cache.
+                    self.add_system_message(format!(
+                        "Content of {} is no longer readable (moved or deleted since the edit); \
+                         the re-ranked file list above reflects the current tree.",
+                        file
+                    ));
+                }
+            }
+        }
+
         Ok(())
     }
 
@@ -1679,6 +1776,22 @@ present an inference as a graph fact.",
                         }
                     }
 
+                    // P15 W2: a *successful mutating* execution makes the
+                    // gathered context stale for the next turn. Only the
+                    // executor's first-class mutating tools are tracked —
+                    // shell-spawned side effects cannot be named honestly, and
+                    // the fingerprint probe (persisted-index stat memo) will
+                    // surface them on the next full gather anyway.
+                    if ok && Self::tool_mutates_tree(&tool_call.tool_id) {
+                        if let Some(path) = tool_call.arguments.get("path").and_then(|v| v.as_str())
+                        {
+                            let entry = path.to_string();
+                            if !self.session.context.mutated_files.contains(&entry) {
+                                self.session.context.mutated_files.push(entry);
+                            }
+                        }
+                    }
+
                     // Add observation
                     let observation = ToolObservation {
                         tool_id: tool_call.tool_id.clone(),
@@ -2193,6 +2306,114 @@ mod tests {
         (agent, client)
     }
 
+    /// P15 W2: an agent-executed mutating tool marks the tree dirty, and the
+    /// **next** turn boundary re-ranks context before the model decides.
+    #[tokio::test]
+    async fn an_agent_edit_reranks_context_at_the_next_turn_boundary() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir(dir.path().join("src")).unwrap();
+        std::fs::write(dir.path().join("src/lib.rs"), "pub fn helper() {}\n").unwrap();
+
+        let client = RecordingModelClient::new(vec![
+            r#"{"action": "Plan", "payload": {"steps": [{"id": "1", "description": "edit the file", "expected_files": ["src/lib.rs"], "expected_tools": ["fs.write"], "risk": "Write", "verification": "content written"}]}}"#.to_string(),
+            r#"{"action": "ToolCall", "payload": {"tool_id": "fs.write", "arguments": {"action": "write", "path": "src/lib.rs", "content": "pub fn edited_marker() {}\n"}, "reason": "edit the module", "expected_result": "file written"}}"#.to_string(),
+            // The *following* decision is made after the re-rank; this
+            // response proves the loop continued past it.
+            r#"{"action": "ToolCall", "payload": {"tool_id": "fs.read", "arguments": {"action": "read", "path": "src/lib.rs"}, "reason": "check the edit", "expected_result": "file content"}}"#.to_string(),
+            r#"{"action": "Complete", "payload": {"summary": "done", "evidence": ["edit"], "remaining_limitations": []}}"#.to_string(),
+        ]);
+
+        let registry = Arc::new(ToolRegistry::new());
+        // The agent's runtime gate is an embedding decision — the factory
+        // runner grants up to Execute (factory_bridge::default_tool_runtime);
+        // this test grants exactly the Write the scenario needs, with the
+        // same JSONL evidence sink, so the gate keeps recording verdicts.
+        let runtime = {
+            let evidence_dir = dir.path().join(".zylcode").join("agent");
+            std::fs::create_dir_all(&evidence_dir).unwrap();
+            let gate = Arc::new(zylcode_mcp::PermissionGate::new(
+                zylcode_mcp::PermissionPolicy::allow_up_to(zylcode_mcp::RiskLevel::Write),
+            ));
+            let sink = Arc::new(zylcode_mcp::JsonlEvidenceSink::new(
+                evidence_dir.join("agent-evidence.jsonl"),
+            ));
+            zylcode_mcp::ToolRuntime::new(gate, sink)
+        };
+        for (id, command) in [("fs.write", "write"), ("fs.read", "read")] {
+            let cfg = McpToolConfig {
+                id: id.into(),
+                command: command.into(),
+                transport: McpTransport::Stdio,
+                env: Default::default(),
+                enabled: true,
+                description: None,
+            };
+            registry
+                .register(Arc::new(DynamicTool::with_runtime(cfg, runtime.clone())))
+                .await;
+        }
+
+        let mut agent = AgentLoop::new(
+            "edit the marker function",
+            dir.path().to_path_buf(),
+            None,
+            registry,
+            Arc::clone(&client) as Arc<dyn ModelClient>,
+            Arc::new(MemoryLedgerStore::new()),
+        );
+        agent.run().await.expect("run completes");
+
+        let transcript: Vec<String> = agent
+            .session
+            .messages
+            .iter()
+            .map(|m| m.content.clone())
+            .collect();
+        assert!(
+            transcript
+                .iter()
+                .any(|m| m.contains("Context re-ranked after 1 file mutation(s)")),
+            "the next turn boundary must re-rank after the agent's own edit: {transcript:?}"
+        );
+        assert!(
+            transcript
+                .iter()
+                .any(|m| m.contains("edited_marker") && m.contains("(refreshed after your edit)")),
+            "the mutated file's fresh content must be fed after the re-rank: {transcript:?}"
+        );
+        assert!(
+            agent.session.context.mutated_files.is_empty(),
+            "the dirty set must be drained once served"
+        );
+    }
+
+    /// A mutated path that is no longer readable is stated, never papered
+    /// over with a stale content block.
+    #[tokio::test]
+    async fn a_mutated_path_that_vanishes_is_declared_not_reread() {
+        let dir = intel_fixture();
+        let (mut agent, _client) = loop_over(dir.path(), "find where helper is used");
+        agent.gather_context().await.expect("context gathers");
+
+        agent.session.context.mutated_files = vec!["src/nowhere.rs".to_string()];
+        agent
+            .refresh_context_after_mutations()
+            .await
+            .expect("refresh completes");
+
+        let transcript: Vec<String> = agent
+            .session
+            .messages
+            .iter()
+            .map(|m| m.content.clone())
+            .collect();
+        assert!(
+            transcript.iter().any(|m| m.contains("no longer readable")),
+            "a vanished mutation must be declared, not invented: {transcript:?}"
+        );
+        assert!(agent.session.context.mutated_files.is_empty());
+    }
+
     #[tokio::test]
     async fn gathered_citations_are_deterministic_and_stored_on_the_session() {
         let dir = intel_fixture();
@@ -2460,6 +2681,7 @@ mod tests {
             verification_status: None,
             pending_tool_call: None,
             navigation_citations: citations.clone(),
+            mutated_files: vec![],
         };
 
         let json = serde_json::to_string(&ctx).expect("serialises");
