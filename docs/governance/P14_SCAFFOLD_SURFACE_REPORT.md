@@ -113,5 +113,12 @@ node scripts/registry_p14_rebaseline.mjs    # idempotent re-baseline (already ap
 * This is **builder evidence**. GREEN/PARTIAL statuses added by this wave
   follow the P12 precedent and still await independent acceptance.
 * No signed installer exists yet; distribution remains a documented procedure.
-* Clippy was not run in this wave's gate (eslint also unresolvable in the
-  frontend toolchain) — recorded as gaps, not skipped silently.
+* Clippy did not run in the original wave gate. **Amended 2026-10-15:** the
+  completion verification pass ran clippy over core, cli and desktop — clean
+  (zero warnings, `-D warnings` effective policy). The frontend lint gap
+  stands: `package.json` declares a `lint` script but no eslint dependency is
+  installed; recorded as a gap, not skipped silently.
+* Amended 2026-10-15: the interim verification pass committed with this wave
+  also ran `cargo fmt --check` (clean), the factory e2e suite (7 tests) and
+  the repository-intelligence benchmark suite (2 tests), the full vitest run
+  (112 tests, 17 files) and the desktop TypeScript type-check — all green.
