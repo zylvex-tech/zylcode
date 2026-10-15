@@ -116,22 +116,30 @@ pub fn scan_repository(root: &Path, config: &ScannerConfig) -> Result<ScanResult
         let language = classify_language(path);
 
         // Read content for classification (skip binary files)
-        let content = match std::fs::read(path) {
+        //
+        // The hash input is exactly the bytes hashed when they are valid
+        // UTF-8 text, and a path+size hash otherwise — so a stat-memo
+        // recompute of the fingerprint hashes byte-identically to a fresh
+        // scan.
+        let (text, content_hash) = match std::fs::read(path) {
             Ok(bytes) => {
                 if is_binary(&bytes) {
-                    None
+                    (None, compute_hash(path, None, metadata.len()))
                 } else {
-                    String::from_utf8(bytes).ok()
+                    match String::from_utf8(bytes) {
+                        Ok(text) => {
+                            let hash = compute_hash(path, Some(text.as_bytes()), metadata.len());
+                            (Some(text), hash)
+                        }
+                        Err(_) => (None, compute_hash(path, None, metadata.len())),
+                    }
                 }
             }
-            Err(_) => None,
+            Err(_) => (None, compute_hash(path, None, metadata.len())),
         };
 
         // Classify role
-        let role = classify_role(path, content.as_deref(), None);
-
-        // Compute content hash
-        let content_hash = compute_hash(path, content.as_deref());
+        let role = classify_role(path, text.as_deref(), None);
 
         // Relative path from root
         let relative = path
@@ -171,16 +179,21 @@ pub fn scan_repository(root: &Path, config: &ScannerConfig) -> Result<ScanResult
 }
 
 /// Compute a content hash for a file.
-fn compute_hash(path: &Path, content: Option<&str>) -> String {
+///
+/// `content` carries the file bytes when the scanner could read them and they
+/// are valid UTF-8 text (the exact precondition the scanner hashes under);
+/// `None` — binary, unreadable, or non-UTF-8 — hashes the path and size
+/// instead. `size` is the captured file length, not re-stat'ed, so the same
+/// function produces byte-identical hashes for scanner reads and stat-memo
+/// recomputes.
+fn compute_hash(path: &Path, content: Option<&[u8]>, size: u64) -> String {
     let mut hasher = Sha256::new();
     match content {
-        Some(c) => hasher.update(c.as_bytes()),
+        Some(bytes) => hasher.update(bytes),
         None => {
             // For binary or unreadable files, hash the path + size
             hasher.update(path.to_string_lossy().as_bytes());
-            if let Ok(metadata) = std::fs::metadata(path) {
-                hasher.update(metadata.len().to_le_bytes());
-            }
+            hasher.update(size.to_le_bytes());
         }
     }
     format!("{:x}", hasher.finalize())
@@ -190,6 +203,113 @@ fn compute_hash(path: &Path, content: Option<&str>) -> String {
 fn is_binary(data: &[u8]) -> bool {
     let sample = &data[..data.len().min(8192)];
     sample.contains(&0)
+}
+
+/// One indexed file's filesystem facts, captured from metadata only — the
+/// inputs a fingerprint probe needs to decide whether a file could have
+/// changed since the last full content read.
+#[derive(Debug)]
+pub(crate) struct StatFact {
+    /// Repository-relative id, identical to `FileNode::id`.
+    pub id: String,
+    pub len: u64,
+    pub mtime_secs: i64,
+    pub mtime_nanos: u32,
+}
+
+/// Walk the repository collecting stat facts — metadata only, **no content
+/// reads** — with the exact inclusion/exclusion rules of [`scan_repository`]
+/// (same walk depth, gitignore, exclusion, secret-file, and size limits).
+/// Errors are skipped, mirroring how scan errors never enter the fingerprint.
+///
+/// This is the probe behind the persisted index's stat-memo: a fingerprint
+/// over unchanged stat facts, backed by memoized content hashes, costs no
+/// file reads at all.
+pub(crate) fn collect_stat_inventory(root: &Path, config: &ScannerConfig) -> Result<Vec<StatFact>> {
+    let gitignore = load_gitignore(root)?;
+    let mut facts = Vec::new();
+
+    for entry in WalkDir::new(root)
+        .max_depth(config.max_depth)
+        .follow_links(config.follow_symlinks)
+        .into_iter()
+        .filter_entry(|e| {
+            let path = e.path();
+            !should_exclude(path) && !is_gitignored(path, root, &gitignore)
+        })
+    {
+        let entry = match entry {
+            Ok(e) => e,
+            Err(_) => continue, // walk errors never enter the fingerprint
+        };
+
+        if !entry.file_type().is_file() {
+            continue;
+        }
+        let path = entry.path();
+        if is_secret_file(path) {
+            continue;
+        }
+        let metadata = match std::fs::metadata(path) {
+            Ok(m) => m,
+            Err(_) => continue,
+        };
+        if metadata.len() > config.max_file_size {
+            continue;
+        }
+
+        let id = path
+            .strip_prefix(root)
+            .unwrap_or(path)
+            .to_string_lossy()
+            .to_string()
+            .replace('\\', "/");
+        let (mtime_secs, mtime_nanos) = mtime_pair(&metadata);
+        facts.push(StatFact {
+            id,
+            len: metadata.len(),
+            mtime_secs,
+            mtime_nanos,
+        });
+    }
+
+    Ok(facts)
+}
+
+/// `(seconds, nanos)` since the epoch, or a `(0, 0)` sentinel for pre-epoch
+/// or clock-less stamps. A sentinel identifies nothing: the memo simply
+/// misses and the file is re-hashed, which is always correct.
+fn mtime_pair(metadata: &std::fs::Metadata) -> (i64, u32) {
+    metadata
+        .modified()
+        .ok()
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| (d.as_secs() as i64, d.subsec_nanos()))
+        .unwrap_or((0, 0))
+}
+
+/// Content hash for one file on the fingerprint-probe path, byte-identical
+/// to what [`scan_repository`] would compute for the same file at the same
+/// content (same read, binary, and UTF-8 preconditions; `len` is the
+/// stat-captured size the path+size fallback hashes).
+///
+/// A read failure hashes the path+size — which is also what a full scan
+/// produces for an unreadable file — so the fingerprint stays comparable.
+pub(crate) fn hash_file_for_fingerprint(root: &Path, id: &str, len: u64) -> String {
+    let path = root.join(id);
+    match std::fs::read(&path) {
+        Ok(bytes) => {
+            if is_binary(&bytes) {
+                compute_hash(&path, None, len)
+            } else {
+                match String::from_utf8(bytes) {
+                    Ok(text) => compute_hash(&path, Some(text.as_bytes()), len),
+                    Err(_) => compute_hash(&path, None, len),
+                }
+            }
+        }
+        Err(_) => compute_hash(&path, None, len),
+    }
 }
 
 fn load_gitignore(root: &Path) -> Result<Gitignore> {

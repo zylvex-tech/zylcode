@@ -1,7 +1,8 @@
 # P15 — Streaming Repository Context (Work Order)
 
-**Status:** PLANNED, not started. Builder-authored work order; execution still
-owed its own wave evidence. Nothing in this document claims implementation.
+**Status:** W1 SHIPPED (2026-10-15); W2–W4 planned. W1 delivered the stat-memo
+fingerprint — see §1.W1 for what landed and its evidence. W2–W4 remain not
+started; nothing in this document claims more than that.
 
 **One-sentence goal:** the perfect for-turn context rank the agent loop already
 has stops being a once-per-`run()` snapshot — it must refresh against real file
@@ -38,7 +39,35 @@ honesty rules as the ranked file list.
 
 ## 1. Work items
 
-### W1 — Change-increment fingerprint (cost fix)
+### W1 — Change-increment fingerprint (cost fix) — **SHIPPED 2026-10-15**
+
+**Landed:** `PersistedIndex` schema v2 carries a per-file stat memo
+`(len, mtime, content_hash)`; `measure_fingerprint_with_memo` collects stat
+facts via the new `scanner::collect_stat_inventory` (metadata only, zero
+content reads) and re-hashes only files whose stat facts drifted; scanner and
+memo paths hash byte-identically (shared `compute_hash` core). The stored
+fingerprint is re-measured after any re-index scan, so a cache never carries a
+pre-scan fingerprint with post-scan contents.
+
+**Evidence (all green):**
+* warm-cache second build with every file's read permission revoked serves
+  the memoized index — stat-memo reuse is a behavioral invariant, not a
+  timing claim (`a_warm_second_build_reads_no_file_contents`, unix-gated);
+* same-size content change → memo miss → rehash → re-index picks up new
+  content (`a_same_size_content_change_invalidates`);
+* mtime-only touch → memo miss → rehash → identical fingerprint → cache hit,
+  cache unrewritten (existing `an_mtime_touch_does_not_invalidate`, now
+  exercised through the memo path);
+* v1 caches rebuild once and are upgraded to v2 with a populated memo, never
+  trusted (`a_v1_cache_is_rebuilt_once_and_upgraded_to_v2`);
+* corrupted caches still discarded (`a_corrupted_cache_is_discarded_not_trusted`);
+* full gates: 510 core lib tests (0 failed), fmt clean, clippy clean,
+  benchmark suite 2/2.
+
+**Known limitation:** the zero-read proof is unix-gated (chmod semantics);
+on Windows it compiles out and that platform is covered by the single shared
+hash-core invariant plus the mtime/corruption/migration tests, not by the
+chmod test itself.
 
 Add a stat-memo layer to `PersistedIndex`: the cache file stores, beside the
 fingerprint, per-file `(size, mtime, content_hash)` memos. `build()`
@@ -111,3 +140,4 @@ installer signing, registry status flips (those need independent acceptance).
 
 W1 → W2 (W2 builds on W1's cheap freshness probe) — then W3 — then W4.
 Each item lands with its own tests; no item lands with a red gate.
+W1 landed exactly in this order and with these gates.
