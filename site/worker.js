@@ -105,6 +105,20 @@ export default {
         return await handleWaitlist(request, env);
       }
 
+      if (url.pathname === "/api/waitlist/purge" && request.method === "POST") {
+        // Ops only: clears test rows and honours deletion requests.
+        // Gated on a server-side Sites secret — rejected before the table is
+        // touched when the secret is unset or the header does not match.
+        const token = env.WAITLIST_ADMIN_TOKEN;
+        const given = request.headers.get("x-admin-token") || "";
+        if (!token || given.length !== token.length || given !== token) {
+          return json({ error: "forbidden" }, 403);
+        }
+        await env.DB.prepare(DDL).run();
+        await env.DB.prepare("DELETE FROM waitlist").run();
+        return json({ ok: true });
+      }
+
       if (url.pathname === "/api/waitlist/count") {
         await env.DB.prepare(DDL).run();
         const row = await env.DB.prepare(

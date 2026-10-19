@@ -4,6 +4,8 @@
 
 > A sovereign, evidence-first Engineering OS that takes software from intent to verified deliverable — in English, Yoruba, Hausa, and Igbo — powered by the genuine `NCAIR1/N-ATLaS` model. Nigerian Pidgin comprehension is validated as a non-target bonus.
 
+**Early access:** join the [Developer Preview waitlist](https://site-0522a86bd09e48629a1e90f115711758.freebuff.page) — pre-release, free / invite-only. No pricing is published during public development (commercial gate: [`docs/governance/ZYLCODE_COMMERCIAL_MODEL.md`](docs/governance/ZYLCODE_COMMERCIAL_MODEL.md) §4).
+
 ---
 
 ## Challenge Statement

@@ -22,6 +22,8 @@ apps/zylcode-desktop/dist
 .env
 .env.local
 .env.*.local
+# Ops secrets for the public site (waitlist admin token) — never committed.
+site/.secrets/
 
 # OS
 .DS_Store
