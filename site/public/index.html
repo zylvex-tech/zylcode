@@ -106,18 +106,24 @@
         <span class="chip">DEVELOPER PREVIEW · WAITLIST</span>
         <h1>The Engineering OS that shows its work.</h1>
         <p class="lede">
-          ZylCode takes an instruction to a verified deliverable — real
-          repository intelligence, approval-gated execution, and a
-          hash-chained evidence ledger behind every claim. Built in public by
-          Zylvex Technologies, with a capability registry that states what
-          works, what doesn't, and what has been independently audited.
+          ZylCode is being built to turn software-development instructions
+          into verifiable engineering work. It combines repository
+          intelligence, approval-gated execution, and an evidence ledger
+          designed to make actions and results easier to inspect.
+        </p>
+        <p class="lede">
+          Built in public by Zylvex Technologies Limited, ZylCode maintains a
+          capability registry that distinguishes implemented functionality,
+          partial implementations, planned work, and claims awaiting
+          independent acceptance.
         </p>
 
         <div class="panel">
           <h2>Join the Developer Preview waitlist</h2>
           <p class="sub">
-            Pre-release, free / invite-only. We will email you when preview
-            seats open — nothing else.
+            The Developer Preview is planned as a free, invite-only release.
+            Join the waitlist to receive an email when preview access
+            becomes available — nothing else.
           </p>
           <form id="waitlist-form" novalidate>
             <input
@@ -145,51 +151,66 @@
       </div>
 
       <section>
-        <h2>What works today — reachable and test-covered</h2>
+        <h2>What works today</h2>
         <ul class="clean">
           <li>
             <span class="tag ok mono">WORKING</span>
-            <span>Agent journey: prompt → ranked repository context → plan → approval-gated tool execution → verified result → evidence ledger.</span>
+            <span>Agent workflow: prompt processing, repository-context retrieval, planning, approval-gated tool execution, and recording of execution evidence.</span>
           </li>
           <li>
             <span class="tag ok mono">WORKING</span>
-            <span>Repository intelligence: symbol/dependency navigation, 12 typed query methods, live index freshness (<span class="mono">fresh / stale / reindexing</span>) from the CLI, the desktop app, and HTTP.</span>
+            <span>Repository intelligence: symbol and dependency navigation, typed query methods, and index-freshness reporting through the supported interfaces.</span>
           </li>
           <li>
             <span class="tag ok mono">WORKING</span>
-            <span>Factory × Agent: durable task graphs with human approval gates and persisted claims — a blocked gate stays blocked, never simulated.</span>
+            <span>Factory and agent workflows: durable task graphs, human-approval gates, and persisted claims, with blocked gates remaining blocked.</span>
           </li>
           <li>
             <span class="tag ok mono">WORKING</span>
-            <span>Provider routing with full-chain failover; bring your own key at every tier — no token markup, ever.</span>
+            <span>Provider routing: configured provider routing and failover, with provider credentials supplied by users where supported.</span>
           </li>
           <li>
             <span class="tag lim mono">LIMITED</span>
-            <span>Installers build locally (NSIS/DMG/DEB/RPM configured) but are <strong>not signed yet</strong> — beta distribution carries OS warnings, stated plainly.</span>
+            <span>Installers: local installer builds are configured for supported platforms. Installers are <strong>not yet signed</strong>, and operating-system security warnings may appear.</span>
           </li>
         </ul>
       </section>
 
       <section>
-        <h2>What we don't claim yet</h2>
+        <h2>What is not ready yet</h2>
         <ul class="clean">
           <li>
             <span class="tag no mono">NOT THERE</span>
-            <span>Computer-use automation is a disclosed simulation — nothing on your screen is really driven.</span>
+            <span>Computer-use automation: currently simulated — the application does not actually control your screen.</span>
           </li>
           <li>
             <span class="tag no mono">PENDING</span>
-            <span>Independent re-acceptance of the Phase 2A intelligence claims is open: our registry marks builder-claimed capabilities as exactly that.</span>
+            <span>Independent acceptance: some previously reported intelligence capabilities still require independent re-acceptance. The capability registry identifies claims awaiting that review.</span>
           </li>
           <li>
             <span class="tag no mono">NOT THERE</span>
-            <span>No pricing is published during public development. When the Developer Preview opens it will be free / invite-only; paid tiers follow only the capabilities that pass independent acceptance.</span>
+            <span>Commercial availability: pricing and paid tiers have not been announced. The initial Developer Preview is intended to be free and invite-only.</span>
           </li>
         </ul>
+      </section>
+
+      <section>
+        <h2>Evidence and transparency</h2>
         <p class="note">
-          Every claim above maps to a committed test and a row in the public
-          capability registry:
-          <a href="https://github.com/zylvex-tech/zylcode/blob/competition/natlas-2026/docs/capability-registry.json" class="mono">docs/capability-registry.json</a>
+          The public capability registry documents capability status and links
+          to supporting evidence where available. Implementation, test
+          coverage, and independent acceptance are distinct states; a passing
+          test does not by itself establish independent acceptance.
+        </p>
+        <p class="note">
+          The evidence ledger is hash-chained: a corrupted chain is an error,
+          never a silent empty state. Registry:
+          <a href="https://github.com/zylvex-tech/zylcode/blob/main/docs/capability-registry.json" class="mono">docs/capability-registry.json</a>
+        </p>
+        <p class="note">
+          ZylCode is pre-release software. Capability descriptions reflect the
+          documented development state and are not guarantees of production
+          readiness.
         </p>
       </section>
 
