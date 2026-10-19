@@ -146,6 +146,15 @@
         "note": "Product surface now exists (the audit's defect); status follows the P12 builder-evidence precedent pending independent acceptance. Dispute history preserved.",
         "dispute_history_preserved": true,
         "evidence_doc": "docs/governance/P14_SCAFFOLD_SURFACE_REPORT.md"
+      },
+      "p15_rebaseline": {
+        "date": "2026-10-19",
+        "rung": "R3",
+        "status_now": "GREEN",
+        "evidence": "Fingerprint integrity: `.zylcode/` (the index's own cache and product state) is excluded from scan and stat inventory through `should_exclude`, asserted by `exclude_zylcode_state` — the indexed tree can no longer contain the cache written under it, which made repositories without a `.gitignore` entry self-invalidating.",
+        "note": "Builder evidence; acceptance pending. Dispute history preserved.",
+        "dispute_history_preserved": true,
+        "evidence_doc": "docs/governance/P15_STREAMING_CONTEXT_REPORT.md"
       }
     },
     "manifest_intelligence": {
@@ -335,6 +344,15 @@
         "note": "Product surface now exists (the audit's defect); status follows the P12 builder-evidence precedent pending independent acceptance. Dispute history preserved.",
         "dispute_history_preserved": true,
         "evidence_doc": "docs/governance/P14_SCAFFOLD_SURFACE_REPORT.md"
+      },
+      "p15_rebaseline": {
+        "date": "2026-10-19",
+        "rung": "R3",
+        "status_now": "PARTIAL",
+        "evidence": "W1 stat-memo fingerprint: warm gathers are stat-only (zero content reads — `a_warm_second_build_reads_no_file_contents`, unix-gated) and re-hash only files whose (len, mtime) drifted. W2 mutation-driven invalidation: agent-executed mutations mark the dirty set and force a re-rank at the next turn boundary (`an_agent_edit_reranks_context_at_the_next_turn_boundary`).",
+        "note": "Fingerprint cost is now proportional to changed files, not repository size. Symbol-level incremental reindex remains future work, so status stays PARTIAL. Builder evidence; acceptance pending.",
+        "dispute_history_preserved": true,
+        "evidence_doc": "docs/governance/P15_STREAMING_CONTEXT_REPORT.md"
       }
     },
     "repository_query_api": {
@@ -397,7 +415,14 @@
       "evidence": "ContextBuilder::build ranks files through the real intelligence pipeline (same as CLI/benchmark); committed discriminating test context_builder_uses_intelligence_ranking (agent.rs reachable only via co-change evidence)",
       "details": "AgentLoop::gather_context consumes the ranked files; legacy keyword heuristic retained only as fallback",
       "limitations": "Live-model end-to-end agent turn not captured in P1.2; per-invocation re-index ~10s",
-      "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md section 10"
+      "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md section 10",
+      "p15_rebaseline": {
+        "date": "2026-10-19",
+        "rung": "R3",
+        "status_now": "GREEN",
+        "evidence": "W2: a mutating tool op re-ranks context, replaces citations, and re-reads mutated file contents at the turn boundary (`an_agent_edit_reranks_context_at_the_next_turn_boundary`, `a_mutated_path_that_vanishes_is_declared_not_reread`). W3: a bounded typed block (5 files / 8 symbols / 8 dependency edges) is ingested on gather and re-gather with absences stated and an unbuildable index announcing itself (`gathered_context_carries_typed_repository_facts`, `an_unbuildable_index_states_its_absence_in_the_gather_too`).",
+        "note": "Builder evidence; acceptance pending."
+      }
     },
     "tool_system_executable": {
       "status": "PARTIAL",
@@ -419,15 +444,23 @@
       "evidence": "SIMULATION_MODE exposed: `ComputerUseSystem::simulation_notice()` + `ComputerUseStats.simulation_mode: true`; the CLI prints the banner before any computer-use output.",
       "details": "The audited R0 simulation remains the engine — sleep-based actions, placeholder captures. Facade disclosure shipped; real GUI automation is not claimed anywhere.",
       "evidence_doc": "docs/governance/P14_SCAFFOLD_SURFACE_REPORT.md"
+    },
+    "repo_context_freshness_stream": {
+      "status": "GREEN",
+      "rung": "R3",
+      "evidence": "GET /api/repo-context (one-shot freshness JSON) and GET /api/repo-context-stream (SSE: initial event, then only state/fingerprint transitions) on serve-intel; Tauri repo_context_status command; RepoQueryPanel freshness line bound to the same signal. Integration test crates/zylcode-cli/tests/serve_intel_context_stream.rs drives the real `zylcode` binary through fresh → stale → fresh over HTTP plus an SSE transition and a no-repeat silence window; 8 unit tests in intelligence/freshness.rs.",
+      "details": "intelligence::freshness::probe compares the stat-memo-measured fingerprint against the stored index (read-only, changed-file cost). `reindexing` is registered by ReindexGuard around every build_repo_query call, so the state is observed in the scanning process, never inferred. .zylcode/ is excluded from scan and fingerprint so the index can never index its own cache.",
+      "limitations": "Sampled surface: transitions are observed at the stream's probe tick (600ms); `reindexing` is visible only in the process running the scan; probes re-read stat-drifted files until the next index write. Builder evidence; acceptance pending.",
+      "evidence_doc": "docs/governance/P15_STREAMING_CONTEXT_REPORT.md"
     }
   },
   "summary": {
-    "total": 38,
-    "GREEN": 29,
+    "total": 39,
+    "GREEN": 30,
     "EXTERNAL_BLOCKER": 1,
     "PARTIAL": 4,
     "DISPUTED": 4,
-    "note": "Counts computed from entry statuses after the P14 builder re-baseline. GREEN entries added this wave rest on builder evidence from committed surfaces and tests; independent acceptance remains outstanding (Phase 2A re-acceptance and this-wave evidence)."
+    "note": "Counts computed from entry statuses after the P15 builder re-baseline. GREEN entries added this wave rest on builder evidence from committed surfaces and tests; independent acceptance remains outstanding (Phase 2A re-acceptance and this-wave evidence)."
   },
   "audit": {
     "status": "UNDER CORRECTION",
@@ -491,6 +524,20 @@
     ],
     "new_entries": [
       "computer_use_automation"
+    ],
+    "rule": "Builder evidence only; dispute history preserved; no acceptance claimed."
+  },
+  "p15_update": {
+    "date": "2026-10-19",
+    "by": "P15 streaming context wave (builder; not acceptance authority)",
+    "evidence_doc": "docs/governance/P15_STREAMING_CONTEXT_REPORT.md",
+    "changed_entries": [
+      "incremental_indexing",
+      "agent_context_gathering",
+      "repository_scanner"
+    ],
+    "new_entries": [
+      "repo_context_freshness_stream"
     ],
     "rule": "Builder evidence only; dispute history preserved; no acceptance claimed."
   }
