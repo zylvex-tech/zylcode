@@ -1,0 +1,12 @@
+name = "zylcode-site"
+main = "worker.js"
+compatibility_date = "2026-10-19"
+
+# Local dev only — production/preview deploys go through the Sites manifest
+# (deploy.manifest.json), not `wrangler deploy`.
+assets = { directory = "./public", binding = "ASSETS" }
+
+[[d1_databases]]
+binding = "DB"
+database_name = "site-638ef55c40cd4432965edf0dfc1a1809"
+database_id = "b5df6163-839e-405a-87f5-8fcda9e683a3"

@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ZylCode — join the Developer Preview waitlist</title>
+    <meta
+      name="description"
+      content="ZylCode is an evidence-first Engineering OS: intent to verified deliverable, with every claim backed by committed evidence. Join the pre-release Developer Preview waitlist."
+    />
+    <style>
+      :root {
+        --bg: #0b0e14;
+        --panel: #121722;
+        --line: #232b3b;
+        --text: #dbe2ef;
+        --muted: #8b94a7;
+        --accent: #5eead4;
+        --warn: #fbbf24;
+        --ok: #34d399;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+        line-height: 1.55;
+      }
+      .mono { font-family: ui-monospace, "Cascadia Code", Menlo, monospace; }
+      a { color: var(--accent); text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      .wrap { max-width: 880px; margin: 0 auto; padding: 0 20px; }
+      header {
+        border-bottom: 1px solid var(--line);
+        padding: 16px 0;
+        display: flex; align-items: center; justify-content: space-between;
+      }
+      .brand { font-weight: 700; letter-spacing: 0.04em; }
+      .brand span { color: var(--accent); }
+      .chip {
+        display: inline-block; font-size: 11px; letter-spacing: 0.08em;
+        border: 1px solid var(--line); border-radius: 999px;
+        padding: 3px 10px; color: var(--muted);
+      }
+      .chip.pre { border-color: var(--warn); color: var(--warn); }
+      .hero { padding: 56px 0 36px; }
+      .hero h1 { font-size: clamp(30px, 5vw, 46px); margin: 14px 0 10px; line-height: 1.15; }
+      .hero p.lede { color: var(--muted); font-size: 17px; max-width: 640px; }
+      .panel {
+        background: var(--panel); border: 1px solid var(--line);
+        border-radius: 12px; padding: 22px; margin-top: 26px;
+      }
+      .panel h2 { margin: 0 0 4px; font-size: 18px; }
+      .panel .sub { color: var(--muted); font-size: 13px; margin: 0 0 14px; }
+      form { display: flex; flex-wrap: wrap; gap: 10px; }
+      input[type="email"], input[type="text"] {
+        flex: 1 1 240px; background: #0d111a; color: var(--text);
+        border: 1px solid var(--line); border-radius: 8px;
+        padding: 11px 12px; font-size: 15px;
+      }
+      input:focus { outline: none; border-color: var(--accent); }
+      button {
+        background: var(--accent); color: #062018; font-weight: 700;
+        border: 0; border-radius: 8px; padding: 11px 18px;
+        font-size: 15px; cursor: pointer;
+      }
+      button:disabled { opacity: 0.6; cursor: default; }
+      .msg { font-size: 14px; margin-top: 12px; min-height: 20px; }
+      .msg.ok { color: var(--ok); }
+      .msg.err { color: #f87171; }
+      .count { color: var(--muted); font-size: 13px; margin-top: 10px; }
+      section { padding: 30px 0 6px; }
+      section h2 { font-size: 20px; margin-bottom: 14px; }
+      ul.clean { list-style: none; padding: 0; margin: 0; }
+      ul.clean li {
+        border-top: 1px solid var(--line); padding: 12px 0;
+        display: flex; gap: 12px; align-items: baseline; font-size: 15px;
+      }
+      .tag { flex: 0 0 auto; font-size: 11px; letter-spacing: 0.06em; }
+      .tag.ok { color: var(--ok); }
+      .tag.lim { color: var(--warn); }
+      .tag.no { color: #f87171; }
+      .note {
+        border-left: 3px solid var(--line); color: var(--muted);
+        font-size: 14px; padding: 8px 14px; margin: 18px 0;
+      }
+      footer {
+        border-top: 1px solid var(--line); margin-top: 44px;
+        padding: 22px 0 40px; color: var(--muted); font-size: 13px;
+      }
+      .fine { font-size: 12px; color: var(--muted); }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <div class="brand">Zyl<span>Code</span></div>
+        <div style="display: flex; gap: 10px; align-items: center">
+          <span class="chip pre">PRE-RELEASE</span>
+          <a href="https://github.com/zylvex-tech/zylcode" class="mono">GitHub →</a>
+        </div>
+      </header>
+
+      <div class="hero">
+        <span class="chip">DEVELOPER PREVIEW · WAITLIST</span>
+        <h1>The Engineering OS that shows its work.</h1>
+        <p class="lede">
+          ZylCode takes an instruction to a verified deliverable — real
+          repository intelligence, approval-gated execution, and a
+          hash-chained evidence ledger behind every claim. Built in public by
+          Zylvex Technologies, with a capability registry that states what
+          works, what doesn't, and what has been independently audited.
+        </p>
+
+        <div class="panel">
+          <h2>Join the Developer Preview waitlist</h2>
+          <p class="sub">
+            Pre-release, free / invite-only. We will email you when preview
+            seats open — nothing else.
+          </p>
+          <form id="waitlist-form" novalidate>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              placeholder="you@company.com"
+              autocomplete="email"
+              required
+              aria-label="Email address"
+            />
+            <input
+              type="text"
+              id="note"
+              name="note"
+              maxlength="200"
+              placeholder="What are you building? (optional)"
+              aria-label="What are you building"
+            />
+            <button type="submit" id="join">Join the waitlist</button>
+          </form>
+          <div class="msg" id="msg" role="status" aria-live="polite"></div>
+          <div class="count" id="count" hidden></div>
+        </div>
+      </div>
+
+      <section>
+        <h2>What works today — reachable and test-covered</h2>
+        <ul class="clean">
+          <li>
+            <span class="tag ok mono">WORKING</span>
+            <span>Agent journey: prompt → ranked repository context → plan → approval-gated tool execution → verified result → evidence ledger.</span>
+          </li>
+          <li>
+            <span class="tag ok mono">WORKING</span>
+            <span>Repository intelligence: symbol/dependency navigation, 12 typed query methods, live index freshness (<span class="mono">fresh / stale / reindexing</span>) from the CLI, the desktop app, and HTTP.</span>
+          </li>
+          <li>
+            <span class="tag ok mono">WORKING</span>
+            <span>Factory × Agent: durable task graphs with human approval gates and persisted claims — a blocked gate stays blocked, never simulated.</span>
+          </li>
+          <li>
+            <span class="tag ok mono">WORKING</span>
+            <span>Provider routing with full-chain failover; bring your own key at every tier — no token markup, ever.</span>
+          </li>
+          <li>
+            <span class="tag lim mono">LIMITED</span>
+            <span>Installers build locally (NSIS/DMG/DEB/RPM configured) but are <strong>not signed yet</strong> — beta distribution carries OS warnings, stated plainly.</span>
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>What we don't claim yet</h2>
+        <ul class="clean">
+          <li>
+            <span class="tag no mono">NOT THERE</span>
+            <span>Computer-use automation is a disclosed simulation — nothing on your screen is really driven.</span>
+          </li>
+          <li>
+            <span class="tag no mono">PENDING</span>
+            <span>Independent re-acceptance of the Phase 2A intelligence claims is open: our registry marks builder-claimed capabilities as exactly that.</span>
+          </li>
+          <li>
+            <span class="tag no mono">NOT THERE</span>
+            <span>No pricing is published during public development. When the Developer Preview opens it will be free / invite-only; paid tiers follow only the capabilities that pass independent acceptance.</span>
+          </li>
+        </ul>
+        <p class="note">
+          Every claim above maps to a committed test and a row in the public
+          capability registry:
+          <a href="https://github.com/zylvex-tech/zylcode/blob/competition/natlas-2026/docs/capability-registry.json" class="mono">docs/capability-registry.json</a>
+        </p>
+      </section>
+
+      <footer>
+        <div>
+          Built in public by
+          <a href="https://github.com/zylvex-tech/zylcode">Zylvex Technologies Limited</a>
+          — governance, roadmap and evidence live in the repository.
+        </div>
+        <div class="fine" style="margin-top: 6px">
+          © 2026 Zylvex Technologies Limited. ZylCode is pre-release software;
+          capability statuses are stated as tested, not as guarantees.
+        </div>
+      </footer>
+    </div>
+
+    <script>
+      const form = document.getElementById("waitlist-form");
+      const msg = document.getElementById("msg");
+      const join = document.getElementById("join");
+      const countEl = document.getElementById("count");
+
+      async function refreshCount() {
+        try {
+          const res = await fetch("/api/waitlist/count");
+          if (!res.ok) throw new Error("bad status");
+          const data = await res.json();
+          if (typeof data.count === "number" && data.count > 0) {
+            countEl.textContent =
+              data.count + " developer" + (data.count === 1 ? "" : "s") + " already on the list";
+            countEl.hidden = false;
+          }
+        } catch {
+          countEl.hidden = true; // no number, no claim
+        }
+      }
+      refreshCount();
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        msg.textContent = "";
+        msg.className = "msg";
+        join.disabled = true;
+        join.textContent = "Joining…";
+        try {
+          const res = await fetch("/api/waitlist", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              email: document.getElementById("email").value,
+              note: document.getElementById("note").value,
+            }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || data.ok !== true) {
+            throw new Error(data.error || "unexpected response — try again");
+          }
+          msg.textContent = data.already
+            ? "You're already on the list — we'll be in touch."
+            : "You're on the list. We'll email you before the Developer Preview opens.";
+          msg.className = "msg ok";
+          if (!data.already) refreshCount();
+        } catch (err) {
+          msg.textContent = err.message || "could not join — try again shortly";
+          msg.className = "msg err";
+        } finally {
+          join.disabled = false;
+          join.textContent = "Join the waitlist";
+        }
+      });
+    </script>
+  </body>
+</html>

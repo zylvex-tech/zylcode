@@ -98,3 +98,6 @@ Modelfile.*
 
 # Competition runtime evidence — may embed repository content. Never publish raw.
 docs/competition/natlas/evidence/
+
+# Cloudflare local development state
+site/.wrangler/
