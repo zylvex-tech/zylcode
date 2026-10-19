@@ -969,6 +969,13 @@ impl AgentLoop {
                 context.navigation_citations.join("\n")
             ));
         }
+        fresh.push_str(&format!(
+            "\n\n{}",
+            crate::intelligence::api::agent_typed_block(
+                &self.session.context.working_directory,
+                &context.relevant_files
+            )
+        ));
         self.add_system_message(fresh);
 
         for file in &mutated {
@@ -1033,6 +1040,19 @@ present an inference as a graph fact.",
                 context.navigation_citations.join("\n")
             ));
         }
+
+        // P15 W3: typed payload facts for the selected files — declared
+        // symbols, owning packages, internal dependency edges. Resolved from
+        // the same parsed index as the ranked list; absences stated, never
+        // silent (including "no files were ranked"); unbuildable index
+        // declares itself instead of leaving a hole.
+        context_str.push_str(&format!(
+            "\n\n{}",
+            crate::intelligence::api::agent_typed_block(
+                &self.session.context.working_directory,
+                &context.relevant_files
+            )
+        ));
 
         self.add_system_message(format!("Context gathered:\n{}", context_str));
 
@@ -2412,6 +2432,51 @@ mod tests {
             "a vanished mutation must be declared, not invented: {transcript:?}"
         );
         assert!(agent.session.context.mutated_files.is_empty());
+    }
+
+    /// P15 W3: the gathered context ingests the typed payload block —
+    /// declared symbols for the ranked files, resolved from the parsed index.
+    #[tokio::test]
+    async fn gathered_context_carries_typed_repository_facts() {
+        let dir = intel_fixture();
+        let (mut agent, _client) = loop_over(dir.path(), "find where helper is used");
+
+        agent.gather_context().await.expect("context gathers");
+
+        let transcript: Vec<String> = agent
+            .session
+            .messages
+            .iter()
+            .map(|m| m.content.clone())
+            .collect();
+        assert!(
+            transcript
+                .iter()
+                .any(|m| m.contains("Typed repository facts")),
+            "the gather must admit the typed block: {transcript:?}"
+        );
+    }
+
+    /// An unbuildable index is stated, never a silent hole.
+    #[tokio::test]
+    async fn an_unbuildable_index_states_its_absence_in_the_gather_too() {
+        let missing = std::env::temp_dir().join(format!("w3-gap-{}", Uuid::new_v4()));
+        let (mut agent, _client) = loop_over(&missing, "find where helper is used");
+
+        agent.gather_context().await.expect("context gathers");
+
+        let transcript: Vec<String> = agent
+            .session
+            .messages
+            .iter()
+            .map(|m| m.content.clone())
+            .collect();
+        assert!(
+            transcript
+                .iter()
+                .any(|m| m.contains("typed repository facts unavailable")),
+            "the typed block's absence must be an explicit line: {transcript:?}"
+        );
     }
 
     #[tokio::test]

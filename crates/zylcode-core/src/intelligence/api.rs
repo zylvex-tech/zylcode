@@ -187,6 +187,102 @@ pub fn repo_query_payload(root: &Path, method: &str, arg: Option<&str>) -> Resul
     }))
 }
 
+/// P15 W3: the typed-payload block the agent loop ingests alongside the
+/// ranked file list — the symbols the selected files declare, the packages
+/// they belong to, and the internal dependency edges of those packages.
+///
+/// Every line is a resolved fact from the parsed repository index (same
+/// source as `repo_query_payload`), served through the persisted index —
+/// warm gathers make this effectively free. Absences are stated explicitly
+/// ("no symbols recognized", "no dependency edges") rather than left blank,
+/// and an unbuildable index says so instead of producing an empty block.
+/// Bounded by construction: 5 files, 8 symbols and 8 dependency edges each.
+pub fn agent_typed_block(root: &Path, relevant_files: &[String]) -> String {
+    const MAX_TYPED_FILES: usize = 5;
+    const MAX_SYMBOLS_PER_FILE: usize = 8;
+    const MAX_DEPS_PER_PACKAGE: usize = 8;
+    const MAX_PACKAGES: usize = 2;
+
+    // The index is probed *first*: an unbuildable index must announce its
+    // absence even on a turn where nothing was selected. Checking the
+    // selection first would report "no files selected" for a repository we
+    // could not read at all — a selection fact masquerading as a repository
+    // fact, which is exactly the confusion this block exists to prevent.
+    let query = match PersistedIndex::new(root).build() {
+        Ok(query) => query,
+        Err(e) => {
+            return format!(
+                "(typed repository facts unavailable: {e:#} — treat every structural claim as interpretation)"
+            );
+        }
+    };
+
+    if relevant_files.is_empty() {
+        // No ranked files for this turn is a fact about selection, not
+        // about the repository — state it instead of rendering an empty
+        // block that reads as "no facts exist".
+        return "Typed repository facts: no ranked relevant files were selected for this turn, so no typed facts were selected.".to_string();
+    }
+
+    let mut lines: Vec<String> = Vec::new();
+    let mut package_names: Vec<String> = Vec::new();
+
+    for file in relevant_files.iter().take(MAX_TYPED_FILES) {
+        let declared: Vec<_> = query.symbols().iter().filter(|s| &s.file == file).collect();
+        if declared.is_empty() {
+            lines.push(format!(
+                "TYPED · {file}: the extractor recognized no symbol declarations in this file — stated as an absence, not as evidence there are none"
+            ));
+        } else {
+            for s in declared.iter().take(MAX_SYMBOLS_PER_FILE) {
+                lines.push(format!(
+                    "TYPED · {file} declares {} `{}` at line {} (resolved from the parsed index)",
+                    format!("{:?}", s.kind).to_lowercase(),
+                    s.name,
+                    s.line
+                ));
+            }
+        }
+
+        if let Some(pkg) = query
+            .files()
+            .iter()
+            .find(|f| f.id == *file)
+            .and_then(|f| f.package.clone())
+        {
+            if !package_names.contains(&pkg) {
+                lines.push(format!(
+                    "TYPED · {file} belongs to package `{pkg}` (resolved from the parsed manifest)",
+                ));
+                package_names.push(pkg);
+            }
+        }
+    }
+
+    for pkg in package_names.iter().take(MAX_PACKAGES) {
+        let deps = query.dependencies_of(pkg);
+        if deps.is_empty() {
+            lines.push(format!(
+                "TYPED · package `{pkg}` has no internal dependency edges reachable from this index — stated as an absence"
+            ));
+        } else {
+            for d in deps.iter().take(MAX_DEPS_PER_PACKAGE) {
+                lines.push(format!(
+                    "TYPED · package `{pkg}` depends on `{}` (resolved dependency edge)",
+                    d.resource
+                ));
+            }
+        }
+    }
+
+    format!(
+        "Typed repository facts (every line below is resolved from the parsed repository \
+index — cite them when you make a structural claim; anything not covered by them \
+is your own interpretation, labelled as such and never presented as a graph fact):\n{}",
+        lines.join("\n")
+    )
+}
+
 /// The ids `repo_query_payload` dispatches on, in `RepoQuery` order.
 pub const REPO_QUERY_METHODS: &[&str] = &[
     "find_symbol",
@@ -238,6 +334,69 @@ mod tests {
         run(&["add", "."]);
         run(&["commit", "-q", "-m", "initial commit"]);
         (dir, root)
+    }
+
+    /// P15 W3: the typed block reports resolved facts, states absences as
+    /// absences, and declares itself unavailable when the index is
+    /// unbuildable — never an empty answer dressed as a fact.
+    #[test]
+    fn the_typed_block_reports_resolved_facts_and_explicit_absences() {
+        let (_dir, root) = sample_repo();
+        let block = agent_typed_block(&root, &["src/engine.rs".to_string()]);
+
+        assert!(
+            block.starts_with("Typed repository facts"),
+            "the block must carry the attribution header: {block}"
+        );
+        assert!(
+            block.contains("declares struct `Engine`"),
+            "the declared symbol must be a resolved fact: {block}"
+        );
+        assert!(
+            block.contains("declares impl `Engine`") && block.contains("declares method `run`"),
+            "impl and its method must both be resolved: {block}"
+        );
+        // No manifest exists in the sample repo, so the package absence is
+        // simply not emitted — but a file with an unresolvable package is
+        // also not invented. What must never happen is a package claim.
+        assert!(
+            !block.contains("belongs to package"),
+            "without a manifest no package may be claimed: {block}"
+        );
+    }
+
+    #[test]
+    fn the_typed_block_states_the_symbol_absence_explicitly() {
+        let (_dir, root) = sample_repo();
+        let block = agent_typed_block(&root, &["README.md".to_string()]);
+
+        assert!(
+            block.contains("recognized no symbol declarations in this file"),
+            "an empty symbol result must be stated as an absence: {block}"
+        );
+    }
+
+    #[test]
+    fn the_typed_block_declares_itself_unavailable_when_the_index_cannot_build() {
+        let missing = std::env::temp_dir().join(format!("zylcode-w3-{}", uuid::Uuid::new_v4()));
+        let block = agent_typed_block(&missing, &["src/anything.rs".to_string()]);
+
+        assert!(
+            block.contains("typed repository facts unavailable"),
+            "the unavailability must be declared in the engine's words: {block}"
+        );
+    }
+
+    #[test]
+    fn the_typed_block_keeps_to_its_bounds() {
+        let (_dir, root) = sample_repo();
+        let many: Vec<String> = (0..50).map(|i| format!("src/engine.rs#{i}")).collect();
+        let block = agent_typed_block(&root, &many);
+
+        assert!(
+            block.matches("TYPED ·").count() <= 5 * 8 + 5 + 2 * 9,
+            "bounds must cap the rendered lines by construction"
+        );
     }
 
     #[test]

@@ -492,7 +492,10 @@ mod tests {
         let dir = temp_repo();
         let idx = isolated(dir.path());
         let before = idx.build().unwrap();
-        let before_symbols = before.symbol_count();
+        assert!(
+            !before.symbols().iter().any(|s| s.name.contains("domu")),
+            "the pre-change index must not yet contain the rewritten symbol"
+        );
 
         // Same byte length for lib.rs, different content.
         fs::write(dir.path().join("src/lib.rs"), "pub fn domu() {}\n").unwrap();
