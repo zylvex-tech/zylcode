@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Panel } from "./Panel";
 import { StatusBadge } from "./CapabilityStatus";
 import {
@@ -9,6 +9,10 @@ import {
   type RepoQueryMethod,
   type RepoQueryState,
 } from "../lib/repoQuery";
+import {
+  watchRepoContext,
+  type RepoContextSignal,
+} from "../lib/repoContext";
 
 // ---------------------------------------------------------------------------
 // The 12 repository query methods, runnable from the UI.
@@ -19,12 +23,25 @@ import {
 // the engine payload verbatim; a rejection shows the engine's reason, and an
 // unreachable engine shows how to start it — nothing is ever rendered as an
 // empty answer when nothing ran.
+//
+// P15 W4: the panel also subscribes to the freshness signal
+// (`GET /api/repo-context-stream` in the browser, the polled
+// `repo_context_status` command on desktop): `fresh`, `stale` (the tree
+// changed since the index was written — run a query to re-index), and
+// `reindexing` (a scan is running right now) are the engine's own states,
+// rendered as they arrive; an unreachable observer says so and is never
+// painted as `fresh`.
 // ---------------------------------------------------------------------------
 
 export function RepoQueryPanel() {
   const [method, setMethod] = useState<RepoQueryMethod>("find_symbol");
   const [arg, setArg] = useState("");
   const [state, setState] = useState<RepoQueryState>({ kind: "idle" });
+  const [freshness, setFreshness] = useState<RepoContextSignal>({
+    kind: "connecting",
+  });
+
+  useEffect(() => watchRepoContext(setFreshness), []);
 
   const run = async () => {
     setState({ kind: "loading" });
@@ -51,6 +68,20 @@ export function RepoQueryPanel() {
             </span>
           )}
         </div>
+
+        <p
+          role="status"
+          data-testid="repo-query-freshness"
+          className={`text-[10px] font-mono ${
+            freshness.kind === "stale"
+              ? "text-warning"
+              : freshness.kind === "unavailable"
+                ? "text-text-muted"
+                : "text-text-secondary"
+          }`}
+        >
+          {freshnessText(freshness)}
+        </p>
 
         <div className="flex gap-2" data-testid="repo-query-form">
           <select
@@ -138,6 +169,27 @@ export function RepoQueryPanel() {
       </div>
     </Panel>
   );
+}
+
+/** The freshness line: the engine's own states, verbatim, absences stated. */
+function freshnessText(signal: RepoContextSignal): string {
+  switch (signal.kind) {
+    case "connecting":
+      return "index freshness: connecting…";
+    case "fresh":
+      return `index fresh · ${signal.fingerprint}`;
+    case "stale": {
+      const changed =
+        signal.changedFiles === null
+          ? "no trusted index yet"
+          : `${signal.changedFiles} file(s) changed since the index`;
+      return `index stale · ${changed} — run a query to re-index`;
+    }
+    case "reindexing":
+      return "index reindexing… (a scan is running now)";
+    case "unavailable":
+      return `index freshness unavailable — ${signal.reason}`;
+  }
 }
 
 export default RepoQueryPanel;

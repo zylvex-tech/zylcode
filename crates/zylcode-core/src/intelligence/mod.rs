@@ -12,6 +12,7 @@ pub mod classifier;
 pub mod context;
 pub mod dependency;
 pub mod entry_points;
+pub mod freshness;
 pub mod git;
 pub mod manifest;
 pub mod nav_api;

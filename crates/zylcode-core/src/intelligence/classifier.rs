@@ -241,9 +241,17 @@ pub fn should_exclude(path: &Path) -> bool {
         "/venv/",
         "/.cache/",
         "/coverage/",
+        // ZylCode's own state directory (evidence, jobs, ledgers — and this
+        // index's cache file). It is product state, never source. It must
+        // also stay out of the *fingerprint*: if the cache were part of the
+        // tree it measures, every store would change the very fingerprint
+        // it was written under, and the index would re-index itself forever
+        // on any repository that does not gitignore `.zylcode/`.
+        "/.zylcode/",
         "target/",
         "node_modules/",
         ".git/",
+        ".zylcode/",
     ];
 
     for exc in &excluded {
@@ -433,6 +441,20 @@ mod tests {
     #[test]
     fn exclude_git() {
         assert!(should_exclude(Path::new(".git/objects/abc")));
+    }
+
+    #[test]
+    fn exclude_zylcode_state() {
+        // The product's own state — including the persisted index cache —
+        // can never be part of the indexed tree: indexing the cache would
+        // make the fingerprint depend on its own writes.
+        assert!(should_exclude(Path::new(
+            ".zylcode/intelligence-index.json"
+        )));
+        assert!(should_exclude(Path::new(
+            "nested\\repo\\.zylcode\\evidence_graph.json"
+        )));
+        assert!(!should_exclude(Path::new("src/zylcode.rs")));
     }
 
     #[test]

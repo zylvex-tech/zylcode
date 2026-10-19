@@ -239,6 +239,24 @@ async fn repo_query(
     .map_err(|e| format!("query task failed: {e}"))?
 }
 
+/// P15 W4: freshness of the persisted intelligence index for the frontend —
+/// the same `freshness::probe` the serve-intel `GET /api/repo-context` route
+/// serves, so desktop and browser answer with the same engine facts.
+/// Read-only: probing measures (stat memo) and never builds or writes.
+#[tauri::command]
+async fn repo_context_status(
+    state: tauri::State<'_, EngineState>,
+) -> Result<serde_json::Value, String> {
+    let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
+    tokio::task::spawn_blocking(move || {
+        zylcode_core::intelligence::freshness::probe(&root)
+            .map(|status| status.payload())
+            .map_err(|e| format!("freshness probe failed: {e:#}"))
+    })
+    .await
+    .map_err(|e| format!("freshness task failed: {e}"))?
+}
+
 /// Repository-intelligence navigation: the same `zylcode-nav` engine and the
 /// same process-wide index slot as the `serve-intel` `POST /api/nav` route
 /// and the `nav.*` MCP tools, so every surface answers from one index.
@@ -1259,6 +1277,7 @@ fn main() {
             process_intent_stream,
             preview_execution_plan,
             repo_context,
+            repo_context_status,
             repo_query,
             nav_query,
             git_status,

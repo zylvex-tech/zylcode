@@ -54,6 +54,19 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 
+/// P15 W4: the cheap freshness facts [`PersistedIndex::freshness`] returns.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IndexFreshness {
+    /// The fingerprint measured right now (stat memo: drifted files only).
+    pub measured: String,
+    /// The fingerprint the stored index was built at, if a trusted (current-
+    /// schema) index exists.
+    pub stored: Option<String>,
+    /// Files whose content hash differs from the stored measurement —
+    /// `None` when there is no trusted index to compare against.
+    pub changed_files: Option<usize>,
+}
+
 /// Everything needed to reconstruct a `RepoQuery` without re-indexing.
 ///
 /// `DependencyGraph` is derived from packages via
@@ -161,6 +174,59 @@ impl PersistedIndex {
         let cached = Self::from_query(&query, fingerprint, memo);
         self.store(&cached)?;
         Ok(query)
+    }
+
+    /// P15 W4: cheap freshness facts for the streaming observation surface
+    /// (`GET /api/repo-context-stream`, the desktop freshness poll). Probes
+    /// without building anything: the current fingerprint is measured through
+    /// the stat memo (reads only files whose stat facts drifted), and the
+    /// stored index's fingerprint is read from the cache header.
+    ///
+    /// `changed_files` counts files whose *content hash* differs from the
+    /// stored measurement — real content changes and additions/removals.
+    /// An mtime-only touch rehashes to the same hash and is not a change
+    /// (so `fresh` implies `changed_files == Some(0)`); when no trusted
+    /// index exists at all, both `stored` and `changed_files` are `None` —
+    /// there is no baseline to call anything "changed" against.
+    pub fn freshness(&self) -> Result<IndexFreshness> {
+        self.ensure_root_exists()?;
+
+        let cached: Option<CachedIndex> = std::fs::read(&self.cache_path)
+            .ok()
+            .and_then(|raw| serde_json::from_slice(&raw).ok());
+        let trusted = cached
+            .as_ref()
+            .filter(|c| c.schema == SCHEMA_VERSION)
+            .map(|c| c.repo_fingerprint.clone());
+        let old_memo = cached.map(|c| c.stat_memo).unwrap_or_default();
+
+        let (measured, new_memo) = self.measure_fingerprint_with_memo()?;
+
+        let changed_files = trusted.as_ref().map(|_| {
+            // Content differences against the stored measurement: a hash on
+            // one side only (added or removed file) counts, a differing hash
+            // counts, stat-only drift that rehashes identically does not.
+            let changed = new_memo
+                .iter()
+                .filter(|(id, entry)| {
+                    old_memo
+                        .get(*id)
+                        .map(|old| old.content_hash != entry.content_hash)
+                        .unwrap_or(true)
+                })
+                .count()
+                + old_memo
+                    .keys()
+                    .filter(|id| !new_memo.contains_key(*id))
+                    .count();
+            changed
+        });
+
+        Ok(IndexFreshness {
+            measured,
+            stored: trusted,
+            changed_files,
+        })
     }
 
     /// Reject a workspace root that is not a real directory before any work

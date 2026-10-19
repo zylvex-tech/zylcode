@@ -323,6 +323,12 @@ impl RepoQuery {
 /// Git history is optional: indexing succeeds without a git repository,
 /// losing recency and co-change signals but not core retrieval.
 pub fn build_repo_query(root: &Path) -> Result<RepoQuery> {
+    // P15 W4: every full scan announces itself through the freshness
+    // registry for exactly its own lifetime — the streaming observation
+    // surface reports `reindexing` while this runs and never afterwards,
+    // including when the scan fails (the guard drops on every path).
+    let _reindexing = crate::intelligence::freshness::ReindexGuard::new(root);
+
     let config = ScannerConfig {
         max_depth: 10,
         max_file_size: 512 * 1024,

@@ -1694,6 +1694,117 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
         }
     }
 
+    /// P15 W4: single-shot freshness status of the persisted index — the
+    /// same payload the stream emits, for pollers and tests. Read-only:
+    /// probing measures (stat memo) and never builds or writes.
+    async fn repo_context_status(
+        State(root): State<Arc<std::path::PathBuf>>,
+    ) -> Json<serde_json::Value> {
+        let root = Arc::clone(&root);
+        let payload =
+            tokio::task::spawn_blocking(
+                move || match zylcode_core::intelligence::freshness::probe(&root) {
+                    Ok(status) => status.payload(),
+                    Err(e) => {
+                        serde_json::json!({ "error": format!("freshness probe failed: {e:#}") })
+                    }
+                },
+            )
+            .await;
+        match payload {
+            Ok(value) => Json(value),
+            Err(e) => Json(serde_json::json!({ "error": format!("freshness task failed: {e}") })),
+        }
+    }
+
+    /// P15 W4: the streaming observation surface. Server-sent events: one
+    /// `state` event on connect, then an event **only on a real transition**
+    /// — the state changed or the measured fingerprint moved. Repeats of an
+    /// unchanged standing are never re-emitted; a failing probe becomes a
+    /// single `unavailable` event (once per distinct failure), never a fake
+    /// state, and never a silent gap.
+    async fn repo_context_stream(
+        State(root): State<Arc<std::path::PathBuf>>,
+    ) -> axum::response::sse::Sse<
+        impl futures::Stream<Item = Result<axum::response::sse::Event, std::convert::Infallible>>
+            + Send
+            + 'static,
+    > {
+        use axum::response::sse::{Event, KeepAlive, Sse};
+
+        struct Watch {
+            root: Arc<std::path::PathBuf>,
+            /// Canonical key of the last emitted event (payload JSON, or the
+            /// failure message) — transitions are computed against it.
+            last: Option<String>,
+            first: bool,
+            tick: tokio::time::Interval,
+        }
+
+        let mut tick = tokio::time::interval(std::time::Duration::from_millis(600));
+        // A slow probe must not burst-catch-up its missed ticks: observations
+        // after a stall start fresh rather than flooding the client.
+        tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+
+        let stream = futures::stream::unfold(
+            Watch {
+                root,
+                last: None,
+                first: true,
+                tick,
+            },
+            |mut watch| async move {
+                loop {
+                    watch.tick.tick().await;
+                    let root = Arc::clone(&watch.root);
+                    let probed = tokio::task::spawn_blocking(move || {
+                        zylcode_core::intelligence::freshness::probe(&root)
+                    })
+                    .await;
+
+                    // One canonical shape per observation: the event kind,
+                    // the dedupe key, and the data. `first` forces the
+                    // initial emission even if it matches nothing before.
+                    let (is_state, key, data) = match probed {
+                        Ok(Ok(status)) => {
+                            let payload = status.payload();
+                            (true, payload.to_string(), payload.to_string())
+                        }
+                        Ok(Err(e)) => {
+                            let message = format!("freshness probe failed: {e:#}");
+                            (
+                                false,
+                                format!("unavailable:{message}"),
+                                serde_json::json!({ "error": message }).to_string(),
+                            )
+                        }
+                        Err(join) => {
+                            let message = format!("freshness task failed: {join}");
+                            (
+                                false,
+                                format!("unavailable:{message}"),
+                                serde_json::json!({ "error": message }).to_string(),
+                            )
+                        }
+                    };
+                    if !watch.first && watch.last.as_ref() == Some(&key) {
+                        continue; // standing unchanged — nothing to say
+                    }
+                    watch.first = false;
+                    watch.last = Some(key);
+                    let event = if is_state {
+                        Event::default().event("state").data(data)
+                    } else {
+                        Event::default().event("unavailable").data(data)
+                    };
+                    return Some((Ok::<_, std::convert::Infallible>(event), watch));
+                }
+            },
+        );
+
+        Sse::new(stream).keep_alive(KeepAlive::new().interval(std::time::Duration::from_secs(15)))
+    }
+
     // Terminal sessions: cwd state lives for the service's lifetime.
     // FromRef lets each handler extract only the field it needs.
     #[derive(Clone, axum::extract::FromRef)]
@@ -1727,6 +1838,8 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
         .route("/api/execute-tool", axum::routing::post(execute_tool))
         .route("/api/intent", axum::routing::post(agent_intent))
         .route("/api/repo-query", get(repo_query))
+        .route("/api/repo-context", get(repo_context_status))
+        .route("/api/repo-context-stream", get(repo_context_stream))
         .route("/api/factory/run", axum::routing::post(factory_run))
         .route("/api/factory/approve", axum::routing::post(factory_approve))
         .route("/api/factory/job", get(factory_job_status))
@@ -1764,13 +1877,18 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
 
     let addr = std::net::SocketAddr::from(([127, 0, 0, 1], port));
     let listener = tokio::net::TcpListener::bind(addr).await?;
+    // The *bound* address, not the requested one: with `--port 0` the OS
+    // picks the port and the banner (and any tooling that reads it) must
+    // report where the service actually listens.
+    let addr = listener.local_addr()?;
     println!(
         "repo-intel service listening on http://{addr} (repo: {})",
         root.display()
     );
     println!(
         "endpoints: GET /healthz, GET /api/repo-intel?task=..., POST /api/nav, \
-         GET /api/git/status, GET /api/search?q=..., GET /api/files, GET /api/evidence"
+         GET /api/git/status, GET /api/search?q=..., GET /api/files, GET /api/evidence, \
+         GET /api/repo-context, GET /api/repo-context-stream (SSE)"
     );
     axum::serve(listener, app).await?;
     Ok(())

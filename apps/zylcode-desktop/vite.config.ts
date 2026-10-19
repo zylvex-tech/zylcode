@@ -12,6 +12,9 @@ export default defineConfig({
       // Browser preview: forward backend surface requests to the local
       // `zylcode serve-intel` service.
       "/api/repo-intel": "http://127.0.0.1:17630",
+      // P15 W4 freshness surface: prefix-matches both the one-shot
+      // `GET /api/repo-context` and the SSE `GET /api/repo-context-stream`.
+      "/api/repo-context": "http://127.0.0.1:17630",
       "/api/nav": "http://127.0.0.1:17630",
       "/api/git": "http://127.0.0.1:17630",
       "/api/version": "http://127.0.0.1:17630",
