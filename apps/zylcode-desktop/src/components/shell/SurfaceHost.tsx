@@ -1,7 +1,6 @@
 import { ArtifactViewer } from "../ArtifactViewer";
 import { EvidenceCenter } from "../EvidenceCenter";
 import { EvidenceTimeline } from "../EvidenceTimeline";
-import { ExplorerTree } from "../ExplorerTree";
 import { LiveSearch } from "../LiveSearch";
 import { MissionComposer } from "../MissionComposer";
 import { RepoIntelPanel } from "../RepoIntelPanel";
@@ -77,7 +76,6 @@ export function SurfaceHost({
   saveFile,
   applyPatch,
   closeTab,
-  deltas,
   onNavigateToFile,
 }: SurfaceHostProps) {
   const renderSurface = () => {

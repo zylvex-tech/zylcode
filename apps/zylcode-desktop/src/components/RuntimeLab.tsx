@@ -1,5 +1,4 @@
 import { Panel } from "./Panel";
-import { StatusBadge } from "./CapabilityStatus";
 import { IS_DESKTOP } from "../lib/runtime";
 
 export function RuntimeLab() {

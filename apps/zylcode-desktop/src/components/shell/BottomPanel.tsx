@@ -1,11 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { McpInspector, ProviderSettings, DiagnosticsPanel } from "../../components";
-import {
-  IS_DESKTOP,
-  DESKTOP_REQUIRED_MESSAGE,
-  getDiagnostics,
-  type DiagnosticEntry,
-} from "../../lib/runtime";
+import { IS_DESKTOP, getDiagnostics, type DiagnosticEntry } from "../../lib/runtime";
 import { fetchEvidence, type EvidenceState } from "../../lib/surfaces";
 import { listMissions } from "../../lib/missions";
 import TerminalPanel from "../TerminalPanel";
@@ -681,17 +676,6 @@ function DevToolsView() {
           <DiagnosticsPanel />
         </div>
       </div>
-    </div>
-  );
-}
-
-function DesktopRequired() {
-  return (
-    <div className="flex flex-col items-center justify-center gap-2 py-4 text-center text-sm">
-      <p className="text-text-muted max-w-xs">{DESKTOP_REQUIRED_MESSAGE}</p>
-      <p className="text-[11px] text-text-muted/70">
-        Technical details are available in Diagnostics.
-      </p>
     </div>
   );
 }

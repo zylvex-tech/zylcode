@@ -90,7 +90,7 @@ function renderTurn(turn: AgentTurnState) {
   if (turn.kind === "idle") {
     return (
       <p className="text-[10px] text-text-muted">
-        Enter a prompt and run the turn — the result and the summary are the engine's own.
+        Enter a prompt and run the turn — the result and the summary are the engine&apos;s own.
       </p>
     );
   }
@@ -140,7 +140,7 @@ function renderTurn(turn: AgentTurnState) {
         </div>
       )}
       <p className="text-[10px] text-text-muted mt-1">
-        turn summary and verdict are the engine's own — never reshaped by this UI.
+        turn summary and verdict are the engine&apos;s own — never reshaped by this UI.
       </p>
     </div>
   );

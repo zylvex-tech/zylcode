@@ -1,6 +1,5 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect } from "react";
 import { Editor, DiffEditor } from "@monaco-editor/react";
-import { useArtifactStream } from "../lib/useArtifactStream";
 import { ArtifactFile } from "../lib/useArtifactStream";
 
 export interface ArtifactViewerProps {
@@ -43,10 +42,8 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
   setActiveTab,
   diffMode,
   setDiffMode,
-  saveStatus,
   saveFile,
   applyPatch,
-  closeTab,
 }) => {
   const [editingFile, setEditingFile] = React.useState<string | null>(null);
   const [fileContent, setFileContent] = React.useState<string>("");
@@ -103,47 +100,14 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
     setTimeout(() => setSaveBanner({ show: false, message: "", type: "success" }), 2000);
   };
 
-  const handleClose = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const path = activeTab!;
-    closeTab(path);
-    setActiveTab(path === activeTab ? null : activeTab);
-  };
-
-  if (files.size === 0) {
-    return (
-      <div className="p-8 text-zyl-muted text-center">
-        <p>No artifacts yet. Run an intent to generate files.</p>
-      </div>
-    );
-  }
-
-  const activeFile = activeTab ? (files.get(activeTab) ?? null) : null;
-  const isEditing = editingFile !== null;
-
-  const tabNodes = Array.from(files.keys()).map((path) => {
-    const file = files.get(path)!;
-    const ext = path.split(".").pop()?.toLowerCase() ?? "";
-    const lang = EXT_LANGUAGE_MAP[ext] || "plaintext";
-    const isActive = activeTab === path;
-    return (
-      <div
-        key={path}
-        className={`flex items-center rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors ${isActive ? "bg-zyl-accent text-white" : "text-zyl-muted hover:bg-zyl-surface"}`}
-        onClick={() => setActiveTab(path)}
-      >
-        {path}
-      </div>
-    );
-  });
-
-  // Get language for current file
-  const getLanguage = (path: string) => {
-    const ext = path.split(".").pop()?.toLowerCase() ?? "";
-    return EXT_LANGUAGE_MAP[ext] || "plaintext";
-  };
-
   // Monaco editor options
+  //
+  // These two `useMemo` calls MUST stay above the `files.size === 0` early
+  // return below. They used to sit after it, which meant the component called a
+  // different number of hooks depending on whether any artifact tabs were open
+  // -- React then throws "Rendered more hooks than during the previous render"
+  // as soon as the last tab is closed. Hoisting them fixes the hook count
+  // without changing behaviour: both are pure option objects with `[]` deps.
   const editorOptions = React.useMemo(
     () => ({
       theme: MONACO_THEME,
@@ -169,6 +133,36 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
     }),
     [],
   );
+
+  if (files.size === 0) {
+    return (
+      <div className="p-8 text-zyl-muted text-center">
+        <p>No artifacts yet. Run an intent to generate files.</p>
+      </div>
+    );
+  }
+
+  const activeFile = activeTab ? (files.get(activeTab) ?? null) : null;
+  const isEditing = editingFile !== null;
+
+  const tabNodes = Array.from(files.keys()).map((path) => {
+    const isActive = activeTab === path;
+    return (
+      <div
+        key={path}
+        className={`flex items-center rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors ${isActive ? "bg-zyl-accent text-white" : "text-zyl-muted hover:bg-zyl-surface"}`}
+        onClick={() => setActiveTab(path)}
+      >
+        {path}
+      </div>
+    );
+  });
+
+  // Get language for current file
+  const getLanguage = (path: string) => {
+    const ext = path.split(".").pop()?.toLowerCase() ?? "";
+    return EXT_LANGUAGE_MAP[ext] || "plaintext";
+  };
 
   let fileDisplay: React.ReactNode;
 

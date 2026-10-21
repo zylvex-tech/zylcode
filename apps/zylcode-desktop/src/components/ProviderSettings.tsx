@@ -71,7 +71,11 @@ export default function ProviderSettings() {
           setFailovers((prev) => [failover, ...prev].slice(0, 20));
         });
         unlisten = fn;
-      } catch {}
+      } catch {
+        // No listener available in this runtime. Deliberately swallowed: the
+        // fallback polling above still surfaces provider state, and failing
+        // the effect here would take the whole settings surface down.
+      }
     })();
     return () => unlisten?.();
   }, []);

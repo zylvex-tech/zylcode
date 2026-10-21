@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { Panel } from "./Panel";
 import { StatusBadge } from "./CapabilityStatus";
-import { AUTONOMY_MODES, type MissionRecord } from "../lib/mission";
+import { AUTONOMY_MODES } from "../lib/mission";
 
 export function MissionComposer({
   onMissionStart,

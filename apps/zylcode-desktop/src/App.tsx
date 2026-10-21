@@ -1,25 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useStreamSubscription, ENVIRONMENT, IS_DESKTOP } from "./lib/events";
-import {
-  DESKTOP_REQUIRED_MESSAGE,
-  safeInvoke,
-  getDiagnostics,
-  clearDiagnostics,
-} from "./lib/runtime";
-import {
-  AUTONOMY_MODES,
-  EVIDENCE_CATEGORIES,
-  NOT_CAPTURED,
-  newMissionId,
-  type MissionRecord,
-} from "./lib/mission";
+import { safeInvoke } from "./lib/runtime";
+import { newMissionId, type MissionRecord } from "./lib/mission";
 import { useArtifactStream } from "./lib/useArtifactStream";
 import { usePersistentState, useDragResize } from "./lib/layout";
 import { StatusBar } from "./components/StatusBar";
 import TokenMetricsWidget from "./components/TokenMetricsWidget";
 import { ExplorerTree } from "./components/ExplorerTree";
 import { ThemeProvider, useTheme, ThemeSelector } from "./components/ui";
-import Forge from "./components/Forge";
 import CommandPalette from "./components/CommandPalette";
 import EditorPane from "./components/EditorPane";
 import SettingsSurface from "./components/SettingsSurface";
@@ -121,7 +109,7 @@ function EmbeddedPreviewApp() {
         </div>
         <p className="text-xs text-text-muted max-w-md">
           This pane mirrors the running workspace front end. A production project preview (the built
-          output of the project under development) is served once a project's preview target is
+          output of the project under development) is served once a project&apos;s preview target is
           commissioned in Project System — the shell around this pane remains fully interactive
           while this frame reflects the live state.
         </p>
@@ -153,7 +141,7 @@ function AppContent() {
 
   // Resizable sidebars (persisted).
   const [sidebarWidth, setSidebarWidth] = usePersistentState("sidebarWidth", 260);
-  const [agentDockOpen, setAgentDockOpen] = usePersistentState("agentDockOpen", true);
+  const [_agentDockOpen, setAgentDockOpen] = usePersistentState("agentDockOpen", true);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState<
@@ -168,13 +156,16 @@ function AppContent() {
     | undefined
   >(undefined);
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const { settings } = useSettings();
+  // Kept as a bare call on purpose: `useSettings()` may register its own hooks,
+  // and no consumer in this file reads the returned value. Dropping the call
+  // altogether would change the hook order; ignoring the value does not.
+  useSettings();
 
   const [missions, setMissions] = useState<MissionRecord[]>([]);
   const [activeMissionId, setActiveMissionId] = useState<string | null>(null);
   const [verification, setVerification] = useState<VerificationReport | null>(null);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [_error, setError] = useState<string | null>(null);
   const [metricsKey, setMetricsKey] = useState(0);
   const { currentTheme, setTheme } = useTheme();
 

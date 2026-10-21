@@ -1,6 +1,5 @@
-import { useState } from "react";
 import { Panel } from "./Panel";
-import { StatusBadge, type CapabilityStatus } from "./CapabilityStatus";
+import { StatusBadge } from "./CapabilityStatus";
 import { EVIDENCE_CATEGORIES, NOT_CAPTURED, type MissionRecord } from "../lib/mission";
 
 export function EvidenceCenter({ missions }: { missions: MissionRecord[] }) {

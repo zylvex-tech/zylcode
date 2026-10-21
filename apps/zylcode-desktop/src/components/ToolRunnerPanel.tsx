@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Panel } from "./Panel";
 import { StatusBadge } from "./CapabilityStatus";
 import { fetchTools, type ToolsState, type ToolRow } from "../lib/service";
 import { runTool, type ToolRunState } from "../lib/toolRunner";
@@ -158,8 +157,8 @@ export function ToolRunnerPanel() {
           {selectedRow && (
             <div className="space-y-1.5" data-testid="tool-runner-form">
               <p className="text-[10px] text-text-muted">
-                {selectedRow.description ?? ""} — payload is the engine's own result, including risk
-                class and evidence id.
+                {selectedRow.description ?? ""} — payload is the engine&apos;s own result, including
+                risk class and evidence id.
               </p>
               <textarea
                 value={argsText}
@@ -191,7 +190,7 @@ function renderRun(run: ToolRunState) {
   if (run.kind === "idle") {
     return (
       <p className="text-[10px] text-text-muted">
-        Choose a tool and execute — results are the engine's own.
+        Choose a tool and execute — results are the engine&apos;s own.
       </p>
     );
   }
