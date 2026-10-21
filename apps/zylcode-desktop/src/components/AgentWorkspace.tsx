@@ -206,8 +206,8 @@ export const AgentWorkspace: React.FC<AgentWorkspaceProps> = ({
               </div>
             )}
             <p className="text-[10px] text-text-muted">
-              Queued work never runs by itself — execution happens only when you press
-              “Run queued”. Build missions verify candidates by running the real test suite.
+              Queued work never runs by itself — execution happens only when you press “Run queued”.
+              Build missions verify candidates by running the real test suite.
             </p>
           </>
         )}
@@ -238,11 +238,19 @@ export const AgentWorkspace: React.FC<AgentWorkspaceProps> = ({
               <div key={m.id} className="border border-border rounded px-2.5 py-1.5 space-y-1">
                 <div className="flex items-center gap-2">
                   <span className={`text-[11px] font-medium ${STATE_COLOR[m.state]}`}>
-                    {m.state === "running" ? "◍" : m.state === "done" ? "●" : m.state === "failed" ? "✕" : "○"}{" "}
+                    {m.state === "running"
+                      ? "◍"
+                      : m.state === "done"
+                        ? "●"
+                        : m.state === "failed"
+                          ? "✕"
+                          : "○"}{" "}
                     {m.state}
                   </span>
                   <span className="text-[10px] text-text-muted font-mono uppercase">{m.mode}</span>
-                  <span className="ml-auto text-[10px] text-text-muted">{ago(missionTimestamp(m))}</span>
+                  <span className="ml-auto text-[10px] text-text-muted">
+                    {ago(missionTimestamp(m))}
+                  </span>
                 </div>
                 <p className="text-xs text-text-primary">{m.task}</p>
                 {m.summary && <p className="text-[11px] text-text-muted">{m.summary}</p>}
@@ -278,7 +286,9 @@ export const AgentWorkspace: React.FC<AgentWorkspaceProps> = ({
                 {evidence.entries.map((e) => (
                   <div key={e.id} className="border border-border rounded px-2.5 py-1.5">
                     <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-mono text-text-secondary">{e.action_id}</span>
+                      <span className="text-[11px] font-mono text-text-secondary">
+                        {e.action_id}
+                      </span>
                       <span className="ml-auto text-[10px] text-text-muted">{e.state}</span>
                     </div>
                     <p className="text-[10px] text-text-muted font-mono">

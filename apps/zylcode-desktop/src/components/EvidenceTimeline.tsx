@@ -34,7 +34,12 @@ export function EvidenceTimeline() {
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <StatusBadge status={headerStatus} size="xs" />
-          <button type="button" onClick={load} className="btn btn-secondary text-xs" disabled={state.kind === "loading"}>
+          <button
+            type="button"
+            onClick={load}
+            className="btn btn-secondary text-xs"
+            disabled={state.kind === "loading"}
+          >
             {state.kind === "loading" ? "Reading…" : "Refresh"}
           </button>
         </div>
@@ -80,12 +85,10 @@ export function EvidenceTimeline() {
                       <span className="truncate font-mono">{e.action_id}</span>
                       <span
                         className={`shrink-0 font-mono text-[10px] ${
-                          e.state.includes("Failed") || e.error
-                            ? "text-[#c0392b]"
-                            : "text-primary"
+                          e.state.includes("Failed") || e.error ? "text-[#c0392b]" : "text-primary"
                         }`}
                       >
-                        {e.state.replace("\"", "")}
+                        {e.state.replace('"', "")}
                       </span>
                     </div>
                     <p className="mt-0.5 truncate font-mono text-[10px] text-text-muted">

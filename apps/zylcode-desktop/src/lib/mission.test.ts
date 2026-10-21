@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  AUTONOMY_MODES,
-  EVIDENCE_CATEGORIES,
-  NOT_CAPTURED,
-  newMissionId,
-} from "./mission";
+import { AUTONOMY_MODES, EVIDENCE_CATEGORIES, NOT_CAPTURED, newMissionId } from "./mission";
 
 // ---------------------------------------------------------------------------
 // Mission domain (v3 §5–§7): states, autonomy modes with truthful

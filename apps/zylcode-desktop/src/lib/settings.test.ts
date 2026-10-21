@@ -1,10 +1,5 @@
 import { describe, expect, it, beforeEach } from "vitest";
-import {
-  DEFAULT_SETTINGS,
-  loadSettings,
-  mergeSettings,
-  saveSettings,
-} from "./settings";
+import { DEFAULT_SETTINGS, loadSettings, mergeSettings, saveSettings } from "./settings";
 
 describe("settings store", () => {
   beforeEach(() => {

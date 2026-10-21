@@ -53,9 +53,7 @@ export const PulsePanel: React.FC = () => {
     setEvidence(ev);
     if (ev.kind === "ready") {
       setConnected("AVAILABLE");
-      setNote(
-        `${ev.entry_count} ledger entries · chain ${ev.chain_intact ? "intact" : "BROKEN"}`,
-      );
+      setNote(`${ev.entry_count} ledger entries · chain ${ev.chain_intact ? "intact" : "BROKEN"}`);
     } else if (ev.kind === "empty") {
       setConnected("LIMITED");
       setNote("ledger empty — run a build mission to record evidence");
@@ -117,7 +115,9 @@ export const PulsePanel: React.FC = () => {
           <button
             onClick={() => setMode("build")}
             className={`px-3 py-1 rounded text-xs font-medium border transition-colors ${
-              mode === "build" ? MODE_STYLE.build : "border-border text-text-muted hover:text-text-primary"
+              mode === "build"
+                ? MODE_STYLE.build
+                : "border-border text-text-muted hover:text-text-primary"
             }`}
           >
             ⚡ Build
@@ -125,7 +125,9 @@ export const PulsePanel: React.FC = () => {
           <button
             onClick={() => setMode("plan")}
             className={`px-3 py-1 rounded text-xs font-medium border transition-colors ${
-              mode === "plan" ? MODE_STYLE.plan : "border-border text-text-muted hover:text-text-primary"
+              mode === "plan"
+                ? MODE_STYLE.plan
+                : "border-border text-text-muted hover:text-text-primary"
             }`}
           >
             🗺 Plan
@@ -141,7 +143,9 @@ export const PulsePanel: React.FC = () => {
             value={task}
             onChange={(e) => setTask(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && void submit()}
-            placeholder={mode === "build" ? "Describe the change to build…" : "Describe what to plan…"}
+            placeholder={
+              mode === "build" ? "Describe the change to build…" : "Describe what to plan…"
+            }
             className="flex-1 bg-background border border-border rounded px-3 py-2 text-sm outline-none focus:border-primary/60 placeholder:text-text-muted"
           />
           <button
@@ -178,7 +182,9 @@ export const PulsePanel: React.FC = () => {
       {/* Running banner */}
       {active && (
         <div className="rounded-lg border border-primary/40 bg-primary/5 px-3 py-2 flex items-center gap-2">
-          <span className={`h-2 w-2 rounded-full ${draining ? "bg-primary animate-ping" : "bg-primary/50"}`} />
+          <span
+            className={`h-2 w-2 rounded-full ${draining ? "bg-primary animate-ping" : "bg-primary/50"}`}
+          />
           <span className="text-xs text-primary font-mono">running:</span>
           <span className="text-xs text-text-primary truncate">{active.task}</span>
         </div>
@@ -192,7 +198,8 @@ export const PulsePanel: React.FC = () => {
           </div>
           {missions.length === 0 ? (
             <p className="p-3 text-xs text-text-muted">
-              Empty. Queue a task above — Build missions execute for real and land their evidence in the ledger.
+              Empty. Queue a task above — Build missions execute for real and land their evidence in
+              the ledger.
             </p>
           ) : (
             <ul className="divide-y divide-border/60">
@@ -203,19 +210,27 @@ export const PulsePanel: React.FC = () => {
                       {m.state === "running" && "◍ "}
                       {m.state}
                     </span>
-                    <span className={`text-[9px] px-1.5 py-0.5 rounded border font-mono uppercase ${MODE_STYLE[m.mode]}`}>
+                    <span
+                      className={`text-[9px] px-1.5 py-0.5 rounded border font-mono uppercase ${MODE_STYLE[m.mode]}`}
+                    >
                       {m.mode}
                     </span>
-                    <span className="ml-auto text-[10px] text-text-muted font-mono">{ago(m.updatedAt)}</span>
+                    <span className="ml-auto text-[10px] text-text-muted font-mono">
+                      {ago(m.updatedAt)}
+                    </span>
                   </div>
                   <p className="text-xs text-text-primary mt-1 break-words">{m.task}</p>
                   {m.summary && (
-                    <p className={`text-[10px] mt-1 font-mono break-words ${m.state === "failed" ? "text-red-400/80" : "text-text-muted"}`}>
+                    <p
+                      className={`text-[10px] mt-1 font-mono break-words ${m.state === "failed" ? "text-red-400/80" : "text-text-muted"}`}
+                    >
                       {m.summary}
                     </p>
                   )}
                   {m.ledgerSession && (
-                    <p className="text-[9px] text-text-muted font-mono mt-0.5">ledger: {m.ledgerSession.slice(0, 8)}</p>
+                    <p className="text-[9px] text-text-muted font-mono mt-0.5">
+                      ledger: {m.ledgerSession.slice(0, 8)}
+                    </p>
                   )}
                 </li>
               ))}
@@ -226,7 +241,8 @@ export const PulsePanel: React.FC = () => {
         {/* Evidence activity feed */}
         <div className="rounded-lg border border-border bg-surface/40 overflow-y-auto">
           <div className="px-3 py-2 border-b border-border text-[10px] font-mono tracking-widest text-text-muted">
-            EVIDENCE ACTIVITY {evidence?.kind === "ready" && evidence.chain_intact ? "· ✓ chain intact" : ""}
+            EVIDENCE ACTIVITY{" "}
+            {evidence?.kind === "ready" && evidence.chain_intact ? "· ✓ chain intact" : ""}
           </div>
           {evidence?.kind === "ready" ? (
             <ul className="divide-y divide-border/60">
@@ -234,7 +250,9 @@ export const PulsePanel: React.FC = () => {
                 <li key={e.id} className="px-3 py-2">
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-mono text-primary">{e.action_id}</span>
-                    <span className="ml-auto text-[9px] text-text-muted font-mono">{ago(e.timestamp)}</span>
+                    <span className="ml-auto text-[9px] text-text-muted font-mono">
+                      {ago(e.timestamp)}
+                    </span>
                   </div>
                   <p className="text-[10px] text-text-muted font-mono mt-0.5">
                     {e.state} · session {e.session_id.slice(0, 8)}

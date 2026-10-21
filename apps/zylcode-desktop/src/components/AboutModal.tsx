@@ -19,7 +19,9 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
               className="h-14 rounded"
               draggable={false}
             />
-            <p className="text-xs text-slate-400 mt-2">Formally Verified AI Software Synthesis Engine</p>
+            <p className="text-xs text-slate-400 mt-2">
+              Formally Verified AI Software Synthesis Engine
+            </p>
           </div>
           <button
             onClick={onClose}

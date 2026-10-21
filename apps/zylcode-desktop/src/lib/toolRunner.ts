@@ -119,6 +119,7 @@ function describeFailure(data: Record<string, unknown>): string {
     const err = (output as Record<string, unknown>).error;
     if (typeof err === "string" && err.trim()) return err;
   }
-  const bound = typeof data.bound_operation === "string" ? ` (operation: ${data.bound_operation})` : "";
+  const bound =
+    typeof data.bound_operation === "string" ? ` (operation: ${data.bound_operation})` : "";
   return `the tool reported failure${bound}`;
 }

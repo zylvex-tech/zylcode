@@ -13,7 +13,13 @@ import { runTool, type ToolRunState } from "./toolRunner";
 import type { ToolRow } from "./service";
 
 const BOUND: ToolRow[] = [
-  { id: "fs.read", transport: "stdio", description: "Read a file", enabled: true, executor_bound: true },
+  {
+    id: "fs.read",
+    transport: "stdio",
+    description: "Read a file",
+    enabled: true,
+    executor_bound: true,
+  },
   { id: "db.query", transport: "stdio", description: null, enabled: true, executor_bound: false },
 ];
 
@@ -112,7 +118,9 @@ describe("runTool — success and tool-level failure payloads", () => {
   it("a transport-level failure resolves to unavailable, not failed", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () => Promise.reject(new TypeError("Failed to fetch"))) as unknown as typeof fetch,
+      vi.fn(async () =>
+        Promise.reject(new TypeError("Failed to fetch")),
+      ) as unknown as typeof fetch,
     );
     const state: ToolRunState = await runTool("fs.read", {}, BOUND);
     expect(state.kind).toBe("unavailable");

@@ -87,10 +87,19 @@ function isUnavailable<T>(v: T | { __unavailable: string }): v is { __unavailabl
 /** Live search over the intelligence pipeline. */
 export async function fetchSearch(
   q: string,
-): Promise<{ kind: "loading" } | { kind: "unavailable"; reason: string } | { kind: "ready"; data: SearchResult }> {
+): Promise<
+  | { kind: "loading" }
+  | { kind: "unavailable"; reason: string }
+  | { kind: "ready"; data: SearchResult }
+> {
   const env = detectEnvironment();
   if (env === "TAURI_DESKTOP") {
-    const result = await viaDesktop<SearchResult>("repo_search", { q }, "search", "desktop engine search failed");
+    const result = await viaDesktop<SearchResult>(
+      "repo_search",
+      { q },
+      "search",
+      "desktop engine search failed",
+    );
     if (isUnavailable(result)) return { kind: "unavailable", reason: result.__unavailable };
     return { kind: "ready", data: result };
   }
@@ -105,11 +114,18 @@ export async function fetchSearch(
 
 /** The scanner's file tree for Explorer. */
 export async function fetchFileTree(): Promise<
-  { kind: "loading" } | { kind: "unavailable"; reason: string } | { kind: "ready"; data: FileTreeResult }
+  | { kind: "loading" }
+  | { kind: "unavailable"; reason: string }
+  | { kind: "ready"; data: FileTreeResult }
 > {
   const env = detectEnvironment();
   if (env === "TAURI_DESKTOP") {
-    const result = await viaDesktop<FileTreeResult>("repo_file_tree", undefined, "fileTree", "desktop engine file tree failed");
+    const result = await viaDesktop<FileTreeResult>(
+      "repo_file_tree",
+      undefined,
+      "fileTree",
+      "desktop engine file tree failed",
+    );
     if (isUnavailable(result)) return { kind: "unavailable", reason: result.__unavailable };
     return { kind: "ready", data: result };
   }
@@ -118,7 +134,10 @@ export async function fetchFileTree(): Promise<
     return { kind: "ready", data };
   } catch (e) {
     recordDiagnostic("fileTree", String(e));
-    return { kind: "unavailable", reason: "start `zylcode serve-intel` to browse the repository tree" };
+    return {
+      kind: "unavailable",
+      reason: "start `zylcode serve-intel` to browse the repository tree",
+    };
   }
 }
 

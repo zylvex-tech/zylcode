@@ -38,11 +38,7 @@ interface SettingsSurfaceProps {
   onClose: () => void;
 }
 
-function Row(props: {
-  title: string;
-  description: string;
-  children: React.ReactNode;
-}) {
+function Row(props: { title: string; description: string; children: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-6 px-4 py-3 border-b border-border last:border-0">
       <div className="min-w-0">
@@ -94,7 +90,11 @@ function Segmented<T extends string | number>({
   label: string;
 }) {
   return (
-    <div className="inline-flex rounded-md border border-border overflow-hidden" role="radiogroup" aria-label={label}>
+    <div
+      className="inline-flex rounded-md border border-border overflow-hidden"
+      role="radiogroup"
+      aria-label={label}
+    >
       {options.map((o) => (
         <button
           key={String(o.value)}
@@ -365,10 +365,7 @@ export const SettingsSurface: React.FC<SettingsSurfaceProps> = ({
                       onChange={(v) => update("reducedMotion", v)}
                     />
                   </Row>
-                  <Row
-                    title="Compact density"
-                    description="Tighter spacing in panels and lists."
-                  >
+                  <Row title="Compact density" description="Tighter spacing in panels and lists.">
                     <Toggle
                       label="Compact density"
                       checked={settings.compactDensity}
@@ -467,16 +464,18 @@ export const SettingsSurface: React.FC<SettingsSurfaceProps> = ({
                   className="flex items-center gap-2 rounded-md overflow-hidden px-3 py-2"
                   style={{ background: "rgb(20 20 20 / 0.92)" }}
                 >
-                  <img src="/branding/lockup.png" alt="ZylCode" className="h-10" draggable={false} />
+                  <img
+                    src="/branding/lockup.png"
+                    alt="ZylCode"
+                    className="h-10"
+                    draggable={false}
+                  />
                 </div>
                 <p className="text-xs text-text-muted">
                   Formally Verified AI Software Synthesis Engine
                 </p>
                 <div className="w-full max-w-sm rounded-lg border border-border bg-background/40 divide-y divide-border text-left">
-                  <Row
-                    title="App version"
-                    description="The running frontend's version."
-                  >
+                  <Row title="App version" description="The running frontend's version.">
                     <span className="text-xs font-mono">0.2.0</span>
                   </Row>
                   <Row

@@ -47,10 +47,10 @@ export function AgentTurnPanel() {
       </div>
 
       <p className="text-[10px] text-text-muted">
-        One prompt runs the whole loop against this workspace: context gathering → plan →
-        tool calls → verification → evidence ledger. Without a funded provider credential
-        the model layer degrades to the synthetic offline provider — the loop still
-        completes, and every provider failover is recorded.
+        One prompt runs the whole loop against this workspace: context gathering → plan → tool calls
+        → verification → evidence ledger. Without a funded provider credential the model layer
+        degrades to the synthetic offline provider — the loop still completes, and every provider
+        failover is recorded.
       </p>
 
       <textarea
@@ -126,9 +126,7 @@ function renderTurn(turn: AgentTurnState) {
           via {turn.via === "desktop" ? "desktop engine" : "serve-intel"}
         </span>
       </div>
-      <p className="mt-1 font-mono text-[11px] text-text-secondary break-words">
-        {result.summary}
-      </p>
+      <p className="mt-1 font-mono text-[11px] text-text-secondary break-words">{result.summary}</p>
       {result.artifacts.length > 0 && (
         <div className="mt-1 space-y-1">
           {result.artifacts.map((a, i) => (

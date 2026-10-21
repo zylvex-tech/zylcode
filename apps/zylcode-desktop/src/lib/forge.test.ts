@@ -31,7 +31,14 @@ function validManifest(): Record<string, unknown> {
       secrets: [],
       external_services: [],
     },
-    commercial: { model: "FREE", trial: null, price: null, currency: null, billing_period: null, seats: null },
+    commercial: {
+      model: "FREE",
+      trial: null,
+      price: null,
+      currency: null,
+      billing_period: null,
+      seats: null,
+    },
     evidence: {
       test_status: "passed",
       verification_rung: "R2",
@@ -112,7 +119,14 @@ describe("parseCapabilityPack", () => {
 
   it("normalizes commercial.model case", () => {
     const m = validManifest();
-    m.commercial = { model: "subscription", trial: true, price: 9, currency: "USD", billing_period: "monthly", seats: 5 };
+    m.commercial = {
+      model: "subscription",
+      trial: true,
+      price: 9,
+      currency: "USD",
+      billing_period: "monthly",
+      seats: 5,
+    };
     const res = parseCapabilityPack(m);
     expect(res.ok).toBe(true);
     if (res.ok) expect(res.pack.commercial.model).toBe("SUBSCRIPTION");
@@ -132,17 +146,31 @@ describe("trustLabelOf", () => {
   }
 
   it("is UNVERIFIED without passing tests — even if a rung is claimed", () => {
-    expect(trustLabelOf(packWith({ test_status: "none", verification_rung: "R4" }))).toBe("UNVERIFIED");
-    expect(trustLabelOf(packWith({ test_status: "partial", verification_rung: "R3" }))).toBe("UNVERIFIED");
+    expect(trustLabelOf(packWith({ test_status: "none", verification_rung: "R4" }))).toBe(
+      "UNVERIFIED",
+    );
+    expect(trustLabelOf(packWith({ test_status: "partial", verification_rung: "R3" }))).toBe(
+      "UNVERIFIED",
+    );
   });
 
   it("is TESTED for passed tests at R2", () => {
-    expect(trustLabelOf(packWith({ test_status: "passed", verification_rung: "R2" }))).toBe("TESTED");
+    expect(trustLabelOf(packWith({ test_status: "passed", verification_rung: "R2" }))).toBe(
+      "TESTED",
+    );
   });
 
   it("is VERIFIED for R3 only with a verified commit", () => {
-    expect(trustLabelOf(packWith({ test_status: "passed", verification_rung: "R3", verified_commit: "deadbeef" }))).toBe("VERIFIED");
-    expect(trustLabelOf(packWith({ test_status: "passed", verification_rung: "R3", verified_commit: null }))).toBe("TESTED");
+    expect(
+      trustLabelOf(
+        packWith({ test_status: "passed", verification_rung: "R3", verified_commit: "deadbeef" }),
+      ),
+    ).toBe("VERIFIED");
+    expect(
+      trustLabelOf(
+        packWith({ test_status: "passed", verification_rung: "R3", verified_commit: null }),
+      ),
+    ).toBe("TESTED");
   });
 
   it("is REPRODUCIBLE at R4 and CERTIFIED at R5", () => {

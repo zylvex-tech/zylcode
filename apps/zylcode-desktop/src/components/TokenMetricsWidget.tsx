@@ -64,12 +64,14 @@ export default function TokenMetricsWidget({ refreshKey }: { refreshKey?: number
   const totalCost = inputCost + outputCost;
   const savedCost = (snap.verification_saved_tokens / 1_000_000) * 3.0;
 
-  const formatCost = (v: number) =>
-    v < 0.01 ? "<$0.01" : `$${v.toFixed(2)}`;
+  const formatCost = (v: number) => (v < 0.01 ? "<$0.01" : `$${v.toFixed(2)}`);
 
   return (
     <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
-      <span className="rounded bg-zyl-bg px-2 py-0.5 border border-zyl-border" title="input / output tokens">
+      <span
+        className="rounded bg-zyl-bg px-2 py-0.5 border border-zyl-border"
+        title="input / output tokens"
+      >
         tok {snap.input_tokens}/{snap.output_tokens}
         <span className="text-zyl-muted"> Σ{total}</span>
       </span>
@@ -89,12 +91,18 @@ export default function TokenMetricsWidget({ refreshKey }: { refreshKey?: number
         )}
       </span>
       {snap.fallback_count > 0 && (
-        <span className="rounded bg-amber-950/50 border border-amber-900 text-amber-300 px-2 py-0.5" title="fallback provider activations">
+        <span
+          className="rounded bg-amber-950/50 border border-amber-900 text-amber-300 px-2 py-0.5"
+          title="fallback provider activations"
+        >
           fallback ×{snap.fallback_count}
         </span>
       )}
       {/* context trim indicator — derived from speculative savings vs total */}
-      <span className="text-zyl-muted" title="adaptive context window (8192 tokens, memchr trimmed)">
+      <span
+        className="text-zyl-muted"
+        title="adaptive context window (8192 tokens, memchr trimmed)"
+      >
         win 8192
       </span>
     </div>

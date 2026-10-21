@@ -71,7 +71,15 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
   if (openFiles.length === 0 || !activePath) {
     return (
       <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-2 bg-code-background text-code-text">
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="text-text-muted/40">
+        <svg
+          width="40"
+          height="40"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+          className="text-text-muted/40"
+        >
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
           <polyline points="14 2 14 8 20 8" />
         </svg>
@@ -104,7 +112,9 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
               <button
                 aria-label={`Close ${p}`}
                 className={`ml-1 w-4 h-4 rounded flex items-center justify-center ${
-                  active ? "opacity-60 hover:opacity-100 hover:bg-surface-hover" : "opacity-0 group-hover:opacity-60 hover:!opacity-100"
+                  active
+                    ? "opacity-60 hover:opacity-100 hover:bg-surface-hover"
+                    : "opacity-0 group-hover:opacity-60 hover:!opacity-100"
                 }`}
                 onClick={(e) => {
                   e.stopPropagation();

@@ -41,7 +41,9 @@ export default function ProviderSettings() {
   const [failovers, setFailovers] = useState<Failover[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [edit, setEdit] = useState<Record<string, { endpoint: string; timeout_ms: string; model: string }>>({});
+  const [edit, setEdit] = useState<
+    Record<string, { endpoint: string; timeout_ms: string; model: string }>
+  >({});
 
   async function refresh() {
     try {
@@ -51,7 +53,8 @@ export default function ProviderSettings() {
       res.sort((a, b) => a.fallback_order - b.fallback_order);
       setConfigs(res);
       const draft: Record<string, { endpoint: string; timeout_ms: string; model: string }> = {};
-      for (const c of res) draft[c.kind] = { endpoint: c.endpoint, timeout_ms: String(c.timeout_ms), model: c.model };
+      for (const c of res)
+        draft[c.kind] = { endpoint: c.endpoint, timeout_ms: String(c.timeout_ms), model: c.model };
       setEdit(draft);
       setErr(null);
     } catch (e) {
@@ -146,23 +149,47 @@ export default function ProviderSettings() {
   return (
     <div className="rounded-lg border border-zyl-border bg-zyl-surface p-4 space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold uppercase tracking-widest text-zyl-muted">Provider Settings — Fallback Chain</h2>
-        <button onClick={refresh} className="rounded border border-zyl-border px-2 py-1 text-xs hover:bg-zyl-bg">
+        <h2 className="text-sm font-semibold uppercase tracking-widest text-zyl-muted">
+          Provider Settings — Fallback Chain
+        </h2>
+        <button
+          onClick={refresh}
+          className="rounded border border-zyl-border px-2 py-1 text-xs hover:bg-zyl-bg"
+        >
           Refresh
         </button>
       </div>
-      {err && <div className="rounded border border-red-900 bg-red-950/40 p-2 text-xs font-mono text-red-300">{err}</div>}
+      {err && (
+        <div className="rounded border border-red-900 bg-red-950/40 p-2 text-xs font-mono text-red-300">
+          {err}
+        </div>
+      )}
 
       <div className="grid gap-3">
         {configs.map((c) => (
-          <div key={c.kind} className="rounded border border-zyl-border bg-zyl-bg p-3 flex flex-col gap-2">
+          <div
+            key={c.kind}
+            className="rounded border border-zyl-border bg-zyl-bg p-3 flex flex-col gap-2"
+          >
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <span className={`inline-block h-2 w-2 rounded-full ${KIND_DOT[c.kind]} ${c.enabled ? "opacity-100" : "opacity-30"}`} />
+                <span
+                  className={`inline-block h-2 w-2 rounded-full ${KIND_DOT[c.kind]} ${c.enabled ? "opacity-100" : "opacity-30"}`}
+                />
                 <span className="text-sm font-semibold">{KIND_LABEL[c.kind]}</span>
-                <span className="text-xs font-mono text-zyl-muted">#{c.fallback_order} · {c.kind}</span>
-                {c.requires_api_key && <span className="rounded bg-amber-950/50 border border-amber-900 px-1.5 py-0.5 text-[10px] text-amber-300">API key</span>}
-                {!c.enabled && <span className="rounded bg-zinc-800 border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-400">disabled</span>}
+                <span className="text-xs font-mono text-zyl-muted">
+                  #{c.fallback_order} · {c.kind}
+                </span>
+                {c.requires_api_key && (
+                  <span className="rounded bg-amber-950/50 border border-amber-900 px-1.5 py-0.5 text-[10px] text-amber-300">
+                    API key
+                  </span>
+                )}
+                {!c.enabled && (
+                  <span className="rounded bg-zinc-800 border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-400">
+                    disabled
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-1">
                 <button
@@ -182,7 +209,12 @@ export default function ProviderSettings() {
                   ↓
                 </button>
                 <label className="ml-2 flex items-center gap-1 text-xs">
-                  <input type="checkbox" checked={c.enabled} onChange={(e) => toggleEnabled(c.kind, e.target.checked)} disabled={busy === c.kind} />
+                  <input
+                    type="checkbox"
+                    checked={c.enabled}
+                    onChange={(e) => toggleEnabled(c.kind, e.target.checked)}
+                    disabled={busy === c.kind}
+                  />
                   enabled
                 </label>
               </div>
@@ -193,7 +225,9 @@ export default function ProviderSettings() {
                 <span className="text-zyl-muted">Model</span>
                 <input
                   value={edit[c.kind]?.model ?? ""}
-                  onChange={(e) => setEdit((s) => ({ ...s, [c.kind]: { ...s[c.kind], model: e.target.value } }))}
+                  onChange={(e) =>
+                    setEdit((s) => ({ ...s, [c.kind]: { ...s[c.kind], model: e.target.value } }))
+                  }
                   placeholder={c.model}
                   className="w-full rounded border border-zyl-border bg-zyl-surface px-2 py-1.5 font-mono text-xs outline-none focus:border-zyl-accent"
                 />
@@ -202,7 +236,9 @@ export default function ProviderSettings() {
                 <span className="text-zyl-muted">Endpoint override</span>
                 <input
                   value={edit[c.kind]?.endpoint ?? ""}
-                  onChange={(e) => setEdit((s) => ({ ...s, [c.kind]: { ...s[c.kind], endpoint: e.target.value } }))}
+                  onChange={(e) =>
+                    setEdit((s) => ({ ...s, [c.kind]: { ...s[c.kind], endpoint: e.target.value } }))
+                  }
                   placeholder={c.kind === "ollama" ? "http://localhost:11434" : "default"}
                   className="w-full rounded border border-zyl-border bg-zyl-surface px-2 py-1.5 font-mono text-xs outline-none focus:border-zyl-accent"
                 />
@@ -211,7 +247,12 @@ export default function ProviderSettings() {
                 <span className="text-zyl-muted">Timeout ms</span>
                 <input
                   value={edit[c.kind]?.timeout_ms ?? ""}
-                  onChange={(e) => setEdit((s) => ({ ...s, [c.kind]: { ...s[c.kind], timeout_ms: e.target.value } }))}
+                  onChange={(e) =>
+                    setEdit((s) => ({
+                      ...s,
+                      [c.kind]: { ...s[c.kind], timeout_ms: e.target.value },
+                    }))
+                  }
                   placeholder={String(c.timeout_ms)}
                   className="w-full rounded border border-zyl-border bg-zyl-surface px-2 py-1.5 font-mono text-xs outline-none focus:border-zyl-accent"
                 />
@@ -232,9 +273,14 @@ export default function ProviderSettings() {
       </div>
 
       <div className="rounded border border-zyl-border bg-zyl-bg p-3">
-        <div className="text-xs font-semibold uppercase tracking-widest text-zyl-muted mb-2">Live failover indicators</div>
+        <div className="text-xs font-semibold uppercase tracking-widest text-zyl-muted mb-2">
+          Live failover indicators
+        </div>
         {failovers.length === 0 ? (
-          <p className="text-xs text-zyl-muted">No failovers yet — streaming intents will emit <span className="font-mono">telemetry:provider_failover</span> when fallback occurs.</p>
+          <p className="text-xs text-zyl-muted">
+            No failovers yet — streaming intents will emit{" "}
+            <span className="font-mono">telemetry:provider_failover</span> when fallback occurs.
+          </p>
         ) : (
           <ul className="space-y-1 max-h-40 overflow-auto pr-1">
             {failovers.map((f, i) => (
@@ -252,7 +298,10 @@ export default function ProviderSettings() {
       </div>
 
       <p className="text-[11px] leading-relaxed text-zyl-muted">
-        Order defines fallback priority (top = first attempt). Timeout is per-request (1000–300000ms). Ollama default host is <span className="font-mono">http://localhost:11434</span>. Synthetic offline requires no key and is last-resort.
+        Order defines fallback priority (top = first attempt). Timeout is per-request
+        (1000–300000ms). Ollama default host is{" "}
+        <span className="font-mono">http://localhost:11434</span>. Synthetic offline requires no key
+        and is last-resort.
       </p>
     </div>
   );

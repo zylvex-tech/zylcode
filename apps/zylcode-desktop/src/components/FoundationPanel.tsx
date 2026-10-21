@@ -60,7 +60,8 @@ export const FoundationPanel: React.FC = () => {
           {projects.kind === "ready" && (
             <div className="text-xs space-y-1">
               <p className="text-[11px] text-text-muted">
-                Store state: <span className="font-mono text-text-secondary">{projects.storeState}</span>
+                Store state:{" "}
+                <span className="font-mono text-text-secondary">{projects.storeState}</span>
               </p>
               {projects.projects.length === 0 ? (
                 <p className="text-text-muted">
@@ -95,8 +96,8 @@ export const FoundationPanel: React.FC = () => {
             <div className="text-xs space-y-1">
               <p className="text-[11px] text-text-muted">
                 Contract v{artifacts.contractVersion} — {artifacts.count} artifact
-                {artifacts.count === 1 ? "" : "s"}; lifecycle is forward-only (proposed → generated →
-                validated → reviewed → accepted → delivered).
+                {artifacts.count === 1 ? "" : "s"}; lifecycle is forward-only (proposed → generated
+                → validated → reviewed → accepted → delivered).
               </p>
               {artifacts.artifacts.slice(0, 6).map((a) => {
                 const kindLabel =
@@ -107,9 +108,13 @@ export const FoundationPanel: React.FC = () => {
                     <span className={tampered ? "text-red-400" : "text-emerald-400"}>
                       {tampered ? "✕" : "✓"}
                     </span>
-                    <span className="font-mono text-text-secondary truncate max-w-[45%]">{a.id}</span>
+                    <span className="font-mono text-text-secondary truncate max-w-[45%]">
+                      {a.id}
+                    </span>
                     <span className="text-text-muted">{kindLabel}</span>
-                    <span className="ml-auto text-[10px] text-text-muted font-mono">{a.lifecycle}</span>
+                    <span className="ml-auto text-[10px] text-text-muted font-mono">
+                      {a.lifecycle}
+                    </span>
                   </div>
                 );
               })}
@@ -147,15 +152,25 @@ export const FoundationPanel: React.FC = () => {
                 const neutral = v === "not_run" || v === "blocked";
                 return (
                   <div key={p.record.id} className="flex items-center gap-2">
-                    <span className={good ? "text-emerald-400" : neutral ? "text-amber-400" : "text-red-400"}>
+                    <span
+                      className={
+                        good ? "text-emerald-400" : neutral ? "text-amber-400" : "text-red-400"
+                      }
+                    >
                       {good ? "✓" : neutral ? "▲" : "✕"}
                     </span>
-                    <span className="font-mono text-text-secondary truncate max-w-[40%]" title={p.record.command}>
+                    <span
+                      className="font-mono text-text-secondary truncate max-w-[40%]"
+                      title={p.record.command}
+                    >
                       {p.record.command}
                     </span>
                     <span className="text-text-muted">{v.replace(/_/g, " ")}</span>
                     {p.stale && (
-                      <span className="ml-auto text-[10px] text-amber-400" title={`proof commit ${p.record.source_commit} ≠ HEAD`}>
+                      <span
+                        className="ml-auto text-[10px] text-amber-400"
+                        title={`proof commit ${p.record.source_commit} ≠ HEAD`}
+                      >
                         stale
                       </span>
                     )}
@@ -186,7 +201,10 @@ export const FoundationPanel: React.FC = () => {
               <p className="text-[11px] text-text-muted mb-1">{models.note}</p>
               {models.models.map((m) => (
                 <div key={m.model_id} className="flex items-center gap-2">
-                  <span className="font-mono text-text-secondary w-32 shrink-0 truncate" title={m.model_id}>
+                  <span
+                    className="font-mono text-text-secondary w-32 shrink-0 truncate"
+                    title={m.model_id}
+                  >
                     {m.model_id}
                   </span>
                   <span className="text-text-muted w-20 shrink-0">{m.provider}</span>

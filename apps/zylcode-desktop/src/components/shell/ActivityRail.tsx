@@ -29,7 +29,16 @@ const ACTIVITIES: Activity[] = [
     shortcut: "Ctrl+Shift+E",
     status: "available",
     icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
       </svg>
     ),
@@ -40,7 +49,16 @@ const ACTIVITIES: Activity[] = [
     shortcut: "Ctrl+Shift+F",
     status: "available",
     icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         <circle cx="11" cy="11" r="8"></circle>
         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
       </svg>
@@ -52,7 +70,16 @@ const ACTIVITIES: Activity[] = [
     shortcut: "Ctrl+Shift+G",
     status: "available",
     icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         <circle cx="18" cy="18" r="3"></circle>
         <circle cx="6" cy="6" r="3"></circle>
         <path d="M13 6h3a2 2 0 0 1 2 2v7"></path>
@@ -69,7 +96,16 @@ const ACTIVITIES: Activity[] = [
     label: "Code Navigation",
     status: "available",
     icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         <circle cx="6" cy="6" r="3"></circle>
         <circle cx="18" cy="6" r="3"></circle>
         <circle cx="12" cy="18" r="3"></circle>
@@ -85,7 +121,16 @@ const ACTIVITIES: Activity[] = [
     shortcut: "Ctrl+M",
     status: "limited",
     icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         <path d="M9 11l3 3L22 4"></path>
         <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
       </svg>
@@ -97,7 +142,16 @@ const ACTIVITIES: Activity[] = [
     shortcut: "Ctrl+R",
     status: "limited",
     icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         <polygon points="5 3 19 12 5 21 5 3"></polygon>
       </svg>
     ),
@@ -108,7 +162,16 @@ const ACTIVITIES: Activity[] = [
     shortcut: "Ctrl+E",
     status: "limited",
     icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"></path>
         <path d="M12 6v6l4 2"></path>
       </svg>
@@ -120,7 +183,16 @@ const ACTIVITIES: Activity[] = [
     shortcut: "Ctrl+F",
     status: "limited",
     icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
         <path d="M2 17l10 5 10-5"></path>
         <path d="M2 12l10 5 10-5"></path>
@@ -133,7 +205,16 @@ const ACTIVITIES: Activity[] = [
     shortcut: "Ctrl+X",
     status: "coming-soon",
     icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
         <path d="M8 21h8"></path>
         <path d="M12 17v4"></path>
@@ -149,7 +230,16 @@ const BOTTOM_UTILITIES: Activity[] = [
     shortcut: "Ctrl+,",
     status: "available",
     icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         <circle cx="12" cy="12" r="3"></circle>
         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
       </svg>
@@ -161,7 +251,16 @@ const BOTTOM_UTILITIES: Activity[] = [
     shortcut: "",
     status: "available",
     icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
         <circle cx="12" cy="7" r="4"></circle>
       </svg>
@@ -194,11 +293,7 @@ export function ActivityRail({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const renderActivityButton = (
-    activity: Activity,
-    index: number,
-    isBottom: boolean
-  ) => {
+  const renderActivityButton = (activity: Activity, index: number, isBottom: boolean) => {
     const isActive = activity.id === activeActivity;
     const isExpanded = expanded === activity.id;
 
@@ -242,7 +337,9 @@ export function ActivityRail({
               </div>
               {activity.shortcut && (
                 <div className="flex items-center gap-2 px-2 py-1 text-xs text-text-muted">
-                  <kbd className="px-1.5 py-0.5 bg-surface-hover border border-border rounded">{activity.shortcut}</kbd>
+                  <kbd className="px-1.5 py-0.5 bg-surface-hover border border-border rounded">
+                    {activity.shortcut}
+                  </kbd>
                 </div>
               )}
             </motion.div>
@@ -259,17 +356,13 @@ export function ActivityRail({
       onMouseLeave={() => setExpanded(null)}
     >
       <div className="flex flex-col items-center py-3 space-y-1">
-        {ACTIVITIES.map((activity, index) =>
-          renderActivityButton(activity, index, false)
-        )}
+        {ACTIVITIES.map((activity, index) => renderActivityButton(activity, index, false))}
       </div>
 
       <div className="flex-1" />
 
       <div className="flex flex-col items-center py-3 space-y-1 border-t border-border">
-        {BOTTOM_UTILITIES.map((utility, index) =>
-          renderActivityButton(utility, index, true)
-        )}
+        {BOTTOM_UTILITIES.map((utility, index) => renderActivityButton(utility, index, true))}
       </div>
     </nav>
   );

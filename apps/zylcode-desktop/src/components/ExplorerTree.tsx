@@ -64,7 +64,9 @@ export const TREE_RETRY_MS = 15000;
  */
 export function ExplorerTree({ onOpenFile, activePath, compact }: ExplorerTreeProps) {
   const [state, setState] = useState<
-    { kind: "loading" } | { kind: "unavailable"; reason: string } | { kind: "ready"; data: FileTreeResult }
+    | { kind: "loading" }
+    | { kind: "unavailable"; reason: string }
+    | { kind: "ready"; data: FileTreeResult }
   >({ kind: "loading" });
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set(["apps", "crates", "src"]));
 
@@ -135,7 +137,9 @@ export function ExplorerTree({ onOpenFile, activePath, compact }: ExplorerTreePr
           style={pad}
           onClick={() => onOpenFile?.(node.path)}
           className={`w-full text-left text-[11px] font-mono truncate rounded flex items-center gap-1 py-0.5 ${
-            active ? "bg-primary/15 text-primary" : "text-text-muted hover:text-text-primary hover:bg-surface-hover"
+            active
+              ? "bg-primary/15 text-primary"
+              : "text-text-muted hover:text-text-primary hover:bg-surface-hover"
           }`}
           title={`${node.path} (${node.language})`}
         >
@@ -147,11 +151,13 @@ export function ExplorerTree({ onOpenFile, activePath, compact }: ExplorerTreePr
     }
   };
 
-  const rows = tree ? [...tree.values()].flatMap((node) => {
-    const out: React.ReactNode[] = [];
-    renderNode(node, 0, out, node.path);
-    return out;
-  }) : [];
+  const rows = tree
+    ? [...tree.values()].flatMap((node) => {
+        const out: React.ReactNode[] = [];
+        renderNode(node, 0, out, node.path);
+        return out;
+      })
+    : [];
 
   return (
     <Panel title="EXPLORER">
@@ -167,10 +173,14 @@ export function ExplorerTree({ onOpenFile, activePath, compact }: ExplorerTreePr
         </div>
 
         {state.kind === "unavailable" && <p className="text-xs text-text-muted">{state.reason}</p>}
-        {state.kind === "loading" && <p className="text-xs text-text-muted">Scanning the repository…</p>}
+        {state.kind === "loading" && (
+          <p className="text-xs text-text-muted">Scanning the repository…</p>
+        )}
 
         {state.kind === "ready" && tree && (
-          <div className={compact ? "flex-1 min-h-0 overflow-y-auto" : "max-h-[70vh] overflow-y-auto"}>
+          <div
+            className={compact ? "flex-1 min-h-0 overflow-y-auto" : "max-h-[70vh] overflow-y-auto"}
+          >
             {rows}
           </div>
         )}

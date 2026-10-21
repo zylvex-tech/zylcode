@@ -1,16 +1,16 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 // Theme types
-export type Theme = 
-  | 'midnight-pro'
-  | 'arctic-light'
-  | 'github-dark'
-  | 'vscode-classic'
-  | 'solarized-dark'
-  | 'dracula'
-  | 'nord'
-  | 'monokai-pro';
+export type Theme =
+  | "midnight-pro"
+  | "arctic-light"
+  | "github-dark"
+  | "vscode-classic"
+  | "solarized-dark"
+  | "dracula"
+  | "nord"
+  | "monokai-pro";
 
 export interface ThemeConfig {
   id: Theme;
@@ -28,98 +28,98 @@ export interface ThemeConfig {
 // Available themes
 export const themes: ThemeConfig[] = [
   {
-    id: 'midnight-pro',
-    name: 'Midnight Pro',
-    description: 'Deep dark theme with blue accents',
+    id: "midnight-pro",
+    name: "Midnight Pro",
+    description: "Deep dark theme with blue accents",
     preview: {
-      background: '#0f172a',
-      surface: '#1e293b',
-      primary: '#3b82f6',
-      text: '#f8fafc',
+      background: "#0f172a",
+      surface: "#1e293b",
+      primary: "#3b82f6",
+      text: "#f8fafc",
     },
     isDark: true,
   },
   {
-    id: 'arctic-light',
-    name: 'Arctic Light',
-    description: 'Clean light theme with blue accents',
+    id: "arctic-light",
+    name: "Arctic Light",
+    description: "Clean light theme with blue accents",
     preview: {
-      background: '#ffffff',
-      surface: '#f8fafc',
-      primary: '#2563eb',
-      text: '#0f172a',
+      background: "#ffffff",
+      surface: "#f8fafc",
+      primary: "#2563eb",
+      text: "#0f172a",
     },
     isDark: false,
   },
   {
-    id: 'github-dark',
-    name: 'GitHub Dark',
-    description: 'GitHub-inspired dark theme',
+    id: "github-dark",
+    name: "GitHub Dark",
+    description: "GitHub-inspired dark theme",
     preview: {
-      background: '#0d1117',
-      surface: '#161b22',
-      primary: '#58a6ff',
-      text: '#c9d1d9',
+      background: "#0d1117",
+      surface: "#161b22",
+      primary: "#58a6ff",
+      text: "#c9d1d9",
     },
     isDark: true,
   },
   {
-    id: 'vscode-classic',
-    name: 'VS Code Classic',
-    description: 'Visual Studio Code inspired theme',
+    id: "vscode-classic",
+    name: "VS Code Classic",
+    description: "Visual Studio Code inspired theme",
     preview: {
-      background: '#1e1e1e',
-      surface: '#252526',
-      primary: '#0078d4',
-      text: '#cccccc',
+      background: "#1e1e1e",
+      surface: "#252526",
+      primary: "#0078d4",
+      text: "#cccccc",
     },
     isDark: true,
   },
   {
-    id: 'solarized-dark',
-    name: 'Solarized Dark',
-    description: 'Solarized dark color scheme',
+    id: "solarized-dark",
+    name: "Solarized Dark",
+    description: "Solarized dark color scheme",
     preview: {
-      background: '#002b36',
-      surface: '#073642',
-      primary: '#268bd2',
-      text: '#839496',
+      background: "#002b36",
+      surface: "#073642",
+      primary: "#268bd2",
+      text: "#839496",
     },
     isDark: true,
   },
   {
-    id: 'dracula',
-    name: 'Dracula',
-    description: 'Popular Dracula color scheme',
+    id: "dracula",
+    name: "Dracula",
+    description: "Popular Dracula color scheme",
     preview: {
-      background: '#282a36',
-      surface: '#343746',
-      primary: '#bd93f9',
-      text: '#f8f8f2',
+      background: "#282a36",
+      surface: "#343746",
+      primary: "#bd93f9",
+      text: "#f8f8f2",
     },
     isDark: true,
   },
   {
-    id: 'nord',
-    name: 'Nord',
-    description: 'Arctic, north-bluish color palette',
+    id: "nord",
+    name: "Nord",
+    description: "Arctic, north-bluish color palette",
     preview: {
-      background: '#2e3440',
-      surface: '#3b4252',
-      primary: '#88c0d0',
-      text: '#eceff4',
+      background: "#2e3440",
+      surface: "#3b4252",
+      primary: "#88c0d0",
+      text: "#eceff4",
     },
     isDark: true,
   },
   {
-    id: 'monokai-pro',
-    name: 'Monokai Pro',
-    description: 'Modern Monokai color scheme',
+    id: "monokai-pro",
+    name: "Monokai Pro",
+    description: "Modern Monokai color scheme",
     preview: {
-      background: '#2d2a2e',
-      surface: '#363338',
-      primary: '#fc9867',
-      text: '#fcfcfa',
+      background: "#2d2a2e",
+      surface: "#363338",
+      primary: "#fc9867",
+      text: "#fcfcfa",
     },
     isDark: true,
   },
@@ -138,22 +138,22 @@ const ThemeContext = React.createContext<ThemeContextType | undefined>(undefined
 // Theme provider
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [currentTheme, setCurrentTheme] = useState<Theme>(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('zylcode-theme') as Theme) || 'midnight-pro';
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem("zylcode-theme") as Theme) || "midnight-pro";
     }
-    return 'midnight-pro';
+    return "midnight-pro";
   });
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', currentTheme);
-    localStorage.setItem('zylcode-theme', currentTheme);
+    document.documentElement.setAttribute("data-theme", currentTheme);
+    localStorage.setItem("zylcode-theme", currentTheme);
   }, [currentTheme]);
 
   const setTheme = (theme: Theme) => {
     setCurrentTheme(theme);
   };
 
-  const isDark = themes.find(t => t.id === currentTheme)?.isDark ?? true;
+  const isDark = themes.find((t) => t.id === currentTheme)?.isDark ?? true;
 
   return (
     <ThemeContext.Provider value={{ currentTheme, setTheme, themes, isDark }}>
@@ -166,7 +166,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 export function useTheme() {
   const context = React.useContext(ThemeContext);
   if (context === undefined) {
-    throw new Error('useTheme must be used within a ThemeProvider');
+    throw new Error("useTheme must be used within a ThemeProvider");
   }
   return context;
 }
@@ -184,8 +184,8 @@ export function ThemeSelector() {
       }
     }
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   return (
@@ -196,12 +196,7 @@ export function ThemeSelector() {
         aria-label="Select theme"
         aria-expanded={isOpen}
       >
-        <svg
-          className="w-5 h-5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -233,8 +228,8 @@ export function ThemeSelector() {
                   }}
                   className={`w-full flex items-center gap-3 p-3 rounded-md transition-colors ${
                     currentTheme === theme.id
-                      ? 'bg-primary/10 border border-primary/20'
-                      : 'hover:bg-surface-hover'
+                      ? "bg-primary/10 border border-primary/20"
+                      : "hover:bg-surface-hover"
                   }`}
                 >
                   <div className="flex-shrink-0 w-8 h-8 rounded-md overflow-hidden border border-border">
@@ -250,19 +245,11 @@ export function ThemeSelector() {
                     </div>
                   </div>
                   <div className="flex-1 text-left">
-                    <div className="text-sm font-medium text-text-primary">
-                      {theme.name}
-                    </div>
-                    <div className="text-xs text-text-muted">
-                      {theme.description}
-                    </div>
+                    <div className="text-sm font-medium text-text-primary">{theme.name}</div>
+                    <div className="text-xs text-text-muted">{theme.description}</div>
                   </div>
                   {currentTheme === theme.id && (
-                    <svg
-                      className="w-4 h-4 text-primary"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
+                    <svg className="w-4 h-4 text-primary" fill="currentColor" viewBox="0 0 20 20">
                       <path
                         fillRule="evenodd"
                         d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
@@ -282,35 +269,35 @@ export function ThemeSelector() {
 
 // Button component
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
-  size?: 'sm' | 'md' | 'lg';
+  variant?: "primary" | "secondary" | "outline" | "ghost" | "danger";
+  size?: "sm" | "md" | "lg";
   loading?: boolean;
   icon?: React.ReactNode;
   children: React.ReactNode;
 }
 
 export function Button({
-  variant = 'primary',
-  size = 'md',
+  variant = "primary",
+  size = "md",
   loading = false,
   icon,
   children,
-  className = '',
+  className = "",
   disabled,
   ...props
 }: ButtonProps) {
-  const baseClasses = 'btn';
+  const baseClasses = "btn";
   const variantClasses = {
-    primary: 'btn-primary',
-    secondary: 'btn-secondary',
-    outline: 'btn-outline',
-    ghost: 'btn-ghost',
-    danger: 'bg-error text-error-foreground hover:bg-error/90',
+    primary: "btn-primary",
+    secondary: "btn-secondary",
+    outline: "btn-outline",
+    ghost: "btn-ghost",
+    danger: "bg-error text-error-foreground hover:bg-error/90",
   };
   const sizeClasses = {
-    sm: 'px-3 py-1.5 text-xs',
-    md: 'px-4 py-2 text-sm',
-    lg: 'px-6 py-3 text-base',
+    sm: "px-3 py-1.5 text-xs",
+    md: "px-4 py-2 text-sm",
+    lg: "px-6 py-3 text-base",
   };
 
   return (
@@ -320,11 +307,7 @@ export function Button({
       {...props}
     >
       {loading ? (
-        <svg
-          className="animate-spin -ml-1 mr-2 h-4 w-4"
-          fill="none"
-          viewBox="0 0 24 24"
-        >
+        <svg className="animate-spin -ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24">
           <circle
             className="opacity-25"
             cx="12"
@@ -362,7 +345,7 @@ export function Input({
   helperText,
   leftIcon,
   rightIcon,
-  className = '',
+  className = "",
   id,
   ...props
 }: InputProps) {
@@ -371,10 +354,7 @@ export function Input({
   return (
     <div className="w-full">
       {label && (
-        <label
-          htmlFor={inputId}
-          className="block text-sm font-medium text-text-primary mb-1"
-        >
+        <label htmlFor={inputId} className="block text-sm font-medium text-text-primary mb-1">
           {label}
         </label>
       )}
@@ -386,10 +366,10 @@ export function Input({
         )}
         <input
           id={inputId}
-          className={`input ${leftIcon ? 'pl-10' : ''} ${rightIcon ? 'pr-10' : ''} ${
-            error ? 'border-error focus:border-error focus:ring-error/20' : ''
+          className={`input ${leftIcon ? "pl-10" : ""} ${rightIcon ? "pr-10" : ""} ${
+            error ? "border-error focus:border-error focus:ring-error/20" : ""
           } ${className}`}
-          aria-invalid={error ? 'true' : 'false'}
+          aria-invalid={error ? "true" : "false"}
           aria-describedby={
             error ? `${inputId}-error` : helperText ? `${inputId}-helper` : undefined
           }
@@ -420,26 +400,21 @@ interface CardProps {
   children: React.ReactNode;
   className?: string;
   hoverable?: boolean;
-  padding?: 'none' | 'sm' | 'md' | 'lg';
+  padding?: "none" | "sm" | "md" | "lg";
 }
 
-export function Card({
-  children,
-  className = '',
-  hoverable = false,
-  padding = 'md',
-}: CardProps) {
+export function Card({ children, className = "", hoverable = false, padding = "md" }: CardProps) {
   const paddingClasses = {
-    none: '',
-    sm: 'p-3',
-    md: 'p-4',
-    lg: 'p-6',
+    none: "",
+    sm: "p-3",
+    md: "p-4",
+    lg: "p-6",
   };
 
   return (
     <div
       className={`card ${paddingClasses[padding]} ${
-        hoverable ? 'hover:border-border-hover hover:shadow-md' : ''
+        hoverable ? "hover:border-border-hover hover:shadow-md" : ""
       } ${className}`}
     >
       {children}
@@ -450,29 +425,24 @@ export function Card({
 // Badge component
 interface BadgeProps {
   children: React.ReactNode;
-  variant?: 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'info';
-  size?: 'sm' | 'md';
+  variant?: "primary" | "secondary" | "success" | "warning" | "error" | "info";
+  size?: "sm" | "md";
   className?: string;
 }
 
-export function Badge({
-  children,
-  variant = 'primary',
-  size = 'md',
-  className = '',
-}: BadgeProps) {
+export function Badge({ children, variant = "primary", size = "md", className = "" }: BadgeProps) {
   const variantClasses = {
-    primary: 'bg-primary/10 text-primary border-primary/20',
-    secondary: 'bg-secondary/10 text-secondary border-secondary/20',
-    success: 'bg-success/10 text-success border-success/20',
-    warning: 'bg-warning/10 text-warning border-warning/20',
-    error: 'bg-error/10 text-error border-error/20',
-    info: 'bg-info/10 text-info border-info/20',
+    primary: "bg-primary/10 text-primary border-primary/20",
+    secondary: "bg-secondary/10 text-secondary border-secondary/20",
+    success: "bg-success/10 text-success border-success/20",
+    warning: "bg-warning/10 text-warning border-warning/20",
+    error: "bg-error/10 text-error border-error/20",
+    info: "bg-info/10 text-info border-info/20",
   };
 
   const sizeClasses = {
-    sm: 'px-2 py-0.5 text-xs',
-    md: 'px-2.5 py-1 text-sm',
+    sm: "px-2 py-0.5 text-xs",
+    md: "px-2.5 py-1 text-sm",
   };
 
   return (
@@ -488,24 +458,19 @@ export function Badge({
 interface TooltipProps {
   children: React.ReactNode;
   content: string;
-  side?: 'top' | 'right' | 'bottom' | 'left';
+  side?: "top" | "right" | "bottom" | "left";
   className?: string;
 }
 
-export function Tooltip({
-  children,
-  content,
-  side = 'top',
-  className = '',
-}: TooltipProps) {
+export function Tooltip({ children, content, side = "top", className = "" }: TooltipProps) {
   const [isVisible, setIsVisible] = useState(false);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
   const sideClasses = {
-    top: 'bottom-full left-1/2 -translate-x-1/2 mb-2',
-    right: 'left-full top-1/2 -translate-y-1/2 ml-2',
-    bottom: 'top-full left-1/2 -translate-x-1/2 mt-2',
-    left: 'right-full top-1/2 -translate-y-1/2 mr-2',
+    top: "bottom-full left-1/2 -translate-x-1/2 mb-2",
+    right: "left-full top-1/2 -translate-y-1/2 ml-2",
+    bottom: "top-full left-1/2 -translate-x-1/2 mt-2",
+    left: "right-full top-1/2 -translate-y-1/2 mr-2",
   };
 
   return (
@@ -542,32 +507,26 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: "sm" | "md" | "lg" | "xl";
 }
 
-export function Modal({
-  isOpen,
-  onClose,
-  title,
-  children,
-  size = 'md',
-}: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, size = "md" }: ModalProps) {
   const sizeClasses = {
-    sm: 'max-w-sm',
-    md: 'max-w-md',
-    lg: 'max-w-lg',
-    xl: 'max-w-xl',
+    sm: "max-w-sm",
+    md: "max-w-md",
+    lg: "max-w-lg",
+    xl: "max-w-xl",
   };
 
   useEffect(() => {
     if (isOpen) {
-      document.body.style.overflow = 'hidden';
+      document.body.style.overflow = "hidden";
     } else {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = "unset";
     }
 
     return () => {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = "unset";
     };
   }, [isOpen]);
 
@@ -586,7 +545,7 @@ export function Modal({
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
             className={`relative w-full ${sizeClasses[size]} bg-surface border border-border rounded-lg shadow-xl`}
           >
             <div className="flex items-center justify-between p-4 border-b border-border">
@@ -597,7 +556,12 @@ export function Modal({
                 aria-label="Close modal"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             </div>
@@ -623,7 +587,7 @@ interface TabsProps {
   className?: string;
 }
 
-export function Tabs({ tabs, defaultTab, className = '' }: TabsProps) {
+export function Tabs({ tabs, defaultTab, className = "" }: TabsProps) {
   const [activeTab, setActiveTab] = useState(defaultTab || tabs[0]?.id);
 
   return (
@@ -635,8 +599,8 @@ export function Tabs({ tabs, defaultTab, className = '' }: TabsProps) {
             onClick={() => setActiveTab(tab.id)}
             className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               activeTab === tab.id
-                ? 'border-primary text-primary'
-                : 'border-transparent text-text-muted hover:text-text-primary hover:border-border-hover'
+                ? "border-primary text-primary"
+                : "border-transparent text-text-muted hover:text-text-primary hover:border-border-hover"
             }`}
           >
             {tab.icon && <span className="flex-shrink-0">{tab.icon}</span>}
@@ -644,9 +608,7 @@ export function Tabs({ tabs, defaultTab, className = '' }: TabsProps) {
           </button>
         ))}
       </div>
-      <div className="mt-4">
-        {tabs.find((tab) => tab.id === activeTab)?.content}
-      </div>
+      <div className="mt-4">{tabs.find((tab) => tab.id === activeTab)?.content}</div>
     </div>
   );
 }
@@ -654,13 +616,13 @@ export function Tabs({ tabs, defaultTab, className = '' }: TabsProps) {
 // Toast component
 interface Toast {
   id: string;
-  type: 'success' | 'error' | 'warning' | 'info';
+  type: "success" | "error" | "warning" | "info";
   message: string;
 }
 
 interface ToastContextType {
   toasts: Toast[];
-  addToast: (type: Toast['type'], message: string) => void;
+  addToast: (type: Toast["type"], message: string) => void;
   removeToast: (id: string) => void;
 }
 
@@ -669,7 +631,7 @@ const ToastContext = React.createContext<ToastContextType | undefined>(undefined
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const addToast = (type: Toast['type'], message: string) => {
+  const addToast = (type: Toast["type"], message: string) => {
     const id = Math.random().toString(36).substr(2, 9);
     setToasts((prev) => [...prev, { id, type, message }]);
 
@@ -695,13 +657,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.95 }}
               className={`flex items-center gap-3 p-4 rounded-lg shadow-lg max-w-sm ${
-                toast.type === 'success'
-                  ? 'bg-success text-success-foreground'
-                  : toast.type === 'error'
-                  ? 'bg-error text-error-foreground'
-                  : toast.type === 'warning'
-                  ? 'bg-warning text-warning-foreground'
-                  : 'bg-info text-info-foreground'
+                toast.type === "success"
+                  ? "bg-success text-success-foreground"
+                  : toast.type === "error"
+                    ? "bg-error text-error-foreground"
+                    : toast.type === "warning"
+                      ? "bg-warning text-warning-foreground"
+                      : "bg-info text-info-foreground"
               }`}
             >
               <span className="flex-1 text-sm">{toast.message}</span>
@@ -710,7 +672,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 className="flex-shrink-0 p-1 hover:opacity-70 transition-opacity"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             </motion.div>
@@ -724,17 +691,17 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 export function useToast() {
   const context = React.useContext(ToastContext);
   if (context === undefined) {
-    throw new Error('useToast must be used within a ToastProvider');
+    throw new Error("useToast must be used within a ToastProvider");
   }
   return context;
 }
 
 // Loading spinner
-export function Spinner({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
+export function Spinner({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
   const sizeClasses = {
-    sm: 'w-4 h-4',
-    md: 'w-6 h-6',
-    lg: 'w-8 h-8',
+    sm: "w-4 h-4",
+    md: "w-6 h-6",
+    lg: "w-8 h-8",
   };
 
   return (
@@ -743,14 +710,7 @@ export function Spinner({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
       fill="none"
       viewBox="0 0 24 24"
     >
-      <circle
-        className="opacity-25"
-        cx="12"
-        cy="12"
-        r="10"
-        stroke="currentColor"
-        strokeWidth="4"
-      />
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
       <path
         className="opacity-75"
         fill="currentColor"
@@ -771,11 +731,7 @@ interface EmptyStateProps {
 export function EmptyState({ icon, title, description, action }: EmptyStateProps) {
   return (
     <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-      {icon && (
-        <div className="mb-4 text-text-muted">
-          {icon}
-        </div>
-      )}
+      {icon && <div className="mb-4 text-text-muted">{icon}</div>}
       <h3 className="text-lg font-semibold text-text-primary mb-2">{title}</h3>
       <p className="text-sm text-text-muted max-w-sm mb-6">{description}</p>
       {action && <div>{action}</div>}
@@ -787,8 +743,8 @@ export function EmptyState({ icon, title, description, action }: EmptyStateProps
 interface ProgressBarProps {
   value: number;
   max?: number;
-  size?: 'sm' | 'md' | 'lg';
-  variant?: 'primary' | 'success' | 'warning' | 'error';
+  size?: "sm" | "md" | "lg";
+  variant?: "primary" | "success" | "warning" | "error";
   showLabel?: boolean;
   className?: string;
 }
@@ -796,24 +752,24 @@ interface ProgressBarProps {
 export function ProgressBar({
   value,
   max = 100,
-  size = 'md',
-  variant = 'primary',
+  size = "md",
+  variant = "primary",
   showLabel = false,
-  className = '',
+  className = "",
 }: ProgressBarProps) {
   const percentage = Math.min(Math.max((value / max) * 100, 0), 100);
 
   const sizeClasses = {
-    sm: 'h-1',
-    md: 'h-2',
-    lg: 'h-3',
+    sm: "h-1",
+    md: "h-2",
+    lg: "h-3",
   };
 
   const variantClasses = {
-    primary: 'bg-primary',
-    success: 'bg-success',
-    warning: 'bg-warning',
-    error: 'bg-error',
+    primary: "bg-primary",
+    success: "bg-success",
+    warning: "bg-warning",
+    error: "bg-error",
   };
 
   return (
@@ -838,22 +794,16 @@ export function ProgressBar({
 interface AvatarProps {
   src?: string;
   alt: string;
-  size?: 'sm' | 'md' | 'lg';
+  size?: "sm" | "md" | "lg";
   fallback?: string;
   className?: string;
 }
 
-export function Avatar({
-  src,
-  alt,
-  size = 'md',
-  fallback,
-  className = '',
-}: AvatarProps) {
+export function Avatar({ src, alt, size = "md", fallback, className = "" }: AvatarProps) {
   const sizeClasses = {
-    sm: 'w-6 h-6 text-xs',
-    md: 'w-8 h-8 text-sm',
-    lg: 'w-10 h-10 text-base',
+    sm: "w-6 h-6 text-xs",
+    md: "w-8 h-8 text-sm",
+    lg: "w-10 h-10 text-base",
   };
 
   if (src) {
@@ -891,22 +841,24 @@ export function Toggle({
   onChange,
   label,
   disabled = false,
-  className = '',
+  className = "",
 }: ToggleProps) {
   return (
-    <label className={`flex items-center gap-3 cursor-pointer ${disabled ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}>
+    <label
+      className={`flex items-center gap-3 cursor-pointer ${disabled ? "opacity-50 cursor-not-allowed" : ""} ${className}`}
+    >
       <button
         role="switch"
         aria-checked={checked}
         disabled={disabled}
         onClick={() => onChange(!checked)}
         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-          checked ? 'bg-primary' : 'bg-surface-hover'
+          checked ? "bg-primary" : "bg-surface-hover"
         }`}
       >
         <span
           className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-            checked ? 'translate-x-6' : 'translate-x-1'
+            checked ? "translate-x-6" : "translate-x-1"
           }`}
         />
       </button>
@@ -941,20 +893,16 @@ export function Select({
   placeholder,
   error,
   disabled = false,
-  className = '',
+  className = "",
 }: SelectProps) {
   return (
     <div className={`w-full ${className}`}>
-      {label && (
-        <label className="block text-sm font-medium text-text-primary mb-1">
-          {label}
-        </label>
-      )}
+      {label && <label className="block text-sm font-medium text-text-primary mb-1">{label}</label>}
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
-        className={`input ${error ? 'border-error' : ''}`}
+        className={`input ${error ? "border-error" : ""}`}
       >
         {placeholder && (
           <option value="" disabled>
@@ -962,11 +910,7 @@ export function Select({
           </option>
         )}
         {options.map((option) => (
-          <option
-            key={option.value}
-            value={option.value}
-            disabled={option.disabled}
-          >
+          <option key={option.value} value={option.value} disabled={option.disabled}>
             {option.label}
           </option>
         ))}

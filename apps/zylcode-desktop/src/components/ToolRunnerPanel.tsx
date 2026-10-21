@@ -96,7 +96,11 @@ export function ToolRunnerPanel() {
     try {
       params = argsText.trim() ? JSON.parse(argsText) : {};
     } catch (e) {
-      setRun({ kind: "declined", id: selected, reason: `arguments are not valid JSON: ${String(e)}` });
+      setRun({
+        kind: "declined",
+        id: selected,
+        reason: `arguments are not valid JSON: ${String(e)}`,
+      });
       return;
     }
     setRun(await runTool(selected, params, catalogueRows));
@@ -104,7 +108,7 @@ export function ToolRunnerPanel() {
 
   const status = (() => {
     if (run.kind === "running") return "LIMITED" as const;
-    if (run.kind === "done") return run.result.success ? "AVAILABLE" : "LIMITED" as const;
+    if (run.kind === "done") return run.result.success ? "AVAILABLE" : ("LIMITED" as const);
     if (run.kind === "declined" || run.kind === "failed") return "BLOCKED" as const;
     return "LIMITED" as const;
   })();
@@ -119,7 +123,9 @@ export function ToolRunnerPanel() {
         </span>
       </div>
 
-      {tools.kind === "loading" && <p className="text-xs text-text-muted">Reading the tool catalogue…</p>}
+      {tools.kind === "loading" && (
+        <p className="text-xs text-text-muted">Reading the tool catalogue…</p>
+      )}
       {tools.kind === "unavailable" && <p className="text-xs text-text-muted">{tools.reason}</p>}
 
       {tools.kind === "ready" && (
@@ -152,8 +158,8 @@ export function ToolRunnerPanel() {
           {selectedRow && (
             <div className="space-y-1.5" data-testid="tool-runner-form">
               <p className="text-[10px] text-text-muted">
-                {selectedRow.description ?? ""} — payload is the engine's own result, including
-                risk class and evidence id.
+                {selectedRow.description ?? ""} — payload is the engine's own result, including risk
+                class and evidence id.
               </p>
               <textarea
                 value={argsText}
@@ -183,7 +189,11 @@ export function ToolRunnerPanel() {
 
 function renderRun(run: ToolRunState) {
   if (run.kind === "idle") {
-    return <p className="text-[10px] text-text-muted">Choose a tool and execute — results are the engine's own.</p>;
+    return (
+      <p className="text-[10px] text-text-muted">
+        Choose a tool and execute — results are the engine's own.
+      </p>
+    );
   }
   if (run.kind === "running") {
     return <p className="text-[11px] text-text-muted">Executing {run.id}…</p>;
@@ -199,7 +209,9 @@ function renderRun(run: ToolRunState) {
     return (
       <div role="alert" className="rounded border border-error/30 bg-error/5 p-2">
         <p className="text-[11px] text-error font-mono break-words">{run.error}</p>
-        <p className="text-[10px] text-text-muted mt-0.5">via {run.via === "desktop" ? "desktop engine" : "serve-intel"}</p>
+        <p className="text-[10px] text-text-muted mt-0.5">
+          via {run.via === "desktop" ? "desktop engine" : "serve-intel"}
+        </p>
       </div>
     );
   }
@@ -212,7 +224,10 @@ function renderRun(run: ToolRunState) {
   }
   const result = run.result;
   return (
-    <div className="rounded border border-success/30 bg-success/5 p-2" data-testid="tool-runner-output">
+    <div
+      className="rounded border border-success/30 bg-success/5 p-2"
+      data-testid="tool-runner-output"
+    >
       <p className="text-[10px] font-mono text-text-muted">
         {result.tool} · risk {String(result.risk ?? "n/a")} · operation{" "}
         <span className="text-text-secondary">{String(result.bound_operation ?? "n/a")}</span>
@@ -224,7 +239,7 @@ function renderRun(run: ToolRunState) {
       <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap break-words font-mono text-[10px] text-text-secondary">
         {typeof result.output === "string"
           ? result.output
-          : JSON.stringify(result.output, null, 2) ?? ""}
+          : (JSON.stringify(result.output, null, 2) ?? "")}
       </pre>
       <p className="text-[10px] text-text-muted mt-1">
         via {run.via === "desktop" ? "desktop engine" : RUNNING_LABEL.service}

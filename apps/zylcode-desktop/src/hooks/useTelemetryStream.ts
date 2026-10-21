@@ -60,33 +60,27 @@ export function useTelemetryStream() {
 
     if (tauri) {
       // Subscribe to telemetry:metrics events
-      metricsUnlisten = tauri.listen(
-        "telemetry:metrics",
-        (event: any) => {
-          setState((prev) => {
-            const newHistory = [event.payload, ...prev.metricsHistory].slice(0, 20);
-            return {
-              ...prev,
-              metricsHistory: newHistory,
-              isConnected: true,
-              lastUpdate: Date.now(),
-            };
-          });
-        },
-      );
-
-      // Subscribe to telemetry:bridge-status events
-      bridgeUnlisten = tauri.listen(
-        "telemetry:bridge-status",
-        (event: any) => {
-          setState((prev) => ({
+      metricsUnlisten = tauri.listen("telemetry:metrics", (event: any) => {
+        setState((prev) => {
+          const newHistory = [event.payload, ...prev.metricsHistory].slice(0, 20);
+          return {
             ...prev,
-            bridgeStatus: event.payload,
+            metricsHistory: newHistory,
             isConnected: true,
             lastUpdate: Date.now(),
-          }));
-        },
-      );
+          };
+        });
+      });
+
+      // Subscribe to telemetry:bridge-status events
+      bridgeUnlisten = tauri.listen("telemetry:bridge-status", (event: any) => {
+        setState((prev) => ({
+          ...prev,
+          bridgeStatus: event.payload,
+          isConnected: true,
+          lastUpdate: Date.now(),
+        }));
+      });
     }
 
     // Fallback: on initial mount, query bridge status via IPC invoke

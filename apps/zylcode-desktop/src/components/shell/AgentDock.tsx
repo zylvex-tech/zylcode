@@ -124,9 +124,7 @@ export function AgentDock({
         )}
 
         {activeModule === "mcp" && (
-          <Panel title="MCP ACTIVITY">
-            {IS_DESKTOP ? <McpInspector /> : <DesktopRequired />}
-          </Panel>
+          <Panel title="MCP ACTIVITY">{IS_DESKTOP ? <McpInspector /> : <DesktopRequired />}</Panel>
         )}
 
         {activeModule === "providers" && (

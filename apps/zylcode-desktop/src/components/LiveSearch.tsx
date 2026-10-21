@@ -11,7 +11,10 @@ import { fetchSearch, type SearchResult } from "../lib/surfaces";
 export function LiveSearch({ initialQuery = "" }: { initialQuery?: string }) {
   const [query, setQuery] = useState(initialQuery);
   const [state, setState] = useState<
-    { kind: "idle" } | { kind: "loading" } | { kind: "unavailable"; reason: string } | { kind: "ready"; data: SearchResult }
+    | { kind: "idle" }
+    | { kind: "loading" }
+    | { kind: "unavailable"; reason: string }
+    | { kind: "ready"; data: SearchResult }
   >({ kind: "idle" });
 
   const run = useCallback((q: string) => {

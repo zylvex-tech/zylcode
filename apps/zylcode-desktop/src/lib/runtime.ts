@@ -7,11 +7,7 @@
 // Diagnostics only, and event subscriptions no-op safely.
 // ---------------------------------------------------------------------------
 
-export type RuntimeEnvironment =
-  | "TAURI_DESKTOP"
-  | "BROWSER_PREVIEW"
-  | "TEST"
-  | "UNKNOWN";
+export type RuntimeEnvironment = "TAURI_DESKTOP" | "BROWSER_PREVIEW" | "TEST" | "UNKNOWN";
 
 /** Diagnostics sink: raw technical errors land here, never in normal UI. */
 export type DiagnosticEntry = {
@@ -49,15 +45,13 @@ export function detectEnvironment(): RuntimeEnvironment {
       g.__TAURI_INTERNALS__ !== undefined ||
       g.__TAURI__ !== undefined ||
       (typeof window !== "undefined" &&
-        (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__ !==
-          undefined)
+        (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__ !== undefined)
     ) {
       return "TAURI_DESKTOP";
     }
     // Test runners: vitest injects these globals. Accessed via globalThis so
     // no Node types are required in the browser build.
-    const proc = (globalThis as { process?: { env?: Record<string, string | undefined> } })
-      .process;
+    const proc = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process;
     if (proc?.env?.VITEST === "true" || proc?.env?.NODE_ENV === "test") {
       return "TEST";
     }
@@ -121,9 +115,7 @@ export async function safeInvoke<T>(
  * Unwrap a safeInvoke result for desktop-only panels: returns the data or
  * throws, so existing try/catch error handling keeps working unchanged.
  */
-export function unwrapInvoke<T>(
-  result: { ok: true; data: T } | { ok: false; reason: string },
-): T {
+export function unwrapInvoke<T>(result: { ok: true; data: T } | { ok: false; reason: string }): T {
   if (!result.ok) throw new Error(result.reason);
   return result.data;
 }

@@ -72,8 +72,8 @@ export const DeliveryPanel: React.FC = () => {
     const res = await startBuild();
     setActionNote(
       res.started
-        ? res.note ?? "build pipeline launched"
-        : res.error ?? "build could not start",
+        ? (res.note ?? "build pipeline launched")
+        : (res.error ?? "build could not start"),
     );
     if (res.started) setTimeout(() => fetchBuildState().then(setBuild), 500);
     setBusy(false);
@@ -85,8 +85,8 @@ export const DeliveryPanel: React.FC = () => {
     const res = await startPackage(version, packageOnly);
     setActionNote(
       res.started
-        ? res.note ?? "packaging pipeline launched"
-        : res.error ?? "packaging could not start",
+        ? (res.note ?? "packaging pipeline launched")
+        : (res.error ?? "packaging could not start"),
     );
     if (res.started) setTimeout(() => fetchBuildState().then(setBuild), 500);
     setBusy(false);
@@ -105,20 +105,14 @@ export const DeliveryPanel: React.FC = () => {
             <>
               <p className="text-xs text-muted-foreground mb-2">
                 state: <span className="font-mono">{build.state}</span>
-                {build.error ? (
-                  <span className="text-red-500"> — {build.error}</span>
-                ) : null}
+                {build.error ? <span className="text-red-500"> — {build.error}</span> : null}
               </p>
               {build.steps.length > 0 ? (
                 <ul className="text-xs space-y-1 mb-2">
                   {build.steps.map((s) => (
                     <li key={s.name} className="flex items-center gap-2">
                       <span
-                        className={
-                          s.passed
-                            ? "text-green-500 font-mono"
-                            : "text-red-500 font-mono"
-                        }
+                        className={s.passed ? "text-green-500 font-mono" : "text-red-500 font-mono"}
                       >
                         {s.passed ? "\u2713" : "\u2717"}
                       </span>
@@ -204,9 +198,9 @@ export const DeliveryPanel: React.FC = () => {
           {deploy.kind === "ready" ? (
             <>
               <p className="text-xs text-muted-foreground mb-2">
-                HEAD <span className="font-mono">{deploy.head || "?"}</span> — a
-                target is commissioned only when its real infrastructure is
-                configured; nothing here claims a deploy that did not happen.
+                HEAD <span className="font-mono">{deploy.head || "?"}</span> — a target is
+                commissioned only when its real infrastructure is configured; nothing here claims a
+                deploy that did not happen.
               </p>
               <ul className="text-xs space-y-2">
                 {(

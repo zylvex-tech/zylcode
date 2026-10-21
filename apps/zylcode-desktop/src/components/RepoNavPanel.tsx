@@ -113,7 +113,14 @@ const IMPACT_ORDER: ImpactClass[] = [
   "UNRESOLVED",
 ];
 
-const EDGE_ORDER: EdgeKind[] = ["imports", "calls", "depends_on", "exports", "references", "contains"];
+const EDGE_ORDER: EdgeKind[] = [
+  "imports",
+  "calls",
+  "depends_on",
+  "exports",
+  "references",
+  "contains",
+];
 
 const PAGE = 60;
 
@@ -132,9 +139,7 @@ function DefinitionLine({ symbol }: { symbol: NavSymbol }) {
   return (
     <p className="truncate font-mono text-[11px] text-text">
       <span className="text-text-muted">{symbol.kind}</span> {symbol.qualified_name}
-      {symbol.signature && (
-        <span className="text-text-muted"> · {symbol.signature}</span>
-      )}
+      {symbol.signature && <span className="text-text-muted"> · {symbol.signature}</span>}
     </p>
   );
 }
@@ -150,8 +155,8 @@ function QueryStatus({ state }: { state: NavState<unknown> }) {
   if (state.kind === "idle") {
     return (
       <p className="text-[11px] text-text-muted">
-        Choose a symbol (or a file + line) and run a query — answers come from the
-        parsed repository index, not from text search.
+        Choose a symbol (or a file + line) and run a query — answers come from the parsed repository
+        index, not from text search.
       </p>
     );
   }
@@ -160,9 +165,7 @@ function QueryStatus({ state }: { state: NavState<unknown> }) {
   }
   if (state.kind === "rejected") {
     return (
-      <p className="text-[11px] text-warning">
-        The engine refused this query — {state.reason}.
-      </p>
+      <p className="text-[11px] text-warning">The engine refused this query — {state.reason}.</p>
     );
   }
   if (state.kind === "unavailable") {
@@ -410,8 +413,8 @@ export function RepoNavPanel({ onNavigateToFile }: RepoNavPanelProps) {
           </button>
         </form>
         <p className="text-[10px] text-text-muted">
-          A symbol alone is scoped by module; a file + line resolves exactly what is
-          at that position. Duplicate names are never collapsed into one.
+          A symbol alone is scoped by module; a file + line resolves exactly what is at that
+          position. Duplicate names are never collapsed into one.
         </p>
 
         {/* ---- tabs ------------------------------------------------------ */}
@@ -437,8 +440,8 @@ export function RepoNavPanel({ onNavigateToFile }: RepoNavPanelProps) {
         {/* Defensive: an answer for a *different* view is stated, never drawn. */}
         {state.kind === "ready" && state.tab !== tab && (
           <p className="text-[11px] text-warning">
-            The answer on hand belongs to a different view, so it was not drawn
-            here — run this view&apos;s query again.
+            The answer on hand belongs to a different view, so it was not drawn here — run this
+            view&apos;s query again.
           </p>
         )}
 
@@ -643,8 +646,7 @@ function ReferencesView({
         groups.map((group) => (
           <details key={group.file} open>
             <summary className="cursor-pointer select-none font-mono text-[11px] text-text">
-              {group.file}{" "}
-              <span className="text-text-muted">({group.rows.length})</span>
+              {group.file} <span className="text-text-muted">({group.rows.length})</span>
             </summary>
             <ul className="mt-1 space-y-0.5 border-l border-border pl-2">
               {group.rows.map((row, i) => (
@@ -656,9 +658,7 @@ function ReferencesView({
                   >
                     {formatLocation(row.range)}
                   </button>
-                  <span className="shrink-0 font-mono text-[9px] text-text-muted">
-                    {row.kind}
-                  </span>
+                  <span className="shrink-0 font-mono text-[9px] text-text-muted">{row.kind}</span>
                   <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-text-muted">
                     {row.excerpt}
                   </span>
@@ -709,9 +709,7 @@ function CallsView({
     return <EmptyFor message="No relation matched the current filters." />;
   }
 
-  const groups = groupByFile(
-    rows.map((r) => ({ file: r.site.file, relation: r })),
-  );
+  const groups = groupByFile(rows.map((r) => ({ file: r.site.file, relation: r })));
 
   return (
     <div className="space-y-2">
@@ -749,8 +747,8 @@ function CallsView({
 
       {data.relations.some((r) => r.evidence !== "DETERMINISTIC") && (
         <p className="text-[10px] text-text-muted">
-          Heuristic rows are text-adjacent matches the index could not prove; they are
-          listed after the deterministic ones and are never promoted.
+          Heuristic rows are text-adjacent matches the index could not prove; they are listed after
+          the deterministic ones and are never promoted.
         </p>
       )}
     </div>
@@ -855,10 +853,7 @@ function GraphView({
               </summary>
               <ul className="mt-1 space-y-0.5 border-l border-border pl-2">
                 {cluster.edges.map((edge, i) => (
-                  <li
-                    key={`${edge.to.id}-${edge.kind}-${i}`}
-                    className="flex items-start gap-2"
-                  >
+                  <li key={`${edge.to.id}-${edge.kind}-${i}`} className="flex items-start gap-2">
                     <button
                       className="shrink-0 font-mono text-[9px] text-primary hover:underline"
                       onClick={() => clickable(edge.to.id)}
@@ -884,8 +879,7 @@ function GraphView({
 
       {shown.length < matching.length && (
         <button className="btn text-[10px]" onClick={showMore}>
-          Show {Math.min(PAGE, matching.length - shown.length)} more of{" "}
-          {matching.length}
+          Show {Math.min(PAGE, matching.length - shown.length)} more of {matching.length}
         </button>
       )}
 
@@ -928,7 +922,8 @@ function ImpactView({
 
   const kept = filterByEvidence(
     data.items.filter(
-      (item) => matchesQuery(item.label, filterText) || matchesQuery(item.via.join(" "), filterText),
+      (item) =>
+        matchesQuery(item.label, filterText) || matchesQuery(item.via.join(" "), filterText),
     ),
     evidenceFilter,
   );

@@ -96,12 +96,7 @@ export function mergeSettings(raw: unknown): ZylSettings {
     if (value === undefined || value === null) continue;
     if (typeof value !== type) continue;
     if (field === "defaultAutonomy" && !AUTONOMY_VALUES.has(String(value))) continue;
-    if (
-      field === "defaultMissionMode" &&
-      value !== "build" &&
-      value !== "plan"
-    )
-      continue;
+    if (field === "defaultMissionMode" && value !== "build" && value !== "plan") continue;
     if (field === "editorTabSize" && value !== 2 && value !== 4) continue;
     (merged as unknown as Record<string, unknown>)[field] = value;
   }
@@ -146,16 +141,13 @@ export function useSettings(): {
     return () => window.removeEventListener("storage", sync);
   }, []);
 
-  const update = useCallback(
-    <K extends keyof ZylSettings>(key: K, value: ZylSettings[K]) => {
-      setSettings((prev) => {
-        const next = { ...prev, [key]: value };
-        saveSettings(next);
-        return next;
-      });
-    },
-    [],
-  );
+  const update = useCallback(<K extends keyof ZylSettings>(key: K, value: ZylSettings[K]) => {
+    setSettings((prev) => {
+      const next = { ...prev, [key]: value };
+      saveSettings(next);
+      return next;
+    });
+  }, []);
 
   const reset = useCallback(() => {
     const next = { ...DEFAULT_SETTINGS };

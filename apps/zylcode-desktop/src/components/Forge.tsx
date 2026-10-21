@@ -68,7 +68,8 @@ function PackDetail({ pack }: { pack: CapabilityPack }) {
           <SectionTitle>PERMISSIONS</SectionTitle>
           <div className="mt-1 grid grid-cols-2 sm:grid-cols-4 gap-1.5">
             <span className="rounded border border-border px-2 py-1">
-              FILESYSTEM <b className="font-mono">{PERMISSION_LABEL[pack.permissions.filesystem]}</b>
+              FILESYSTEM{" "}
+              <b className="font-mono">{PERMISSION_LABEL[pack.permissions.filesystem]}</b>
             </span>
             <span className="rounded border border-border px-2 py-1">
               SHELL <b className="font-mono">{PERMISSION_LABEL[pack.permissions.shell]}</b>
@@ -174,7 +175,10 @@ function ManifestValidator() {
       {result.length > 0 && (
         <div className="mt-2 space-y-0.5">
           {result.map((r, i) => (
-            <p key={i} className={`text-[11px] ${r.startsWith("VALID") ? "text-success" : "text-error"}`}>
+            <p
+              key={i}
+              className={`text-[11px] ${r.startsWith("VALID") ? "text-success" : "text-error"}`}
+            >
               {r}
             </p>
           ))}
@@ -287,8 +291,8 @@ export default function Forge() {
               <p>REPRODUCIBLE — rung R4.</p>
               <p>CERTIFIED — rung R5.</p>
               <p className="pt-1">
-                Labels are computed from manifest evidence fields; a claimed rung above what evidence
-                supports is clamped down.
+                Labels are computed from manifest evidence fields; a claimed rung above what
+                evidence supports is clamped down.
               </p>
             </div>
           </Panel>

@@ -27,7 +27,13 @@ const fetchToolsMock = vi.mocked(fetchTools);
 const runToolMock = vi.mocked(runTool);
 
 const ROWS: ToolRow[] = [
-  { id: "fs.read", transport: "stdio", description: "Read a file", enabled: true, executor_bound: true },
+  {
+    id: "fs.read",
+    transport: "stdio",
+    description: "Read a file",
+    enabled: true,
+    executor_bound: true,
+  },
   { id: "db.query", transport: "stdio", description: null, enabled: true, executor_bound: false },
 ];
 

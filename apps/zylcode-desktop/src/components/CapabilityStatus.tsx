@@ -5,23 +5,14 @@ import type { ReactNode } from "react";
 // ---------------------------------------------------------------------------
 
 export type CapabilityStatus =
-  | "AVAILABLE"
-  | "LIMITED"
-  | "COMING SOON"
-  | "BLOCKED"
-  | "NOT INSTALLED";
+  "AVAILABLE" | "LIMITED" | "COMING SOON" | "BLOCKED" | "NOT INSTALLED";
 
 const STATUS_STYLE: Record<CapabilityStatus, string> = {
-  AVAILABLE:
-    "bg-success/15 text-success border-success/30",
-  LIMITED:
-    "bg-warning/15 text-warning border-warning/30",
-  "COMING SOON":
-    "bg-primary/10 text-primary border-primary/30",
-  BLOCKED:
-    "bg-error/15 text-error border-error/30",
-  "NOT INSTALLED":
-    "bg-text-muted/10 text-text-muted border-text-muted/30",
+  AVAILABLE: "bg-success/15 text-success border-success/30",
+  LIMITED: "bg-warning/15 text-warning border-warning/30",
+  "COMING SOON": "bg-primary/10 text-primary border-primary/30",
+  BLOCKED: "bg-error/15 text-error border-error/30",
+  "NOT INSTALLED": "bg-text-muted/10 text-text-muted border-text-muted/30",
 };
 
 const STATUS_DOT: Record<CapabilityStatus, string> = {

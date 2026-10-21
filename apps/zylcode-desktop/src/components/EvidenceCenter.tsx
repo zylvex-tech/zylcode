@@ -24,12 +24,17 @@ export function EvidenceCenter({ missions }: { missions: MissionRecord[] }) {
                 (cat === "Artifacts" && m.artifacts.length > 0) ||
                 (cat === "Verification" && m.verification !== null);
               return (
-                <div key={cat} className="rounded border border-border px-2 py-1.5 flex items-center justify-between gap-2">
+                <div
+                  key={cat}
+                  className="rounded border border-border px-2 py-1.5 flex items-center justify-between gap-2"
+                >
                   <span className="truncate">{cat}</span>
                   {has ? (
                     <StatusBadge status="AVAILABLE" size="xs" />
                   ) : (
-                    <span className="font-mono text-[10px] text-text-muted shrink-0">{NOT_CAPTURED}</span>
+                    <span className="font-mono text-[10px] text-text-muted shrink-0">
+                      {NOT_CAPTURED}
+                    </span>
                   )}
                 </div>
               );

@@ -118,7 +118,7 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
     );
   }
 
-  const activeFile = activeTab ? files.get(activeTab) ?? null : null;
+  const activeFile = activeTab ? (files.get(activeTab) ?? null) : null;
   const isEditing = editingFile !== null;
 
   const tabNodes = Array.from(files.keys()).map((path) => {
@@ -129,8 +129,7 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
     return (
       <div
         key={path}
-        className={`flex items-center rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors ${isActive ? "bg-zyl-accent text-white" : "text-zyl-muted hover:bg-zyl-surface"}`
-      }
+        className={`flex items-center rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors ${isActive ? "bg-zyl-accent text-white" : "text-zyl-muted hover:bg-zyl-surface"}`}
         onClick={() => setActiveTab(path)}
       >
         {path}
@@ -145,25 +144,31 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
   };
 
   // Monaco editor options
-  const editorOptions = React.useMemo(() => ({
-    theme: MONACO_THEME,
-    automaticLayout: true,
-    fontSize: 13,
-    minimap: { enabled: false },
-    scrollBeyondLastLine: false,
-    renderWhitespace: "selection" as const,
-  }), []);
+  const editorOptions = React.useMemo(
+    () => ({
+      theme: MONACO_THEME,
+      automaticLayout: true,
+      fontSize: 13,
+      minimap: { enabled: false },
+      scrollBeyondLastLine: false,
+      renderWhitespace: "selection" as const,
+    }),
+    [],
+  );
 
   // Diff editor options
-  const diffEditorOptions = React.useMemo(() => ({
-    theme: MONACO_THEME,
-    renderSideBySide: true,
-    enableSplitViewResizing: true,
-    automaticLayout: true,
-    fontSize: 13,
-    minimap: { enabled: false },
-    readOnly: true,
-  }), []);
+  const diffEditorOptions = React.useMemo(
+    () => ({
+      theme: MONACO_THEME,
+      renderSideBySide: true,
+      enableSplitViewResizing: true,
+      automaticLayout: true,
+      fontSize: 13,
+      minimap: { enabled: false },
+      readOnly: true,
+    }),
+    [],
+  );
 
   let fileDisplay: React.ReactNode;
 
@@ -209,9 +214,7 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
       </div>
     );
   } else {
-    fileDisplay = (
-      <p className="p-4 text-zyl-muted text-center">Select a file tab to preview</p>
-    );
+    fileDisplay = <p className="p-4 text-zyl-muted text-center">Select a file tab to preview</p>;
   }
 
   return (
@@ -248,14 +251,10 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
 
       <div className="flex flex-col space-y-2">
         {/* Tab Bar */}
-        <div className="flex gap-1 rounded-md overflow-hidden bg-zyl-surface">
-          {tabNodes}
-        </div>
+        <div className="flex gap-1 rounded-md overflow-hidden bg-zyl-surface">{tabNodes}</div>
 
         {/* Active File Area */}
-        <div className="flex-1 min-h-0">
-          {fileDisplay}
-        </div>
+        <div className="flex-1 min-h-0">{fileDisplay}</div>
       </div>
 
       {/* Save banner */}

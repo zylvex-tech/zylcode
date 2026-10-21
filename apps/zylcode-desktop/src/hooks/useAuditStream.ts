@@ -32,18 +32,16 @@ export function useAuditStream() {
 
     // Subscribe to telemetry:audit events when running inside Tauri
     if (tauri) {
-      unlisten = tauri.listen(
-        "telemetry:audit",
-        (event: any) => {
-          setState((prev) => {
-            const newLogs = [event.payload, ...prev.logs].slice(0, 50);
-            return {
-              ...prev,
-              logs: newLogs,
-              source: "events",
-            };
-          });
+      unlisten = tauri.listen("telemetry:audit", (event: any) => {
+        setState((prev) => {
+          const newLogs = [event.payload, ...prev.logs].slice(0, 50);
+          return {
+            ...prev,
+            logs: newLogs,
+            source: "events",
+          };
         });
+      });
       // Set loading to false once first event arrives
       setState((prev) => ({ ...prev, isLoading: false, source: "events" }));
     }

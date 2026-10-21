@@ -23,10 +23,9 @@ export type FileContentState =
   | { kind: "unavailable"; reason: string };
 
 async function fetchFromService(relPath: string): Promise<FileContentResult> {
-  const response = await fetch(
-    `/api/file-content?path=${encodeURIComponent(relPath)}`,
-    { headers: { Accept: "application/json" } },
-  );
+  const response = await fetch(`/api/file-content?path=${encodeURIComponent(relPath)}`, {
+    headers: { Accept: "application/json" },
+  });
   if (!response.ok) {
     throw new Error(`file content service returned HTTP ${response.status}`);
   }

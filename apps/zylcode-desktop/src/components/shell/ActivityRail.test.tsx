@@ -9,9 +9,7 @@ describe("ActivityRail", () => {
   it("offers Code Navigation and routes it to the intel activity", () => {
     const onActivityChange = vi.fn();
 
-    render(
-      <ActivityRail activeActivity="explorer" onActivityChange={onActivityChange} />,
-    );
+    render(<ActivityRail activeActivity="explorer" onActivityChange={onActivityChange} />);
 
     fireEvent.click(screen.getByLabelText("Code Navigation"));
     expect(onActivityChange).toHaveBeenCalledWith("intel");

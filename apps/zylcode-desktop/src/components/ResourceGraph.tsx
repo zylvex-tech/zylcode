@@ -38,12 +38,7 @@ export const ResourceGraph: React.FC<ResourceGraphProps> = ({ data }) => {
 
       <div className="bg-slate-950 border border-slate-800 p-3 rounded flex flex-col items-center">
         <svg viewBox={`0 0 ${graphWidth} ${graphHeight}`} className="w-full h-20 overflow-visible">
-          <polyline
-            fill="none"
-            stroke="#06b6d4"
-            strokeWidth="2"
-            points={points}
-          />
+          <polyline fill="none" stroke="#06b6d4" strokeWidth="2" points={points} />
         </svg>
         <div className="w-full flex justify-between text-[10px] text-slate-500 pt-2 border-t border-slate-800/60 mt-1">
           <span>0 MB</span>
