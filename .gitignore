@@ -1,13 +1,26 @@
 # Rust
 /target
 **/target
-Cargo.lock
+# Cargo.lock is COMMITTED, and that is deliberate.
+#
+# Why: this workspace builds shippable binaries — `zylcode-cli` and the
+# `zylcode-desktop` Tauri app — not a library consumed by other crates. For
+# applications the lockfile is what makes a build reproducible, and it is also
+# the artefact `cargo audit` scans. Without it, every developer and every CI run
+# resolves a different dependency graph and an advisory match is not stable.
+#
+# The lockfile is generated as `version = 3` so it stays readable by the
+# workspace's declared MSRV (`rust-version = "1.77"`; v4 needs cargo >= 1.78).
+# It is marked `-diff` in .gitattributes so reviews stay about source changes.
 
 # Node
 node_modules
 .pnpm-store
 dist
 build
+# Vitest's dependency-analyser cache. Written next to vitest.config.ts on every
+# `vitest run`; purely derived, so it must not land in the working tree.
+*.timestamp-*.mjs
 
 # Tauri
 apps/zylcode-desktop/src-tauri/target
