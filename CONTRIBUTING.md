@@ -26,10 +26,34 @@ in either direction. Investigate the discrepancy first; propose an amendment if 
 
 ## 1. Development Environment
 
-- **Rust** toolchain current stable (see `rust-toolchain*` if present).
-- **Node + npm** for the desktop frontend (`apps/zylcode-desktop`).
-- **Tauri v2** for the desktop shell.
-- Build: `cargo build` (core/cli/mcp) and `npm run tauri dev` (desktop).
+| Tool | Version | Source of the requirement |
+|---|---|---|
+| Rust | stable; MSRV **1.77** | `Cargo.toml` `rust-version = "1.77"`, `edition = "2021"`. No `rust-toolchain*` file, so stable is implied. |
+| Node | **22** (floor is 18) | `package.json` `engines.node = ">=18.0.0"`, but `apps/natlas-sdk/test/smoke.mjs` is TypeScript run directly via `node --experimental-strip-types`, which needs **≥ 22.6**. CI pins 22. |
+| pnpm | **9** (9.12.0) | `package.json` `packageManager = "pnpm@9.12.0"`. CI pins 9. |
+| Tauri | v2 | desktop shell (`apps/zylcode-desktop`). |
+
+```bash
+git clone https://github.com/zylvex-tech/zylcode.git && cd zylcode
+pnpm install --frozen-lockfile      # the lockfile is committed; a failure means it drifted
+cp .env.example .env                # then edit — see below
+```
+
+**Environment variables.** Start from `.env.example`. Every entry in it was validated against the
+source that reads it, and each carries the exact `file:line` read site plus the default the code
+falls back to when the variable is unset. **Nothing in `.env.example` is required** — ZylCode runs
+fully offline by default, and with no provider credential configured the router short-circuits to
+its deterministic synthetic provider.
+
+Two things worth knowing before you set a provider key:
+
+- Provider credentials are **not** test-neutral. `RouterConfig::default()` sets
+  `fallback_provider: LocalOllama`, which makes the router's no-keys fast path inapplicable, so a
+  dispatch with no configured credential still attempts the primary provider and then its Ollama
+  fallback. With `OPENROUTER_API_KEY` (or `ANTHROPIC_API_KEY` / `DEEPSEEK_API_KEY`) set,
+  `cargo test` performs real HTTP requests. **Leave them unset for a hermetic offline run.**
+- `.env` is git-ignored (`.gitignore` lines 35-37). `.env.example` is the committed template and
+  must never contain a real value.
 
 Do **not** add a dependency unless the dependency order in the architecture requires it. WASM, async
 runtimes, and serialization choices are governed, not conventional.
@@ -38,22 +62,69 @@ runtimes, and serialization choices are governed, not conventional.
 
 ## 2. Formatting
 
-- Rust: `cargo fmt` (stable style). Run before every commit.
-- TypeScript/React: the repo's formatter (Prettier-config-per-package). Run before commit.
-- Keep commits small and single-purpose. A commit that mixes formatting with behaviour is harder to
-  audit and will be asked to be split.
+Run before every commit. Both checks are enforced in CI on every push and pull request.
+
+```bash
+cargo fmt --all -- --check                                  # Rust — hard failure on all 3 OSes
+pnpm --filter zylcode-desktop format:check                  # frontend (Prettier, read-only)
+```
+
+To apply rather than check: `cargo fmt --all` and
+`pnpm --filter zylcode-desktop format`. Prettier's config lives in
+`apps/zylcode-desktop/.prettierrc.json`.
+
+Keep commits small and single-purpose. A commit that mixes formatting with behaviour is harder to
+audit and will be asked to be split.
 
 ---
 
 ## 3. Testing
 
+```bash
+# Rust
+cargo test --workspace --all-targets
+cargo clippy --workspace --all-targets -- -D warnings
+
+# Coverage (the CI gate: measured 80.63% lines against a 78% floor, 2026-10-21)
+cargo llvm-cov --workspace --summary-only --fail-under-lines 78
+
+# Frontend (apps/zylcode-desktop)
+pnpm --filter zylcode-desktop lint          # ESLint 9 flat config; exits non-zero on errors only
+pnpm --filter zylcode-desktop typecheck
+pnpm --filter zylcode-desktop test          # vitest
+pnpm --filter zylcode-desktop build
+
+# N-ATLAS SDK
+pnpm --filter @zylvex/natlas-bridge typecheck
+node --experimental-strip-types apps/natlas-sdk/test/smoke.mjs   # needs Node >= 22.6
+```
+
+**Offline CLI verification.** `repo-context` runs the real Repository Intelligence pipeline with no
+network access and is the fastest end-to-end check that the workspace indexes and ranks correctly:
+
+```bash
+cargo run -p zylcode-cli -- repo-context "which files would likely need inspection to modify crash recovery"
+```
+
+(If the toolchain cannot link in your environment, an already-built
+`target/debug/zylcode.exe repo-context "…"` runs the identical code path.)
+
+Expected shape: `indexed: <n> files, <n> symbols, <n> packages, <n> entry points`, then a ranked list
+whose entries cite their evidence — including `changes together with '<path>' in git history` for
+co-change-backed results. **Those citations require full git history**; a shallow clone
+(`--depth 1`) silently drops them and changes the ranking.
+
 - Rust unit/integration: `cargo test`.
-- Frontend: the repo's test runner.
 - **Tests must assert effect, not success.** A test that asserts `is_ok()` on an action it claims to
   verify is not a test of that action (see the Computer-Use Engine spec, §4.1). A test that proves a
   behaviour against a fixture that differs from reality certifies a broken implementation — this has
   happened; do not repeat it.
 - Do not weaken a failing test to make a run green. Report the failure.
+- **Do not assert on process-global state from a parallel test.** `cargo test` runs tests on
+  multiple threads in one process. A counter or environment variable shared across tests will be
+  attributed to the wrong test — `NETWORK_EGRESS_COUNT` in `crates/zylcode-core/src/router.rs` was
+  exactly this bug, and is now thread-local for that reason. Tests that mutate the environment must
+  hold `DISPATCH_MUTEX`, which is private to that module.
 
 ---
 
