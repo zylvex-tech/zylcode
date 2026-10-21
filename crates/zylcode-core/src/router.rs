@@ -14,12 +14,34 @@ use tracing::{info, warn};
 use crate::cache::{mock_embed, prompt_hash, VectorCacheStore};
 pub use cache::SpeculativeCache;
 
-/// Test-only spy: counts every attempt to send an HTTP request to a model
-/// provider. Used to prove that synthetic/offline dispatch performs zero
-/// network egress — an assertion that cannot be satisfied by "it happened to
-/// fail and fell back".
+// Test-only spy: counts every attempt to send an HTTP request to a model
+// provider. Used to prove that synthetic/offline dispatch performs zero
+// network egress — an assertion that cannot be satisfied by "it happened to
+// fail and fell back".
+//
+// Thread-local, not process-global. `cargo test` runs each test on its own
+// thread and `#[tokio::test]` defaults to a current-thread runtime, so a
+// thread-local counter is scoped to exactly one test.
+//
+// The previous process-global `AtomicU64` was observably wrong: it could be
+// incremented by a *sibling* test dispatching concurrently. `DISPATCH_MUTEX`
+// is private to this module, so a dispatching test elsewhere in the same
+// crate (`pipeline.rs`, `agent.rs`, `cli.rs`) cannot acquire it, yet still
+// shared the counter. That is the mechanism behind the observed
+// `left: 5, right: 3`: one concurrent `RouterConfig::default()` dispatch —
+// whose fallback is `LocalOllama`, so the no-keys fast path is bypassed —
+// attempts the primary provider and then its Ollama fallback, which is
+// exactly two increments. Per-thread state removes the entire class of
+// interference instead of serialising against tests this module cannot see.
+//
+// (`//` rather than `///`: `thread_local!` is a macro invocation, and rustdoc
+// rejects doc comments on macro invocations — `-D unused-doc-comments` is
+// implied by `-D warnings`.)
 #[cfg(test)]
-pub(crate) static NETWORK_EGRESS_COUNT: AtomicU64 = AtomicU64::new(0);
+thread_local! {
+    pub(crate) static NETWORK_EGRESS_COUNT: std::cell::Cell<u64> =
+        const { std::cell::Cell::new(0) };
+}
 
 // ---------------------------------------------------------------------------
 // Model provider
@@ -1162,7 +1184,7 @@ impl TokenRouter {
 
         // Test-only spy: record that we are about to egress to a provider.
         #[cfg(test)]
-        NETWORK_EGRESS_COUNT.fetch_add(1, Ordering::SeqCst);
+        NETWORK_EGRESS_COUNT.with(|c| c.set(c.get() + 1));
 
         let resp = req.send().await.context("HTTP request failed")?;
         let status = resp.status();
@@ -1300,11 +1322,16 @@ mod tests {
     use super::*;
     use crate::agent_protocol::AgentDecision;
 
-    /// Serialises tests that (a) mutate process-global provider environment
-    /// variables, or (b) assert on the process-global `NETWORK_EGRESS_COUNT`
-    /// spy. `cargo test` runs tests on multiple threads within one process, so
-    /// without this lock a counter delta could be attributed to the wrong test
-    /// and an env-mutating test could be observed by another.
+    /// Serialises tests that mutate process-global provider environment
+    /// variables. `cargo test` runs tests on multiple threads within one
+    /// process, so without this lock an env-mutating test could be observed by
+    /// another.
+    ///
+    /// It no longer has to cover the egress spy: `NETWORK_EGRESS_COUNT` is
+    /// thread-local, so a counter delta cannot be attributed to the wrong test.
+    /// This lock cannot be shared with tests in other modules of the crate, so
+    /// anything that must be observable across modules has to be per-thread or
+    /// per-instance rather than process-global.
     ///
     /// A `tokio::sync::Mutex` is used deliberately: these are `async` tests and
     /// the guard is intentionally held across await points, which a
@@ -1384,12 +1411,12 @@ mod tests {
         let _guard = DISPATCH_MUTEX.lock().await;
         let router = synthetic_router();
 
-        let egress_before = NETWORK_EGRESS_COUNT.load(Ordering::SeqCst);
+        let egress_before = NETWORK_EGRESS_COUNT.with(std::cell::Cell::get);
         let text = router
             .dispatch_prompt("build a counter", "you are a code generator")
             .await
             .unwrap();
-        let egress_after = NETWORK_EGRESS_COUNT.load(Ordering::SeqCst);
+        let egress_after = NETWORK_EGRESS_COUNT.with(std::cell::Cell::get);
 
         // The synthetic provider must be reached *without* attempting any HTTP
         // request. Asserting this is what makes the test hermetic: the previous
@@ -1474,12 +1501,12 @@ mod tests {
             }
 
             let router = synthetic_router();
-            let egress_before = NETWORK_EGRESS_COUNT.load(Ordering::SeqCst);
+            let egress_before = NETWORK_EGRESS_COUNT.with(std::cell::Cell::get);
             let text = router
                 .dispatch_prompt("build a counter", "sys")
                 .await
                 .unwrap();
-            let egress_after = NETWORK_EGRESS_COUNT.load(Ordering::SeqCst);
+            let egress_after = NETWORK_EGRESS_COUNT.with(std::cell::Cell::get);
 
             assert_eq!(
                 egress_after, egress_before,
@@ -1561,9 +1588,9 @@ mod tests {
         let router = TokenRouter::without_vector_cache(cfg).unwrap();
         // Both providers require keys and none are configured -> the pre-existing
         // fast path degrades to synthetic, again without touching the network.
-        let egress_before = NETWORK_EGRESS_COUNT.load(Ordering::SeqCst);
+        let egress_before = NETWORK_EGRESS_COUNT.with(std::cell::Cell::get);
         let text = router.dispatch_prompt("hello", "sys").await.unwrap();
-        let egress_after = NETWORK_EGRESS_COUNT.load(Ordering::SeqCst);
+        let egress_after = NETWORK_EGRESS_COUNT.with(std::cell::Cell::get);
 
         for (k, v) in saved {
             match v {
@@ -1793,7 +1820,7 @@ mod tests {
             std::env::remove_var(k);
         }
 
-        let egress_before = NETWORK_EGRESS_COUNT.load(Ordering::SeqCst);
+        let egress_before = NETWORK_EGRESS_COUNT.with(std::cell::Cell::get);
         let tmp = |tag: &str| {
             std::env::temp_dir().join(format!(
                 "zylcode_d1_guard_{}_{}.db",
@@ -1855,7 +1882,7 @@ mod tests {
         let d2 = router_4.dispatch_prompt(prompt_a, sys).await.unwrap();
         let d3 = router_4.dispatch_prompt(prompt_c, sys).await.unwrap();
 
-        let egress_after = NETWORK_EGRESS_COUNT.load(Ordering::SeqCst);
+        let egress_after = NETWORK_EGRESS_COUNT.with(std::cell::Cell::get);
 
         // Restore ambient credentials BEFORE asserting: a failed assertion must
         // not leak cleared env vars into sibling tests. Remove temp DBs too.
