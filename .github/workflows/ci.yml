@@ -53,13 +53,20 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # 22, not 20: `apps/natlas-sdk/test/smoke.mjs` is TypeScript that Node
+          # runs directly via `--experimental-strip-types`, which landed in
+          # Node 22.6.0. Node 20 cannot run it at all, so the SDK smoke step
+          # below would fail for a missing-flag reason rather than a real one.
+          # `engines.node` is ">=18.0.0", so 22 satisfies the workspace floor.
+          node-version: 22
           cache: 'pnpm'
 
       - name: Setup Rust (stable)
         uses: dtolnay/rust-toolchain@stable
         with:
-          components: clippy
+          # rustfmt is a component of the toolchain, not a separate install.
+          # Without it the `cargo fmt --all -- --check` step below cannot run.
+          components: clippy, rustfmt
 
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
@@ -68,7 +75,9 @@ jobs:
 
       - name: Install dependencies (pnpm)
         run: pnpm install --frozen-lockfile
-        # First run in CI without lock parity — fallback to install if frozen fails
+        # `pnpm-lock.yaml` is committed, so this is the locked dependency graph.
+        # A failure here means the lockfile drifted from the manifests — which is
+        # exactly the signal we want, rather than a silent re-resolution.
         continue-on-error: false
         shell: bash
 
@@ -79,6 +88,16 @@ jobs:
         run: cargo clippy --workspace --all-targets -- -D warnings
         # Clippy is advisory on Windows/macOS runners where Tauri sys deps differ
         continue-on-error: ${{ runner.os != 'Linux' }}
+
+      - name: Cargo fmt (rustfmt check)
+        run: cargo fmt --all -- --check
+        # Hard failure on all three OSes. rustfmt is deterministic — unlike
+        # clippy it has no platform-dependent lints — and .gitattributes pins
+        # `eol=lf` for *.rs, so a CRLF checkout cannot make this flaky.
+        #
+        # Added 2026-10-21: the repository had no formatting gate at all, so
+        # `cargo fmt --check` was never enforced despite the workspace being
+        # rustfmt-clean at HEAD. Verified clean before this step was added.
 
       - name: Cargo test (workspace)
         run: cargo test --workspace --all-targets
@@ -91,6 +110,77 @@ jobs:
         # the measured figure is 27 tool IDs (EnhancedMcpBridge::all_definitions,
         # verified 2026-09-19 against the committed catalogue source).
         # Adding a rule requires both a retraction reference and a measurement.
+
+      # ---------------------------------------------------------------------
+      # Security gates (added 2026-10-21, Phase 1)
+      # ---------------------------------------------------------------------
+
+      - name: Install cargo-audit
+        uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283
+        with:
+          tool: cargo-audit
+          # Pinned to a commit SHA, not a tag: a tag is mutable, and a secret
+          # scanner that can be repointed by whoever controls the tag is not a
+          # security control.
+
+      - name: Cargo audit
+        run: cargo audit
+        # `cargo audit` exits non-zero on a *vulnerable* crate and exits zero on
+        # unmaintained/unsound advisories, which is why this is plain `cargo
+        # audit` and not `--deny warnings`. As of 2026-10-21 the workspace has
+        # 5 accepted advisories, all `unmaintained`/`unsound` rather than
+        # exploitable: RUSTSEC-2024-0370 (proc-macro-error), -2024-0449
+        # (unsafe-libyaml), -2024-0429 (glib), -2026-0002 and -2026-0253 (lru).
+        # They are documented in docs/governance/ACCEPTED_ADVISORIES.md.
+        # Suppressing them silently would be the failure mode to avoid;
+        # documenting them is what makes the gate honest.
+
+      - name: pnpm audit (production dependency tree)
+        run: pnpm audit --prod
+        # Now clean: the 5 dompurify advisories that `--prod` reported on
+        # 2026-10-21 (GHSA-cmwh-pvxp-8882, -55q2-fjhq-7xh7, -vxr8-fq34-vvx9,
+        # -c2j3-45gr-mqc4, -6688-9rhm-gjv2) were resolved with a documented
+        # `pnpm.overrides` for dompurify ^3.4.17 in the root package.json, not
+        # by suppressing the audit.
+
+      - name: Secret scan
+        run: python scripts/check_hardcoded_secrets.py
+        # Matches only high-confidence provider credential formats (Stripe, AWS,
+        # GitHub, Slack, Google, npm, PyPI, SendGrid, PEM private keys) — never
+        # the words `api_key`/`secret`/`token`, which appear legitimately in
+        # every configuration schema in this workspace. That choice is what
+        # keeps it allowlist-free: there is nothing to suppress because nothing
+        # safe matches. `--selftest` asserts every pattern detects and that the
+        # known-safe shapes do not.
+
+      - name: Frontend lint (zylcode-desktop)
+        run: pnpm --filter zylcode-desktop lint
+        # Scoped to the one workspace package that actually has an eslint
+        # config. `pnpm -r lint` is wrong here: `apps/natlas-sdk` has no lint
+        # script, so the recursive form fails on a missing command rather than
+        # on a lint finding.
+        #
+        # Exits non-zero on errors only; the 36 remaining warnings are accepted
+        # and itemised in docs/governance/ACCEPTED_LINT_WARNINGS.md.
+
+      - name: Frontend format check (zylcode-desktop)
+        run: pnpm --filter zylcode-desktop format:check
+        # Read-only by design. The package's `format` script is
+        # `prettier --write`, which mutates the tree — a CI job must verify, not
+        # rewrite. `format:check` is the `--check` counterpart.
+
+      # ---------------------------------------------------------------------
+      # N-ATLAS SDK
+      # ---------------------------------------------------------------------
+
+      - name: N-ATLAS SDK typecheck
+        run: pnpm --filter @zylvex/natlas-bridge typecheck
+
+      - name: N-ATLAS SDK smoke test
+        run: node --experimental-strip-types apps/natlas-sdk/test/smoke.mjs
+        # 16 assertions covering a real HTTP round trip against a test double,
+        # plus the guarantee that a secret never reaches evidence. Requires Node
+        # >= 22.6 (see the node-version note above).
 
       - name: Frontend typecheck + build (zylcode-desktop)
         run: pnpm --filter zylcode-desktop build
