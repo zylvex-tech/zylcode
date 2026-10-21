@@ -23,6 +23,9 @@ import {
   resilienceStateOf,
   translateOpenAiReply,
 } from "../src/index.ts";
+import { TEST_FIXTURE_API_KEY } from "./fixtures.mjs";
+
+// What this fixture is and why it exists — see the header of ./fixtures.mjs.
 
 const INTENT_JSON = JSON.stringify({
   summary: "Add a health endpoint",
@@ -92,8 +95,10 @@ await test("pure: parseEngineeringIntent is strict", () => {
 });
 
 await test("pure: redactSecrets removes and counts", () => {
-  const { text, count } = redactSecrets("key stub-key-1234 here", ["stub-key-1234"]);
-  assert.ok(!text.includes("stub-key-1234"));
+  const { text, count } = redactSecrets(`key ${TEST_FIXTURE_API_KEY} here`, [
+    TEST_FIXTURE_API_KEY,
+  ]);
+  assert.ok(!text.includes(TEST_FIXTURE_API_KEY));
   assert.equal(count, 1);
 });
 
@@ -107,7 +112,7 @@ await test("http: real round trip reaches the runtime and parses the intent", as
       baseUrl: stub.url,
       requestPath: OPENAI_CHAT_PATH,
       model: "n-atlas-stub",
-      apiKey: "stub-key-1234",
+      apiKey: TEST_FIXTURE_API_KEY,
     });
     const { invocation, intent } = await bridge.submitIntent({
       intent: "add a health endpoint",
@@ -182,18 +187,18 @@ await test("http: a 500 is an HTTP_STATUS error, not a success", async () => {
 await test("http: a secret echoed in an error is redacted from evidence", async () => {
   const stub = await startStub((req, res) => {
     res.writeHead(401, { "content-type": "application/json" });
-    res.end('{"error":"bad key stub-key-1234 rejected"}');
+    res.end(`{"error":"bad key ${TEST_FIXTURE_API_KEY} rejected"}`);
   });
   try {
     const bridge = NatlasBridge.configure({
       baseUrl: stub.url,
       requestPath: OPENAI_CHAT_PATH,
       model: "n-atlas-stub",
-      apiKey: "stub-key-1234",
+      apiKey: TEST_FIXTURE_API_KEY,
     });
     const inv = await bridge.invoke({ intent: "x", system: "y" });
     const serialised = JSON.stringify(inv.evidence);
-    assert.ok(!serialised.includes("stub-key-1234"), "the key must never reach evidence");
+    assert.ok(!serialised.includes(TEST_FIXTURE_API_KEY), "the key must never reach evidence");
     assert.ok(inv.evidence.secretRedactions > 0);
   } finally {
     stub.close();

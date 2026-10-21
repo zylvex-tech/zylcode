@@ -14,12 +14,7 @@ export type MissionState =
   | "COMPLETE"
   | "CANCELLED";
 
-export type AutonomyMode =
-  | "OBSERVE"
-  | "GUIDED"
-  | "BUILD"
-  | "MISSION"
- | "SOVEREIGN";
+export type AutonomyMode = "OBSERVE" | "GUIDED" | "BUILD" | "MISSION" | "SOVEREIGN";
 
 export type AutonomyModeInfo = {
   mode: AutonomyMode;

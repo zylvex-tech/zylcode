@@ -95,15 +95,13 @@ export async function fetchDeploy(): Promise<DeployState> {
 export async function fetchBuildState(): Promise<BuildState> {
   try {
     const data = await getJson("/api/build");
-    const steps = ((data.steps as Record<string, unknown>[]) ?? []).map(
-      (s): BuildStepView => ({
-        name: String(s.name ?? "?"),
-        command: String(s.command ?? ""),
-        passed: Boolean(s.passed),
-        exit_code: typeof s.exit_code === "number" ? s.exit_code : null,
-        duration_ms: typeof s.duration_ms === "number" ? s.duration_ms : null,
-      }),
-    );
+    const steps = ((data.steps as Record<string, unknown>[]) ?? []).map((s): BuildStepView => ({
+      name: String(s.name ?? "?"),
+      command: String(s.command ?? ""),
+      passed: Boolean(s.passed),
+      exit_code: typeof s.exit_code === "number" ? s.exit_code : null,
+      duration_ms: typeof s.duration_ms === "number" ? s.duration_ms : null,
+    }));
     const rawPackaged = data.packaged as Record<string, unknown> | undefined;
     return {
       kind: "ready",
@@ -116,20 +114,12 @@ export async function fetchBuildState(): Promise<BuildState> {
       steps,
       packaged: rawPackaged
         ? {
-            release_dir: rawPackaged.release_dir
-              ? String(rawPackaged.release_dir)
-              : undefined,
-            artifact_id: rawPackaged.artifact_id
-              ? String(rawPackaged.artifact_id)
-              : undefined,
+            release_dir: rawPackaged.release_dir ? String(rawPackaged.release_dir) : undefined,
+            artifact_id: rawPackaged.artifact_id ? String(rawPackaged.artifact_id) : undefined,
             version: rawPackaged.version ? String(rawPackaged.version) : undefined,
-            content_hash: rawPackaged.content_hash
-              ? String(rawPackaged.content_hash)
-              : undefined,
+            content_hash: rawPackaged.content_hash ? String(rawPackaged.content_hash) : undefined,
             file_count:
-              typeof rawPackaged.file_count === "number"
-                ? rawPackaged.file_count
-                : undefined,
+              typeof rawPackaged.file_count === "number" ? rawPackaged.file_count : undefined,
           }
         : undefined,
     };

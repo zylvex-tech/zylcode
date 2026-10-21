@@ -1,5 +1,5 @@
 import React from "react";
-import { Theme, themes, useTheme } from "./ui";
+import { Theme, themes } from "./ui";
 
 interface StatusBarProps {
   theme: Theme;
@@ -18,7 +18,9 @@ export const StatusBar: React.FC<StatusBarProps> = ({ theme, onThemeChange, mcpB
         <span className="text-slate-600">|</span>
         <span className="text-emerald-400">Circuit: CLOSED</span>
         <span className="text-slate-600">|</span>
-        <span>Bridges: <strong className="text-slate-200">{mcpBridgeCount}</strong></span>
+        <span>
+          Bridges: <strong className="text-slate-200">{mcpBridgeCount}</strong>
+        </span>
       </div>
 
       <div className="flex items-center gap-3">

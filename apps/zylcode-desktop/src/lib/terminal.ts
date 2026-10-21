@@ -36,11 +36,7 @@ export interface TerminalOutput {
   transportError: boolean;
 }
 
-function failed(
-  question: string,
-  detail: string,
-  transport = true,
-): TerminalOutput {
+function failed(question: string, detail: string, transport = true): TerminalOutput {
   return {
     sessionId: "",
     cwd: "",

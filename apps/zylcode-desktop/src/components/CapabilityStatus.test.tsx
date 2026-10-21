@@ -8,16 +8,13 @@ import { StatusBadge, RungBadge, StatusLockedAction } from "./CapabilityStatus";
 // ---------------------------------------------------------------------------
 
 describe("StatusBadge", () => {
-  it.each([
-    "AVAILABLE",
-    "LIMITED",
-    "COMING SOON",
-    "BLOCKED",
-    "NOT INSTALLED",
-  ] as const)("renders the %s status text", (status) => {
-    render(<StatusBadge status={status} />);
-    expect(screen.getByText(status)).toBeInTheDocument();
-  });
+  it.each(["AVAILABLE", "LIMITED", "COMING SOON", "BLOCKED", "NOT INSTALLED"] as const)(
+    "renders the %s status text",
+    (status) => {
+      render(<StatusBadge status={status} />);
+      expect(screen.getByText(status)).toBeInTheDocument();
+    },
+  );
 
   it("renders both sizes without crashing", () => {
     const { rerender } = render(<StatusBadge status="AVAILABLE" size="sm" />);

@@ -1,33 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useStreamSubscription, ENVIRONMENT, IS_DESKTOP } from "./lib/events";
-import {
-  DESKTOP_REQUIRED_MESSAGE,
-  safeInvoke,
-  getDiagnostics,
-  clearDiagnostics,
-} from "./lib/runtime";
-import {
-  AUTONOMY_MODES,
-  EVIDENCE_CATEGORIES,
-  NOT_CAPTURED,
-  newMissionId,
-  type MissionRecord,
-} from "./lib/mission";
+import { safeInvoke } from "./lib/runtime";
+import { newMissionId, type MissionRecord } from "./lib/mission";
 import { useArtifactStream } from "./lib/useArtifactStream";
 import { usePersistentState, useDragResize } from "./lib/layout";
 import { StatusBar } from "./components/StatusBar";
 import TokenMetricsWidget from "./components/TokenMetricsWidget";
 import { ExplorerTree } from "./components/ExplorerTree";
 import { ThemeProvider, useTheme, ThemeSelector } from "./components/ui";
-import Forge from "./components/Forge";
 import CommandPalette from "./components/CommandPalette";
 import EditorPane from "./components/EditorPane";
 import SettingsSurface from "./components/SettingsSurface";
 import { useSettings } from "./lib/settings";
-import {
-  MenuBar,
-  type Menu,
-} from "./components/shell/MenuBar";
+import { MenuBar, type Menu } from "./components/shell/MenuBar";
 import { isEmbeddedPreview } from "./components/shell/RightWorkspace";
 import {
   ActivityRail,
@@ -118,13 +103,15 @@ function EmbeddedPreviewApp() {
       <div className="p-4 space-y-3">
         <div className="flex items-center gap-2">
           <img src="/branding/emblem.png" alt="" className="h-5 w-5" draggable={false} />
-          <span className="text-sm font-semibold tracking-wide">ZylCode — live project preview</span>
+          <span className="text-sm font-semibold tracking-wide">
+            ZylCode — live project preview
+          </span>
         </div>
         <p className="text-xs text-text-muted max-w-md">
-          This pane mirrors the running workspace front end. A production project preview
-          (the built output of the project under development) is served once a project's
-          preview target is commissioned in Project System — the shell around this pane
-          remains fully interactive while this frame reflects the live state.
+          This pane mirrors the running workspace front end. A production project preview (the built
+          output of the project under development) is served once a project&apos;s preview target is
+          commissioned in Project System — the shell around this pane remains fully interactive
+          while this frame reflects the live state.
         </p>
         <div className="grid grid-cols-2 gap-2 max-w-md text-xs">
           <div className="border border-border rounded-lg p-2">
@@ -154,18 +141,31 @@ function AppContent() {
 
   // Resizable sidebars (persisted).
   const [sidebarWidth, setSidebarWidth] = usePersistentState("sidebarWidth", 260);
-  const [agentDockOpen, setAgentDockOpen] = usePersistentState("agentDockOpen", true);
+  const [_agentDockOpen, setAgentDockOpen] = usePersistentState("agentDockOpen", true);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [settingsSection, setSettingsSection] = useState<"general" | "agent" | "providers" | "extensions" | "appearance" | "hotkeys" | "diagnostics" | "about" | undefined>(undefined);
+  const [settingsSection, setSettingsSection] = useState<
+    | "general"
+    | "agent"
+    | "providers"
+    | "extensions"
+    | "appearance"
+    | "hotkeys"
+    | "diagnostics"
+    | "about"
+    | undefined
+  >(undefined);
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const { settings } = useSettings();
+  // Kept as a bare call on purpose: `useSettings()` may register its own hooks,
+  // and no consumer in this file reads the returned value. Dropping the call
+  // altogether would change the hook order; ignoring the value does not.
+  useSettings();
 
   const [missions, setMissions] = useState<MissionRecord[]>([]);
   const [activeMissionId, setActiveMissionId] = useState<string | null>(null);
   const [verification, setVerification] = useState<VerificationReport | null>(null);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [_error, setError] = useState<string | null>(null);
   const [metricsKey, setMetricsKey] = useState(0);
   const { currentTheme, setTheme } = useTheme();
 
@@ -197,7 +197,13 @@ function AppContent() {
         m.id === activeMissionId
           ? {
               ...m,
-              state: done ? (verification ? (verification.passed ? "COMPLETE" : "FAILED") : "VERIFYING") : "RUNNING",
+              state: done
+                ? verification
+                  ? verification.passed
+                    ? "COMPLETE"
+                    : "FAILED"
+                  : "VERIFYING"
+                : "RUNNING",
               deltas: deltas.map((d) => ({ index: d.index, delta: d.delta, phase: d.phase })),
               toolCalls: mcpCalls,
               artifacts: done?.artifacts ?? m.artifacts,
@@ -209,51 +215,48 @@ function AppContent() {
     );
   }, [activeMissionId, deltas, mcpCalls, done]);
 
-  const startMission = useCallback(
-    async (goal: string, autonomy: string, model: string | null) => {
-      const id = newMissionId();
-      const now = new Date().toISOString();
-      const mission: MissionRecord = {
-        id,
-        title: goal.length > 42 ? goal.slice(0, 42) + "…" : goal,
-        goal,
-        state: "RUNNING",
-        autonomy: autonomy as MissionRecord["autonomy"],
-        model,
-        createdAt: now,
-        updatedAt: now,
-        acceptanceCriteria: [],
-        deltas: [],
-        toolCalls: [],
-        artifacts: [],
-        verification: null,
-        finalOutcome: null,
-      };
-      setMissions((prev) => [...prev, mission]);
-      setActiveMissionId(id);
-      setActiveActivity("missions");
-      setActiveSurface("missions");
-      setBusy(true);
-      setError(null);
-      setVerification(null);
+  const startMission = useCallback(async (goal: string, autonomy: string, model: string | null) => {
+    const id = newMissionId();
+    const now = new Date().toISOString();
+    const mission: MissionRecord = {
+      id,
+      title: goal.length > 42 ? goal.slice(0, 42) + "…" : goal,
+      goal,
+      state: "RUNNING",
+      autonomy: autonomy as MissionRecord["autonomy"],
+      model,
+      createdAt: now,
+      updatedAt: now,
+      acceptanceCriteria: [],
+      deltas: [],
+      toolCalls: [],
+      artifacts: [],
+      verification: null,
+      finalOutcome: null,
+    };
+    setMissions((prev) => [...prev, mission]);
+    setActiveMissionId(id);
+    setActiveActivity("missions");
+    setActiveSurface("missions");
+    setBusy(true);
+    setError(null);
+    setVerification(null);
 
-      const result = await safeInvoke<IntentResult>(ENVIRONMENT, "process_intent_stream", {
-        prompt: goal,
-        model,
-      });
-      if (!result.ok && IS_DESKTOP) {
-        setError(result.reason);
-      } else if (!result.ok) {
-        setMissions((prev) =>
-          prev.map((m) =>
-            m.id === id ? { ...m, state: "BLOCKED", finalOutcome: "Desktop runtime required" } : m,
-          ),
-        );
-      }
-      setBusy(false);
-    },
-    [],
-  );
+    const result = await safeInvoke<IntentResult>(ENVIRONMENT, "process_intent_stream", {
+      prompt: goal,
+      model,
+    });
+    if (!result.ok && IS_DESKTOP) {
+      setError(result.reason);
+    } else if (!result.ok) {
+      setMissions((prev) =>
+        prev.map((m) =>
+          m.id === id ? { ...m, state: "BLOCKED", finalOutcome: "Desktop runtime required" } : m,
+        ),
+      );
+    }
+    setBusy(false);
+  }, []);
 
   const verifyMission = useCallback(async () => {
     if (!activeMissionId) return;
@@ -287,10 +290,13 @@ function AppContent() {
 
   // --- Editor tab management -------------------------------------------------
 
-  const openFile = useCallback((path: string) => {
-    setEditorTabs((prev) => (prev.includes(path) ? prev : [...prev, path]));
-    setEditorActive(path);
-  }, [setEditorTabs, setEditorActive]);
+  const openFile = useCallback(
+    (path: string) => {
+      setEditorTabs((prev) => (prev.includes(path) ? prev : [...prev, path]));
+      setEditorActive(path);
+    },
+    [setEditorTabs, setEditorActive],
+  );
 
   /**
    * Click-to-navigate target for repository-intelligence surfaces: open the
@@ -333,9 +339,30 @@ function AppContent() {
         id: "code",
         label: "Code",
         items: [
-          { id: "cmd-palette", label: "Command Palette…", shortcut: "Ctrl+Shift+P", run: () => setPaletteOpen(true) },
-          { id: "settings", label: "Settings…", shortcut: "Ctrl+,", run: () => { setSettingsSection("general"); setSettingsOpen(true); } },
-          { id: "about", label: "About ZylCode", separatorBefore: true, run: () => { setSettingsSection("about"); setSettingsOpen(true); } },
+          {
+            id: "cmd-palette",
+            label: "Command Palette…",
+            shortcut: "Ctrl+Shift+P",
+            run: () => setPaletteOpen(true),
+          },
+          {
+            id: "settings",
+            label: "Settings…",
+            shortcut: "Ctrl+,",
+            run: () => {
+              setSettingsSection("general");
+              setSettingsOpen(true);
+            },
+          },
+          {
+            id: "about",
+            label: "About ZylCode",
+            separatorBefore: true,
+            run: () => {
+              setSettingsSection("about");
+              setSettingsOpen(true);
+            },
+          },
         ],
       },
       {
@@ -350,13 +377,17 @@ function AppContent() {
             disabledReason: IS_DESKTOP
               ? undefined
               : "Verification runs on the desktop engine; browser preview has no engine process. Use a Build mission instead (AI Agent tab).",
-            run: () => { setActiveActivity("missions"); setActiveSurface("missions"); },
+            run: () => {
+              setActiveActivity("missions");
+              setActiveSurface("missions");
+            },
           },
           {
             id: "build-clean",
             label: "Rebuild Workspace",
             disabled: true,
-            disabledReason: "No build orchestrator is commissioned yet; the Rust workspace builds via `cargo build` in the Terminal.",
+            disabledReason:
+              "No build orchestrator is commissioned yet; the Rust workspace builds via `cargo build` in the Terminal.",
           },
         ],
       },
@@ -364,9 +395,32 @@ function AppContent() {
         id: "run",
         label: "Run",
         items: [
-          { id: "run-open", label: "Open Run Surface", shortcut: "Ctrl+R", run: () => { setActiveActivity("run"); setActiveSurface("runtime"); } },
-          { id: "run-terminal", label: "Open Terminal", shortcut: "Ctrl+`", run: () => { setBottomPanelOpen(true); setActiveBottomTab("terminal"); } },
-          { id: "run-tests", label: "Show Test Results", run: () => { setBottomPanelOpen(true); setActiveBottomTab("tests"); } },
+          {
+            id: "run-open",
+            label: "Open Run Surface",
+            shortcut: "Ctrl+R",
+            run: () => {
+              setActiveActivity("run");
+              setActiveSurface("runtime");
+            },
+          },
+          {
+            id: "run-terminal",
+            label: "Open Terminal",
+            shortcut: "Ctrl+`",
+            run: () => {
+              setBottomPanelOpen(true);
+              setActiveBottomTab("terminal");
+            },
+          },
+          {
+            id: "run-tests",
+            label: "Show Test Results",
+            run: () => {
+              setBottomPanelOpen(true);
+              setActiveBottomTab("tests");
+            },
+          },
         ],
       },
       {
@@ -377,7 +431,8 @@ function AppContent() {
             id: "deploy-app",
             label: "Deploy…",
             disabled: true,
-            disabledReason: "No deployment target is commissioned (no remote/CI pipeline configured in this build).",
+            disabledReason:
+              "No deployment target is commissioned (no remote/CI pipeline configured in this build).",
           },
         ],
       },
@@ -385,38 +440,130 @@ function AppContent() {
         id: "ai",
         label: "AI",
         items: [
-          { id: "ai-agent", label: "New Mission (Build)…", shortcut: "Ctrl+M", run: () => { setActiveActivity("missions"); setActiveSurface("missions"); } },
-          { id: "ai-queue", label: "Mission Queue", run: () => { setActiveActivity("missions"); setActiveSurface("missions"); } },
-          { id: "ai-evidence", label: "Evidence Ledger", run: () => { setActiveActivity("evidence"); setActiveSurface("evidence-live"); } },
-          { id: "ai-forge", label: "Capability Forge", run: () => { setActiveActivity("forge"); setActiveSurface("forge"); } },
+          {
+            id: "ai-agent",
+            label: "New Mission (Build)…",
+            shortcut: "Ctrl+M",
+            run: () => {
+              setActiveActivity("missions");
+              setActiveSurface("missions");
+            },
+          },
+          {
+            id: "ai-queue",
+            label: "Mission Queue",
+            run: () => {
+              setActiveActivity("missions");
+              setActiveSurface("missions");
+            },
+          },
+          {
+            id: "ai-evidence",
+            label: "Evidence Ledger",
+            run: () => {
+              setActiveActivity("evidence");
+              setActiveSurface("evidence-live");
+            },
+          },
+          {
+            id: "ai-forge",
+            label: "Capability Forge",
+            run: () => {
+              setActiveActivity("forge");
+              setActiveSurface("forge");
+            },
+          },
         ],
       },
       {
         id: "view",
         label: "View",
         items: [
-          { id: "view-explorer", label: "Explorer", shortcut: "Ctrl+Shift+E", run: () => handleActivityChange("explorer") },
-          { id: "view-search", label: "Search", shortcut: "Ctrl+Shift+F", run: () => handleActivityChange("search") },
-          { id: "view-scm", label: "Source Control", shortcut: "Ctrl+Shift+G", run: () => handleActivityChange("source-control") },
+          {
+            id: "view-explorer",
+            label: "Explorer",
+            shortcut: "Ctrl+Shift+E",
+            run: () => handleActivityChange("explorer"),
+          },
+          {
+            id: "view-search",
+            label: "Search",
+            shortcut: "Ctrl+Shift+F",
+            run: () => handleActivityChange("search"),
+          },
+          {
+            id: "view-scm",
+            label: "Source Control",
+            shortcut: "Ctrl+Shift+G",
+            run: () => handleActivityChange("source-control"),
+          },
           { id: "view-intel", label: "Code Navigation", run: () => handleActivityChange("intel") },
-          { id: "view-terminal", label: "Toggle Terminal Panel", shortcut: "Ctrl+`", run: () => setBottomPanelOpen((v) => !v) },
-          { id: "view-problems", label: "Problems", run: () => { setBottomPanelOpen(true); setActiveBottomTab("problems"); } },
-          { id: "view-output", label: "Output", run: () => { setBottomPanelOpen(true); setActiveBottomTab("output"); } },
-          { id: "view-ports", label: "Ports", run: () => { setBottomPanelOpen(true); setActiveBottomTab("ports"); } },
+          {
+            id: "view-terminal",
+            label: "Toggle Terminal Panel",
+            shortcut: "Ctrl+`",
+            run: () => setBottomPanelOpen((v) => !v),
+          },
+          {
+            id: "view-problems",
+            label: "Problems",
+            run: () => {
+              setBottomPanelOpen(true);
+              setActiveBottomTab("problems");
+            },
+          },
+          {
+            id: "view-output",
+            label: "Output",
+            run: () => {
+              setBottomPanelOpen(true);
+              setActiveBottomTab("output");
+            },
+          },
+          {
+            id: "view-ports",
+            label: "Ports",
+            run: () => {
+              setBottomPanelOpen(true);
+              setActiveBottomTab("ports");
+            },
+          },
         ],
       },
       {
         id: "window",
         label: "Window",
         items: [
-          { id: "win-editor", label: "Editor Focus", run: () => { setActiveActivity("explorer"); setActiveSurface("code"); } },
-          { id: "win-preview", label: "Show Preview", run: () => { setAgentDockOpen(true); } },
+          {
+            id: "win-editor",
+            label: "Editor Focus",
+            run: () => {
+              setActiveActivity("explorer");
+              setActiveSurface("code");
+            },
+          },
+          {
+            id: "win-preview",
+            label: "Show Preview",
+            run: () => {
+              setAgentDockOpen(true);
+            },
+          },
           {
             id: "win-theme",
             label: `Theme: ${currentTheme}`,
             run: () => {
               // Cycle to the next theme for quick visual verification.
-              const order = ["midnight-pro", "arctic-light", "github-dark", "vscode-classic", "solarized-dark", "dracula", "nord", "monokai-pro"];
+              const order = [
+                "midnight-pro",
+                "arctic-light",
+                "github-dark",
+                "vscode-classic",
+                "solarized-dark",
+                "dracula",
+                "nord",
+                "monokai-pro",
+              ];
               const idx = order.indexOf(currentTheme);
               setTheme(order[(idx + 1) % order.length] as typeof currentTheme);
             },
@@ -432,7 +579,8 @@ function AppContent() {
             id: "help-cli",
             label: "CLI Reference",
             disabled: true,
-            disabledReason: "Documentation site not commissioned; use `zylcode --help` in the Terminal.",
+            disabledReason:
+              "Documentation site not commissioned; use `zylcode --help` in the Terminal.",
           },
         ],
       },
@@ -490,7 +638,9 @@ function AppContent() {
                 draggable={false}
               />
             </div>
-            <span className="hidden lg:inline text-[10px] font-mono text-text-muted">v0.3.0-convergence</span>
+            <span className="hidden lg:inline text-[10px] font-mono text-text-muted">
+              v0.3.0-convergence
+            </span>
           </button>
         }
         right={

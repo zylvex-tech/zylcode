@@ -76,19 +76,30 @@ export default function McpInspector() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-xs font-semibold uppercase tracking-widest text-zyl-muted">MCP Activity</h3>
+        <h3 className="text-xs font-semibold uppercase tracking-widest text-zyl-muted">
+          MCP Activity
+        </h3>
         <span className="text-[10px] font-mono text-zyl-muted">{tools.length} tools</span>
       </div>
 
-      {err && <div className="rounded border border-red-900 bg-red-950/30 p-2 text-xs text-red-300">{err}</div>}
+      {err && (
+        <div className="rounded border border-red-900 bg-red-950/30 p-2 text-xs text-red-300">
+          {err}
+        </div>
+      )}
 
       {/* Tool registry */}
       <div className="space-y-1">
         {tools.length === 0 ? (
-          <p className="text-xs text-zyl-muted">No tools registered. Add `mcp.tools.yaml` → hot-reload.</p>
+          <p className="text-xs text-zyl-muted">
+            No tools registered. Add `mcp.tools.yaml` → hot-reload.
+          </p>
         ) : (
           tools.map((t) => (
-            <div key={t.id} className="flex items-center justify-between rounded border border-zyl-border bg-zyl-bg px-2 py-1.5">
+            <div
+              key={t.id}
+              className="flex items-center justify-between rounded border border-zyl-border bg-zyl-bg px-2 py-1.5"
+            >
               <span className="font-mono text-xs text-white">{t.id}</span>
               <span className={transportLabel(t.transport)}>{t.transport}</span>
             </div>
@@ -98,15 +109,22 @@ export default function McpInspector() {
 
       {/* Live feed */}
       <div className="rounded border border-zyl-border bg-zyl-bg p-2">
-        <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-zyl-muted">Live feed</div>
+        <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-zyl-muted">
+          Live feed
+        </div>
         {calls.length === 0 ? (
           <p className="text-xs text-zyl-muted">Awaiting tool calls…</p>
         ) : (
           <ul className="space-y-1.5 max-h-48 overflow-auto pr-1">
             {calls.map((c, i) => (
-              <li key={i} className="flex items-center justify-between gap-2 rounded bg-zyl-surface px-2 py-1 border border-zyl-border/50">
+              <li
+                key={i}
+                className="flex items-center justify-between gap-2 rounded bg-zyl-surface px-2 py-1 border border-zyl-border/50"
+              >
                 <span className="font-mono text-xs text-white truncate">{c.tool}</span>
-                <span className={`rounded border px-2 py-0.5 text-[10px] font-semibold uppercase ${badgeForStatus(c.status)}`}>
+                <span
+                  className={`rounded border px-2 py-0.5 text-[10px] font-semibold uppercase ${badgeForStatus(c.status)}`}
+                >
                   {c.status}
                   {c.attempt ? ` #${c.attempt}` : ""}
                 </span>

@@ -176,8 +176,13 @@ function Node({
         className="w-full flex items-center gap-1.5 py-0.5 text-left hover:bg-surface rounded px-1"
         style={{ paddingLeft: depth * 12 + 4 }}
       >
-        <span className="text-[10px] w-3 text-text-muted">{node.isDir ? (isOpen ? "▾" : "▸") : ""}</span>
-        <span className={`text-xs truncate ${node.isDir ? "text-text-primary font-medium" : "text-text-muted font-mono"}`} title={node.path}>
+        <span className="text-[10px] w-3 text-text-muted">
+          {node.isDir ? (isOpen ? "▾" : "▸") : ""}
+        </span>
+        <span
+          className={`text-xs truncate ${node.isDir ? "text-text-primary font-medium" : "text-text-muted font-mono"}`}
+          title={node.path}
+        >
           {node.name}
         </span>
       </button>

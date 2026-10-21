@@ -138,9 +138,7 @@ describe("TerminalPanel backend recovery (stale BLOCKED regression)", () => {
 
     // Backend down → honest BLOCKED with the real reason on the badge note.
     expect(screen.getByText("BLOCKED")).toBeInTheDocument();
-    expect(
-      screen.getByText(/terminal unavailable: start/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/terminal unavailable: start/)).toBeInTheDocument();
     const probesWhileDown = execMock.mock.calls.length;
     expect(probesWhileDown).toBeGreaterThanOrEqual(1);
 
@@ -158,9 +156,7 @@ describe("TerminalPanel backend recovery (stale BLOCKED regression)", () => {
     });
 
     expect(screen.getByText("AVAILABLE")).toBeInTheDocument();
-    expect(
-      screen.getByText("real shell · cwd persists per session"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("real shell · cwd persists per session")).toBeInTheDocument();
     // The recovery is announced in the terminal itself…
     expect(terminalText()).toContain("terminal service recovered");
     // …and came from real re-probes, not a reload or a lucky first render.

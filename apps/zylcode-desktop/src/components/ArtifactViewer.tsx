@@ -1,6 +1,5 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect } from "react";
 import { Editor, DiffEditor } from "@monaco-editor/react";
-import { useArtifactStream } from "../lib/useArtifactStream";
 import { ArtifactFile } from "../lib/useArtifactStream";
 
 export interface ArtifactViewerProps {
@@ -43,10 +42,8 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
   setActiveTab,
   diffMode,
   setDiffMode,
-  saveStatus,
   saveFile,
   applyPatch,
-  closeTab,
 }) => {
   const [editingFile, setEditingFile] = React.useState<string | null>(null);
   const [fileContent, setFileContent] = React.useState<string>("");
@@ -103,12 +100,39 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
     setTimeout(() => setSaveBanner({ show: false, message: "", type: "success" }), 2000);
   };
 
-  const handleClose = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const path = activeTab!;
-    closeTab(path);
-    setActiveTab(path === activeTab ? null : activeTab);
-  };
+  // Monaco editor options
+  //
+  // These two `useMemo` calls MUST stay above the `files.size === 0` early
+  // return below. They used to sit after it, which meant the component called a
+  // different number of hooks depending on whether any artifact tabs were open
+  // -- React then throws "Rendered more hooks than during the previous render"
+  // as soon as the last tab is closed. Hoisting them fixes the hook count
+  // without changing behaviour: both are pure option objects with `[]` deps.
+  const editorOptions = React.useMemo(
+    () => ({
+      theme: MONACO_THEME,
+      automaticLayout: true,
+      fontSize: 13,
+      minimap: { enabled: false },
+      scrollBeyondLastLine: false,
+      renderWhitespace: "selection" as const,
+    }),
+    [],
+  );
+
+  // Diff editor options
+  const diffEditorOptions = React.useMemo(
+    () => ({
+      theme: MONACO_THEME,
+      renderSideBySide: true,
+      enableSplitViewResizing: true,
+      automaticLayout: true,
+      fontSize: 13,
+      minimap: { enabled: false },
+      readOnly: true,
+    }),
+    [],
+  );
 
   if (files.size === 0) {
     return (
@@ -118,19 +142,15 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
     );
   }
 
-  const activeFile = activeTab ? files.get(activeTab) ?? null : null;
+  const activeFile = activeTab ? (files.get(activeTab) ?? null) : null;
   const isEditing = editingFile !== null;
 
   const tabNodes = Array.from(files.keys()).map((path) => {
-    const file = files.get(path)!;
-    const ext = path.split(".").pop()?.toLowerCase() ?? "";
-    const lang = EXT_LANGUAGE_MAP[ext] || "plaintext";
     const isActive = activeTab === path;
     return (
       <div
         key={path}
-        className={`flex items-center rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors ${isActive ? "bg-zyl-accent text-white" : "text-zyl-muted hover:bg-zyl-surface"}`
-      }
+        className={`flex items-center rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors ${isActive ? "bg-zyl-accent text-white" : "text-zyl-muted hover:bg-zyl-surface"}`}
         onClick={() => setActiveTab(path)}
       >
         {path}
@@ -143,27 +163,6 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
     const ext = path.split(".").pop()?.toLowerCase() ?? "";
     return EXT_LANGUAGE_MAP[ext] || "plaintext";
   };
-
-  // Monaco editor options
-  const editorOptions = React.useMemo(() => ({
-    theme: MONACO_THEME,
-    automaticLayout: true,
-    fontSize: 13,
-    minimap: { enabled: false },
-    scrollBeyondLastLine: false,
-    renderWhitespace: "selection" as const,
-  }), []);
-
-  // Diff editor options
-  const diffEditorOptions = React.useMemo(() => ({
-    theme: MONACO_THEME,
-    renderSideBySide: true,
-    enableSplitViewResizing: true,
-    automaticLayout: true,
-    fontSize: 13,
-    minimap: { enabled: false },
-    readOnly: true,
-  }), []);
 
   let fileDisplay: React.ReactNode;
 
@@ -209,9 +208,7 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
       </div>
     );
   } else {
-    fileDisplay = (
-      <p className="p-4 text-zyl-muted text-center">Select a file tab to preview</p>
-    );
+    fileDisplay = <p className="p-4 text-zyl-muted text-center">Select a file tab to preview</p>;
   }
 
   return (
@@ -248,14 +245,10 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
 
       <div className="flex flex-col space-y-2">
         {/* Tab Bar */}
-        <div className="flex gap-1 rounded-md overflow-hidden bg-zyl-surface">
-          {tabNodes}
-        </div>
+        <div className="flex gap-1 rounded-md overflow-hidden bg-zyl-surface">{tabNodes}</div>
 
         {/* Active File Area */}
-        <div className="flex-1 min-h-0">
-          {fileDisplay}
-        </div>
+        <div className="flex-1 min-h-0">{fileDisplay}</div>
       </div>
 
       {/* Save banner */}

@@ -154,12 +154,7 @@ export type CapabilityPack = {
 // Trust labels (v3 §18) — earned by evidence, never awarded without it.
 // ---------------------------------------------------------------------------
 
-export type TrustLabel =
-  | "UNVERIFIED"
-  | "TESTED"
-  | "VERIFIED"
-  | "REPRODUCIBLE"
-  | "CERTIFIED";
+export type TrustLabel = "UNVERIFIED" | "TESTED" | "VERIFIED" | "REPRODUCIBLE" | "CERTIFIED";
 
 /**
  * Compute the trust label from manifest evidence fields. Rules:
@@ -199,9 +194,7 @@ const SECRET_PATTERNS = [
   /[A-Fa-f0-9]{32,}/,
 ];
 
-export type ParseResult =
-  | { ok: true; pack: CapabilityPack }
-  | { ok: false; errors: string[] };
+export type ParseResult = { ok: true; pack: CapabilityPack } | { ok: false; errors: string[] };
 
 /**
  * Parse and validate a Capability Pack manifest. Strict: unknown category,
@@ -210,14 +203,13 @@ export type ParseResult =
  */
 export function parseCapabilityPack(input: unknown): ParseResult {
   const errors: string[] = [];
-  const raw = (typeof input === "object" && input !== null ? input : {}) as Record<
-    string,
-    unknown
-  >;
+  const raw = (typeof input === "object" && input !== null ? input : {}) as Record<string, unknown>;
 
   const str = (k: string): string => (typeof raw[k] === "string" ? (raw[k] as string) : "");
   const arr = (k: string): string[] =>
-    Array.isArray(raw[k]) ? (raw[k] as unknown[]).filter((x): x is string => typeof x === "string") : [];
+    Array.isArray(raw[k])
+      ? (raw[k] as unknown[]).filter((x): x is string => typeof x === "string")
+      : [];
 
   // Secret scan over the whole serialized manifest (never embed secrets).
   const serialized = JSON.stringify(raw);
@@ -348,7 +340,9 @@ export function parseCapabilityPack(input: unknown): ParseResult {
       errors.push(`evidence.verification_rung must be one of ${RUNGS.join("|")}`);
     }
     evidence = {
-      test_status: (ts === "partial" || ts === "passed" ? ts : "none") as PackEvidence["test_status"],
+      test_status: (ts === "partial" || ts === "passed"
+        ? ts
+        : "none") as PackEvidence["test_status"],
       verification_rung: (typeof rung === "string" && RUNGS.includes(rung)
         ? rung
         : "unverified") as PackEvidence["verification_rung"],

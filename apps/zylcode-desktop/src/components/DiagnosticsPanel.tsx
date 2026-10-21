@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Panel } from "./Panel";
-import { SectionTitle } from "./Panel";
 import { getDiagnostics, clearDiagnostics } from "../lib/runtime";
 
 export function DiagnosticsPanel() {

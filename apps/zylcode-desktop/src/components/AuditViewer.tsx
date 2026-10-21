@@ -20,9 +20,10 @@ export const AuditViewer: React.FC<AuditViewerProps> = ({ entries, isOpen, onClo
 
   if (!isOpen) return null;
 
-  const filteredEntries = entries.filter((e) =>
-    e.toolName.toLowerCase().includes(filter.toLowerCase()) ||
-    e.payloadHash.toLowerCase().includes(filter.toLowerCase())
+  const filteredEntries = entries.filter(
+    (e) =>
+      e.toolName.toLowerCase().includes(filter.toLowerCase()) ||
+      e.payloadHash.toLowerCase().includes(filter.toLowerCase()),
   );
 
   return (
@@ -37,7 +38,10 @@ export const AuditViewer: React.FC<AuditViewerProps> = ({ entries, isOpen, onClo
             </h2>
             <p className="text-xs text-slate-400">Tamper-evident tool execution telemetry</p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white font-mono text-sm px-2">
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-white font-mono text-sm px-2"
+          >
             ✕
           </button>
         </div>
@@ -56,7 +60,9 @@ export const AuditViewer: React.FC<AuditViewerProps> = ({ entries, isOpen, onClo
         {/* Table Content */}
         <div className="flex-1 overflow-y-auto p-4 space-y-2">
           {filteredEntries.length === 0 ? (
-            <p className="text-xs text-slate-500 font-mono text-center py-8">No audit log entries recorded yet.</p>
+            <p className="text-xs text-slate-500 font-mono text-center py-8">
+              No audit log entries recorded yet.
+            </p>
           ) : (
             filteredEntries.map((entry) => (
               <div
@@ -88,7 +94,9 @@ export const AuditViewer: React.FC<AuditViewerProps> = ({ entries, isOpen, onClo
 
         {/* Footer */}
         <div className="px-5 py-3 border-t border-slate-800 bg-slate-950 flex justify-between items-center text-xs text-slate-400">
-          <span>Total Recorded: <strong className="text-slate-200">{entries.length}</strong></span>
+          <span>
+            Total Recorded: <strong className="text-slate-200">{entries.length}</strong>
+          </span>
           <button
             onClick={onClose}
             className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs font-mono"

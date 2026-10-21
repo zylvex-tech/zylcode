@@ -1,10 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { StatusBadge, type CapabilityStatus } from "./CapabilityStatus";
-import {
-  terminalExec,
-  terminalReset,
-  type TerminalOutput,
-} from "../lib/terminal";
+import { terminalExec, terminalReset, type TerminalOutput } from "../lib/terminal";
 
 const BRAND_BG = "#141414"; // the logo's own dark chip color
 
@@ -57,14 +53,11 @@ export const TerminalPanel: React.FC = () => {
     term.write(`\r\n\u001b[36m${dir}\u001b[0m \u001b[32m$\u001b[0m `);
   }, []);
 
-  const setStatusBoth = useCallback(
-    (next: CapabilityStatus, note: string) => {
-      statusRef.current = next;
-      setStatus(next);
-      setStatusNote(note);
-    },
-    [],
-  );
+  const setStatusBoth = useCallback((next: CapabilityStatus, note: string) => {
+    statusRef.current = next;
+    setStatus(next);
+    setStatusNote(note);
+  }, []);
 
   const stopRecovery = useCallback(() => {
     if (recoverTimerRef.current !== null) {
@@ -92,9 +85,7 @@ export const TerminalPanel: React.FC = () => {
       if (probe.sessionId) sessionRef.current = probe.sessionId;
       if (probe.cwd) cwdRef.current = probe.cwd;
       setStatusBoth("AVAILABLE", "real shell · cwd persists per session");
-      termRef.current?.write(
-        "\r\n\u001b[32m— terminal service recovered —\u001b[0m",
-      );
+      termRef.current?.write("\r\n\u001b[32m— terminal service recovered —\u001b[0m");
       writePrompt();
     }, RECOVERY_INTERVAL_MS);
   }, [setStatusBoth, stopRecovery, writePrompt]);

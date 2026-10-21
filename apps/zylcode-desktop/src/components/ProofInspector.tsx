@@ -6,7 +6,9 @@ export function ProofInspector({ mission }: { mission: MissionRecord | null }) {
   if (!mission) {
     return (
       <Panel title="PROOF INSPECTOR">
-        <p className="text-sm text-text-muted">Select or run a mission to inspect its proof chain.</p>
+        <p className="text-sm text-text-muted">
+          Select or run a mission to inspect its proof chain.
+        </p>
       </Panel>
     );
   }
@@ -21,11 +23,13 @@ export function ProofInspector({ mission }: { mission: MissionRecord | null }) {
     },
     {
       step: "ACTIONS",
-      value: mission.toolCalls.length > 0 ? `${mission.toolCalls.length} tool call(s)` : NOT_CAPTURED,
+      value:
+        mission.toolCalls.length > 0 ? `${mission.toolCalls.length} tool call(s)` : NOT_CAPTURED,
     },
     {
       step: "STATE CHANGES",
-      value: mission.artifacts.length > 0 ? `${mission.artifacts.length} artifact(s)` : NOT_CAPTURED,
+      value:
+        mission.artifacts.length > 0 ? `${mission.artifacts.length} artifact(s)` : NOT_CAPTURED,
     },
     {
       step: "TESTS",
@@ -47,9 +51,7 @@ export function ProofInspector({ mission }: { mission: MissionRecord | null }) {
   return (
     <Panel
       title="PROOF INSPECTOR"
-      right={
-        <VerificationRungBadge rung={mission.verification ? mission.verification.rung : 0} />
-      }
+      right={<VerificationRungBadge rung={mission.verification ? mission.verification.rung : 0} />}
     >
       <div className="space-y-1.5">
         {chain.map((c) => (

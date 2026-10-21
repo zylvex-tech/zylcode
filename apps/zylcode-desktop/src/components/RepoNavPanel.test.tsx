@@ -330,9 +330,7 @@ describe("RepoNavPanel", () => {
       expect.objectContaining({ limit: 400, include_cycles: true }),
     );
     expect(screen.getByText("2 of 2 edges")).toBeInTheDocument();
-    expect(
-      screen.getByText("1 import cycle detected"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("1 import cycle detected")).toBeInTheDocument();
     expect(screen.getByTitle("Open src/util.rs")).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Edge kind filter"), {
@@ -484,9 +482,7 @@ describe("RepoNavPanel — G11 overlapping queries", () => {
       </div>,
     );
 
-    expect(
-      screen.getByText(/Repository Intelligence could not be rendered/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Repository Intelligence could not be rendered/)).toBeInTheDocument();
     expect(screen.getByText("G11 probe")).toBeInTheDocument();
     expect(screen.getByText("the rest of ZylCode")).toBeInTheDocument();
 

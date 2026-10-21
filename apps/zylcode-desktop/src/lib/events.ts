@@ -106,17 +106,11 @@ function bufferedHandler<T>(event: string, cb: (e: T) => void) {
 }
 
 export function onIntentChunk(cb: (e: StreamDelta) => void): Promise<UnlistenFn> {
-  return listenWhenSafe<StreamDelta>(
-    "intent:chunk",
-    bufferedHandler("intent:chunk", cb),
-  );
+  return listenWhenSafe<StreamDelta>("intent:chunk", bufferedHandler("intent:chunk", cb));
 }
 
 export function onIntentDone(cb: (e: IntentDone) => void): Promise<UnlistenFn> {
-  return listenWhenSafe<IntentDone>(
-    "intent:done",
-    bufferedHandler("intent:done", cb),
-  );
+  return listenWhenSafe<IntentDone>("intent:done", bufferedHandler("intent:done", cb));
 }
 
 export function onStreamDelta(cb: (e: StreamDelta) => void): Promise<UnlistenFn> {
@@ -183,17 +177,14 @@ export function useStreamSubscription(enabled = true) {
           isStreaming: !payload.done,
         }));
       });
-      const u2 = await listenWhenSafe<StreamDelta>(
-        "zylcode://stream-delta",
-        (payload) => {
-          if (cancelled) return;
-          setState((s) => ({
-            ...s,
-            deltas: [...s.deltas, payload],
-            isStreaming: !payload.done,
-          }));
-        },
-      );
+      const u2 = await listenWhenSafe<StreamDelta>("zylcode://stream-delta", (payload) => {
+        if (cancelled) return;
+        setState((s) => ({
+          ...s,
+          deltas: [...s.deltas, payload],
+          isStreaming: !payload.done,
+        }));
+      });
       const u3 = await onMcpToolCall((payload) => {
         if (cancelled) return;
         setState((s) => ({ ...s, mcpCalls: [...s.mcpCalls, payload] }));

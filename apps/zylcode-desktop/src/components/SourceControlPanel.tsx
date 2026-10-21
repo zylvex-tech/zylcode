@@ -52,9 +52,7 @@ export function SourceControlPanel() {
           </button>
         </div>
 
-        {state.kind === "unavailable" && (
-          <p className="text-xs text-text-muted">{state.reason}</p>
-        )}
+        {state.kind === "unavailable" && <p className="text-xs text-text-muted">{state.reason}</p>}
 
         {state.kind === "loading" && (
           <p className="text-xs text-text-muted">Reading the git state…</p>
@@ -69,8 +67,12 @@ export function SourceControlPanel() {
               )}
               {(state.data.ahead !== 0 || state.data.behind !== 0) && (
                 <span className="ml-1 font-mono text-[10px]">
-                  {state.data.ahead !== 0 && <span className="text-primary">↑{state.data.ahead}</span>}
-                  {state.data.behind !== 0 && <span className="text-primary">↓{state.data.behind}</span>}
+                  {state.data.ahead !== 0 && (
+                    <span className="text-primary">↑{state.data.ahead}</span>
+                  )}
+                  {state.data.behind !== 0 && (
+                    <span className="text-primary">↓{state.data.behind}</span>
+                  )}
                 </span>
               )}
               <span className="ml-2 font-mono text-[10px] text-text-muted">@{state.data.head}</span>
@@ -103,7 +105,10 @@ export function SourceControlPanel() {
                   <p className="text-[11px] font-medium text-text">CHANGES</p>
                   <ul className="mt-0.5 max-h-44 space-y-0.5 overflow-y-auto">
                     {state.data.entries.map((e) => (
-                      <li key={`${e.status}:${e.path}`} className="flex items-center gap-2 text-[11px]">
+                      <li
+                        key={`${e.status}:${e.path}`}
+                        className="flex items-center gap-2 text-[11px]"
+                      >
                         <span className="w-6 shrink-0 text-center font-mono text-[10px] text-text-muted">
                           {e.status.trim() === "" ? "??" : e.status}
                         </span>

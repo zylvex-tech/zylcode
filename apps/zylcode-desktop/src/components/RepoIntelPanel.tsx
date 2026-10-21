@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Panel } from "./Panel";
 import { StatusBadge, type CapabilityStatus } from "./CapabilityStatus";
-import {
-  fetchRepoIntel,
-  type RepoIntelState,
-} from "../lib/repoIntel";
+import { fetchRepoIntel, type RepoIntelState } from "../lib/repoIntel";
 
 interface RepoIntelPanelProps {
   /** Initial task used for the first fetch. */
@@ -79,9 +76,7 @@ export function RepoIntelPanel({ initialTask = "" }: RepoIntelPanelProps) {
           </button>
         </form>
 
-        {state.kind === "unavailable" && (
-          <p className="text-xs text-text-muted">{state.reason}</p>
-        )}
+        {state.kind === "unavailable" && <p className="text-xs text-text-muted">{state.reason}</p>}
 
         {state.kind === "loading" && (
           <p className="text-xs text-text-muted">

@@ -40,7 +40,8 @@ export const RightWorkspace: React.FC = () => {
   }, []);
 
   const previewStatus: CapabilityStatus = embedded ? "LIMITED" : "AVAILABLE";
-  const previewLabel = "Workspace mirror — the project's own preview target is not commissioned yet";
+  const previewLabel =
+    "Workspace mirror — the project's own preview target is not commissioned yet";
 
   return (
     <aside className="hidden xl:flex w-[380px] 2xl:w-[440px] shrink-0 border-l border-border bg-surface/40 flex-col min-h-0">
@@ -76,7 +77,9 @@ export const RightWorkspace: React.FC = () => {
                   key={w.id}
                   onClick={() => setWidth(w.id)}
                   className={`px-1.5 py-0.5 rounded text-[10px] font-mono ${
-                    width === w.id ? "bg-primary/15 text-primary" : "text-text-muted hover:text-text-primary"
+                    width === w.id
+                      ? "bg-primary/15 text-primary"
+                      : "text-text-muted hover:text-text-primary"
                   }`}
                 >
                   {w.label}
@@ -98,8 +101,8 @@ export const RightWorkspace: React.FC = () => {
         <div className="flex-1 min-h-0 p-3 overflow-y-auto">
           <StatusBadge status="COMING SOON" size="xs" />
           <p className="text-xs text-text-muted mt-2">
-            The visual design canvas is not commissioned in this build — no drag-and-drop
-            surface or visual diff exists to render here, so none is shown.
+            The visual design canvas is not commissioned in this build — no drag-and-drop surface or
+            visual diff exists to render here, so none is shown.
           </p>
           <p className="text-[11px] text-text-muted/70 mt-2">
             What exists today: the mission pipeline (AI Agent tab), real verification runs
@@ -122,7 +125,11 @@ export const RightWorkspace: React.FC = () => {
                   src={previewSrc}
                   title="Project preview"
                   className="h-full border-0 bg-white"
-                  style={WIDTHS.find((w) => w.id === width)?.px ? { width: WIDTHS.find((w) => w.id === width)!.px! } : { width: "100%" }}
+                  style={
+                    WIDTHS.find((w) => w.id === width)?.px
+                      ? { width: WIDTHS.find((w) => w.id === width)!.px! }
+                      : { width: "100%" }
+                  }
                   sandbox="allow-scripts allow-forms allow-same-origin"
                 />
               </div>

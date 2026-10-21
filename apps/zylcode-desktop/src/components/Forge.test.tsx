@@ -13,7 +13,9 @@ describe("Forge", () => {
     render(<Forge />);
     expect(screen.getByText("ZYLCODE FORGE")).toBeInTheDocument();
     expect(screen.getByText("LIMITED")).toBeInTheDocument();
-    expect(screen.getByText(/taxonomy concepts, explicitly marked NOT INSTALLED/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/taxonomy concepts, explicitly marked NOT INSTALLED/i),
+    ).toBeInTheDocument();
   });
 
   it("lists taxonomy concept packs as NOT INSTALLED", () => {
@@ -28,10 +30,7 @@ describe("Forge", () => {
     const input = screen.getByPlaceholderText(/search capability packs/i);
     (input as HTMLInputElement).value = "";
     // Type via native setter so React state updates.
-    const setter = Object.getOwnPropertyDescriptor(
-      window.HTMLInputElement.prototype,
-      "value",
-    )?.set;
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
     setter?.call(input, "Blender");
     input.dispatchEvent(new Event("input", { bubbles: true }));
     expect(screen.getByText("Blender Automation")).toBeInTheDocument();
@@ -41,10 +40,7 @@ describe("Forge", () => {
   it("shows the empty state when nothing matches", () => {
     render(<Forge />);
     const input = screen.getByPlaceholderText(/search capability packs/i);
-    const setter = Object.getOwnPropertyDescriptor(
-      window.HTMLInputElement.prototype,
-      "value",
-    )?.set;
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
     setter?.call(input, "zzz-no-such-pack");
     input.dispatchEvent(new Event("input", { bubbles: true }));
     expect(screen.getByText(/no concepts match the filter/i)).toBeInTheDocument();

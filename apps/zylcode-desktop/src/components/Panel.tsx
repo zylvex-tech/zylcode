@@ -4,9 +4,7 @@
 
 export function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="text-xs font-semibold uppercase tracking-widest text-text-muted">
-      {children}
-    </h2>
+    <h2 className="text-xs font-semibold uppercase tracking-widest text-text-muted">{children}</h2>
   );
 }
 

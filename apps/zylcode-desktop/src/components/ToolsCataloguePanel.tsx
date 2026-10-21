@@ -34,14 +34,13 @@ export const ToolsCataloguePanel: React.FC = () => {
         <StatusBadge status={status} size="xs" />
         {state.kind === "ready" && (
           <span className="text-[10px] font-mono text-text-muted">
-            {state.tools.filter((t) => t.executor_bound).length}/{state.tools.length} executors bound
+            {state.tools.filter((t) => t.executor_bound).length}/{state.tools.length} executors
+            bound
           </span>
         )}
       </div>
 
-      {state.kind === "unavailable" && (
-        <p className="text-xs text-text-muted">{state.reason}</p>
-      )}
+      {state.kind === "unavailable" && <p className="text-xs text-text-muted">{state.reason}</p>}
       {state.kind === "loading" && (
         <p className="text-xs text-text-muted">Reading the tool catalogue…</p>
       )}
@@ -51,9 +50,7 @@ export const ToolsCataloguePanel: React.FC = () => {
           {state.tools.map((t) => (
             <div key={t.id} className="flex items-center gap-2 text-xs py-0.5">
               <span
-                className={
-                  t.executor_bound ? "text-emerald-400" : "text-amber-400"
-                }
+                className={t.executor_bound ? "text-emerald-400" : "text-amber-400"}
                 title={
                   t.executor_bound
                     ? "A real executor is bound to this id"
@@ -67,8 +64,8 @@ export const ToolsCataloguePanel: React.FC = () => {
             </div>
           ))}
           <p className="text-[10px] text-text-muted pt-1">
-            Source: {state.source} — ids without a bound executor fail closed and are excluded
-            from dispatch.
+            Source: {state.source} — ids without a bound executor fail closed and are excluded from
+            dispatch.
           </p>
         </div>
       )}

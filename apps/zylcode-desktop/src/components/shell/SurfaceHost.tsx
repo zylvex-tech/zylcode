@@ -1,7 +1,6 @@
 import { ArtifactViewer } from "../ArtifactViewer";
 import { EvidenceCenter } from "../EvidenceCenter";
 import { EvidenceTimeline } from "../EvidenceTimeline";
-import { ExplorerTree } from "../ExplorerTree";
 import { LiveSearch } from "../LiveSearch";
 import { MissionComposer } from "../MissionComposer";
 import { RepoIntelPanel } from "../RepoIntelPanel";
@@ -77,7 +76,6 @@ export function SurfaceHost({
   saveFile,
   applyPatch,
   closeTab,
-  deltas,
   onNavigateToFile,
 }: SurfaceHostProps) {
   const renderSurface = () => {
@@ -86,7 +84,9 @@ export function SurfaceHost({
         return (
           <div className="p-4 max-w-5xl mx-auto w-full">
             <header className="border-b border-border pb-5 mb-5">
-              <p className="font-mono text-[11px] tracking-[0.16em] text-primary uppercase">ZylCode workspace</p>
+              <p className="font-mono text-[11px] tracking-[0.16em] text-primary uppercase">
+                ZylCode workspace
+              </p>
               <div className="mt-2 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <h1 className="text-2xl font-semibold tracking-tight">Build from a mission</h1>
@@ -117,20 +117,39 @@ export function SurfaceHost({
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-base font-medium">zylcode</p>
-                    <p className="mt-1 text-[11px] text-text-muted font-mono">C:\\Projects\\zylcode · main</p>
+                    <p className="mt-1 text-[11px] text-text-muted font-mono">
+                      C:\\Projects\\zylcode · main
+                    </p>
                   </div>
                   <StatusBadge status="AVAILABLE" size="xs" />
                 </div>
                 <div className="mt-4 grid grid-cols-3 gap-3 border-t border-border pt-3 text-xs">
-                  <div><p className="text-text-muted">Plan</p><p className="mt-1 font-medium">Ready</p></div>
-                  <div><p className="text-text-muted">Evidence</p><p className="mt-1 font-medium">{missions.some((m) => m.verification) ? "Captured" : "Not captured"}</p></div>
-                  <div><p className="text-text-muted">Missions</p><p className="mt-1 font-medium">{missions.length}</p></div>
+                  <div>
+                    <p className="text-text-muted">Plan</p>
+                    <p className="mt-1 font-medium">Ready</p>
+                  </div>
+                  <div>
+                    <p className="text-text-muted">Evidence</p>
+                    <p className="mt-1 font-medium">
+                      {missions.some((m) => m.verification) ? "Captured" : "Not captured"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-text-muted">Missions</p>
+                    <p className="mt-1 font-medium">{missions.length}</p>
+                  </div>
                 </div>
               </Panel>
               <Panel title="NEXT STEP">
                 <p className="text-sm font-medium">Describe what should change.</p>
-                <p className="mt-1 text-xs text-text-muted">ZylCode will turn it into a mission with an explicit verification path.</p>
-                <button type="button" onClick={onOpenMissions} className="mt-4 text-xs text-primary hover:underline">
+                <p className="mt-1 text-xs text-text-muted">
+                  ZylCode will turn it into a mission with an explicit verification path.
+                </p>
+                <button
+                  type="button"
+                  onClick={onOpenMissions}
+                  className="mt-4 text-xs text-primary hover:underline"
+                >
                   Open mission composer →
                 </button>
               </Panel>
@@ -138,9 +157,13 @@ export function SurfaceHost({
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-medium">zylcode</p>
-                    <p className="text-[11px] text-text-muted font-mono">C:\Projects\zylcode · main</p>
+                    <p className="text-[11px] text-text-muted font-mono">
+                      C:\Projects\zylcode · main
+                    </p>
                   </div>
-                  <button onClick={onOpenProject} className="text-xs text-primary hover:underline">Open files →</button>
+                  <button onClick={onOpenProject} className="text-xs text-primary hover:underline">
+                    Open files →
+                  </button>
                 </div>
               </Panel>
               <Panel title="RECENT MISSIONS">
@@ -154,7 +177,9 @@ export function SurfaceHost({
                       .map((m) => (
                         <div key={m.id} className="flex items-center justify-between gap-2 text-sm">
                           <span className="truncate">{m.title}</span>
-                          <span className="font-mono text-[10px] text-text-muted shrink-0">{m.state}</span>
+                          <span className="font-mono text-[10px] text-text-muted shrink-0">
+                            {m.state}
+                          </span>
                         </div>
                       ))}
                   </div>
@@ -184,47 +209,62 @@ export function SurfaceHost({
         );
 
       case "forge":
-        return <div className="p-4"><Forge /></div>;
+        return (
+          <div className="p-4">
+            <Forge />
+          </div>
+        );
 
       case "intel":
         return (
           <div className="space-y-3 p-1">
             <NavErrorBoundary>
-            <RepoNavPanel onNavigateToFile={onNavigateToFile} />
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-            <RepoIntelPanel initialTask="agent loop and evidence ledger" />
-            <div className="space-y-3">
-              <Panel title="WHAT AM I LOOKING AT">
-                <div className="space-y-1.5 text-xs text-text-muted">
-                  <p>
-                    This panel queries the <span className="text-text">real</span> Repository
-                    Intelligence pipeline: repository scan, symbol index, package manifests,
-                    dependency graph, git history — served through the persisted,
-                    content-hash-validated index (no per-keystroke re-indexing).
-                  </p>
-                  <p>
-                    The navigation panel above reads the <span className="text-text">same</span>{" "}
-                    parsed index the <span className="font-mono">nav.*</span> agent tools read:
-                    symbols, references, callers and callees, import edges and impact classes,
-                    each row labelled <span className="font-mono">DETERMINISTIC</span>,{" "}
-                    <span className="font-mono">HEURISTIC</span> or{" "}
-                    <span className="font-mono">UNSUPPORTED</span> by the engine. Browser preview
-                    reaches it via <span className="font-mono">zylcode serve-intel</span> (HTTP);
-                    the desktop app calls the engine in-process. Nothing here is mocked.
-                  </p>
+              <RepoNavPanel onNavigateToFile={onNavigateToFile} />
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                <RepoIntelPanel initialTask="agent loop and evidence ledger" />
+                <div className="space-y-3">
+                  <Panel title="WHAT AM I LOOKING AT">
+                    <div className="space-y-1.5 text-xs text-text-muted">
+                      <p>
+                        This panel queries the <span className="text-text">real</span> Repository
+                        Intelligence pipeline: repository scan, symbol index, package manifests,
+                        dependency graph, git history — served through the persisted,
+                        content-hash-validated index (no per-keystroke re-indexing).
+                      </p>
+                      <p>
+                        The navigation panel above reads the <span className="text-text">same</span>{" "}
+                        parsed index the <span className="font-mono">nav.*</span> agent tools read:
+                        symbols, references, callers and callees, import edges and impact classes,
+                        each row labelled <span className="font-mono">DETERMINISTIC</span>,{" "}
+                        <span className="font-mono">HEURISTIC</span> or{" "}
+                        <span className="font-mono">UNSUPPORTED</span> by the engine. Browser
+                        preview reaches it via{" "}
+                        <span className="font-mono">zylcode serve-intel</span> (HTTP); the desktop
+                        app calls the engine in-process. Nothing here is mocked.
+                      </p>
+                    </div>
+                  </Panel>
+                  <Panel title="CAPABILITIES">
+                    <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs">
+                      <span className="flex items-center gap-1.5">
+                        Missions <StatusBadge status="LIMITED" size="xs" />
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        Repository Intelligence <StatusBadge status="AVAILABLE" size="xs" />
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        Code navigation <StatusBadge status="AVAILABLE" size="xs" />
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        Forge <StatusBadge status="LIMITED" size="xs" />
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        Design <StatusBadge status="COMING SOON" size="xs" />
+                      </span>
+                    </div>
+                  </Panel>
                 </div>
-              </Panel>
-              <Panel title="CAPABILITIES">
-                <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs">
-                  <span className="flex items-center gap-1.5">Missions <StatusBadge status="LIMITED" size="xs" /></span>
-                  <span className="flex items-center gap-1.5">Repository Intelligence <StatusBadge status="AVAILABLE" size="xs" /></span>
-                  <span className="flex items-center gap-1.5">Code navigation <StatusBadge status="AVAILABLE" size="xs" /></span>
-                  <span className="flex items-center gap-1.5">Forge <StatusBadge status="LIMITED" size="xs" /></span>
-                  <span className="flex items-center gap-1.5">Design <StatusBadge status="COMING SOON" size="xs" /></span>
-                </div>
-              </Panel>
-            </div>
-            </div>
+              </div>
             </NavErrorBoundary>
           </div>
         );
@@ -255,14 +295,25 @@ export function SurfaceHost({
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             <Panel title="PROJECT">
               <div className="space-y-1 text-xs">
-                <p><span className="text-text-muted">Name:</span> zylcode</p>
-                <p><span className="text-text-muted">Repository:</span> <span className="font-mono">github.com/zylvex-tech/zylcode</span></p>
-                <p><span className="text-text-muted">Branch:</span> <span className="font-mono">main</span></p>
+                <p>
+                  <span className="text-text-muted">Name:</span> zylcode
+                </p>
+                <p>
+                  <span className="text-text-muted">Repository:</span>{" "}
+                  <span className="font-mono">github.com/zylvex-tech/zylcode</span>
+                </p>
+                <p>
+                  <span className="text-text-muted">Branch:</span>{" "}
+                  <span className="font-mono">main</span>
+                </p>
                 <p>
                   <span className="text-text-muted">Runtime state:</span>{" "}
                   {IS_DESKTOP ? "Desktop runtime active" : "Browser preview (desktop engine idle)"}
                 </p>
-                <p><span className="text-text-muted">Current mission:</span> {activeMission ? activeMission.title : "none"}</p>
+                <p>
+                  <span className="text-text-muted">Current mission:</span>{" "}
+                  {activeMission ? activeMission.title : "none"}
+                </p>
                 <p>
                   <span className="text-text-muted">Evidence status:</span>{" "}
                   {missions.some((m) => m.verification) ? "verification present" : NOT_CAPTURED}
@@ -276,17 +327,28 @@ export function SurfaceHost({
                   <span className="font-mono">BROWSER_PREVIEW</span> (Browser preview)
                 </p>
                 <p className="text-text-muted">
-                  Browser preview: the desktop engine is not connected. Backend panels show controlled states instead of errors.
+                  Browser preview: the desktop engine is not connected. Backend panels show
+                  controlled states instead of errors.
                 </p>
               </div>
             </Panel>
             <Panel title="CAPABILITIES" className="lg:col-span-2">
               <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs">
-                <span className="flex items-center gap-1.5">Missions <StatusBadge status="LIMITED" size="xs" /></span>
-                <span className="flex items-center gap-1.5">Repository Intelligence <StatusBadge status="AVAILABLE" size="xs" /></span>
-                <span className="flex items-center gap-1.5">Forge <StatusBadge status="LIMITED" size="xs" /></span>
-                <span className="flex items-center gap-1.5">Design <StatusBadge status="COMING SOON" size="xs" /></span>
-                <span className="flex items-center gap-1.5">Multi-agent <StatusBadge status="COMING SOON" size="xs" /></span>
+                <span className="flex items-center gap-1.5">
+                  Missions <StatusBadge status="LIMITED" size="xs" />
+                </span>
+                <span className="flex items-center gap-1.5">
+                  Repository Intelligence <StatusBadge status="AVAILABLE" size="xs" />
+                </span>
+                <span className="flex items-center gap-1.5">
+                  Forge <StatusBadge status="LIMITED" size="xs" />
+                </span>
+                <span className="flex items-center gap-1.5">
+                  Design <StatusBadge status="COMING SOON" size="xs" />
+                </span>
+                <span className="flex items-center gap-1.5">
+                  Multi-agent <StatusBadge status="COMING SOON" size="xs" />
+                </span>
               </div>
             </Panel>
           </div>
@@ -296,7 +358,11 @@ export function SurfaceHost({
         return (
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-3">
             <Panel title="MISSION COMPOSER" className="xl:col-span-2">
-              <MissionComposer onMissionStart={onMissionStart} busy={busy} streaming={isStreaming} />
+              <MissionComposer
+                onMissionStart={onMissionStart}
+                busy={busy}
+                streaming={isStreaming}
+              />
             </Panel>
             <div className="space-y-3">
               <Panel title="MISSIONS">
@@ -312,12 +378,16 @@ export function SurfaceHost({
                           key={m.id}
                           onClick={() => {}}
                           className={`w-full text-left rounded border px-2 py-1.5 text-xs transition-colors ${
-                            m.id === "active" ? "border-primary/50 bg-primary/5" : "border-border hover:border-primary/30"
+                            m.id === "active"
+                              ? "border-primary/50 bg-primary/5"
+                              : "border-border hover:border-primary/30"
                           }`}
                         >
                           <div className="flex items-center justify-between gap-2">
                             <span className="truncate">{m.title}</span>
-                            <span className="font-mono text-[10px] text-text-muted shrink-0">{m.state}</span>
+                            <span className="font-mono text-[10px] text-text-muted shrink-0">
+                              {m.state}
+                            </span>
                           </div>
                         </button>
                       ))}
@@ -377,7 +447,8 @@ export function SurfaceHost({
               closeTab={closeTab}
             />
             <p className="text-[11px] text-text-muted">
-              Code surface shows artifacts produced by missions. Full repository browsing is PROPOSED.
+              Code surface shows artifacts produced by missions. Full repository browsing is
+              PROPOSED.
             </p>
           </div>
         );
@@ -392,12 +463,17 @@ export function SurfaceHost({
               </p>
             ) : (
               <div className="space-y-1.5 text-xs">
-                {missions.flatMap((m) => m.artifacts).map((a, i) => (
-                  <div key={i} className="flex items-center justify-between rounded border border-border px-2 py-1.5">
-                    <span>{a.label}</span>
-                    <span className="font-mono text-[10px] text-text-muted">{a.kind}</span>
-                  </div>
-                ))}
+                {missions
+                  .flatMap((m) => m.artifacts)
+                  .map((a, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center justify-between rounded border border-border px-2 py-1.5"
+                    >
+                      <span>{a.label}</span>
+                      <span className="font-mono text-[10px] text-text-muted">{a.kind}</span>
+                    </div>
+                  ))}
               </div>
             )}
           </Panel>

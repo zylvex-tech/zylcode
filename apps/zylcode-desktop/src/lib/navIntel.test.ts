@@ -178,11 +178,7 @@ describe("evidence ordering", () => {
 
 describe("groupByFile", () => {
   it("keeps first-seen order and every row exactly once", () => {
-    const grouped = groupByFile([
-      { file: "b.rs" },
-      { file: "a.rs" },
-      { file: "b.rs" },
-    ]);
+    const grouped = groupByFile([{ file: "b.rs" }, { file: "a.rs" }, { file: "b.rs" }]);
     expect(grouped.map((g) => g.file)).toEqual(["b.rs", "a.rs"]);
     expect(grouped[0].rows).toHaveLength(2);
     expect(grouped[1].rows).toHaveLength(1);

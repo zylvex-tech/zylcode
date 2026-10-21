@@ -5,7 +5,18 @@ import { fetchGitStatus, type GitStatusState } from "../../lib/gitStatus";
 import { fetchEvidence, type EvidenceState } from "../../lib/surfaces";
 
 interface ContextSidebarProps {
-  activeActivity: "explorer" | "search" | "source-control" | "intel" | "missions" | "run" | "evidence" | "forge" | "extensions" | "settings" | "account";
+  activeActivity:
+    | "explorer"
+    | "search"
+    | "source-control"
+    | "intel"
+    | "missions"
+    | "run"
+    | "evidence"
+    | "forge"
+    | "extensions"
+    | "settings"
+    | "account";
   children?: React.ReactNode;
 }
 
@@ -26,9 +37,9 @@ export function ContextSidebar({ activeActivity, children }: ContextSidebarProps
           <Panel title="CODE NAVIGATION">
             <div className="space-y-2 text-sm">
               <p className="text-text-muted">
-                Views over the parsed repository index. Every row is resolved
-                from the parser and carries its own evidence label; text search
-                is never presented as a symbol relationship.
+                Views over the parsed repository index. Every row is resolved from the parser and
+                carries its own evidence label; text search is never presented as a symbol
+                relationship.
               </p>
               <ul className="space-y-1 text-xs text-text-muted list-disc pl-4">
                 <li>References — definition plus every location</li>
@@ -105,7 +116,9 @@ export function ContextSidebar({ activeActivity, children }: ContextSidebarProps
 function SearchSummary() {
   const [query, setQuery] = useState("");
   const [state, setState] = useState<
-    { kind: "idle" } | { kind: "unavailable"; reason: string } | { kind: "ready"; count: number; top: string | null }
+    | { kind: "idle" }
+    | { kind: "unavailable"; reason: string }
+    | { kind: "ready"; count: number; top: string | null }
   >({ kind: "idle" });
 
   const run = () => {
@@ -113,7 +126,11 @@ function SearchSummary() {
     import("../../lib/surfaces").then(({ fetchSearch }) =>
       fetchSearch(query).then((next) => {
         if (next.kind === "ready") {
-          setState({ kind: "ready", count: next.data.results.length, top: next.data.results[0]?.resource ?? null });
+          setState({
+            kind: "ready",
+            count: next.data.results.length,
+            top: next.data.results[0]?.resource ?? null,
+          });
         } else if (next.kind === "unavailable") {
           setState({ kind: "unavailable", reason: next.reason });
         }
@@ -142,7 +159,11 @@ function SearchSummary() {
         {state.kind === "idle" && (
           <p className="text-xs text-text-muted">Results come from the real index, ranked.</p>
         )}
-        <button className="btn btn-primary text-xs w-full justify-start" onClick={run} disabled={query.trim().length === 0}>
+        <button
+          className="btn btn-primary text-xs w-full justify-start"
+          onClick={run}
+          disabled={query.trim().length === 0}
+        >
           Search
         </button>
       </div>
@@ -176,12 +197,17 @@ function EvidenceSummary() {
               {state.entry_count} entr{state.entry_count === 1 ? "y" : "ies"} ·{" "}
               {state.session_count} session{state.session_count === 1 ? "" : "s"}
             </p>
-            <p className={`font-mono text-xs ${state.chain_intact ? "text-primary" : "text-[#c0392b]"}`}>
+            <p
+              className={`font-mono text-xs ${state.chain_intact ? "text-primary" : "text-[#c0392b]"}`}
+            >
               {state.chain_intact ? "✓ hash chain intact" : "✗ chain broken"}
             </p>
           </>
         )}
-        <button className="btn btn-secondary text-xs w-full justify-start" onClick={() => fetchEvidence().then(setState)}>
+        <button
+          className="btn btn-secondary text-xs w-full justify-start"
+          onClick={() => fetchEvidence().then(setState)}
+        >
           Refresh
         </button>
       </div>
@@ -206,9 +232,7 @@ function SourceControlSummary() {
   return (
     <Panel title="SOURCE CONTROL">
       <div className="space-y-2 text-sm">
-        {state.kind === "unavailable" && (
-          <p className="text-text-muted">{state.reason}</p>
-        )}
+        {state.kind === "unavailable" && <p className="text-text-muted">{state.reason}</p>}
         {state.kind === "loading" && <p className="text-text-muted">Reading the git state…</p>}
         {state.kind === "ready" && (
           <>

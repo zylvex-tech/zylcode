@@ -117,7 +117,9 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onClose, m
               <span className="text-[10px] text-text-muted font-mono w-14 shrink-0">{c.menu}</span>
               <span className="truncate">{c.label}</span>
               {c.shortcut && (
-                <span className="ml-auto text-[10px] text-text-muted font-mono shrink-0">{c.shortcut}</span>
+                <span className="ml-auto text-[10px] text-text-muted font-mono shrink-0">
+                  {c.shortcut}
+                </span>
               )}
             </button>
           ))}

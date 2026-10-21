@@ -2,7 +2,7 @@
 // Layout persistence + resize handles (lib/layout.ts)
 // ---------------------------------------------------------------------------
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 /** State persisted to localStorage under a namespaced key, with a fallback. */
 export function usePersistentState<T>(

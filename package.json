@@ -12,6 +12,11 @@
     "node": ">=18.0.0",
     "pnpm": ">=9.0.0"
   },
+  "pnpm": {
+    "overrides": {
+      "dompurify": "^3.4.17"
+    }
+  },
   "scripts": {
     "dev": "pnpm --filter zylcode-desktop dev",
     "build": "pnpm --filter zylcode-desktop build",

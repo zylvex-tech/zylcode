@@ -36,8 +36,7 @@ async function callArtifactBackend<T>(
   if (IS_DESKTOP) {
     return safeInvoke<T>(ENVIRONMENT, cmd, args);
   }
-  const url =
-    cmd === "save_workspace_artifact" ? "/api/artifact/save" : "/api/artifact/patch";
+  const url = cmd === "save_workspace_artifact" ? "/api/artifact/save" : "/api/artifact/patch";
   try {
     const response = await fetch(url, {
       method: "POST",
@@ -64,24 +63,41 @@ async function callArtifactBackend<T>(
 function detectLanguage(path: string): string {
   const ext = path.split(".").pop()?.toLowerCase() ?? "";
   switch (ext) {
-    case "rs": return "rust";
-    case "ts": return "typescript";
-    case "tsx": return "typescript";
-    case "js": return "javascript";
-    case "jsx": return "javascript";
-    case "json": return "json";
+    case "rs":
+      return "rust";
+    case "ts":
+      return "typescript";
+    case "tsx":
+      return "typescript";
+    case "js":
+      return "javascript";
+    case "jsx":
+      return "javascript";
+    case "json":
+      return "json";
     case "yaml":
-    case "yml": return "yaml";
-    case "toml": return "toml";
-    case "md": return "markdown";
-    case "py": return "python";
-    case "go": return "go";
-    case "c": return "c";
-    case "h": return "c";
-    case "cpp": return "cpp";
-    case "hpp": return "cpp";
-    case "zig": return "zig";
-    default: return "plaintext";
+    case "yml":
+      return "yaml";
+    case "toml":
+      return "toml";
+    case "md":
+      return "markdown";
+    case "py":
+      return "python";
+    case "go":
+      return "go";
+    case "c":
+      return "c";
+    case "h":
+      return "c";
+    case "cpp":
+      return "cpp";
+    case "hpp":
+      return "cpp";
+    case "zig":
+      return "zig";
+    default:
+      return "plaintext";
   }
 }
 
@@ -160,7 +176,9 @@ export function useArtifactStream(deltas: StreamDelta[]) {
   const [files, setFiles] = useState<Map<string, ArtifactFile>>(new Map());
   const [activeTab, setActiveTab] = useState<string | null>(null);
   const [diffMode, setDiffMode] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<Record<string, "idle" | "saving" | "saved" | "error">>({});
+  const [saveStatus, setSaveStatus] = useState<
+    Record<string, "idle" | "saving" | "saved" | "error">
+  >({});
 
   const bufferRef = useRef<string>("");
   const parsedRef = useRef<Map<string, ArtifactFile>>(new Map());
@@ -257,14 +275,17 @@ export function useArtifactStream(deltas: StreamDelta[]) {
     }
   }, []);
 
-  const closeTab = useCallback((path: string) => {
-    parsedRef.current.delete(path);
-    setFiles(new Map(parsedRef.current));
-    if (activeTab === path) {
-      const remaining = parsedRef.current.keys().next().value;
-      setActiveTab(remaining ?? null);
-    }
-  }, [activeTab]);
+  const closeTab = useCallback(
+    (path: string) => {
+      parsedRef.current.delete(path);
+      setFiles(new Map(parsedRef.current));
+      if (activeTab === path) {
+        const remaining = parsedRef.current.keys().next().value;
+        setActiveTab(remaining ?? null);
+      }
+    },
+    [activeTab],
+  );
 
   return {
     files,

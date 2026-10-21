@@ -25,11 +25,56 @@ pub struct RevenueManager {
     recommendation_engine: Arc<RecommendationEngine>,
 }
 
-/// Payment gateway
+/// Payment gateway — **inert scaffold. Not an operational integration.**
+///
+/// That claim is checkable from this workspace rather than an assumption:
+/// * no field of this type is ever read (`grep '_payment_gateway\.' crates/`
+///   matches nothing);
+/// * [`RevenueManager::process_payment`] never calls it — it records a locally
+///   simulated, immediately-`Completed` transaction and returns
+///   `PaymentResult { success: true }` without contacting any processor;
+/// * the payment path contains no HTTP client, no provider SDK dependency and no
+///   credential source (no environment read, no config file, no keyring).
+///
+/// The type exists so the marketplace's in-memory accounting loop stays
+/// exercisable in tests. **Its presence is not evidence that payments work.** Any
+/// claim of a working payment flow requires a provider wired through
+/// [`PaymentGatewayProvider`] with its key supplied at runtime — the same
+/// convention `zylcode_core::competition::natlas` already uses for its own API
+/// key (read from the environment, redacted in debug output).
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PaymentGateway {
-    _provider: String,
-    _api_key: String,
+    /// Which processor is wired. Every constructor in this workspace yields
+    /// [`PaymentGatewayProvider::Unconfigured`].
+    _provider: PaymentGatewayProvider,
+    /// Where a processor credential would live. Always
+    /// [`PaymentGatewayCredential::Unset`]: source holds no key, and no runtime
+    /// path populates one.
+    _api_key: PaymentGatewayCredential,
     _sandbox_mode: bool,
+}
+
+/// Payment processors this workspace is wired to talk to. The single variant is
+/// the point: none are.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PaymentGatewayProvider {
+    /// No processor is configured. This is every gateway this workspace builds.
+    #[default]
+    Unconfigured,
+}
+
+/// Credential slot for a [`PaymentGateway`].
+///
+/// A dedicated enum rather than `String` on purpose: source cannot hold a
+/// credential-shaped literal at this position, and `Unset` states outright that
+/// no key is configured. When a provider is eventually wired, its key must
+/// arrive as a runtime value (environment or validated configuration), never as
+/// a literal.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PaymentGatewayCredential {
+    /// No credential is configured.
+    #[default]
+    Unset,
 }
 
 /// Subscription manager
@@ -534,11 +579,29 @@ impl RevenueManager {
         }
     }
 
-    /// Process payment
+    /// The inert payment gateway scaffold held by this manager.
+    ///
+    /// Exposed so tests can assert the no-provider / no-credential invariant
+    /// that [`PaymentGateway`]'s docs claim. A documented invariant that nothing
+    /// observes is a hope, not a guarantee.
+    pub fn payment_gateway(&self) -> &PaymentGateway {
+        &self._payment_gateway
+    }
+
+    /// Process payment — **simulated, not settled.**
+    ///
+    /// This records a locally-generated transaction marked
+    /// `TransactionStatus::Completed` and returns `PaymentResult { success: true }`
+    /// without contacting any processor. No card is charged, no provider is
+    /// called, and [`PaymentGateway`] plays no part: it holds no provider and no
+    /// credential (see its type docs).
+    ///
+    /// `success: true` therefore means "the record was written", **not** "money
+    /// moved". Any caller surfacing this to a user as a completed purchase is
+    /// making a claim the implementation does not support.
     pub async fn process_payment(&self, payment: Payment) -> Result<PaymentResult> {
         // Process payment (simulated)
         let transaction_id = Uuid::new_v4().to_string();
-
         let transaction = Transaction {
             id: transaction_id.clone(),
             user_id: payment.user_id,
@@ -582,13 +645,32 @@ impl Default for PaymentGateway {
 }
 
 impl PaymentGateway {
-    /// Create a new payment gateway
+    /// Create a payment gateway with no provider and no credential configured.
+    ///
+    /// This is the only constructor, and it can never produce a configured
+    /// gateway. See the type docs for why.
     pub fn new() -> Self {
         Self {
-            _provider: "stripe".to_string(),
-            _api_key: "sk_test_...".to_string(),
+            _provider: PaymentGatewayProvider::Unconfigured,
+            _api_key: PaymentGatewayCredential::Unset,
             _sandbox_mode: true,
         }
+    }
+
+    /// Which processor this gateway is wired to.
+    ///
+    /// Exists so the "unconfigured" invariant is *observable* in tests rather
+    /// than merely documented — a doc comment cannot fail CI.
+    pub fn provider(&self) -> PaymentGatewayProvider {
+        self._provider
+    }
+
+    /// Whether a credential is configured. Always
+    /// [`PaymentGatewayCredential::Unset`] for every gateway this workspace
+    /// builds; see the type docs for why it is a dedicated type rather than a
+    /// `String`.
+    pub fn credential(&self) -> PaymentGatewayCredential {
+        self._api_key
     }
 }
 
@@ -757,6 +839,9 @@ mod tests {
             amount: 19.99,
             currency: "USD".to_string(),
             payment_method: PaymentMethod::CreditCard(CreditCard {
+                // The PAN below is Stripe's *published* test card (4242…4242),
+                // documented in their public test-card reference. It is not a
+                // credential, no card is charged, and no provider is contacted.
                 number: "4242424242424242".to_string(),
                 expiration: "12/25".to_string(),
                 cvv: "123".to_string(),
@@ -766,5 +851,76 @@ mod tests {
 
         let result = marketplace.process_payment(payment).await.unwrap();
         assert!(result.success);
+    }
+
+    /// `PaymentGateway` must stay unconfigured: no provider, no credential.
+    ///
+    /// This is the regression guard for the credential-shaped literal that used
+    /// to sit in `PaymentGateway::new()`. If a real key is ever reintroduced as a
+    /// literal, this test fails rather than letting it ship.
+    #[test]
+    fn test_payment_gateway_has_no_credential() {
+        let gateway = PaymentGateway::new();
+
+        assert_eq!(
+            gateway.provider(),
+            PaymentGatewayProvider::Unconfigured,
+            "the gateway must never name a provider it cannot reach"
+        );
+        assert_eq!(
+            gateway.credential(),
+            PaymentGatewayCredential::Unset,
+            "no credential-shaped literal may be embedded in source"
+        );
+        assert_eq!(
+            gateway,
+            PaymentGateway::default(),
+            "Default and new must agree — there is exactly one gateway state"
+        );
+    }
+
+    /// The simulated payment path must keep working, and must not pretend to
+    /// settle anything. Guards the behaviour documented on `process_payment`.
+    #[tokio::test]
+    async fn test_process_payment_is_simulated_not_settled() {
+        let manager = RevenueManager::new();
+
+        // The flow must not acquire a provider or a credential on the way through.
+        let gateway = manager.payment_gateway();
+        assert_eq!(gateway.provider(), PaymentGatewayProvider::Unconfigured);
+        assert_eq!(gateway.credential(), PaymentGatewayCredential::Unset);
+
+        let payment = Payment {
+            user_id: "user1".to_string(),
+            plugin_id: "plugin1".to_string(),
+            amount: 19.99,
+            currency: "USD".to_string(),
+            payment_method: PaymentMethod::CreditCard(CreditCard {
+                number: "4242424242424242".to_string(),
+                expiration: "12/25".to_string(),
+                cvv: "123".to_string(),
+                name: "Test User".to_string(),
+            }),
+        };
+
+        let result = manager.process_payment(payment).await.unwrap();
+
+        // `success: true` means "the record was written" — nothing more.
+        assert!(result.success);
+        // Canonical uuid v4: 36 chars, hyphens at 8/13/18/23, version nibble '4'.
+        assert_eq!(result.transaction_id.len(), 36);
+        let parts: Vec<&str> = result.transaction_id.split('-').collect();
+        assert_eq!(parts.len(), 5);
+        assert_eq!(parts[2].chars().next(), Some('4'));
+
+        // Still no provider, still no credential, after a payment was processed.
+        assert_eq!(
+            manager.payment_gateway().provider(),
+            PaymentGatewayProvider::Unconfigured
+        );
+        assert_eq!(
+            manager.payment_gateway().credential(),
+            PaymentGatewayCredential::Unset
+        );
     }
 }

@@ -49,12 +49,7 @@ describe("detectEnvironment", () => {
 });
 
 describe("isDesktopRuntime", () => {
-  const envs: RuntimeEnvironment[] = [
-    "TAURI_DESKTOP",
-    "BROWSER_PREVIEW",
-    "TEST",
-    "UNKNOWN",
-  ];
+  const envs: RuntimeEnvironment[] = ["TAURI_DESKTOP", "BROWSER_PREVIEW", "TEST", "UNKNOWN"];
   it("is true only for TAURI_DESKTOP", () => {
     for (const env of envs) {
       expect(isDesktopRuntime(env)).toBe(env === "TAURI_DESKTOP");

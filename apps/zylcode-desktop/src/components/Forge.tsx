@@ -1,13 +1,7 @@
 import { useMemo, useState } from "react";
-import {
-  FORGE_CATEGORIES,
-  FORGE_FUTURE_PACKS,
-  parseCapabilityPack,
-  trustLabelOf,
-  type CapabilityPack,
-} from "../lib/forge";
-import { StatusBadge, RungBadge } from "./CapabilityStatus";
-import { Panel, SectionTitle } from "./Panel";
+import { FORGE_CATEGORIES, FORGE_FUTURE_PACKS, parseCapabilityPack } from "../lib/forge";
+import { StatusBadge } from "./CapabilityStatus";
+import { Panel } from "./Panel";
 
 // ---------------------------------------------------------------------------
 // Forge — capability marketplace shell (Product Architecture v3 §14–§19)
@@ -15,24 +9,6 @@ import { Panel, SectionTitle } from "./Panel";
 // labels. NO fake plugins, NO checkout: commercial states render as domain
 // information with "no commercial backend yet".
 // ---------------------------------------------------------------------------
-
-const TRUST_LABEL_STYLE: Record<string, string> = {
-  UNVERIFIED: "text-text-muted border-text-muted/40",
-  TESTED: "text-warning border-warning/40",
-  VERIFIED: "text-success border-success/40",
-  REPRODUCIBLE: "text-success border-success/60",
-  CERTIFIED: "text-primary border-primary/60",
-};
-
-const PERMISSION_LABEL: Record<string, string> = {
-  none: "None",
-  read: "Read",
-  write: "Write",
-  "read-write": "Read/Write",
-  execute: "Execute",
-  "read-commit": "Read/Commit",
-  control: "Control",
-};
 
 /** A concept pack derived from the taxonomy — explicitly NOT INSTALLED. */
 type ConceptPack = {
@@ -46,100 +22,6 @@ const CONCEPT_PACKS: ConceptPack[] = FORGE_FUTURE_PACKS.map((name) => ({
   category: "taxonomy",
   note: "Concept — not implemented. Appears here as marketplace taxonomy metadata only.",
 }));
-
-function PackDetail({ pack }: { pack: CapabilityPack }) {
-  const label = trustLabelOf(pack);
-  return (
-    <Panel title={`PACK — ${pack.name}`}>
-      <div className="space-y-3 text-xs">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="font-mono text-[11px] text-text-muted">{pack.id}</span>
-          <span className="font-mono text-[11px] text-text-muted">v{pack.version}</span>
-          <span
-            className={`inline-flex items-center rounded border px-1.5 py-0 text-[10px] font-medium tracking-wide uppercase ${TRUST_LABEL_STYLE[label]}`}
-          >
-            {label}
-          </span>
-          <RungBadge rung={pack.evidence.verification_rung} />
-        </div>
-        <p className="text-text-muted">{pack.description || "No description."}</p>
-
-        <div>
-          <SectionTitle>PERMISSIONS</SectionTitle>
-          <div className="mt-1 grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-            <span className="rounded border border-border px-2 py-1">
-              FILESYSTEM <b className="font-mono">{PERMISSION_LABEL[pack.permissions.filesystem]}</b>
-            </span>
-            <span className="rounded border border-border px-2 py-1">
-              SHELL <b className="font-mono">{PERMISSION_LABEL[pack.permissions.shell]}</b>
-            </span>
-            <span className="rounded border border-border px-2 py-1">
-              GIT <b className="font-mono">{PERMISSION_LABEL[pack.permissions.git]}</b>
-            </span>
-            <span className="rounded border border-border px-2 py-1">
-              BROWSER <b className="font-mono">{PERMISSION_LABEL[pack.permissions.browser]}</b>
-            </span>
-            <span className="rounded border border-border px-2 py-1 col-span-2">
-              NETWORK{" "}
-              <b className="font-mono">
-                {pack.permissions.network.length > 0 ? pack.permissions.network.join(", ") : "none"}
-              </b>
-            </span>
-            <span className="rounded border border-border px-2 py-1 col-span-2">
-              SECRETS{" "}
-              <b className="font-mono">
-                {pack.permissions.secrets.length > 0 ? pack.permissions.secrets.join(", ") : "none"}
-              </b>
-            </span>
-          </div>
-        </div>
-
-        <div>
-          <SectionTitle>EVIDENCE</SectionTitle>
-          <div className="mt-1 space-y-0.5 font-mono text-[11px] text-text-muted">
-            <p>test_status: {pack.evidence.test_status}</p>
-            <p>verification_rung: {pack.evidence.verification_rung}</p>
-            <p>verified_commit: {pack.evidence.verified_commit ?? "NOT CAPTURED"}</p>
-            <p>
-              platforms_verified:{" "}
-              {pack.evidence.platforms_verified.length > 0
-                ? pack.evidence.platforms_verified.join(", ")
-                : "NOT CAPTURED"}
-            </p>
-          </div>
-        </div>
-
-        <div>
-          <SectionTitle>COMMERCIAL</SectionTitle>
-          <p className="mt-1 text-[11px] text-text-muted">
-            {pack.commercial.model} — no commercial backend is implemented; purchasing is not
-            possible. Installation requires explicit user action and is not available for concept
-            packs.
-          </p>
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <span
-            aria-disabled="true"
-            className="inline-flex items-center justify-center gap-2 rounded-md border border-border bg-surface/60 px-4 py-2 text-sm font-medium text-text-muted cursor-not-allowed select-none"
-          >
-            Install <StatusBadge status="NOT INSTALLED" size="xs" />
-          </span>
-          <span
-            aria-disabled="true"
-            className="inline-flex items-center justify-center gap-2 rounded-md border border-border bg-surface/60 px-4 py-2 text-sm font-medium text-text-muted cursor-not-allowed select-none"
-          >
-            Try Demo <StatusBadge status="COMING SOON" size="xs" />
-          </span>
-          <span className="text-[10px] text-text-muted/80">
-            DEMO ENGINE — PROPOSED. Demo missions will execute real functionality once the demo
-            engine exists; no simulated success is shown today.
-          </span>
-        </div>
-      </div>
-    </Panel>
-  );
-}
 
 /** Live validator: paste a manifest JSON and validate it against the schema. */
 function ManifestValidator() {
@@ -174,7 +56,10 @@ function ManifestValidator() {
       {result.length > 0 && (
         <div className="mt-2 space-y-0.5">
           {result.map((r, i) => (
-            <p key={i} className={`text-[11px] ${r.startsWith("VALID") ? "text-success" : "text-error"}`}>
+            <p
+              key={i}
+              className={`text-[11px] ${r.startsWith("VALID") ? "text-success" : "text-error"}`}
+            >
               {r}
             </p>
           ))}
@@ -287,8 +172,8 @@ export default function Forge() {
               <p>REPRODUCIBLE — rung R4.</p>
               <p>CERTIFIED — rung R5.</p>
               <p className="pt-1">
-                Labels are computed from manifest evidence fields; a claimed rung above what evidence
-                supports is clamped down.
+                Labels are computed from manifest evidence fields; a claimed rung above what
+                evidence supports is clamped down.
               </p>
             </div>
           </Panel>

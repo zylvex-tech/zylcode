@@ -70,18 +70,9 @@ export type NavState<T> =
 export type Evidence = "DETERMINISTIC" | "HEURISTIC" | "UNSUPPORTED";
 
 export type ImpactClass =
-  | "DIRECT_DEPENDENT"
-  | "TRANSITIVE_DEPENDENT"
-  | "POSSIBLE_TEXTUAL_REFERENCE"
-  | "UNRESOLVED";
+  "DIRECT_DEPENDENT" | "TRANSITIVE_DEPENDENT" | "POSSIBLE_TEXTUAL_REFERENCE" | "UNRESOLVED";
 
-export type EdgeKind =
-  | "imports"
-  | "calls"
-  | "depends_on"
-  | "contains"
-  | "exports"
-  | "references";
+export type EdgeKind = "imports" | "calls" | "depends_on" | "contains" | "exports" | "references";
 
 export type NodeKind = "file" | "symbol" | "package";
 
@@ -288,10 +279,7 @@ class EngineRejection extends Error {}
  * message is recorded to Diagnostics rather than shown as if it were a
  * result.
  */
-export async function queryNav<T>(
-  tool: NavTool,
-  args: NavArgs = {},
-): Promise<NavState<T>> {
+export async function queryNav<T>(tool: NavTool, args: NavArgs = {}): Promise<NavState<T>> {
   const env = detectEnvironment();
 
   if (env === "TAURI_DESKTOP") {
@@ -354,10 +342,7 @@ const EVIDENCE_RANK: Record<Evidence, number> = {
   UNSUPPORTED: 2,
 };
 
-export function byEvidenceThen<T extends { evidence: Evidence }>(
-  a: T,
-  b: T,
-): number {
+export function byEvidenceThen<T extends { evidence: Evidence }>(a: T, b: T): number {
   return EVIDENCE_RANK[a.evidence] - EVIDENCE_RANK[b.evidence];
 }
 

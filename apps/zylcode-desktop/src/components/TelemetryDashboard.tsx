@@ -17,9 +17,7 @@ export const TelemetryDashboard: React.FC<TelemetryDashboardProps> = ({
     <div className="p-4 space-y-4 max-w-5xl mx-auto">
       <div className="flex justify-between items-center border-b border-slate-800 pb-3">
         <div>
-          <h1 className="text-lg font-bold text-slate-100 font-mono">
-            System Telemetry
-          </h1>
+          <h1 className="text-lg font-bold text-slate-100 font-mono">System Telemetry</h1>
           <p className="text-xs text-slate-400">
             Real-time MCP bridges, memory footprint, and security logs
           </p>

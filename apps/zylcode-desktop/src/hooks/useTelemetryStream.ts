@@ -43,7 +43,7 @@ export interface TelemetryStreamState {
  * @ts-ignore - Tauri module resolution is handled at runtime
  */
 export function useTelemetryStream() {
-  // @ts-ignore - Tauri module
+  // @ts-expect-error - Tauri module
   const tauri: any = typeof window?.__TAURI__ !== "undefined" ? window.__TAURI__ : null;
   const { invoke } = tauri?.useApp ? tauri.useApp() : { invoke: () => Promise.resolve() };
 
@@ -54,70 +54,77 @@ export function useTelemetryStream() {
     lastUpdate: 0,
   });
 
+  // Fallback: on initial mount, query bridge status via IPC invoke
+  //
+  // This used to be nested INSIDE the listener effect below, which is a
+  // rules-of-hooks violation: React cannot register a hook during the commit
+  // phase, so any component that actually called this hook threw
+  //     "Error: Invalid hook call. Hooks can only be called inside of the
+  //      body of a function component."
+  // Reproduced 2026-10-21 by rendering a probe component in jsdom (same shape
+  // as the identical defect fixed in useAuditStream.ts).
+  //
+  // Hoisted to a sibling effect with the same `[invoke]` trigger, so the
+  // before/after behaviour matches: prime whenever `invoke` changes.
+  useEffect(() => {
+    if (!tauri) {
+      // Browser-only mode — no Tauri IPC available
+      return;
+    }
+    // Prime the bridge status once so UI isn't blank on first render
+    invoke("get_bridge_status")
+      .then((bridges: any[]) => {
+        if (bridges.length > 0) {
+          setState((prev) => ({
+            ...prev,
+            bridgeStatus: bridges[0],
+            isConnected: true,
+            lastUpdate: Date.now(),
+          }));
+        }
+      })
+      .catch(() => {
+        // Graceful fallback — keep isConnected false
+      });
+    // `tauri` is derived from `window.__TAURI__` at render time and is stable,
+    // but the effect does read it, so it is declared rather than assumed.
+  }, [invoke, tauri]);
+
   useEffect(() => {
     let metricsUnlisten: any = null;
     let bridgeUnlisten: any = null;
 
     if (tauri) {
       // Subscribe to telemetry:metrics events
-      metricsUnlisten = tauri.listen(
-        "telemetry:metrics",
-        (event: any) => {
-          setState((prev) => {
-            const newHistory = [event.payload, ...prev.metricsHistory].slice(0, 20);
-            return {
-              ...prev,
-              metricsHistory: newHistory,
-              isConnected: true,
-              lastUpdate: Date.now(),
-            };
-          });
-        },
-      );
-
-      // Subscribe to telemetry:bridge-status events
-      bridgeUnlisten = tauri.listen(
-        "telemetry:bridge-status",
-        (event: any) => {
-          setState((prev) => ({
+      metricsUnlisten = tauri.listen("telemetry:metrics", (event: any) => {
+        setState((prev) => {
+          const newHistory = [event.payload, ...prev.metricsHistory].slice(0, 20);
+          return {
             ...prev,
-            bridgeStatus: event.payload,
+            metricsHistory: newHistory,
             isConnected: true,
             lastUpdate: Date.now(),
-          }));
-        },
-      );
-    }
-
-    // Fallback: on initial mount, query bridge status via IPC invoke
-    useEffect(() => {
-      if (!tauri) {
-        // Browser-only mode — no Tauri IPC available
-        return;
-      }
-      // Prime the bridge status once so UI isn't blank on first render
-      invoke("get_bridge_status")
-        .then((bridges: any[]) => {
-          if (bridges.length > 0) {
-            setState((prev) => ({
-              ...prev,
-              bridgeStatus: bridges[0],
-              isConnected: true,
-              lastUpdate: Date.now(),
-            }));
-          }
-        })
-        .catch(() => {
-          // Graceful fallback — keep isConnected false
+          };
         });
-    }, [invoke]);
+      });
+
+      // Subscribe to telemetry:bridge-status events
+      bridgeUnlisten = tauri.listen("telemetry:bridge-status", (event: any) => {
+        setState((prev) => ({
+          ...prev,
+          bridgeStatus: event.payload,
+          isConnected: true,
+          lastUpdate: Date.now(),
+        }));
+      });
+    }
 
     // Cleanup event listeners on unmount
     return () => {
       metricsUnlisten?.();
       bridgeUnlisten?.();
     };
-  }, [invoke]);
+  }, [invoke, tauri]);
 
   return state;
 }
@@ -128,7 +135,7 @@ export function useTelemetryStream() {
  * @ts-ignore - Tauri module
  */
 export function useBridgeIpc() {
-  // @ts-ignore - Tauri module
+  // @ts-expect-error - Tauri module
   const tauri: any = typeof window?.__TAURI__ !== "undefined" ? window.__TAURI__ : null;
   const { invoke } = tauri?.useApp ? tauri.useApp() : { invoke: () => Promise.resolve() };
 
@@ -157,7 +164,7 @@ export function useBridgeIpc() {
 export const useAuditIpc = (): {
   getRecentAuditLogs: () => Promise<any[]>;
 } => {
-  // @ts-ignore - Tauri module
+  // @ts-expect-error - Tauri module
   const tauri: any = typeof window?.__TAURI__ !== "undefined" ? window.__TAURI__ : null;
   const { invoke } = tauri?.useApp ? tauri.useApp() : { invoke: () => Promise.resolve() };
 

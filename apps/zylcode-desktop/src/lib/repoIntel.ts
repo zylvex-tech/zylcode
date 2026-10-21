@@ -67,7 +67,10 @@ export async function fetchRepoIntel(task: string): Promise<RepoIntelState> {
       return { kind: "ready", data, via: "desktop" };
     } catch (e) {
       recordDiagnostic("repoIntel", String(e));
-      return { kind: "unavailable", reason: "desktop engine could not build the intelligence payload" };
+      return {
+        kind: "unavailable",
+        reason: "desktop engine could not build the intelligence payload",
+      };
     }
   }
 

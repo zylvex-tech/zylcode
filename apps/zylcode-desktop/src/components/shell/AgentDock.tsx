@@ -37,14 +37,10 @@ const DOCK_MODULES: { id: DockModule; label: string }[] = [
   { id: "diagnostics", label: "Diagnostics" },
 ];
 
-export function AgentDock({
-  activeModule,
-  onModuleChange,
-  activeMission,
-  deltas,
-  isStreaming,
-}: AgentDockProps) {
-  const { currentTheme } = useTheme();
+export function AgentDock({ activeModule, onModuleChange, activeMission, deltas }: AgentDockProps) {
+  // useTheme() may register internal hooks, so the call is kept even though
+  // this surface reads neither value. Removing the call would change hook order.
+  useTheme();
 
   return (
     <aside className="hidden lg:flex w-[360px] shrink-0 border-l border-border bg-surface/50 flex-col">
@@ -124,9 +120,7 @@ export function AgentDock({
         )}
 
         {activeModule === "mcp" && (
-          <Panel title="MCP ACTIVITY">
-            {IS_DESKTOP ? <McpInspector /> : <DesktopRequired />}
-          </Panel>
+          <Panel title="MCP ACTIVITY">{IS_DESKTOP ? <McpInspector /> : <DesktopRequired />}</Panel>
         )}
 
         {activeModule === "providers" && (

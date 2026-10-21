@@ -1,9 +1,12 @@
 import { Panel } from "./Panel";
-import { StatusBadge } from "./CapabilityStatus";
 import { IS_DESKTOP } from "../lib/runtime";
 
 export function RuntimeLab() {
-  const targets: { name: string; status: "AVAILABLE" | "LIMITED" | "NOT INSTALLED"; note: string }[] = [
+  const targets: {
+    name: string;
+    status: "AVAILABLE" | "LIMITED" | "NOT INSTALLED";
+    note: string;
+  }[] = [
     { name: "WEB", status: "AVAILABLE", note: "Vite dev/preview of the current project" },
     {
       name: "DESKTOP",
