@@ -22,15 +22,15 @@ assertions. The mechanism is proven, not inferred, and the arithmetic matches th
 exactly. The fix is thread-local scoping and touches no production code.
 
 **What remains unresolved:** `main` still has no branch protection of any kind, so none of the CI
-work is *required* to pass before a merge; and the fix itself is **not test-verified**, because
-this environment cannot link Rust test binaries.
+work is *required* to pass before a merge; and the direct dependency `lru` 0.12.5 carries two unsound
+advisories, one of whose affected APIs is called in production code (§7.1).
 
 | | |
 |---|---|
-| Verified resolved | Coverage gate + measured coverage; PR #22 merge; egress-spy race (fix written) |
+| Verified resolved | Coverage gate + measured coverage; PR #22 merge; egress-spy race (**fix written AND test-verified**, §5.1) |
 | Newly delivered | `.env.example`, rewritten CONTRIBUTING §§1-3 |
-| Still open | Branch protection on `main`; test-run verification of the fix |
-| Committed locally | 2 commits on `fix/router-egress-spy-thread-local`, **not pushed** |
+| Still open | Branch protection on `main`; `lru` 0.12.5 unsound advisories (§7.1) |
+| Committed locally | 3 commits on `fix/router-egress-spy-thread-local` |
 
 ---
 
@@ -161,16 +161,20 @@ in the file, confirmed by the secret scanner with the file staged.
 PASS = executed and passed. FAIL = executed and failed. BLOCKED = could not execute.
 NOT RUN = not executed. UNVERIFIED = evidence insufficient.
 
-### Executed locally on commit `683fc61`
+### Executed locally on commit `5e0e555` (2026-10-22, after the sandbox blocker cleared)
 
 | Check | Command | Result | Exit |
 |---|---|---|---|
 | Rust formatting | `cargo fmt --all -- --check` | **PASS** | 0 |
+| Router tests | `cargo test -p zylcode-core --lib router::` | **PASS** (32 passed, 0 failed) | 0 |
+| Core lib tests | `cargo test -p zylcode-core --lib` | **PASS** (499 passed, 0 failed) | 0 |
+| Full workspace tests | `cargo test --workspace --all-targets` | **PASS** (exit 0; every test binary green) | 0 |
+| Clippy, warnings denied | `cargo clippy --workspace --all-targets -- -D warnings` | **PASS** (0 source lints; 21 sandbox lock-file warnings only) | 0 |
 | Locked resolution | `cargo metadata --locked --format-version 1` | **PASS** | 0 |
 | Secret scan | `python scripts/check_hardcoded_secrets.py` | **PASS** (clean) | 0 |
 | Secret-scan control | `python scripts/check_hardcoded_secrets.py --selftest` | **PASS** (13 detect, 29 no-match) | 0 |
 | Retracted-claim guard | `python scripts/check_retracted_claims.py` | **PASS** (11 baselined) | 0 |
-| Rust advisories | `cargo audit` | **PASS** (5 warnings, **0 vulnerable**) | 0 |
+| Rust advisories | `cargo audit` | **0 vulnerable**; **6 informational warnings** — see §7.1 | 0 |
 | JS advisories | `pnpm audit --prod` | **PASS** (none known) | 0 |
 | Frontend lint | `pnpm --filter zylcode-desktop lint` | **PASS** (0 errors, 36 warnings) | 0 |
 | Frontend format | `pnpm --filter zylcode-desktop format:check` | **PASS** | 0 |
@@ -178,21 +182,39 @@ NOT RUN = not executed. UNVERIFIED = evidence insufficient.
 | Frontend tests | `pnpm --filter zylcode-desktop test` | **PASS** (16 files, **108 tests**) | 0 |
 | N-ATLAS SDK types | `pnpm --filter @zylvex/natlas-bridge typecheck` | **PASS** | 0 |
 | N-ATLAS SDK smoke | `node --experimental-strip-types apps/natlas-sdk/test/smoke.mjs` | **PASS** (**16 passed, 0 failed**) | 0 |
-| Offline CLI | `target/debug/zylcode.exe repo-context "<task>"` | **PASS** | 0 |
 
 ### Not executed locally
 
-| Check | Status | Exact blocker |
+| Check | Status | Reason |
 |---|---|---|
-| `cargo test --workspace --all-targets` | **BLOCKED** | Sandbox denies cargo reads of its own registry sources (`axum`, `hyper-util`, `tower`) and writes to `target/debug/deps/*.rcgu.o`, `*.d`, `lib.rmeta-link`, and `target/debug/.fingerprint/*`. Exit 101, `Access is denied`. **Not a source-code failure.** |
-| `cargo check --workspace --all-targets` | **BLOCKED** | Same fingerprint-write refusal. `cargo clippy` on an identical target set returned 0 earlier in the session, which is why this is attributed to the environment. |
-| `cargo clippy --workspace --all-targets -- -D warnings` (re-run after the fix) | **BLOCKED** | Same class of denial (`e2e_crash_recovery-*.d` write refused). See §5.1. |
-| Rust coverage measurement, locally | **NOT RUN** | Requires linking test binaries; same blocker. |
+| Rust coverage measurement, locally | **NOT RUN** | Requires `cargo-llvm-cov` and a full instrumented build. Measured instead in CI (§6). |
 
-### 5.1 Compile verification of the fix — partial, and stated as such
+### 5.1 The fix is now test-verified — superseding the earlier "compile-verified only" note
 
-The first clippy run after the change **did compile the `zylcode-core` lib-test target** and
-reported exactly one error:
+**The Rust tests ran and passed on 2026-10-22.** An earlier revision of this section said the fix
+was compile-verified only and that the tests had not been run. That is no longer true: the sandbox
+blocker cleared, and the full battery in §5 executed green on commit `5e0e555`.
+
+The run that matters most for the egress-spy fix:
+
+```
+$ cargo test -p zylcode-core --lib router::
+running 32 tests
+test router::tests::synthetic_offline_dispatch_returns_parseable_payload ... ok
+test router::tests::synthetic_offline_is_immune_to_ambient_api_keys ... ok
+test router::tests::non_synthetic_provider_without_keys_still_degrades_offline ... ok
+test router::tests::d1_vector_cache_cross_prompt_contamination_guard ... ok
+test result: ok. 32 passed; 0 failed; 0 ignored; 0 measured; 467 filtered out; finished in 5.26s
+```
+
+All four tests that assert `egress_after == egress_before` are present in that list and passed. Note
+that `synthetic_offline_is_immune_to_ambient_api_keys` passed **with provider credentials present in
+this environment's shell** — which is precisely the condition that used to perturb the process-global
+counter.
+
+### 5.1.1 A genuine defect in the change itself, found and fixed
+
+The first clippy run after the edit reported exactly one error:
 
 ```
 error: unused doc comment
@@ -201,12 +223,23 @@ error: unused doc comment
    = note: `-D unused-doc-comments` implied by `-D warnings`
 ```
 
-`thread_local!` is a macro invocation, so `///` doc comments on it are rejected. That was a genuine
-defect in my change and it is fixed by using `//` instead. A re-run to confirm compilation was then
-blocked by the sandbox (`e2e_crash_recovery-*.d` write denied), so **the fix is compile-verified
-only up to the point the first run reached, and the fix for the reported error is targeted and
-exact — but the tests have not been run.** Re-run
-`cargo test -p zylcode-core --lib router::` on a normal checkout before relying on it.
+`thread_local!` is a macro invocation, so `///` doc comments cannot attach to it. This was a real
+defect in the change, caught by compile verification, and fixed by using `//` instead. It is recorded
+here rather than quietly dropped.
+
+### 5.1.2 Clippy output contains sandbox noise — distinguished, not hidden
+
+The clippy run printed 21 warnings, all of them:
+
+```
+warning: error deleting lock file for incremental compilation session directory
+`\\?\...\target\debug\incremental\<crate>-<hash>\s-<hash>.lock`: Access is denied. (os error 5)
+```
+
+These are the sandbox refusing to delete incremental-compilation lock files, **not** source lints. The
+distinction was verified rather than assumed: filtering the output for `^warning|^error` while
+excluding the lock-file lines and the `generated N warning` summaries leaves **nothing**. There are
+zero source-code lints, and clippy exits 0 under `-D warnings`.
 
 ### 5.2 Remote evidence (GitHub Actions)
 
@@ -319,27 +352,71 @@ only lines are gated. Raising the line threshold is **not** recommended at this 
 
 ## 7. SECURITY AND DEPENDENCY RESULTS
 
-**Status: PASS** for every check that was actually executed. No check was skipped, and no
-vulnerability was suppressed, ignored, or allow-listed.
+**Status: PASS for vulnerabilities. This section was corrected on 2026-10-22 — see §7.1.** No check
+was skipped, and no vulnerability was suppressed, ignored, or allow-listed.
 
 | Check | Command | Result |
 |---|---|---|
-| Rust dependency audit | `cargo audit` | **PASS** — `vulnerabilities.count: 0`, `warnings: 0` |
+| Rust vulnerability audit | `cargo audit` | **PASS** — `vulnerabilities: {found: false, count: 0, list: []}` |
+| Rust advisory *warnings* | `cargo audit` | **6 warnings** — see §7.1. This is **not** a pass. |
 | Frontend production audit | `pnpm audit --prod` | **PASS** — no findings |
 | Lockfile integrity | `cargo … --locked` (CI) | **PASS** — `Cargo.lock` is in sync with `Cargo.toml` |
 | Secret scan | `gitleaks` step in `ci.yml` | **PASS** — no findings |
 | Secret-scanner selftest | `gitleaks detect --redact` selftest step | **PASS** — scanner proven able to fail |
 | Retracted-claims guard | retracted-claim scan step | **PASS** |
 
-Notes and caveats, stated plainly:
+### 7.1 Correction: the earlier "warnings: 0" claim was wrong
 
-- `cargo audit` reports **warnings** separately from vulnerabilities. Both are zero here, so there
-  are no unmaintained-dependency or yanked-crate advisories outstanding either.
+An earlier revision of this section reported `cargo audit` as `vulnerabilities.count: 0, warnings: 0`
+and stated that "no unmaintained-dependency or yanked-crate advisories [are] outstanding." **The
+warnings half of that claim was false.** It came from a parsing error: `cargo audit --json` emits a
+top-level `warnings` object whose `list` key is *always empty*; the real warnings are keyed by
+category (`warnings.unmaintained`, `warnings.unsound`, `warnings.yanked`). Reading `warnings.list`
+therefore reports zero regardless of how many warnings exist.
+
+The verified result, from `cargo audit` against 598 locked crate dependencies:
+
+| Category | Count | Advisories |
+|---|---|---|
+| unmaintained | 2 | `proc-macro-error` 1.0.4 (RUSTSEC-2024-0370); `unsafe-libyaml` 0.2.11 (RUSTSEC-2024-0449) |
+| unsound | 3 | `glib` 0.18.5 (RUSTSEC-2024-0429); **`lru` 0.12.5 (RUSTSEC-2026-0002)**; **`lru` 0.12.5 (RUSTSEC-2026-0253)** |
+| yanked | 1 | `tokio` 1.54.0 |
+| **vulnerabilities** | **0** | — |
+
+**The material finding: `lru` 0.12.5 is a *direct* workspace dependency**
+(`Cargo.toml:67 lru = "0.12"`, `crates/zylcode-core/Cargo.toml:24 lru = { workspace = true }`), and it
+carries two `unsound` advisories — not a transitive one-off:
+
+- **RUSTSEC-2026-0253** — "Potential use-after-free due to lack of panic safety in `LruCache::pop()`".
+  Patched in `>= 0.18.2`.
+- **RUSTSEC-2026-0002** — "`IterMut` violates Stacked Borrows by invalidating internal pointer".
+  Patched in `>= 0.16.3`.
+
+**Exposure in this codebase, verified by reading the call sites:**
+
+| Advisory API | Called here? | Evidence |
+|---|---|---|
+| `LruCache::pop()` | **YES** | `crates/zylcode-core/src/router/cache.rs:62` — `guard.pop(&key);` inside `SpeculativeCache::get()`, on TTL expiry |
+| `LruCache::iter_mut()` | No | `LruCache` is used in exactly one place (`router/cache.rs:19,27`) and only `get`/`put`/`len`/`clear`/`pop` are called on it. The `iter_mut()` calls elsewhere in the tree (`missions.rs`, `artifact_bus.rs`, `factory/graph.rs`, `intelligence/manifest.rs`, `router.rs:1642`, `nav/index.rs`) are all on `Vec`/slice types. |
+
+So one of the two unsound APIs **is** exercised by production code. This is a real, currently-unfixed
+defect in a direct dependency, and it is **not** in the Dependabot queue — Dependabot sees `0.12.5`
+as up to date within the `"0.12"` requirement, so it will never propose the bump.
+
+`lru` 0.18.3 and 0.19.0 are available on crates.io. The fix is a workspace requirement bump, and it
+is **not applied here** because it is a dependency-version change requiring owner approval and a
+full re-verification pass (see §14).
+
+### 7.2 Other caveats
+
 - `pnpm audit --prod` excludes dev dependencies by design. Dev-only advisories are therefore **not
-  covered** by this result. The Dependabot PR queue (§8.2) is the mechanism that tracks those.
+  covered** by this result.
 - The secret scan runs on the CI runner against the checked-out tree. It has **not** been run against
   the full commit history of every branch in this session; the `.env.example` file added in `683fc61`
   was staged and scanned locally and is clean, and it contains no credential-shaped values.
+- `cargo audit` exits 0 despite the 6 warnings: informational warnings do not fail the audit, only
+  vulnerabilities do. A green `cargo audit` is therefore **not** evidence that a dependency is free
+  of unsound or unmaintained advisories.
 
 ---
 
@@ -383,11 +460,12 @@ for the owner. Merging PRs is a remote mutation and requires approval.
 
 | Branch | Commits | Pushed? |
 |---|---|---|
-| `fix/router-egress-spy-thread-local` | `69f1715` (router egress spy, test-only), `683fc61` (`.env.example` + `CONTRIBUTING.md`) | **No — 2 commits ahead of `origin/main`, unpushed** |
+| `fix/router-egress-spy-thread-local` | `69f1715` (router egress spy, test-only), `683fc61` (`.env.example` + `CONTRIBUTING.md`), `5e0e555` (Phase 2 verification report) | **3 commits ahead of `origin/main`, unpushed** |
 
-These are deliberately **not** pushed. The router change is compile-verified only (§5.1) and the
-sandbox blocks running the tests, so pushing it to a branch that triggers CI would put an unverified
-change in front of reviewers. Push after the verification in §12.1 succeeds on a normal machine.
+The router change is **test-verified as of 2026-10-22** (§5.1): 32 router tests, 499 core lib tests,
+and the full `--workspace --all-targets` suite all pass, and clippy is clean under `-D warnings` with
+zero source lints. Pushing it therefore publishes a verified change, and CI gives it independent
+three-OS confirmation.
 
 No branch was deleted, reset, force-pushed, or rewritten. The user's separate checkout at
 `C:/Projects/zylcode` (branch `competition/natlas-2026`, commit `c5c9138`) was not touched at any
@@ -516,7 +594,7 @@ score.
 | 4 | `cargo fmt` / `clippy` | **Resolved on `main`** — both pass in CI | §5.2, PR #22 checks |
 | 5 | Large files | **Measured and characterised** — 2 files over 1 MiB, both legitimate binary brand assets; 539,231 B of exact duplication found | §13.1 |
 | 6 | Secrets | **Resolved** — scan clean, selftest passes, `.env.example` holds no values | §7, §9.1 |
-| 7 | Dependency hygiene | **Improved** — `cargo audit` 0/0; 9 Dependabot PRs triaged with per-PR guidance | §7, §8.2 |
+| 7 | Dependency hygiene | **Improved, but with a material open item** — 0 vulnerabilities; 6 informational warnings including **2 unsound advisories on the direct dependency `lru` 0.12.5, one of whose affected APIs (`pop()`) is called in production code**; 9 Dependabot PRs triaged | §7.1, §8.2 |
 | 8 | Reproducible environment | **Resolved** — `.env.example` + `CONTRIBUTING.md` from source | §9 |
 | 9 | CI and branch protection | **Partially resolved** — CI yes; branch protection **still absent** | §10 |
 
@@ -524,13 +602,16 @@ score.
 
 1. **Branch protection on `main` (§10).** This is the single largest remaining structural gap. It is
    an owner decision, not a code change, and no amount of local work closes it.
-2. **The `NETWORK_EGRESS_COUNT` fix is not test-verified (§5.1).** It is compile-verified only,
-   because this sandbox denies the linker. Until `cargo test -p zylcode-core --lib router::` runs
-   clean on a normal machine, treat the fix as **written but unproven**.
-3. **Nine open Dependabot PRs (§8.2),** five of which are major bumps needing human review.
-4. **Large-file finding (#5) was measured, not remediated** — see §13.1. The duplication it exposed
+2. **`lru` 0.12.5 carries two unsound advisories, and one affected API is called in production**
+   (§7.1). `LruCache::pop()` is invoked at `crates/zylcode-core/src/router/cache.rs:62`. Patched in
+   `lru >= 0.18.2`. **Dependabot will not propose this bump** because the requirement `"0.12"`
+   already permits 0.12.5. This is the highest-severity open item in this report.
+3. **The `NETWORK_EGRESS_COUNT` fix is now test-verified** — see §5.3. This supersedes the earlier
+   "compile-verified only" note.
+4. **Nine open Dependabot PRs (§8.2),** five of which are major bumps needing human review.
+5. **Large-file finding (#5) was measured, not remediated** — see §13.1. The duplication it exposed
    is real but deleting the duplicates is an owner decision (§14, item 4).
-5. **`release.yml`'s historical failure mode is fixed in the file but was never observed succeeding**
+6. **`release.yml`'s historical failure mode is fixed in the file but was never observed succeeding**
    from a real `v*` tag push. Untested by construction — there is no release to cut.
 
 ### 11.3 The honest statement about the score
@@ -545,26 +626,24 @@ re-scoring would surface if it were performed on evidence rather than on asserti
 
 ## 12. NEXT ACTIONS
 
-Ordered by value per unit of risk. Nothing below has been executed.
+Ordered by value per unit of risk. Items 12.1 and 12.2 are **done** and recorded in §5 and §8.3.
 
-### 12.1 Verify the router fix on a machine that can link — **highest priority**
+### 12.1 ~~Verify the router fix on a machine that can link~~ — **DONE 2026-10-22**
 
 ```
-cargo test -p zylcode-core --lib router::
-cargo test -p zylcode-core --lib
-cargo test --workspace --all-targets
+cargo test -p zylcode-core --lib router::   -> 32 passed, 0 failed
+cargo test -p zylcode-core --lib            -> 499 passed, 0 failed
+cargo test --workspace --all-targets        -> exit 0
+cargo fmt --all -- --check                  -> exit 0
+cargo clippy --workspace --all-targets -- -D warnings -> exit 0, 0 source lints
 ```
 
-Then re-run `cargo fmt --all -- --check` and `cargo clippy --workspace --all-targets -- -D warnings`
-afterwards, because `69f1715` changed a `#[cfg(test)]` block that clippy must still accept. If the
-thread-local scoping works, the four `NETWORK_EGRESS_COUNT` assertions in `router.rs` become
-order-independent and a cross-module dispatcher can no longer perturb them. If any of them now
-fails, the failure is real information — **do not loosen the assertion**.
+The four `NETWORK_EGRESS_COUNT` assertions all passed, including
+`synthetic_offline_is_immune_to_ambient_api_keys`, which ran with provider credentials present in
+the environment — the exact condition that used to perturb the process-global counter. No assertion
+was loosened.
 
-### 12.2 Push `fix/router-egress-spy-thread-local` and open a PR
-
-Only after 12.1 passes. The branch is 2 commits ahead of `origin/main` and unpushed. Pushing it
-triggers CI, which is the point: the fix gets the same three-OS treatment `main` got.
+### 12.2 ~~Push the branch and open a PR~~ — see §8.4 for the actual outcome
 
 ### 12.3 Apply the branch-protection recommendation (§10.2)
 
@@ -614,13 +693,13 @@ not accidentally committed build output. This is **not** the same defect class a
 assets that ship in the installer. The real, actionable finding is the 539,231 bytes of exact
 duplication in §12.5.
 
-### 13.2 The router fix is not test-verified
+### 13.2 The `lru` advisories — verified open, not yet remediated
 
-`cargo test`, `cargo check --all-targets`, and the clippy re-run all fail in this sandbox with
-`Access is denied (os error 5)` on registry reads and on writes under `target/`. This is an
-environment restriction, not a source defect — clippy returned 0 on an identical target set earlier
-in the session. **The fix is compile-verified only up to the point the first run reached.** Treat it
-as unproven until §12.1 runs.
+Two `unsound` advisories affect `lru` 0.12.5, a **direct** workspace dependency, and the code calls
+`LruCache::pop()` at `crates/zylcode-core/src/router/cache.rs:62`. Patched in `lru >= 0.18.2`
+(RUSTSEC-2026-0253) and `>= 0.16.3` (RUSTSEC-2026-0002). No remediation has been applied: bumping a
+direct dependency is an owner decision requiring a full re-verification pass (§14). See §7.1 for the
+full advisory detail and the per-API exposure table.
 
 ### 13.3 The `release.yml` trigger is inferred, not observed
 
@@ -651,7 +730,7 @@ Each of these is a mutation this session deliberately did not perform.
 | # | Decision | Why it needs the owner |
 |---|---|---|
 | 1 | Apply branch protection to `main` (§10.2) | Repository settings change; affects every future contributor |
-| 2 | Push `fix/router-egress-spy-thread-local` and open a PR | Publishes a change that is compile-verified but not test-verified |
+| 2 | Bump `lru` from `"0.12"` to `">= 0.18.2"` in the workspace `Cargo.toml` | Dependency-version change against a direct dependency with unsound advisories; needs a full re-verification pass after the bump |
 | 3 | Merge / close the Dependabot PRs (§8.2) | Merging into `main`; five of them are major-version bumps |
 | 4 | Delete the duplicated branding assets (§12.5) | Deleting tracked files; needs the references checked first |
 | 5 | Whether to cut a `v*` tag to exercise `release.yml` | Creates a release; out of scope for a verification pass |
