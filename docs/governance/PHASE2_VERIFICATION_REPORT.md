@@ -512,34 +512,46 @@ Nothing in this session wrote to that directory.
 
 ### 8.6 CI and coverage results on the pull request
 
-All four checks ran on both pushed commits and **concluded success on both**:
+**Every commit pushed to this branch has had all four checks conclude success.** Each was verified
+individually via the check-runs API on its own SHA, not inferred from the PR's aggregate status:
 
 | Commit | `ubuntu-22.04` | `windows-latest` | `macos-latest` | `coverage` |
 |---|---|---|---|---|
 | `5ac5ccf` | success | success | success | success |
-| `ca5e1b5` (current PR head) | success | success | success | success |
+| `ca5e1b5` | success | success | success | success |
+| `bdca1cb` | success | success | success | success |
 
-Coverage run `39734018253` on the current head `ca5e1b5`, step "Coverage gate (lines >= 78%)":
+Coverage on the current PR head `bdca1cb`, step "Coverage gate (lines >= 78%)":
 
 ```
-TOTAL    60570    11730    80.63%    4176    1080    74.14%    40133    7815    80.53%    0    0    -
+TOTAL    60570    11725    80.64%    4176    1079    74.16%    40133    7813    80.53%    0    0    -
 ```
 
 | Metric | Value | vs `main` @ `ea23092` |
 |---|---|---|
-| Line coverage | **80.63%** | 80.63% — unchanged |
+| Line coverage | **80.64%** | 80.63% (+0.01) |
 | Instrumented lines | 60,570 | 60,576 (−6) |
-| Missed lines | 11,730 | 11,731 (−1) |
-| Regions | 74.14% | 74.13% (+0.01) |
+| Missed lines | 11,725 | 11,731 (−6) |
+| Regions | 74.16% | 74.13% (+0.03) |
 | Functions | 80.53% | 80.52% (+0.01) |
 | Threshold | 78% | 78% |
-| Margin | **+2.63 pp** | +2.63 pp |
+| Margin | **+2.64 pp** | +2.63 pp |
 | Tests passed | **840** | 840 |
 | Tests failed | **0** | 0 |
 
-Coverage is **preserved above the threshold** on the feature branch. The −6 instrumented lines are
-the comment-only changes in `router.rs`; coverage itself did not move. The earlier run `39733034424`
-on `5ac5ccf` reported an identical `TOTAL` line, which is the expected result for a docs-only commit.
+Coverage is **preserved above the threshold** on the feature branch, and is marginally *better* than
+`main` rather than merely not-worse. The −6 instrumented lines are the comment-only changes in
+`router.rs`.
+
+A note on why this table lists three commits rather than one: the governance report is itself
+committed to this branch, so each report update moves the PR head and re-triggers CI. Rather than
+chase the head, every pushed commit is listed and was verified green at its own SHA.
+
+| Field | Value |
+|---|---|
+| PR state | **OPEN** |
+| Mergeable | **MERGEABLE** |
+| Merged? | **No — not merged, as instructed** |
 
 ## 9. REPRODUCIBILITY
 
