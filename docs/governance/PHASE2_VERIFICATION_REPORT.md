@@ -29,7 +29,7 @@ advisories, one of whose affected APIs is called in production code (§7.1).
 |---|---|
 | Verified resolved | Coverage gate + measured coverage; PR #22 merge; egress-spy race (**fix written AND test-verified**, §5.1) |
 | Newly delivered | `.env.example`, rewritten CONTRIBUTING §§1-3 |
-| Still open | Branch protection on `main`; `lru` 0.12.5 unsound advisories (§7.1) |
+| Still open | Branch protection on `main` (§10); pushing/merging the `lru` remediation (§12.7) |
 | Committed locally | 3 commits on `fix/router-egress-spy-thread-local` |
 
 ---
@@ -702,8 +702,15 @@ score.
 2. **`lru` 0.12.5 carries two unsound advisories, and one affected API is called in production**
    (§7.1). `LruCache::pop()` is invoked at `crates/zylcode-core/src/router/cache.rs:61`. Patched in
    `lru >= 0.18.2`. **Dependabot will not propose this bump** because the requirement `"0.12"`
-   already permits 0.12.5. This is the highest-severity open item in this report.
-3. **The `NETWORK_EGRESS_COUNT` fix is now test-verified** — see §5.3. This supersedes the earlier
+   already permits 0.12.5.
+
+   **Remediation prepared and verified, not pushed (§12.7):** branch
+   `fix/lru-0-12-unsound-advisories` @ `f0c729b` moves `lru` to 0.18.5 and `tokio` off the yanked
+   1.54.0 to 1.54.1, with **zero source changes**. `zylcode-core` — the only crate that depends on
+   `lru` — compiles and passes 499 lib tests plus 13 cache tests, and the fresh audit shows both
+   `lru` advisories and the `tokio` yank gone. What remains is owner approval to push it, plus a
+   workspace test and clippy run that this sandbox blocks.
+3. **The `NETWORK_EGRESS_COUNT` fix is now test-verified** — see §5.1. This supersedes the earlier
    "compile-verified only" note.
 4. **Fifteen open Dependabot PRs (§8.2),** five of which are currently failing their checks.
 5. **Large-file finding (#5) was measured, not remediated** — see §13.1. The duplication it exposed
@@ -796,19 +803,80 @@ The score is **unconfirmed until the repository is re-scored**, and re-scoring b
 those open. Order matters: apply branch protection and bump `lru`, merge PR #23, let CI run on
 `main`, and *then* request the re-score. Nothing in this report predicts what it will return.
 
-### 12.7 Bump `lru` from `"0.12"` to `">= 0.18.2"` — **highest-severity open item**
+### 12.7 `lru` remediation — **PREPARED AND VERIFIED, NOT PUSHED** (2026-10-22)
 
-Two `unsound` advisories affect a **direct** workspace dependency, and `LruCache::pop()` is called at
-`crates/zylcode-core/src/router/cache.rs:61`. Details and per-API exposure are in §7.1. This needs:
+This was the reviewer's first recommendation and the highest-severity open item. It has been
+implemented on a separate branch and verified as far as this environment permits. **It has not been
+pushed**, because a direct-dependency version change needs owner approval.
 
-1. `Cargo.toml` workspace requirement bumped to `"0.18"` (or `"0.19"`).
-2. A check that `LruCache`'s API is still compatible — the crate uses `new`, `get`, `put`, `pop`,
-   `len`, `clear` only, which is a small and stable surface.
-3. A full re-run of the §5 battery, because a dependency bump is exactly the kind of change that
-   moves coverage.
-4. Confirmation that `cargo audit` reports 0 warnings for `lru` afterwards.
+| Field | Value |
+|---|---|
+| Branch | `fix/lru-0-12-unsound-advisories` (off `origin/main` @ `ea23092`) |
+| Commit | `f0c729b` |
+| Pushed | **No** |
+| Source files changed | **Zero** — `crates/` is untouched |
 
-Dependabot will not do this for you (§7.1).
+#### What changed
+
+| Dependency | Before | After | Why |
+|---|---|---|---|
+| `lru` | `"0.12"` / locked 0.12.5 | `"0.18"` / locked **0.18.5** | Two `unsound` advisories; patched in `>= 0.18.2` |
+| `tokio` | locked 1.54.0 | locked **1.54.1** | 1.54.0 is **yanked**; 1.54.1 satisfies the existing `"1.38"` requirement |
+
+**No source change was required.** The API surface the cache uses — `LruCache::new`, `get`, `put`,
+`pop`, `len`, `clear` — is unchanged across the `lru` major version. `Cargo.toml` differs from `main`
+by exactly one line.
+
+The lockfile goes **598 → 595 packages**: `allocator-api2` 0.2.21, `foldhash` 0.1.5, and
+`hashbrown` 0.15.5 drop out as former transitive dependencies of `lru` 0.12. `lru` now depends on
+`hashbrown` 0.17.1, which was already in the tree.
+
+**Only `zylcode-core` depends on `lru`** — verified by reading every workspace `Cargo.toml`. The blast
+radius is one crate.
+
+#### Verification actually performed
+
+| Check | Result |
+|---|---|
+| `cargo check -p zylcode-core` | **PASS** — exit 0 |
+| `cargo test -p zylcode-core --lib cache::` | **PASS** — **13 passed, 0 failed** |
+| `cargo test -p zylcode-core --lib` | **PASS** — **499 passed, 0 failed** |
+| `cargo audit` | **PASS** — **0 vulnerabilities, 3 warnings** (down from 6) |
+
+The cache test run includes the two tests that directly exercise the affected behaviour:
+
+- `router::cache::tests::cache_ttl_expiry` — the TTL-expiry path that calls `guard.pop(&key)`, i.e.
+  the exact API named in RUSTSEC-2026-0253
+- `router::cache::tests::lru_evicts_oldest` — the LRU eviction path
+
+#### What the fresh audit now shows
+
+| Category | Before | After |
+|---|---|---|
+| unmaintained | 2 (`proc-macro-error`, `unsafe-libyaml`) | 2 — **unchanged, both transitive** |
+| unsound | 3 (`glib`, `lru` ×2) | **1** — `glib` only, transitive |
+| yanked | 1 (`tokio` 1.54.0) | **0** |
+| **vulnerabilities** | **0** | **0** |
+
+Both `lru` advisories are gone and the `tokio` yank is gone. The three remaining warnings are all
+**transitive** and **not actionable by this repository**:
+
+- `proc-macro-error` 1.0.4 — via `glib-macros` / `gtk3-macros` (the Tauri/GTK Linux stack)
+- `unsafe-libyaml` 0.2.11 — via `serde_yaml`
+- `glib` 0.18.5 — via `atk`, `cairo-rs`, `gdk`, `gio` (the Tauri/GTK Linux stack)
+
+All three need upstream releases; none can be fixed by editing this repository's manifests.
+
+#### Blocked, not passed
+
+| Check | Status | Exact blocker |
+|---|---|---|
+| `cargo test --workspace --all-targets` | **BLOCKED** | Sandbox denies **reads** of registry sources (`mio-1.2.4/src/sys/mod.rs`, `tempfile-3.27.0/src/env.rs` → `OS Error 5`) and **writes/removals** under `target/debug/deps/*.rcgu.o` and `.fingerprint/*`. The failing crates — `tonic`, `opentelemetry-proto`, `zylcode-nav`, `tauri-utils` — **do not depend on `lru`**. Failures are `OS Error 5` permission denials, not compile errors. |
+| `cargo clippy --workspace --all-targets -- -D warnings` | **BLOCKED** | Same class of denial (`failed to remove … .rcgu.o: OS Error 5`). |
+
+These must be re-run in CI or on an unrestricted machine **before this branch is merged**. Note that
+`cargo check -p zylcode-nav` completed successfully (exit 0) in the same session, which is why the
+workspace failure is attributed to the environment rather than to the dependency change.
 
 ### 12.8 Verify `release.yml` from a real `v*` tag — **before cutting any release**
 
@@ -886,7 +954,7 @@ Each of these is a mutation this session deliberately did not perform.
 | # | Decision | Why it needs the owner |
 |---|---|---|
 | 1 | Apply branch protection to `main` (§10.2) | Repository settings change; affects every future contributor |
-| 2 | Bump `lru` from `"0.12"` to `">= 0.18.2"` in the workspace `Cargo.toml` | Dependency-version change against a direct dependency with unsound advisories; needs a full re-verification pass after the bump |
+| 2 | Push `fix/lru-0-12-unsound-advisories` (`f0c729b`) and open a PR | Direct-dependency version change against a dependency with unsound advisories. **Already implemented and verified locally** (§12.7); needs approval to publish, plus a workspace test and clippy run that this sandbox blocks |
 | 3 | Merge / close the Dependabot PRs (§8.2) | Merging into `main`; five of them are major-version bumps |
 | 4 | Delete the duplicated branding assets (§12.5) | Deleting tracked files; needs the references checked first |
 | 5 | Whether to cut a `v*` tag to exercise `release.yml` | Creates a release; out of scope for a verification pass |
