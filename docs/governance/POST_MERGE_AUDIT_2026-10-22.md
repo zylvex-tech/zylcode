@@ -457,9 +457,15 @@ solid engineering evidence and an unguarded `main`.
 
 ### P3 — backlog
 
-7. **Dependabot triage.** 15 Dependabot PRs are open; 5 are failing and 6 are green
-   major-version bumps where green CI is not by itself evidence of behavioural
-   equivalence. Each needs an individual decision.
+7. **Dependabot triage.** 15 Dependabot PRs are open. Verified per head SHA on
+   2026-10-22: **5 carry a failing check** — #7 (`pnpm/action-setup` 3→6), #8
+   (`actions/setup-node` 4→7, mixed), #12 (`toml` 0.8.2→1.1.8), #14 (`rusqlite`
+   0.31.0→0.40.2), #17 (`eslint-plugin-react-hooks` 5.2.0→7.1.1) — and **10 are
+   green**. Of those 10, **8 are major or semver-0.x-breaking bumps** (#9
+   `tauri-action` 0→1, #13 `actions/checkout` 4→7, #18 `react`, #19
+   `framer-motion` 11→14, plus #10, #11, #15, #16 which cross a 0.x minor).
+   Green CI is not by itself evidence of behavioural equivalence for a breaking
+   bump; each needs an individual decision.
 8. **Repository hygiene.** 539,231 bytes of exact duplication between
    `apps/zylcode-desktop/branding/` and `public/branding/` (byte-identical
    `lockup.png` and `wordmark.png`). No file exceeds 1 MiB other than those two
@@ -483,7 +489,8 @@ solid engineering evidence and an unguarded `main`.
   claim (0 matches) were re-run against `main`'s tree rather than carried forward
   from an earlier report.
 - **Not verified:** whether `tauri` 2.12.5 vendors `glib >= 0.20`; whether the macOS
-  suite is stable across repeated runs; the contents of any of the 15 open
-  Dependabot PRs beyond their check status.
+  suite is stable across repeated runs; the *contents* of any of the 15 open
+  Dependabot PRs — their per-head-SHA check status was queried (§7 item 7), but no
+  PR was reviewed for behavioural impact.
 - **No score is asserted** for DataFactor, and none should be inferred from this
   document.
