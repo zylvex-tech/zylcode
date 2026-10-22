@@ -29,7 +29,7 @@ advisories, one of whose affected APIs is called in production code (§7.1).
 |---|---|
 | Verified resolved | Coverage gate + measured coverage; PR #22 merge; egress-spy race (**fix written AND test-verified**, §5.1) |
 | Newly delivered | `.env.example`, rewritten CONTRIBUTING §§1-3 |
-| Still open | Branch protection on `main` (§10); pushing/merging the `lru` remediation (§12.7) |
+| Still open | Branch protection on `main` (§10); merging PRs #23 and #24 (§12.7) |
 | Committed locally | 3 commits on `fix/router-egress-spy-thread-local` |
 
 ---
@@ -708,12 +708,13 @@ score.
    `lru >= 0.18.2`. **Dependabot will not propose this bump** because the requirement `"0.12"`
    already permits 0.12.5.
 
-   **Remediation prepared and verified, not pushed (§12.7):** branch
-   `fix/lru-0-12-unsound-advisories` @ `f0c729b` moves `lru` to 0.18.5 and `tokio` off the yanked
-   1.54.0 to 1.54.1, with **zero source changes**. `zylcode-core` — the only crate that depends on
-   `lru` — compiles and passes 499 lib tests plus 13 cache tests, and the fresh audit shows both
-   `lru` advisories and the `tokio` yank gone. What remains is owner approval to push it, plus a
-   workspace test and clippy run that this sandbox blocks.
+   **Remediation published as PR #24 (§12.7):** branch `fix/lru-0-12-unsound-advisories` @ `f0c729b`
+   moves `lru` to 0.18.5 and `tokio` off the yanked 1.54.0 to 1.54.1, with **zero source changes**.
+   `zylcode-core` — the only crate that depends on `lru` — passes 499 lib tests plus 13 cache tests
+   locally, and CI supplies the two checks the sandbox blocked: **840 tests passed on each of the
+   three OSes, 0 failures, clippy clean under `-D warnings`, coverage 80.63% — identical to `main`**
+   — and the CI audit shows both `lru` advisories and the `tokio` yank gone, leaving only the three
+   transitive warnings. **Not merged** — merge is conditional on the owner's review.
 3. **The `NETWORK_EGRESS_COUNT` fix is now test-verified** — see §5.1. This supersedes the earlier
    "compile-verified only" note.
 4. **Fifteen open Dependabot PRs (§8.2),** five of which are currently failing their checks.
@@ -817,7 +818,8 @@ pushed**, because a direct-dependency version change needs owner approval.
 |---|---|
 | Branch | `fix/lru-0-12-unsound-advisories` (off `origin/main` @ `ea23092`) |
 | Commit | `f0c729b` |
-| Pushed | **No** |
+| Pushed | **Yes** — PR **#24**, https://github.com/zylvex-tech/zylcode/pull/24 |
+| Merged | **No** — merge remains conditional on the CI evidence, which is now green |
 | Source files changed | **Zero** — `crates/` is untouched |
 
 #### What changed
@@ -869,18 +871,59 @@ Both `lru` advisories are gone and the `tokio` yank is gone. The three remaining
 - `unsafe-libyaml` 0.2.11 — via `serde_yaml`
 - `glib` 0.18.5 — via `atk`, `cairo-rs`, `gdk`, `gio` (the Tauri/GTK Linux stack)
 
-All three need upstream releases; none can be fixed by editing this repository's manifests.
+All three need upstream releases. **This is a working assessment, not a conclusion.** Transitive
+dependencies can sometimes be upgraded through compatible parent versions or other
+dependency-resolution changes, so these are recorded as **remaining warnings to investigate
+separately** rather than as a clean bill of health. Nothing here should be read as claiming the
+dependency tree is completely clean.
 
-#### Blocked, not passed
+#### The two locally-blocked checks are now covered by CI — **PASS**
 
-| Check | Status | Exact blocker |
+Both were blocked locally by sandbox permission errors. **CI has now supplied the missing evidence.**
+On commit `f0c729b`, in CI run `39760447188`:
+
+| Step | ubuntu-22.04 | windows-latest | macos-latest |
+|---|---|---|---|
+| Cargo check (workspace, all targets) | **success** | **success** | **success** |
+| Cargo clippy (`-D warnings`) | **success** | **success** | **success** |
+| Cargo fmt (rustfmt check) | **success** | **success** | **success** |
+| Cargo test (workspace) | **success** | **success** | **success** |
+| Cargo audit | **success** | **success** | **success** |
+| pnpm audit | **success** | **success** | **success** |
+| Secret scan | **success** | **success** | **success** |
+| Retracted-claim guard | **success** | **success** | **success** |
+
+Measured, not inferred:
+
+| Metric | Value |
+|---|---|
+| Tests passed | **840 on each of the three OSes** (2,520 total) |
+| Tests failed | **0** on every OS |
+| Clippy lints | **0** (no `warning:`/`error:` lines other than the `generated N warnings` summaries) |
+| Coverage | **80.63%** lines (60,576 / 11,731) vs the 78% floor |
+| Coverage vs `main` | **Identical** — 60,576 / 11,731 / 80.63% |
+
+The coverage figure being *identical* to `main`, to the line, is meaningful evidence that the
+dependency bump changed no code path. The CI log also shows `Downloaded lru v0.18.5`,
+`Checking lru v0.18.5`, `Compiling lru v0.18.5`, and
+`test router::cache::tests::lru_evicts_oldest ... ok` — the new version really was built and really
+was exercised.
+
+The CI audit independently reproduces the local result on all three OSes: **3 allowed warnings**, and
+the only advisories present are `RUSTSEC-2024-0370`, `RUSTSEC-2024-0449` and `RUSTSEC-2024-0429`.
+**`RUSTSEC-2026-0253` and `RUSTSEC-2026-0002` do not appear**, and there is no `tokio` yank warning.
+The pnpm audit step reports "No known vulnerabilities found".
+
+#### What was blocked locally, for the record
+
+| Check | Local status | Exact blocker |
 |---|---|---|
 | `cargo test --workspace --all-targets` | **BLOCKED** | Sandbox denies **reads** of registry sources (`mio-1.2.4/src/sys/mod.rs`, `tempfile-3.27.0/src/env.rs` → `OS Error 5`) and **writes/removals** under `target/debug/deps/*.rcgu.o` and `.fingerprint/*`. The failing crates — `tonic`, `opentelemetry-proto`, `zylcode-nav`, `tauri-utils` — **do not depend on `lru`**. Failures are `OS Error 5` permission denials, not compile errors. |
 | `cargo clippy --workspace --all-targets -- -D warnings` | **BLOCKED** | Same class of denial (`failed to remove … .rcgu.o: OS Error 5`). |
 
-These must be re-run in CI or on an unrestricted machine **before this branch is merged**. Note that
-`cargo check -p zylcode-nav` completed successfully (exit 0) in the same session, which is why the
-workspace failure is attributed to the environment rather than to the dependency change.
+The attribution of those local failures to the environment was a **hypothesis**, not proof — `cargo
+check -p zylcode-nav` succeeding (exit 0) in the same session was supporting evidence, but the
+conclusive evidence is the CI run above, which passes on all three operating systems.
 
 ### 12.8 Verify `release.yml` from a real `v*` tag — **before cutting any release**
 
@@ -958,7 +1001,7 @@ Each of these is a mutation this session deliberately did not perform.
 | # | Decision | Why it needs the owner |
 |---|---|---|
 | 1 | Apply branch protection to `main` (§10.2) | Repository settings change; affects every future contributor |
-| 2 | Push `fix/lru-0-12-unsound-advisories` (`f0c729b`) and open a PR | Direct-dependency version change against a dependency with unsound advisories. **Already implemented and verified locally** (§12.7); needs approval to publish, plus a workspace test and clippy run that this sandbox blocks |
+| 2 | Merge PR #24 (`fix/lru-0-12-unsound-advisories` @ `f0c729b`) | **Already published and CI-green** (§12.7). Merging into `main` is the owner's decision; the reviewer's stated condition — full CI evidence — is now satisfied |
 | 3 | Merge / close the Dependabot PRs (§8.2) | Merging into `main`; five of them are major-version bumps |
 | 4 | Delete the duplicated branding assets (§12.5) | Deleting tracked files; needs the references checked first |
 | 5 | Whether to cut a `v*` tag to exercise `release.yml` | Creates a release; out of scope for a verification pass |
