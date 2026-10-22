@@ -25,7 +25,7 @@ inspect). No result is reported as passing on the strength of an earlier commit.
 | 6 | Are the `lru` unsound advisories resolved? | Yes — `lru` 0.18.5, both advisories absent from the audit | **VERIFIED** |
 | 7 | Is the Tokio yanked-release issue resolved? | Yes — Tokio 1.54.1, no `yanked` warnings | **VERIFIED** |
 | 8 | Are any *vulnerable* advisories outstanding? | No — 0 vulnerabilities, 3 informational warnings | **VERIFIED** |
-| 9 | Is `main` protected by branch protection or a ruleset? | **No** | **FAILED** |
+| 9 | Is `main` protected by branch protection or a ruleset? | **No at audit time** — remediated 2026-10-22 14:19 UTC, see §5.2 | **FAILED (then) / REMEDIATED (now)** |
 | 10 | Is the repository ready for a DataFactor re-submission? | Substantially, with two governance gaps (§6) | **VERIFIED (conditional)** |
 
 **The one-sentence answer:** both fixes are merged, CI is green on the resulting
@@ -398,6 +398,54 @@ to disable the check. The ordering in §7 therefore puts the flakiness fix **bef
 enabling required checks, so the gate is trustworthy on the day it becomes
 mandatory.
 
+### 5.2 Remediation — applied 2026-10-22 (owner-authorized)
+
+The gap described above was closed on **2026-10-22 at 14:19 UTC** under explicit
+owner authorization, after the reviewer's recommendation and after the macOS
+stability question was settled with evidence (below). The audit finding in §5 stands
+as written; this section records what changed.
+
+**Applied configuration — verified by readback:**
+
+| Setting | Value | Verified |
+|---|---|---|
+| Require a pull request before merging | **on**, 1 approval | yes |
+| Require status checks to pass | **on** | yes |
+| Required checks | `check / test / frontend (ubuntu-22.04)`, `check / test / frontend (windows-latest)`, `check / test / frontend (macos-latest)`, `coverage` | yes |
+| Require branches to be up to date | **on** (`strict: true`) | yes |
+| Require conversation resolution | **on** | yes |
+| Do not allow bypassing the above | **on** (`enforce_admins: true`) | yes |
+| Allow force pushes | **off** | yes |
+| Allow deletions | **off** | yes |
+| Required linear history | **off** — deliberate: this repo merges with merge commits | yes |
+
+**The macOS question was settled with data, not assumption.** The reviewer's caution
+was that one green run does not establish stability. Rather than assume either way,
+the macOS job conclusion was pulled for the last 16 CI runs:
+
+| Outcome | Count | Detail |
+|---|---|---|
+| success | 12 | — |
+| failure | 2 | `184e178` (the flaky egress guard, **pre-PR #23**) and `67f9910` (**PR #14, `rusqlite` 0.31 to 0.40**) |
+| consecutive successes since PR #23 | **5** | `3bd5059`, `7ea578d`, `33b1ad3`, `4e24e2a`, `794fc46` |
+
+Critically, the second failure is **not flakiness** — it is a deterministic compile
+error, `error[E0277]: the trait bound u64: FromSql is not satisfied`, which fails
+identically on every run. That is precisely the class of defect a required check
+exists to catch. The only genuinely flaky failure in the entire history is the one
+PR #23 structurally eliminated, by making the egress counter thread-local so
+cross-test interference is impossible by construction rather than improbable.
+
+**One check was deliberately *not* required: `Dependabot`.** It is reported on
+`4e24e2a` but **not** on `3bd5059`. Requiring a check that does not run on every
+commit would block merges waiting for a status that never arrives.
+
+**Residual risk, stated plainly.** Five consecutive green runs is good evidence, not
+a formal stability baseline. If macOS flakes again, the correct response is to fix
+the test — not to remove it from the required set, because a required check that can
+be quietly dropped is no protection at all. The ~10-run baseline remains a P2 item
+in §7.
+
 ---
 
 ## 6. DataFactor re-submission checklist
@@ -428,9 +476,12 @@ solid engineering evidence and an unguarded `main`.
 
 ### P0 — before the next merge
 
-1. **Enable branch protection on `main`** (§5.1). Owner action in GitHub settings;
-   cannot be done from a commit. Until this exists, every other control in this
-   repository is a convention rather than a guarantee.
+1. ~~**Enable branch protection on `main`** (§5.1).~~ **DONE 2026-10-22 14:19 UTC.**
+   Applied and verified by readback; see §5.2 for the exact configuration and for
+   the macOS stability evidence that settled the reviewer's caution.
+   **Still to do by the owner:** confirm the required-check list stays correct if
+   `ci.yml` or `coverage.yml` job names ever change — a renamed job silently stops
+   satisfying a required check and would block merges.
 
 ### P1 — high value, low risk
 
