@@ -7,19 +7,30 @@ and no `# allow` anywhere in the dependency configuration. The gates in
 `.github/workflows/ci.yml` run unmodified and would still fail on a *new*
 advisory of the same class.
 
-**Last measured:** 2026-10-21, on branch
-`hardening/phase1-security-and-reproducibility` at HEAD
-`a4f6b3e2` + the Phase-1 changes, with `cargo audit 0.22.2` against the
-committed `Cargo.lock` (598 crate dependencies, `version = 3`) and the RustSec
-advisory database (`Loaded 1348 security advisories`).
+**Current count: 3 advisories** (2 unmaintained, 1 unsound), 0 vulnerable.
+Last revised 2026-10-22 after PR #24 resolved the two `lru` advisories. The
+post-merge audit that produced this revision is
+[`POST_MERGE_AUDIT_2026-10-22.md`](POST_MERGE_AUDIT_2026-10-22.md) §4.
+
+**Last measured:** 2026-10-22, on `main` at HEAD
+`3bd50599e70942a7bc00c50e4f83f12db8fdebce`, with `cargo audit 0.22.2` against the
+committed `Cargo.lock` (595 crate dependencies, `version = 3`) and the RustSec
+advisory database (`Loaded 1349 security advisories`).
 
 **Command that produced these numbers:**
 
 ```
-cargo audit                 # exit 0 — 5 warnings, 0 vulnerabilities
-cargo audit --deny warnings # exit 1 — 5 denied warnings (see below)
+cargo audit                 # exit 0 — 3 warnings, 0 vulnerabilities
+cargo audit --deny warnings # exit 1 — 3 denied warnings (see below)
 pnpm audit --prod           # exit 0 — no known vulnerabilities found
 ```
+
+**What changed since the previous revision (2026-10-21):** `lru` 0.12.5 → 0.18.5 and
+`tokio` 1.54.0 → 1.54.1, via PR #24 (`fix/lru-0-12-unsound-advisories`).
+RUSTSEC-2026-0002 and RUSTSEC-2026-0253 are therefore **resolved** and their rows
+have been removed. The advisory count went from five to three, and the crate count
+from 598 to 595 (`allocator-api2`, `foldhash` and `hashbrown` dropped out of the
+graph).
 
 ---
 
@@ -33,18 +44,16 @@ this file exists rather than a config override:
 | **vulnerable** | non-zero | an exploitable weakness in a version in the locked graph |
 | **unmaintained / unsound** | zero | the crate is no longer maintained, or contains `unsafe` that the maintainers consider sound only under assumptions you may be violating |
 
-The workspace currently has **zero `vulnerable` advisories** and **five
+The workspace currently has **zero `vulnerable` advisories** and **three
 `unmaintained`/`unsound` advisories**. That is why CI runs `cargo audit` and not
 `cargo audit --deny warnings`: the latter would fail on advisories that are not
 exploitable, and a gate that fails for a non-reason is a gate that gets disabled.
 
 | ID | Crate | Version | Class | Why it is accepted |
 |---|---|---|---|---|
-| RUSTSEC-2024-0370 | `proc-macro-error` | 1.0.4 | unmaintained | Transitive via `syn`/`quote`-derived macros. No replacement exists upstream; the code is a stable, widely-vendored macro helper. |
-| RUSTSEC-2024-0449 | `unsafe-libyaml` | 0.2.11 | unmaintained | Transitive via `serde_yaml` 0.9. Only reached when parsing YAML MCP configuration, and only from a local file the user already trusts. |
-| RUSTSEC-2024-0429 | `glib` | 0.18.5 | unsound | `Iterator`/`DoubleEndedIterator` impls for `glib::VariantStrIter` violate stacked borrows. Pulled in by Tauri's GLib binding. **This codebase does not use `VariantStrIter`** — the unsafe path is not reachable from ZylCode's own source. |
-| RUSTSEC-2026-0002 | `lru` | 0.12.5 | unsound | `IterMut` invalidates an internal pointer under Stacked Borrows. The only `LruCache` in the workspace is `SpeculativeCache` in `crates/zylcode-core/src/router/cache.rs`; `IterMut` is not called on it. |
-| RUSTSEC-2026-0253 | `lru` | 0.12.5 | unsound | `LruCache::pop()` lacks panic safety. Same cache, same assessment: `pop()` is not on a path ZylCode calls. |
+| RUSTSEC-2024-0370 | `proc-macro-error` | 1.0.4 | unmaintained | Transitive via `glib-macros` ← `glib` ← `tauri` 2.12.4. A **build-time proc-macro**: it runs only while compiling `glib-macros`, is never linked into the shipped binary, and never executes at runtime. No replacement exists upstream. |
+| RUSTSEC-2024-0449 | `unsafe-libyaml` | 0.2.11 | unmaintained | Transitive via `serde_yaml` 0.9.34+deprecated, a direct dependency of `zylcode-core` and `zylcode-mcp`. Reached only when parsing local YAML configuration files the user already controls. **Actionable:** migrate to `serde_norway` 0.9.42 (same 0.9 API) at the four `serde_yaml::from_str` call sites. See `POST_MERGE_AUDIT_2026-10-22.md` §4.3. |
+| RUSTSEC-2024-0429 | `glib` | 0.18.5 | unsound | `Iterator`/`DoubleEndedIterator` impls for `glib::VariantStrIter` violate stacked borrows. Pulled in by Tauri's GLib binding on **Linux only**. **This codebase does not use `VariantStrIter`** — the unsafe path is not reachable from ZylCode's own source. Patched in `glib >= 0.20`, but `gtk` 0.18.2 pins `glib` 0.18.x, so the only lever is a `tauri` bump. |
 
 ### Why these are not "suppressed"
 
@@ -56,38 +65,50 @@ config*. Concretely, none of the following exists in the tree:
 - no `pnpm` `overrides` entry that pins a *vulnerable* version down
 - no `--ignore` / `--deny` flags in `.github/workflows/ci.yml`
 
-If any of the five above were ever upgraded to `vulnerable`, `cargo audit` in CI
+If any of the three above were ever upgraded to `vulnerable`, `cargo audit` in CI
 would exit non-zero and the build would go red without anyone touching this file.
 
-### Re-examining the two `unsound` entries
+### Re-examining the one remaining `unsound` entry
 
 "Not called by us" is a claim, and claims need to be checkable:
 
 ```
-grep -rn "VariantStrIter" crates/          # no matches — glib unsafe path unreachable
-grep -rn "IterMut\|\.pop()" crates/        # no matches on the LruCache in
-                                           # crates/zylcode-core/src/router/cache.rs
+grep -rn "VariantStrIter" crates/ apps/   # no matches — glib unsafe path unreachable
 ```
 
-Both were run on 2026-10-21 and returned nothing. The only `LruCache` in the
-workspace is `SpeculativeCache` in `crates/zylcode-core/src/router/cache.rs`, and
-it is reached through `get`/`put`/eviction only.
+Re-run against `main` @ `3bd5059` on 2026-10-22: **0 matches**. If a future change
+introduces a `VariantStrIter` call, the advisory stops being theoretical and must be
+treated as a vulnerability.
 
-Re-run both before relying on this row. If a future change introduces either
-call, the advisory stops being theoretical and must be treated as a
-vulnerability.
+**A correction to the previous revision of this file.** It claimed that
+`grep -rn "IterMut\|\.pop()" crates/` returned no matches, and that `lru`'s `pop()`
+"is not on a path ZylCode calls". That was **false**: `crates/zylcode-core/src/router/cache.rs:61`
+calls `guard.pop(&key)` on the `LruCache`, so the RUSTSEC-2026-0253 code path was
+live. Both `lru` advisories are now resolved by the 0.18.5 upgrade, which makes the
+row moot — but the claim itself was wrong when written, and it is recorded here so it
+does not survive as a precedent for how reachability is asserted. The reachability
+command above is the honest version: one pattern, one grep, one result.
 
-### Re-examining the three `unmaintained` entries
+### Re-examining the two `unmaintained` entries
 
 Unmaintained is a forward-looking risk, not a present defect: the code is
 currently correct and has no known CVE. The trigger for action is a new advisory
 or a Rust edition bump that breaks the build — not the passage of time.
 
+Of the two, only `unsafe-libyaml` is directly actionable, and the action is clean:
+swap `serde_yaml` for the maintained fork `serde_norway` 0.9.42, which preserves
+the 0.9 API, across the four `serde_yaml::from_str` call sites in `zylcode-core`
+and `zylcode-mcp`. `proc-macro-error` has no lever this workspace can pull — it is
+a build-time proc-macro reached through Tauri's `glib-macros`, and its replacement
+would have to happen upstream.
+
 ---
 
 ## 2. JavaScript advisories (`pnpm audit --prod`)
 
-**As of 2026-10-21: clean. `pnpm audit --prod` exits 0.**
+**As of 2026-10-22: clean. `pnpm audit --prod` exits 0.** Re-verified in CI run
+#120 on `main` @ `3bd5059` (`No known vulnerabilities found`), and independently
+in the local audit recorded in `POST_MERGE_AUDIT_2026-10-22.md` §4.1.
 
 Before this branch, `pnpm audit --prod` reported **5 vulnerabilities (3 low,
 2 moderate)**, all in `dompurify` reached transitively through
