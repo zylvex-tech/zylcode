@@ -396,7 +396,7 @@ carries two `unsound` advisories — not a transitive one-off:
 
 | Advisory API | Called here? | Evidence |
 |---|---|---|
-| `LruCache::pop()` | **YES** | `crates/zylcode-core/src/router/cache.rs:62` — `guard.pop(&key);` inside `SpeculativeCache::get()`, on TTL expiry |
+| `LruCache::pop()` | **YES** | `crates/zylcode-core/src/router/cache.rs:61` — `guard.pop(&key);` inside `SpeculativeCache::get()`, on TTL expiry |
 | `LruCache::iter_mut()` | No | `LruCache` is used in exactly one place (`router/cache.rs:19,27`) and only `get`/`put`/`len`/`clear`/`pop` are called on it. The `iter_mut()` calls elsewhere in the tree (`missions.rs`, `artifact_bus.rs`, `factory/graph.rs`, `intelligence/manifest.rs`, `router.rs:1642`, `nav/index.rs`) are all on `Vec`/slice types. |
 
 So one of the two unsound APIs **is** exercised by production code. This is a real, currently-unfixed
@@ -439,22 +439,37 @@ PR #22's single change was `fetch-depth: 0` on `actions/checkout` in `coverage.y
 what converted the coverage workflow from "fails before the summary stage" into "measures 80.63%",
 because the repository-intelligence inputs need full history.
 
-### 8.2 Open pull requests
+### 8.2 Open pull requests — re-verified 2026-10-22
 
-| PR | Title | State | Assessment |
+**Sixteen PRs are open: fifteen Dependabot PRs plus PR #23.** An earlier revision of this report
+recorded nine; the count had grown. Each was re-checked individually for its check status.
+
+| PR | Bump | Checks | Assessment |
 |---|---|---|---|
-| #17 | `eslint-plugin-react-hooks` 5.2.0 → 7.1.1 | OPEN, checks failing | **Recommend closing.** v7 requires ESLint 10; the repo pins ESLint 9 flat config. Merging would force dropping `eslint-plugin-react-hooks` and/or the React hooks plugins from the lint setup. That is a lint-capability regression, not a security fix. |
-| #13 | `actions/checkout` 4 → 7 | OPEN | Routine; safe to merge once green. |
-| #14 | `rusqlite` 0.31.0 → 0.40.2 | OPEN | **Major bump** — needs a human review of the API changes before merge. |
-| #15 | `axum` 0.7.9 → 0.8.9 | OPEN | **Major bump** — needs review. |
-| #16 | `tracing-opentelemetry` 0.28.0 → 0.34.0 | OPEN | **Major bump** — needs review. |
-| #18 | `react` + `@types/react` | OPEN | Major bump; needs review. |
-| #19 | `framer-motion` 11.18.2 → 14.3.0 | OPEN | Major bump spanning two majors; needs review. |
-| #20 | `jsdom` 30.1.0 → 30.1.3 | OPEN | Patch; safe. |
-| #21 | `@tauri-apps/plugin-shell` 2.3.5 → 2.5.0 | OPEN | Minor; safe. |
+| #7 | `pnpm/action-setup` 3 → 6 | **FAILURE** | CI action major bump; failing. Investigate before merge. |
+| #8 | `actions/setup-node` 4 → 7 | **FAILURE + SUCCESS** (mixed) | Failing on at least one matrix leg. Investigate. |
+| #9 | `tauri-apps/tauri-action` 0 → 1 | SUCCESS | Green, but a 0→1 first stable release. Review the changelog before merging. |
+| #10 | `tree-sitter-rust` 0.23.3 → 0.24.2 | SUCCESS | Minor bump; green. Reasonable candidate. |
+| #11 | `opentelemetry-otlp` 0.28.0 → 0.33.1 | SUCCESS | Minor bump; green. Reasonable candidate. |
+| #12 | `toml` 0.8.2 → 1.1.8 | **FAILURE** | **Major bump, failing.** Do not merge. |
+| #13 | `actions/checkout` 4 → 7 | SUCCESS | Routine CI action bump; green. |
+| #14 | `rusqlite` 0.31.0 → 0.40.2 | **FAILURE** | **Major bump, failing.** Do not merge. |
+| #15 | `axum` 0.7.9 → 0.8.9 | SUCCESS | **Major bump but green.** Still needs a human review of the API changes; green CI is not proof of behavioural equivalence. |
+| #16 | `tracing-opentelemetry` 0.28.0 → 0.34.0 | SUCCESS | **Major bump but green.** Needs review. |
+| #17 | `eslint-plugin-react-hooks` 5.2.0 → 7.1.1 | **FAILURE** | **Recommend closing.** v7 requires ESLint 10; the repo pins ESLint 9 flat config. Merging would force dropping `eslint-plugin-react-hooks` and/or the React hooks plugins from the lint setup — a lint-capability regression, not a security fix. |
+| #18 | `react` + `@types/react` | SUCCESS | Major bump; green. Needs review. |
+| #19 | `framer-motion` 11.18.2 → 14.3.0 | SUCCESS | Major bump spanning two majors; green. Needs review. |
+| #20 | `jsdom` 30.1.0 → 30.1.3 | SUCCESS | Patch; safe. |
+| #21 | `@tauri-apps/plugin-shell` 2.3.5 → 2.5.0 | SUCCESS | Minor; safe. |
+| #23 | router egress-spy fix | **SUCCESS** (all four) | This branch. OPEN, not merged. |
+
+**Five PRs are failing** (#7, #8, #12, #14, #17). Four are green on minor/patch bumps (#10, #11, #13,
+#20, #21). Six are green but are **major-version bumps** (#9, #15, #16, #18, #19, and #17's ecosystem)
+where green CI is not sufficient evidence on its own — a major bump can pass every test and still
+change behaviour the tests do not cover.
 
 **No PR was merged, closed, or modified in this session.** Every action above is a recommendation
-for the owner. Merging PRs is a remote mutation and requires approval.
+for the owner. Merging or closing PRs is a remote mutation and requires approval.
 
 ### 8.3 Local work produced in this session
 
@@ -618,7 +633,7 @@ recommendation and requires owner approval.
 |---|---|
 | `GET /repos/zylvex-tech/zylcode/branches/main/protection` | **HTTP 404 — "Branch not protected"** |
 | `GET /repos/zylvex-tech/zylcode/rulesets` | `[]` — **zero rulesets** |
-| `GET /repos/zylvex-tech/zylcode/branches?per_page=100` | **21 branches, `protected: true` on 0 of them** |
+| `GET /repos/zylvex-tech/zylcode/branches?per_page=100` | **22 branches, `protected: true` on 0 of them** (re-verified 2026-10-22) |
 
 Consequences that are observable in this repository's own history, not hypothetical:
 
@@ -676,7 +691,7 @@ score.
 | 4 | `cargo fmt` / `clippy` | **Resolved on `main`** — both pass in CI | §5.2, PR #22 checks |
 | 5 | Large files | **Measured and characterised** — 2 files over 1 MiB, both legitimate binary brand assets; 539,231 B of exact duplication found | §13.1 |
 | 6 | Secrets | **Resolved** — scan clean, selftest passes, `.env.example` holds no values | §7, §9.1 |
-| 7 | Dependency hygiene | **Improved, but with a material open item** — 0 vulnerabilities; 6 informational warnings including **2 unsound advisories on the direct dependency `lru` 0.12.5, one of whose affected APIs (`pop()`) is called in production code**; 9 Dependabot PRs triaged | §7.1, §8.2 |
+| 7 | Dependency hygiene | **Improved, but with a material open item** — 0 vulnerabilities; 6 informational warnings including **2 unsound advisories on the direct dependency `lru` 0.12.5, one of whose affected APIs (`pop()`) is called in production code**; 15 open Dependabot PRs, 5 failing | §7.1, §8.2 |
 | 8 | Reproducible environment | **Resolved** — `.env.example` + `CONTRIBUTING.md` from source | §9 |
 | 9 | CI and branch protection | **Partially resolved** — CI yes; branch protection **still absent** | §10 |
 
@@ -685,18 +700,47 @@ score.
 1. **Branch protection on `main` (§10).** This is the single largest remaining structural gap. It is
    an owner decision, not a code change, and no amount of local work closes it.
 2. **`lru` 0.12.5 carries two unsound advisories, and one affected API is called in production**
-   (§7.1). `LruCache::pop()` is invoked at `crates/zylcode-core/src/router/cache.rs:62`. Patched in
+   (§7.1). `LruCache::pop()` is invoked at `crates/zylcode-core/src/router/cache.rs:61`. Patched in
    `lru >= 0.18.2`. **Dependabot will not propose this bump** because the requirement `"0.12"`
    already permits 0.12.5. This is the highest-severity open item in this report.
 3. **The `NETWORK_EGRESS_COUNT` fix is now test-verified** — see §5.3. This supersedes the earlier
    "compile-verified only" note.
-4. **Nine open Dependabot PRs (§8.2),** five of which are major bumps needing human review.
+4. **Fifteen open Dependabot PRs (§8.2),** five of which are currently failing their checks.
 5. **Large-file finding (#5) was measured, not remediated** — see §13.1. The duplication it exposed
    is real but deleting the duplicates is an owner decision (§14, item 4).
 6. **`release.yml`'s historical failure mode is fixed in the file but was never observed succeeding**
    from a real `v*` tag push. Untested by construction — there is no release to cut.
 
-### 11.3 The honest statement about the score
+### 11.4 Independent re-verification (2026-10-22)
+
+A separate read-only review of the repository confirmed the substantive findings and asked for fresh
+checks on five items it had not independently established. All five were re-verified on 2026-10-22:
+
+| Reviewer's unverified item | Fresh result |
+|---|---|
+| Latest PR #23 head SHA and the status of all four CI checks | Head is **`ca052183edbd6e9ab0c03838d5d29a5264036c30`**; `ubuntu-22.04`, `windows-latest`, `macos-latest`, and `coverage` are **all `completed/success` on that exact SHA** — queried per-SHA via the check-runs API, not read off the PR's aggregate status |
+| Whether branch protection has since been enabled | **Still absent.** Protection API 404, rulesets `[]`, **22 branches / 0 protected** |
+| Whether the DataFactor assessment has changed | **No new score exists.** Nothing in this report re-scores the repository |
+| Whether the Dependabot PRs remain in the recorded states | **No — the count had grown.** Fifteen Dependabot PRs are open, not nine, and **five are failing** (#7, #8, #12, #14, #17). Corrected in §8.2 |
+| `lru` dependency state | **Unchanged and still unresolved** on both `main` and the PR head: `lru = "0.12"` / lock `0.12.5`, with `guard.pop(&key)` still at `cache.rs:61` |
+
+The reviewer also made three points this report adopts rather than resists:
+
+1. **Reported test results are not reproduced test results.** The reviewer explicitly declined to
+   treat the 32/499/workspace test figures as reproduced. This report does not claim otherwise — they
+   are recorded as *executed by this session on this machine*, with the exact commands and exit codes
+   in §5.
+2. **Green CI is not sufficient evidence for a major-version bump.** Six of the fifteen Dependabot PRs
+   are major bumps that are green. §8.2 now says explicitly that green CI is not proof of behavioural
+   equivalence for those.
+3. **Do not merge solely because CI is green, and do not request a re-score while presenting the
+   dependency issue as resolved.** Both are honoured: PR #23 is open, and §12.6 gates the re-score on
+   the `lru` remediation and branch protection landing first.
+
+The reviewer's recommended order of work — remediate `lru`, verify the PR head, configure branch
+protection, merge, then re-score — is adopted as the §12 sequence.
+
+### 11.5 The honest statement about the score
 
 **The DataFactor score remains unconfirmed until the repository is re-scored.** Nothing in this
 report predicts it, and no number here should be read as one. What this report *does* establish is
@@ -755,7 +799,7 @@ those open. Order matters: apply branch protection and bump `lru`, merge PR #23,
 ### 12.7 Bump `lru` from `"0.12"` to `">= 0.18.2"` — **highest-severity open item**
 
 Two `unsound` advisories affect a **direct** workspace dependency, and `LruCache::pop()` is called at
-`crates/zylcode-core/src/router/cache.rs:62`. Details and per-API exposure are in §7.1. This needs:
+`crates/zylcode-core/src/router/cache.rs:61`. Details and per-API exposure are in §7.1. This needs:
 
 1. `Cargo.toml` workspace requirement bumped to `"0.18"` (or `"0.19"`).
 2. A check that `LruCache`'s API is still compatible — the crate uses `new`, `get`, `put`, `pop`,
@@ -808,7 +852,7 @@ duplication in §12.5.
 ### 13.2 The `lru` advisories — verified open, not yet remediated
 
 Two `unsound` advisories affect `lru` 0.12.5, a **direct** workspace dependency, and the code calls
-`LruCache::pop()` at `crates/zylcode-core/src/router/cache.rs:62`. Patched in `lru >= 0.18.2`
+`LruCache::pop()` at `crates/zylcode-core/src/router/cache.rs:61`. Patched in `lru >= 0.18.2`
 (RUSTSEC-2026-0253) and `>= 0.16.3` (RUSTSEC-2026-0002). No remediation has been applied: bumping a
 direct dependency is an owner decision requiring a full re-verification pass (§14). See §7.1 for the
 full advisory detail and the per-API exposure table.
