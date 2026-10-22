@@ -64,7 +64,7 @@ regex = "1.10"
 
 # Perf (Phase 1)
 ahash = "0.8"
-lru = "0.12"
+lru = "0.18"
 memchr = "2.7"
 
 # MCP (Phase 2)
