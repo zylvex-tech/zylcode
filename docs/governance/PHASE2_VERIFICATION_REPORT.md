@@ -512,17 +512,14 @@ Nothing in this session wrote to that directory.
 
 ### 8.6 CI and coverage results on the pull request
 
-All four checks ran on the correct commit `5ac5ccfac1b46c1a460f171cde8148e1b68daf1e` and **all four
-concluded success**:
+All four checks ran on both pushed commits and **concluded success on both**:
 
-| Check | Conclusion |
-|---|---|
-| `check / test / frontend (ubuntu-22.04)` | **success** |
-| `check / test / frontend (windows-latest)` | **success** |
-| `check / test / frontend (macos-latest)` | **success** |
-| `coverage` | **success** |
+| Commit | `ubuntu-22.04` | `windows-latest` | `macos-latest` | `coverage` |
+|---|---|---|---|---|
+| `5ac5ccf` | success | success | success | success |
+| `ca5e1b5` (current PR head) | success | success | success | success |
 
-Coverage run `39733034424` (`pull_request` event, sha `5ac5ccf`), step "Coverage gate (lines >= 78%)":
+Coverage run `39734018253` on the current head `ca5e1b5`, step "Coverage gate (lines >= 78%)":
 
 ```
 TOTAL    60570    11730    80.63%    4176    1080    74.14%    40133    7815    80.53%    0    0    -
@@ -541,7 +538,8 @@ TOTAL    60570    11730    80.63%    4176    1080    74.14%    40133    7815    
 | Tests failed | **0** | 0 |
 
 Coverage is **preserved above the threshold** on the feature branch. The −6 instrumented lines are
-the comment-only changes in `router.rs`; coverage itself did not move.
+the comment-only changes in `router.rs`; coverage itself did not move. The earlier run `39733034424`
+on `5ac5ccf` reported an identical `TOTAL` line, which is the expected result for a docs-only commit.
 
 ## 9. REPRODUCIBILITY
 
@@ -733,7 +731,37 @@ Measured, not estimated (§13.1): `apps/zylcode-desktop/branding/lockup.png` and
 copy of each and updating the references is a mechanical, verifiable change — hash the survivor
 before and after to prove nothing changed.
 
-### 12.6 Explicitly **not** recommended
+### 12.6 Commission a fresh DataFactor assessment — **only after the items below are accepted**
+
+The score is **unconfirmed until the repository is re-scored**, and re-scoring before §12.3
+(branch protection) and §12.7 (`lru`) are closed would measure a repository that still has both of
+those open. Order matters: apply branch protection and bump `lru`, merge PR #23, let CI run on
+`main`, and *then* request the re-score. Nothing in this report predicts what it will return.
+
+### 12.7 Bump `lru` from `"0.12"` to `">= 0.18.2"` — **highest-severity open item**
+
+Two `unsound` advisories affect a **direct** workspace dependency, and `LruCache::pop()` is called at
+`crates/zylcode-core/src/router/cache.rs:62`. Details and per-API exposure are in §7.1. This needs:
+
+1. `Cargo.toml` workspace requirement bumped to `"0.18"` (or `"0.19"`).
+2. A check that `LruCache`'s API is still compatible — the crate uses `new`, `get`, `put`, `pop`,
+   `len`, `clear` only, which is a small and stable surface.
+3. A full re-run of the §5 battery, because a dependency bump is exactly the kind of change that
+   moves coverage.
+4. Confirmation that `cargo audit` reports 0 warnings for `lru` afterwards.
+
+Dependabot will not do this for you (§7.1).
+
+### 12.8 Verify `release.yml` from a real `v*` tag — **before cutting any release**
+
+The current `release.yml` is tag-only and carries no invalid permission, so the historical failure
+mode cannot recur from the file as it stands. But that fix has **never been observed succeeding** —
+it is untested by construction, because there is no release to cut. Before cutting a real release,
+verify the workflow on a throwaway tag (for example `v0.0.0-test`) and confirm it produces a
+release, then delete both the tag and the release. Cutting a real `v*` tag creates a release and is
+an owner decision (§14).
+
+### 12.9 Explicitly **not** recommended
 
 - **Do not raise the coverage threshold.** The margin is +2.63 pp. Raising it now buys a
   marginally better-looking number and a red build the first time a refactor lands.
