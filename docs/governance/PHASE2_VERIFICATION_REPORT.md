@@ -520,18 +520,19 @@ individually via the check-runs API on its own SHA, not inferred from the PR's a
 | `5ac5ccf` | success | success | success | success |
 | `ca5e1b5` | success | success | success | success |
 | `bdca1cb` | success | success | success | success |
+| `345259c` | success | success | success | success |
 
-Coverage on the current PR head `bdca1cb`, step "Coverage gate (lines >= 78%)":
+Coverage on the PR head `345259c`, step "Coverage gate (lines >= 78%)":
 
 ```
-TOTAL    60570    11725    80.64%    4176    1079    74.16%    40133    7813    80.53%    0    0    -
+TOTAL    60570    11726    80.64%    4176    1079    74.16%    40133    7813    80.53%    0    0    -
 ```
 
 | Metric | Value | vs `main` @ `ea23092` |
 |---|---|---|
 | Line coverage | **80.64%** | 80.63% (+0.01) |
 | Instrumented lines | 60,570 | 60,576 (−6) |
-| Missed lines | 11,725 | 11,731 (−6) |
+| Missed lines | 11,726 | 11,731 (−5) |
 | Regions | 74.16% | 74.13% (+0.03) |
 | Functions | 80.53% | 80.52% (+0.01) |
 | Threshold | 78% | 78% |
@@ -543,9 +544,10 @@ Coverage is **preserved above the threshold** on the feature branch, and is marg
 `main` rather than merely not-worse. The −6 instrumented lines are the comment-only changes in
 `router.rs`.
 
-A note on why this table lists three commits rather than one: the governance report is itself
+A note on why this table lists four commits rather than one: the governance report is itself
 committed to this branch, so each report update moves the PR head and re-triggers CI. Rather than
-chase the head, every pushed commit is listed and was verified green at its own SHA.
+chase the head, every pushed commit is listed and was verified green at its own SHA via the
+check-runs API — not inferred from the PR's aggregate status.
 
 | Field | Value |
 |---|---|
