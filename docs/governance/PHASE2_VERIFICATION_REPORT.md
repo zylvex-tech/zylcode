@@ -473,6 +473,76 @@ point.
 
 ---
 
+### 8.4 Push and pull request — executed 2026-10-22
+
+The owner authorised pushing this feature branch. All six pre-push conditions were verified first:
+
+| # | Condition | Result |
+|---|---|---|
+| 1 | `origin/main` still at the expected base `ea23092` | ✓ |
+| 2 | Working tree clean | ✓ (`git status --porcelain` empty) |
+| 3 | Remote feature branch absent (so a normal push cannot be non-fast-forward) | ✓ |
+| 4 | `origin/main` is an ancestor of `HEAD` (clean fast-forward, no rebase needed) | ✓ |
+| 5 | Changeset is exactly 4 files, all intended | ✓ |
+| 6 | Local Rust verification green | ✓ (§5) |
+
+A **normal push** was used (`git push -u origin fix/router-egress-spy-thread-local`). No `--force`,
+no history rewrite, no branch deletion.
+
+| Field | Value |
+|---|---|
+| Remote branch | `fix/router-egress-spy-thread-local` |
+| Remote head | `5ac5ccfac1b46c1a460f171cde8148e1b68daf1e` — matches local `HEAD` exactly |
+| `origin/main` after push | `ea230920cbe39c17e9ea55f0dec47e988632a669` — **unchanged** |
+| Pull request | **#23** |
+| PR URL | https://github.com/zylvex-tech/zylcode/pull/23 |
+| PR title | `fix: isolate router egress spy across parallel tests` |
+| Base / head | `main` ← `fix/router-egress-spy-thread-local` |
+| State | **OPEN** — **not merged**, as instructed |
+
+### 8.5 Competition checkout preserved
+
+| Probe | Result |
+|---|---|
+| Remote `competition/natlas-2026` | `2fb7a817ab036c2e46c6f04406331930d34e5677` — **unchanged** |
+| User's checkout `C:/Projects/zylcode` | branch `competition/natlas-2026` @ `c5c9138` |
+| Its working tree | **clean** (`git status --porcelain` empty) |
+
+Nothing in this session wrote to that directory.
+
+### 8.6 CI and coverage results on the pull request
+
+All four checks ran on the correct commit `5ac5ccfac1b46c1a460f171cde8148e1b68daf1e` and **all four
+concluded success**:
+
+| Check | Conclusion |
+|---|---|
+| `check / test / frontend (ubuntu-22.04)` | **success** |
+| `check / test / frontend (windows-latest)` | **success** |
+| `check / test / frontend (macos-latest)` | **success** |
+| `coverage` | **success** |
+
+Coverage run `39733034424` (`pull_request` event, sha `5ac5ccf`), step "Coverage gate (lines >= 78%)":
+
+```
+TOTAL    60570    11730    80.63%    4176    1080    74.14%    40133    7815    80.53%    0    0    -
+```
+
+| Metric | Value | vs `main` @ `ea23092` |
+|---|---|---|
+| Line coverage | **80.63%** | 80.63% — unchanged |
+| Instrumented lines | 60,570 | 60,576 (−6) |
+| Missed lines | 11,730 | 11,731 (−1) |
+| Regions | 74.14% | 74.13% (+0.01) |
+| Functions | 80.53% | 80.52% (+0.01) |
+| Threshold | 78% | 78% |
+| Margin | **+2.63 pp** | +2.63 pp |
+| Tests passed | **840** | 840 |
+| Tests failed | **0** | 0 |
+
+Coverage is **preserved above the threshold** on the feature branch. The −6 instrumented lines are
+the comment-only changes in `router.rs`; coverage itself did not move.
+
 ## 9. REPRODUCIBILITY
 
 **Status: PASS.** Both deliverables were built from source reads, not from guessed variable names.
