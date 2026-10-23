@@ -7,26 +7,44 @@ and no `# allow` anywhere in the dependency configuration. The gates in
 `.github/workflows/ci.yml` run unmodified and would still fail on a *new*
 advisory of the same class.
 
-**Current count: 3 advisories** (2 unmaintained, 1 unsound), 0 vulnerable.
-Last revised 2026-10-22 after PR #24 resolved the two `lru` advisories. The
-post-merge audit that produced this revision is
+**Current count: 2 advisories** (1 unmaintained, 1 unsound), 0 vulnerable.
+Last revised 2026-10-23 after the `serde_yaml` → `serde_norway` migration removed
+RUSTSEC-2024-0449. The revision before that was 2026-10-22, after PR #24 resolved
+the two `lru` advisories. The audit that produced the 2026-10-22 revision is
 [`POST_MERGE_AUDIT_2026-10-22.md`](POST_MERGE_AUDIT_2026-10-22.md) §4.
 
-**Last measured:** 2026-10-22, on `main` at HEAD
-`3bd50599e70942a7bc00c50e4f83f12db8fdebce`, with `cargo audit 0.22.2` against the
-committed `Cargo.lock` (595 crate dependencies, `version = 3`) and the RustSec
-advisory database (`Loaded 1349 security advisories`).
+**Last measured:** 2026-10-23, on branch `fix/replace-serde-yaml` at `4e24e2a`
+(its merge-base with `main`), with `cargo audit` against the committed
+`Cargo.lock` (595 crate dependencies, `version = 3`) and the RustSec advisory
+database.
+
+**Previously measured:** 2026-10-22, on `main` at HEAD
+`3bd50599e70942a7bc00c50e4f83f12db8fdebce`, with `cargo audit 0.22.2` (595 crate
+dependencies, `version = 3`, `Loaded 1349 security advisories`). That measurement
+is retained because it is the baseline the migration is measured against.
 
 **Command that produced these numbers:**
 
 ```
-cargo audit                 # exit 0 — 3 warnings, 0 vulnerabilities
-cargo audit --deny warnings # exit 1 — 3 denied warnings (see below)
+cargo audit                 # exit 0 — 2 warnings, 0 vulnerabilities
+cargo audit --deny warnings # exit 1 — 2 denied warnings (see below)
 pnpm audit --prod           # exit 0 — no known vulnerabilities found
 ```
 
-**What changed since the previous revision (2026-10-21):** `lru` 0.12.5 → 0.18.5 and
-`tokio` 1.54.0 → 1.54.1, via PR #24 (`fix/lru-0-12-unsound-advisories`).
+**What changed since the previous revision (2026-10-22):** `serde_yaml` 0.9.34
+(released deprecated) was replaced by `serde_norway` 0.9.42 in the workspace
+manifest and at all four call sites, and `unsafe-libyaml` 0.2.11 was replaced by
+`unsafe-libyaml-norway` 0.2.15 in the lockfile. RUSTSEC-2024-0449 is therefore
+**resolved** and its row has been removed. The advisory count went from three to
+two, and the crate count stayed at 595.
+
+Before/after was measured rather than assumed — the same `cargo audit` run against
+the pre-migration lockfile reports `RUSTSEC-2024-0370`, `RUSTSEC-2024-0429` and
+`RUSTSEC-2024-0449`; the post-migration run reports only the first two. Nothing
+was added.
+
+**What changed since the revision before that (2026-10-21):** `lru` 0.12.5 → 0.18.5
+and `tokio` 1.54.0 → 1.54.1, via PR #24 (`fix/lru-0-12-unsound-advisories`).
 RUSTSEC-2026-0002 and RUSTSEC-2026-0253 are therefore **resolved** and their rows
 have been removed. The advisory count went from five to three, and the crate count
 from 598 to 595 (`allocator-api2`, `foldhash` and `hashbrown` dropped out of the
@@ -44,7 +62,7 @@ this file exists rather than a config override:
 | **vulnerable** | non-zero | an exploitable weakness in a version in the locked graph |
 | **unmaintained / unsound** | zero | the crate is no longer maintained, or contains `unsafe` that the maintainers consider sound only under assumptions you may be violating |
 
-The workspace currently has **zero `vulnerable` advisories** and **three
+The workspace currently has **zero `vulnerable` advisories** and **two
 `unmaintained`/`unsound` advisories**. That is why CI runs `cargo audit` and not
 `cargo audit --deny warnings`: the latter would fail on advisories that are not
 exploitable, and a gate that fails for a non-reason is a gate that gets disabled.
@@ -52,8 +70,41 @@ exploitable, and a gate that fails for a non-reason is a gate that gets disabled
 | ID | Crate | Version | Class | Why it is accepted |
 |---|---|---|---|---|
 | RUSTSEC-2024-0370 | `proc-macro-error` | 1.0.4 | unmaintained | Transitive via `glib-macros` ← `glib` ← `tauri` 2.12.4. A **build-time proc-macro**: it runs only while compiling `glib-macros`, is never linked into the shipped binary, and never executes at runtime. No replacement exists upstream. |
-| RUSTSEC-2024-0449 | `unsafe-libyaml` | 0.2.11 | unmaintained | Transitive via `serde_yaml` 0.9.34+deprecated, a direct dependency of `zylcode-core` and `zylcode-mcp`. Reached only when parsing local YAML configuration files the user already controls. **Actionable:** migrate to `serde_norway` 0.9.42 (same 0.9 API) at the four `serde_yaml::from_str` call sites. See `POST_MERGE_AUDIT_2026-10-22.md` §4.3. |
 | RUSTSEC-2024-0429 | `glib` | 0.18.5 | unsound | `Iterator`/`DoubleEndedIterator` impls for `glib::VariantStrIter` violate stacked borrows. Pulled in by Tauri's GLib binding on **Linux only**. **This codebase does not use `VariantStrIter`** — the unsafe path is not reachable from ZylCode's own source. Patched in `glib >= 0.20`, but `gtk` 0.18.2 pins `glib` 0.18.x, so the only lever is a `tauri` bump. |
+
+### Resolved: RUSTSEC-2024-0449 (`unsafe-libyaml` 0.2.11)
+
+Resolved 2026-10-23 by replacing `serde_yaml` 0.9.34+deprecated with
+`serde_norway` 0.9.42. `unsafe-libyaml` no longer appears anywhere in the
+resolved graph, and `cargo audit` no longer reports the advisory. The row is
+kept here, struck through in substance, because the resolution is **partial in
+a way that must not be papered over**:
+
+`serde_norway` is a fork that forked the unsafe dependency too. It depends on
+`unsafe-libyaml-norway` 0.2.15 — the same c2rust translation of libyaml, under a
+different package name. `cargo tree -i unsafe-libyaml-norway` gives the exact
+path:
+
+```
+unsafe-libyaml-norway v0.2.15
+└── serde_norway v0.9.42
+    ├── zylcode-core
+    └── zylcode-mcp
+```
+
+What the migration actually bought is therefore precise and worth stating
+plainly: **the advisory is gone, and the unsafe crate is gone, but the unsafe
+code is not.** As of this audit `unsafe-libyaml-norway` carries no advisory of
+its own in the RustSec database, so `cargo audit` is silent about it — silence
+that reflects the state of the advisory database, not a property of the code.
+The reason it is not listed above is that there is nothing to accept: no
+advisory exists to accept. Anyone re-auditing this workspace should treat
+`unsafe-libyaml-norway` as an inherited, unaudited `unsafe` dependency on the
+YAML parsing path, not as a clean bill of health.
+
+The remaining lever, if a safe parser is ever required, is `serde_yaml_ng`
+(0.10.x, pure Rust, no libyaml). That is a **0.10 API break** and is explicitly
+out of scope for this change.
 
 ### Why these are not "suppressed"
 
@@ -65,8 +116,9 @@ config*. Concretely, none of the following exists in the tree:
 - no `pnpm` `overrides` entry that pins a *vulnerable* version down
 - no `--ignore` / `--deny` flags in `.github/workflows/ci.yml`
 
-If any of the three above were ever upgraded to `vulnerable`, `cargo audit` in CI
-would exit non-zero and the build would go red without anyone touching this file.
+If either of the two above were ever upgraded to `vulnerable`, `cargo audit` in
+CI would exit non-zero and the build would go red without anyone touching this
+file.
 
 ### Re-examining the one remaining `unsound` entry
 
@@ -89,18 +141,19 @@ row moot — but the claim itself was wrong when written, and it is recorded her
 does not survive as a precedent for how reachability is asserted. The reachability
 command above is the honest version: one pattern, one grep, one result.
 
-### Re-examining the two `unmaintained` entries
+### Re-examining the one remaining `unmaintained` entry
 
 Unmaintained is a forward-looking risk, not a present defect: the code is
 currently correct and has no known CVE. The trigger for action is a new advisory
 or a Rust edition bump that breaks the build — not the passage of time.
 
-Of the two, only `unsafe-libyaml` is directly actionable, and the action is clean:
-swap `serde_yaml` for the maintained fork `serde_norway` 0.9.42, which preserves
-the 0.9 API, across the four `serde_yaml::from_str` call sites in `zylcode-core`
-and `zylcode-mcp`. `proc-macro-error` has no lever this workspace can pull — it is
-a build-time proc-macro reached through Tauri's `glib-macros`, and its replacement
-would have to happen upstream.
+`proc-macro-error` has no lever this workspace can pull — it is a build-time
+proc-macro reached through Tauri's `glib-macros`, and its replacement would have
+to happen upstream.
+
+The second `unmaintained` entry, `unsafe-libyaml`, was the actionable one and
+has now been actioned; see the resolved-entry note above for what that did and
+did not remove.
 
 ---
 

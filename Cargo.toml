@@ -68,7 +68,7 @@ lru = "0.18"
 memchr = "2.7"
 
 # MCP (Phase 2)
-serde_yaml = "0.9"
+serde_norway = "0.9.42"
 notify = "6.1"
 
 # Crypto / Hashing (Phase 4.3)

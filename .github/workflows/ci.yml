@@ -127,18 +127,28 @@ jobs:
         run: cargo audit
         # `cargo audit` exits non-zero on a *vulnerable* crate and exits zero on
         # unmaintained/unsound advisories, which is why this is plain `cargo
-        # audit` and not `--deny warnings`. As of 2026-10-22 (main @ 3bd5059)
-        # the workspace has 3 accepted advisories, all `unmaintained`/`unsound`
-        # rather than exploitable: RUSTSEC-2024-0370 (proc-macro-error),
-        # -2024-0449 (unsafe-libyaml) and -2024-0429 (glib). They are
-        # documented in docs/governance/ACCEPTED_ADVISORIES.md.
+        # audit` and not `--deny warnings`. As of 2026-10-23 (branch
+        # fix/replace-serde-yaml, merge-base 4e24e2a) the workspace has 2
+        # accepted advisories, all `unmaintained`/`unsound` rather than
+        # exploitable: RUSTSEC-2024-0370 (proc-macro-error) and -2024-0429
+        # (glib). They are documented in docs/governance/ACCEPTED_ADVISORIES.md.
         # Suppressing them silently would be the failure mode to avoid;
         # documenting them is what makes the gate honest.
         #
-        # Revision note: the previous revision of this comment said "5 accepted
-        # advisories" and named RUSTSEC-2026-0002 and -2026-0253 (lru). Both
-        # were resolved by PR #24 (lru 0.12.5 -> 0.18.5, tokio 1.54.0 ->
-        # 1.54.1); the yanked tokio release is likewise resolved.
+        # Revision note: the previous revision of this comment said "3 accepted
+        # advisories" and named RUSTSEC-2024-0449 (unsafe-libyaml). That one was
+        # resolved by replacing serde_yaml with serde_norway 0.9.42, which
+        # removed both `serde_yaml` and `unsafe-libyaml` from the resolved
+        # graph. The revision before that said "5 accepted advisories" and
+        # named RUSTSEC-2026-0002 and -2026-0253 (lru). Both were resolved by
+        # PR #24 (lru 0.12.5 -> 0.18.5, tokio 1.54.0 -> 1.54.1); the yanked
+        # tokio release is likewise resolved.
+        #
+        # Note for whoever audits this next: serde_norway depends on
+        # `unsafe-libyaml-norway` 0.2.15, a fork of the same c2rust libyaml
+        # translation. It carries no advisory of its own today, so `cargo audit`
+        # is silent about it -- but the unsafe code is still on the YAML
+        # parsing path. ACCEPTED_ADVISORIES.md records this explicitly.
 
       - name: pnpm audit (production dependency tree)
         run: pnpm audit --prod
