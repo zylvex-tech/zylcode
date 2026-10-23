@@ -7,30 +7,28 @@ and no `# allow` anywhere in the dependency configuration. The gates in
 `.github/workflows/ci.yml` run unmodified and would still fail on a *new*
 advisory of the same class.
 
-**Current count: 3 advisories** (2 unmaintained, 1 unsound), 0 vulnerable.
-Last revised 2026-10-22 after PR #24 resolved the two `lru` advisories. The
-post-merge audit that produced this revision is
-[`POST_MERGE_AUDIT_2026-10-22.md`](POST_MERGE_AUDIT_2026-10-22.md) §4.
+**Current count: 2 advisories** (1 unmaintained, 1 unsound), 0 vulnerable.
+Last revised 2026-10-23 after replacing `serde_yaml` with `serde-saphyr` 2.0.0,
+which removes `unsafe-libyaml` and `unsafe-libyaml-norway` from the resolved
+dependency graph.
 
-**Last measured:** 2026-10-22, on `main` at HEAD
-`3bd50599e70942a7bc00c50e4f83f12db8fdebce`, with `cargo audit 0.22.2` against the
-committed `Cargo.lock` (595 crate dependencies, `version = 3`) and the RustSec
-advisory database (`Loaded 1349 security advisories`).
+**Last measured:** 2026-10-23, on branch `fix/replace-yaml-parser-with-saphyr`,
+with `cargo audit 0.22.2` against the committed `Cargo.lock` (599 crate
+dependencies, `version = 3`) and the RustSec advisory database.
 
 **Command that produced these numbers:**
 
 ```
-cargo audit                 # exit 0 — 3 warnings, 0 vulnerabilities
-cargo audit --deny warnings # exit 1 — 3 denied warnings (see below)
+cargo audit                 # exit 0 — 2 warnings, 0 vulnerabilities
+cargo audit --deny warnings # exit 1 — 2 denied warnings (see below)
 pnpm audit --prod           # exit 0 — no known vulnerabilities found
 ```
 
-**What changed since the previous revision (2026-10-21):** `lru` 0.12.5 → 0.18.5 and
-`tokio` 1.54.0 → 1.54.1, via PR #24 (`fix/lru-0-12-unsound-advisories`).
-RUSTSEC-2026-0002 and RUSTSEC-2026-0253 are therefore **resolved** and their rows
-have been removed. The advisory count went from five to three, and the crate count
-from 598 to 595 (`allocator-api2`, `foldhash` and `hashbrown` dropped out of the
-graph).
+**What changed since the previous revision (2026-10-22):** `serde_yaml` 0.9.34
+and `unsafe-libyaml` 0.2.11 were removed from the resolved dependency graph by
+replacing the YAML parser with `serde-saphyr` 2.0.0. RUSTSEC-2024-0449 is therefore
+**resolved** and its row has been removed. The advisory count went from three to
+two.
 
 ---
 

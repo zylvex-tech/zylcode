@@ -15,7 +15,7 @@ authors = ["ZylCode Team <team@zylcode.dev>"]
 license = "MIT"
 repository = "https://github.com/zylvex-tech/zylcode"
 description = "ZylCode — autonomous, cross-platform developer desktop engine, CLI, and real-time artifact visualizer"
-rust-version = "1.77"
+rust-version = "1.89"
 
 [workspace.dependencies]
 # Version is required alongside path so `cargo publish` can rewrite
@@ -68,7 +68,7 @@ lru = "0.18"
 memchr = "2.7"
 
 # MCP (Phase 2)
-serde_yaml = "0.9"
+serde-saphyr = { version = "2.0", default-features = false, features = ["deserialize"] }
 notify = "6.1"
 
 # Crypto / Hashing (Phase 4.3)

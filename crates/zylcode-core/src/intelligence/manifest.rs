@@ -115,18 +115,15 @@ fn parse_cargo_workspace(root: &Path, manifest_path: &Path) -> Result<Workspace>
 fn parse_pnpm_workspace(root: &Path, manifest_path: &Path) -> Result<Workspace> {
     let content =
         std::fs::read_to_string(manifest_path).context("Failed to read pnpm-workspace.yaml")?;
-    let doc: serde_yaml::Value =
-        serde_yaml::from_str(&content).context("Failed to parse pnpm-workspace.yaml")?;
+    #[derive(serde::Deserialize)]
+    struct PnpmWorkspace {
+        #[serde(default)]
+        packages: Vec<String>,
+    }
 
-    let packages = doc
-        .get("packages")
-        .and_then(|p| p.as_sequence())
-        .map(|arr| {
-            arr.iter()
-                .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                .collect::<Vec<_>>()
-        })
-        .unwrap_or_default();
+    let doc: PnpmWorkspace =
+        serde_saphyr::from_str(&content).context("Failed to parse pnpm-workspace.yaml")?;
+    let packages = doc.packages;
 
     let mut package_ids = Vec::new();
     for pattern in &packages {
@@ -696,5 +693,54 @@ tempfile = "3"
             DependencyTarget::Internal(name) => assert_eq!(name, "mcp"),
             _ => panic!("Expected internal dependency"),
         }
+    }
+
+    #[test]
+    fn parse_pnpm_workspace_with_packages() {
+        let dir = TempDir::new().unwrap();
+        let root = dir.path();
+        fs::write(
+            root.join("pnpm-workspace.yaml"),
+            "packages:\n  - 'apps/*'\n  - 'packages/*'\n",
+        )
+        .unwrap();
+        let ws = parse_pnpm_workspace(root, &root.join("pnpm-workspace.yaml")).unwrap();
+        assert_eq!(ws.workspace_type, WorkspaceType::Pnpm);
+        assert_eq!(ws.members.len(), 0); // no real dirs on disk
+        assert_eq!(ws.manifest_path, "pnpm-workspace.yaml");
+    }
+
+    #[test]
+    fn parse_pnpm_workspace_ignores_unknown_keys() {
+        let dir = TempDir::new().unwrap();
+        let root = dir.path();
+        fs::write(
+            root.join("pnpm-workspace.yaml"),
+            "packages:\n  - 'apps/*'\ncatalog:\n  react: ^18.0.0\n",
+        )
+        .unwrap();
+        let ws = parse_pnpm_workspace(root, &root.join("pnpm-workspace.yaml")).unwrap();
+        assert_eq!(ws.workspace_type, WorkspaceType::Pnpm);
+    }
+
+    #[test]
+    fn parse_pnpm_workspace_missing_packages_defaults_empty() {
+        let dir = TempDir::new().unwrap();
+        let root = dir.path();
+        fs::write(
+            root.join("pnpm-workspace.yaml"),
+            "catalog:\n  react: ^18.0.0\n",
+        )
+        .unwrap();
+        let ws = parse_pnpm_workspace(root, &root.join("pnpm-workspace.yaml")).unwrap();
+        assert!(ws.members.is_empty());
+    }
+
+    #[test]
+    fn parse_pnpm_workspace_rejects_bad_packages_type() {
+        let dir = TempDir::new().unwrap();
+        let root = dir.path();
+        fs::write(root.join("pnpm-workspace.yaml"), "packages: 5\n").unwrap();
+        assert!(parse_pnpm_workspace(root, &root.join("pnpm-workspace.yaml")).is_err());
     }
 }
