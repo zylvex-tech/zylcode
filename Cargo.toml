@@ -29,7 +29,7 @@ zylcode-nav = { path = "crates/zylcode-nav", version = "0.2.0" }
 
 # Repository Navigation (AST parsing for symbols/references/imports)
 tree-sitter = "0.25"
-tree-sitter-rust = "0.23"
+tree-sitter-rust = "0.24"
 tree-sitter-typescript = "0.23"
 tree-sitter-javascript = "0.23"
 
