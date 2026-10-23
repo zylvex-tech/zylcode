@@ -115,8 +115,8 @@ fn parse_cargo_workspace(root: &Path, manifest_path: &Path) -> Result<Workspace>
 fn parse_pnpm_workspace(root: &Path, manifest_path: &Path) -> Result<Workspace> {
     let content =
         std::fs::read_to_string(manifest_path).context("Failed to read pnpm-workspace.yaml")?;
-    let doc: serde_yaml::Value =
-        serde_yaml::from_str(&content).context("Failed to parse pnpm-workspace.yaml")?;
+    let doc: serde_norway::Value =
+        serde_norway::from_str(&content).context("Failed to parse pnpm-workspace.yaml")?;
 
     let packages = doc
         .get("packages")

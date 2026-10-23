@@ -946,7 +946,7 @@ mod tests {
             id: String,
         }
 
-        let file: File = serde_yaml::from_str(&raw).expect("mcp.tools.yaml must parse");
+        let file: File = serde_norway::from_str(&raw).expect("mcp.tools.yaml must parse");
         let configured: std::collections::BTreeSet<&str> =
             file.tools.iter().map(|t| t.id.as_str()).collect();
 
@@ -983,7 +983,7 @@ mod tests {
             id: String,
         }
 
-        let file: File = serde_yaml::from_str(&raw).expect("mcp.tools.yaml must parse");
+        let file: File = serde_norway::from_str(&raw).expect("mcp.tools.yaml must parse");
         for entry in &file.tools {
             assert!(
                 get_real_tool(&entry.id).is_some(),
