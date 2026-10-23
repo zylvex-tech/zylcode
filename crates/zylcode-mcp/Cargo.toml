@@ -21,7 +21,7 @@ sha2 = { workspace = true }
 zylcode-nav = { workspace = true }
 uuid = { version = "1", features = ["v4"] }
 chrono = { version = "0.4", features = ["serde"] }
-rusqlite = { version = "0.31", features = ["bundled"], default-features = false }
+rusqlite = { version = "0.40", features = ["bundled"], default-features = false }
 opentelemetry = { version = "0.28", features = ["trace"] }
 opentelemetry_sdk = { version = "0.28", features = ["trace"] }
 opentelemetry-otlp = { version = "0.28", features = ["tonic"] }
