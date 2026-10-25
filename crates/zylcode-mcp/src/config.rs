@@ -72,8 +72,15 @@ impl McpConfigFile {
     #[allow(clippy::should_implement_trait)]
     pub fn from_str(raw: &str) -> Result<Self> {
         // Accept YAML or JSON (JSON is valid YAML)
-        let cfg: Self =
-            serde_yaml::from_str(raw).context("failed to parse MCP config (expected YAML/JSON)")?;
+        // Preserve the strict boolean semantics of the previous parser:
+        // only true/True/TRUE and false/False/FALSE are accepted as booleans.
+        // serde-saphyr's default YAML-1.1 resolver would also accept yes/no/on/off.
+        if raw.trim().is_empty() {
+            anyhow::bail!("MCP config file is empty");
+        }
+        let opts = serde_saphyr::options! { strict_booleans: true };
+        let cfg: Self = serde_saphyr::from_str_with_options(raw, opts)
+            .context("failed to parse MCP config (expected YAML/JSON)")?;
         cfg.validate()?;
         Ok(cfg)
     }
@@ -189,5 +196,67 @@ tools:
     command: b
 "#;
         assert!(McpConfigFile::from_str(yaml).is_err());
+    }
+
+    #[test]
+    fn enabled_true_ok() {
+        let yaml = "tools:\n  - id: t\n    command: c\n    enabled: true\n";
+        let cfg = McpConfigFile::from_str(yaml).unwrap();
+        assert!(cfg.tools[0].enabled);
+    }
+
+    #[test]
+    fn enabled_false_ok() {
+        let yaml = "tools:\n  - id: t\n    command: c\n    enabled: false\n";
+        let cfg = McpConfigFile::from_str(yaml).unwrap();
+        assert!(!cfg.tools[0].enabled);
+    }
+
+    #[test]
+    fn enabled_yes_rejected() {
+        let yaml = "tools:\n  - id: t\n    command: c\n    enabled: yes\n";
+        assert!(McpConfigFile::from_str(yaml).is_err());
+    }
+
+    #[test]
+    fn enabled_no_rejected() {
+        let yaml = "tools:\n  - id: t\n    command: c\n    enabled: no\n";
+        assert!(McpConfigFile::from_str(yaml).is_err());
+    }
+
+    #[test]
+    fn enabled_on_rejected() {
+        let yaml = "tools:\n  - id: t\n    command: c\n    enabled: on\n";
+        assert!(McpConfigFile::from_str(yaml).is_err());
+    }
+
+    #[test]
+    fn enabled_off_rejected() {
+        let yaml = "tools:\n  - id: t\n    command: c\n    enabled: off\n";
+        assert!(McpConfigFile::from_str(yaml).is_err());
+    }
+
+    #[test]
+    fn missing_enabled_defaults_to_true() {
+        let yaml = "tools:\n  - id: t\n    command: c\n";
+        let cfg = McpConfigFile::from_str(yaml).unwrap();
+        assert!(cfg.tools[0].enabled);
+    }
+
+    #[test]
+    fn empty_document_rejected() {
+        assert!(McpConfigFile::from_str("").is_err());
+    }
+
+    #[test]
+    fn malformed_yaml_rejected() {
+        assert!(McpConfigFile::from_str("tools: [").is_err());
+    }
+
+    #[test]
+    fn json_input_ok() {
+        let raw = r#"{"tools":[{"id":"t","command":"c","enabled":true}]}"#;
+        let cfg = McpConfigFile::from_str(raw).unwrap();
+        assert!(cfg.tools[0].enabled);
     }
 }

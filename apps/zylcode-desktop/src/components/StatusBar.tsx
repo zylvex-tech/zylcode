@@ -39,7 +39,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({ theme, onThemeChange, mcpB
           </select>
         </label>
         <span className="text-slate-600">|</span>
-        <span className="font-mono text-slate-500">v0.2.0</span>
+        <span className="font-mono text-slate-500">v0.2.1</span>
       </div>
     </footer>
   );

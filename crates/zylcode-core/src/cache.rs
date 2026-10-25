@@ -178,8 +178,10 @@ impl VectorCacheStore {
     }
 
     fn deserialize_embedding(blob: &[u8]) -> Vec<f32> {
-        blob.chunks_exact(4)
-            .map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]]))
+        blob.as_chunks::<4>()
+            .0
+            .iter()
+            .map(|c| f32::from_le_bytes(*c))
             .collect()
     }
 
@@ -238,7 +240,7 @@ impl VectorCacheStore {
                 };
                 if best
                     .as_ref()
-                    .map_or(true, |(best_score, _)| score > *best_score)
+                    .is_none_or(|(best_score, _)| score > *best_score)
                 {
                     best = Some((score, entry));
                 }

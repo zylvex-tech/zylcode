@@ -147,7 +147,7 @@ echo Creating registry entry...
 reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\ZylCode" /v "DisplayName" /t REG_SZ /d "ZylCode - AI Coding Assistant" /f >nul
 reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\ZylCode" /v "UninstallString" /t REG_SZ /d "\"%BIN_DIR%\uninstall.bat\"" /f >nul
 reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\ZylCode" /v "InstallLocation" /t REG_SZ /d "%INSTALL_DIR%" /f >nul
-reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\ZylCode" /v "DisplayVersion" /t REG_SZ /d "0.2.0" /f >nul
+reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\ZylCode" /v "DisplayVersion" /t REG_SZ /d "0.2.1" /f >nul
 reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\ZylCode" /v "Publisher" /t REG_SZ /d "ZylCode Team" /f >nul
 
 :: Copy documentation
