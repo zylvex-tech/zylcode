@@ -75,7 +75,7 @@ jobs:
           targets: ${{ matrix.rust-target }}
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v3
+        uses: pnpm/action-setup@v6
         with:
           version: 9
 
