@@ -477,7 +477,7 @@ export const SettingsSurface: React.FC<SettingsSurfaceProps> = ({
                 </p>
                 <div className="w-full max-w-sm rounded-lg border border-border bg-background/40 divide-y divide-border text-left">
                   <Row title="App version" description="The running frontend's version.">
-                    <span className="text-xs font-mono">0.2.0</span>
+                    <span className="text-xs font-mono">0.2.1</span>
                   </Row>
                   <Row
                     title="Engine"
