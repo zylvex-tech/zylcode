@@ -127,6 +127,16 @@ Primary action: **RUN MISSION**. Simple questions may behave conversationally;
 engineering requests become missions. Autonomy modes and permission policy
 follow the product's permission engine — see below.
 
+*Current implementation, captured in browser preview* (a mission is composed, not
+run — `RUN MISSION` needs the desktop backend). Capture record:
+[`docs/media/zylcode/README.md`](../media/zylcode/README.md).
+
+![Mission Composer](../media/zylcode/04-mission-composer.png)
+
+<video src="../media/zylcode/preview-mission-composer.mp4" width="760" controls preload="metadata">
+  <a href="../media/zylcode/preview-mission-composer.mp4">Download preview-mission-composer.mp4</a>
+</video>
+
 ## 8. Autonomy model + capability status language
 
 **Autonomy modes (user-facing):**
@@ -223,6 +233,14 @@ Rules:
 4. Event subscriptions (`intent:chunk` etc.) no-op safely outside the desktop
    runtime.
 5. Add tests for all four environments and the fallback rendering.
+
+*Rule 2 as implemented* — captured with no Tauri backend attached: the explorer
+and the terminal render their controlled `BLOCKED` state with an actionable hint
+(*"start `zylcode serve-intel` to browse the repository tree"*), not raw
+JavaScript exception text. The backend request is refused at the bridge, so no
+Tauri IPC is attempted at all.
+
+![Browser preview controlled state](../media/zylcode/01-landing.png)
 
 ## 12. Evidence Center
 
