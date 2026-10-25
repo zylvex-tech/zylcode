@@ -39,9 +39,8 @@ async fn test_real_provider_commissioning() -> Result<()> {
 
     // If Ollama is not running, this fails — and that is a test failure when
     // the test is run manually, not a silent success.
-    let router = Arc::new(TokenRouter::new(config).expect(
-        "TokenRouter::new failed — is Ollama running?"
-    ));
+    let router =
+        Arc::new(TokenRouter::new(config).expect("TokenRouter::new failed — is Ollama running?"));
 
     let model_client = Arc::new(RealModelClient::new(router));
     let ledger = Arc::new(zylcode_core::memory_ledger::MemoryLedgerStore::new());
@@ -55,12 +54,14 @@ async fn test_real_provider_commissioning() -> Result<()> {
         ledger,
     );
 
-    let final_state = agent.run().await.expect(
-        "AgentLoop::run failed — real provider commissioning defect"
-    );
+    let final_state = agent
+        .run()
+        .await
+        .expect("AgentLoop::run failed — real provider commissioning defect");
 
     assert_eq!(
-        final_state, AgentState::Completed,
+        final_state,
+        AgentState::Completed,
         "agent must reach Completed when Ollama is available; got {:?}",
         final_state
     );
