@@ -498,6 +498,74 @@ fn powershell_script(command: &str) -> String {
     )
 }
 
+/// Remove the wrapper's own source text from a PowerShell error message.
+///
+/// PowerShell renders a failure as `<CommandLine> : <Message>`. Under
+/// `-EncodedCommand` the "command line" is the **entire decoded script**, so
+/// a failing command's stderr opens with our wrapper verbatim — every marker
+/// and internal variable included. That text is transport, not output.
+///
+/// This drops that leading echo and nothing else: the genuine message and
+/// PowerShell's own `+ CategoryInfo` diagnostics survive untouched. It is
+/// deliberately conservative — unless the stderr begins with the wrapper's
+/// own first line and matches every wrapper line in order, the input is
+/// returned unchanged, so ordinary output is never mangled.
+fn strip_wrapper_echo(visible: &str, command: &str) -> String {
+    let script = powershell_script(command);
+    let expected: Vec<&str> = script
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .collect();
+    if expected.is_empty() {
+        return visible.to_string();
+    }
+
+    let lines: Vec<&str> = visible.lines().collect();
+    let mut idx = 0;
+    let mut matched = 0;
+    while idx < lines.len() && matched < expected.len() {
+        let line = lines[idx].trim();
+        if line.is_empty() {
+            idx += 1;
+            continue;
+        }
+        if line == expected[matched] {
+            matched += 1;
+            idx += 1;
+        } else {
+            break;
+        }
+    }
+    if matched != expected.len() {
+        return visible.to_string();
+    }
+
+    // Skip the blank line(s) PowerShell inserts between the echoed script and
+    // the message, then drop the bare `:` that followed the command line.
+    let mut rest = &lines[idx..];
+    while rest.first().is_some_and(|line| line.trim().is_empty()) {
+        rest = &rest[1..];
+    }
+    let mut out = String::new();
+    for (n, line) in rest.iter().enumerate() {
+        let line = if n == 0 {
+            let trimmed = line.trim_start();
+            trimmed
+                .strip_prefix(':')
+                .map(str::trim_start)
+                .unwrap_or(trimmed)
+        } else {
+            line
+        };
+        if !out.is_empty() {
+            out.push('\n');
+        }
+        out.push_str(line);
+    }
+    out
+}
+
 /// Base64 (standard alphabet, padded) over the script's UTF-16LE bytes —
 /// exactly what `-EncodedCommand` expects. Kept dependency-free on purpose:
 /// the encoder is small, and the decoder lives in the tests that pin it.
@@ -711,8 +779,15 @@ impl TerminalHub {
         let stderr_raw = String::from_utf8_lossy(&output.stderr);
         // PowerShell wraps error records in CLIXML on a redirected stderr;
         // decode so the message the user sees is the message PowerShell wrote.
-        let stderr_visible =
+        let stderr_decoded =
             decode_powershell_clixml(&stderr_raw).unwrap_or_else(|| stderr_raw.into_owned());
+        // A failing command makes PowerShell echo the whole `-EncodedCommand`
+        // script as the error's command line. Strip that transport text so
+        // neither the wrapper nor the cwd/rc markers reach the transcript.
+        let stderr_visible = match shell {
+            Shell::PowerShell | Shell::Pwsh => strip_wrapper_echo(&stderr_decoded, &req.command),
+            _ => stderr_decoded,
+        };
         let (stderr_tail, err_trunc) = tail(&stderr_visible);
 
         // Persist the resulting cwd for the next command in this session.
@@ -1613,5 +1688,153 @@ mod tests {
             .map(|c| u16::from_le_bytes(*c))
             .collect();
         String::from_utf16(&units).expect("decoded script must be valid UTF-16")
+    }
+
+    // -- wrapper-echo stripping ------------------------------------------
+    //
+    // `-EncodedCommand` makes PowerShell's `<CommandLine> : <Message>` header
+    // the entire decoded script, so a failing command used to open its stderr
+    // with the wrapper verbatim — markers included. These pin the strip.
+
+    /// The shape PowerShell actually emits for a failing command, captured
+    /// from PowerShell 5.1: every script line, blank-line separated, then
+    /// ` : <message>`, then the genuine diagnostic lines.
+    fn failing_powershell_stderr(command: &str) -> String {
+        let mut echoed = String::new();
+        for line in powershell_script(command).lines() {
+            echoed.push_str(line);
+            echoed.push_str("\r\n\n");
+        }
+        format!(
+            "{echoed} : Intentional terminal error\r\n\n    \
+             + CategoryInfo          : NotSpecified: (:) [Write-Error], WriteErrorException\r\n\n"
+        )
+    }
+
+    #[test]
+    fn wrapper_echo_is_stripped_from_a_failing_command() {
+        let command = "Write-Error \"Intentional terminal error\"";
+        let stripped = strip_wrapper_echo(&failing_powershell_stderr(command), command);
+
+        assert!(
+            !stripped.contains(CWD_MARKER),
+            "cwd marker leaked: {stripped:?}"
+        );
+        assert!(
+            !stripped.contains(RC_MARKER),
+            "rc marker leaked: {stripped:?}"
+        );
+        assert!(
+            !stripped.contains("$ProgressPreference") && !stripped.contains("$zyl_"),
+            "wrapper internals leaked: {stripped:?}"
+        );
+        // The genuine message and PowerShell's own diagnostics survive.
+        assert!(
+            stripped.contains("Intentional terminal error"),
+            "real error message was lost: {stripped:?}"
+        );
+        assert!(
+            stripped.contains("CategoryInfo"),
+            "genuine PowerShell diagnostics were lost: {stripped:?}"
+        );
+        assert!(
+            !stripped.trim_start().starts_with(':'),
+            "the bare separator colon should not lead the message: {stripped:?}"
+        );
+    }
+
+    #[test]
+    fn unrelated_stderr_is_never_rewritten() {
+        // No wrapper echo: ordinary stderr must pass through byte for byte,
+        // including text that merely mentions a marker.
+        let original = "fatal: not a git repository\nhint: try __ZYLCODE_CWD__ elsewhere\n";
+        assert_eq!(strip_wrapper_echo(original, "git status"), original);
+    }
+
+    #[test]
+    fn wrapper_echo_strip_keeps_output_when_only_partially_matching() {
+        // First line matches the wrapper but the sequence breaks: refuse to
+        // guess, and return the input untouched.
+        let partial = "$ProgressPreference = 'SilentlyContinue'\nsomething else entirely\n";
+        assert_eq!(strip_wrapper_echo(partial, "echo hi"), partial.to_string());
+    }
+
+    // -- clean output and accurate exit codes, end to end -----------------
+
+    #[cfg(target_family = "windows")]
+    #[tokio::test]
+    async fn a_failing_cmdlet_reports_nonzero_and_hides_the_wrapper() {
+        let (_dir, root) = temp_repo();
+        let out = exec_with(
+            &root,
+            Some("powershell"),
+            "Write-Error \"Intentional terminal error\"",
+        )
+        .await
+        .unwrap();
+        assert_eq!(out.exit_code, Some(1), "{out:?}");
+        assert!(
+            out.stderr_tail.contains("Intentional terminal error"),
+            "the real error must stay visible: {out:?}"
+        );
+        assert!(!out.stderr_tail.contains(CWD_MARKER), "{out:?}");
+        assert!(!out.stderr_tail.contains(RC_MARKER), "{out:?}");
+        assert!(!out.stderr_tail.contains("$zyl_"), "{out:?}");
+        assert!(!out.stdout_tail.contains(CWD_MARKER), "{out:?}");
+    }
+
+    #[cfg(target_family = "windows")]
+    #[tokio::test]
+    async fn a_successful_cmdlet_reports_zero_and_no_wrapper() {
+        let (_dir, root) = temp_repo();
+        let out = exec_with(&root, Some("powershell"), "Write-Output \"clean-ok\"")
+            .await
+            .unwrap();
+        assert_eq!(out.exit_code, Some(0), "{out:?}");
+        assert!(out.stdout_tail.contains("clean-ok"), "{out:?}");
+        assert!(!out.stdout_tail.contains(CWD_MARKER), "{out:?}");
+        assert!(!out.stderr_tail.contains(RC_MARKER), "{out:?}");
+    }
+
+    #[cfg(target_family = "windows")]
+    #[tokio::test]
+    async fn a_failing_command_does_not_corrupt_the_working_directory() {
+        let (_dir, root) = temp_repo();
+        let hub = TerminalHub::new(root.clone());
+        let failed = hub
+            .exec(&TerminalRequest {
+                session_id: None,
+                cwd: None,
+                shell: Some("powershell".into()),
+                command: "Write-Error \"nope\"".into(),
+                timeout_secs: None,
+            })
+            .await
+            .unwrap();
+        assert_eq!(failed.exit_code, Some(1), "{failed:?}");
+        assert!(
+            same_path(&failed.cwd, &root),
+            "a failed command must not move the session: {} vs {}",
+            failed.cwd,
+            root.display()
+        );
+
+        // And the session is still usable in the same directory afterwards.
+        let next = hub
+            .exec(&TerminalRequest {
+                session_id: Some(failed.session_id.clone()),
+                cwd: None,
+                shell: Some("powershell".into()),
+                command: "Write-Output \"still-here\"".into(),
+                timeout_secs: None,
+            })
+            .await
+            .unwrap();
+        assert_eq!(next.exit_code, Some(0), "{next:?}");
+        assert!(
+            same_path(&next.cwd, &root),
+            "cwd drifted after a failure: {}",
+            next.cwd
+        );
     }
 }

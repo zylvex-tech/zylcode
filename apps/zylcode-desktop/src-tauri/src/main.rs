@@ -1192,7 +1192,31 @@ struct TelemetryAuditEntry {
 /// install directory. Terminal commands therefore ran outside the user's
 /// project, so `git status` answered "not a git repository" even while the
 /// user was looking at a repository in the file explorer.
+///
+/// The final step is not quite "the process working directory": when the app is
+/// started by double-clicking its own executable, that directory is the binary's
+/// folder rather than anything the user chose. See [`escape_launch_directory`].
 fn resolve_workspace_root(args: &[String]) -> anyhow::Result<std::path::PathBuf> {
+    resolve_workspace_root_from(
+        args,
+        std::env::var("ZYLCODE_WORKSPACE").ok(),
+        std::env::current_dir().ok(),
+        std::env::current_exe().ok(),
+    )
+}
+
+/// Files/directories that mark a project root when searching upwards from a
+/// launch directory. Only consulted to escape the executable's own folder.
+const WORKSPACE_MARKERS: [&str; 3] = [".git", "Cargo.toml", "pnpm-workspace.yaml"];
+
+/// The resolver proper, with every ambient input injected so the precedence
+/// rules can be tested without mutating the process environment.
+fn resolve_workspace_root_from(
+    args: &[String],
+    env_workspace: Option<String>,
+    current_dir: Option<std::path::PathBuf>,
+    exe_path: Option<std::path::PathBuf>,
+) -> anyhow::Result<std::path::PathBuf> {
     let from_flag = args
         .iter()
         .position(|a| a == "--workspace")
@@ -1203,15 +1227,56 @@ fn resolve_workspace_root(args: &[String]) -> anyhow::Result<std::path::PathBuf>
         });
     let candidate = from_flag
         .map(std::path::PathBuf::from)
-        .or_else(|| {
-            std::env::var("ZYLCODE_WORKSPACE")
-                .ok()
-                .map(std::path::PathBuf::from)
-        })
+        .or_else(|| env_workspace.map(std::path::PathBuf::from))
         .unwrap_or_else(|| {
-            std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."))
+            let cwd = current_dir.unwrap_or_else(|| std::path::PathBuf::from("."));
+            escape_launch_directory(cwd, exe_path.as_deref())
         });
     resolve_dir(&candidate)
+}
+
+/// The process working directory is only a usable workspace when it is not
+/// simply the folder the executable was launched from.
+///
+/// Double-clicking `target\release\zylcode-desktop.exe` in Explorer starts the
+/// process with its cwd set to the binary's own directory, so the plain
+/// `current_dir()` fallback opened the terminal in `target\release` instead of
+/// the project the user was actually looking at. When — and only when — the cwd
+/// *is* the executable's directory, walk up for a project marker; with no
+/// marker (an installed app under Program Files, say) the previous fallback is
+/// kept unchanged.
+fn escape_launch_directory(
+    cwd: std::path::PathBuf,
+    exe_path: Option<&std::path::Path>,
+) -> std::path::PathBuf {
+    let Some(exe_dir) = exe_path.and_then(|exe| exe.parent()) else {
+        return cwd;
+    };
+    if !same_directory(&cwd, exe_dir) {
+        return cwd;
+    }
+    find_project_root(exe_dir).unwrap_or(cwd)
+}
+
+/// Compare two directories by identity, falling back to a literal comparison
+/// when either side cannot be resolved.
+fn same_directory(a: &std::path::Path, b: &std::path::Path) -> bool {
+    match (a.canonicalize(), b.canonicalize()) {
+        (Ok(a), Ok(b)) => a == b,
+        _ => a == b,
+    }
+}
+
+/// The nearest ancestor of `start` (inclusive) carrying a project marker.
+fn find_project_root(start: &std::path::Path) -> Option<std::path::PathBuf> {
+    start
+        .ancestors()
+        .find(|dir| {
+            WORKSPACE_MARKERS
+                .iter()
+                .any(|marker| dir.join(marker).exists())
+        })
+        .map(std::path::Path::to_path_buf)
 }
 
 /// Canonicalize a workspace candidate and validate that it is a directory,
@@ -1381,7 +1446,7 @@ mod workspace_resolution_tests {
     //! These tests pin the resolver that replaces it — the same process the
     //! app runs at startup, against real directories on disk.
 
-    use super::{resolve_dir, resolve_workspace_root};
+    use super::{resolve_dir, resolve_workspace_root, resolve_workspace_root_from};
     // Only the `#[cfg(windows)]` test below calls this, so importing it
     // unconditionally is an unused import on POSIX targets.
     #[cfg(windows)]
@@ -1436,6 +1501,110 @@ mod workspace_resolution_tests {
             resolve_workspace_root(&args).unwrap(),
             resolve_dir(&tmp.0).unwrap()
         );
+    }
+
+    // -- launch-directory resolution --------------------------------------
+    //
+    // Double-clicking `target\release\zylcode-desktop.exe` starts the process
+    // with its cwd set to the binary's own folder, which the old
+    // `current_dir()` fallback adopted verbatim — so the terminal opened in
+    // `target\release` instead of the project. These pin the precedence order
+    // and the escape from the executable's directory.
+
+    /// A project root carrying `marker`, with an executable at
+    /// `root/target/release/zylcode-desktop.exe`. Returns (root, release, exe).
+    fn project_with_release_exe(marker: &str) -> (TempDir, std::path::PathBuf, std::path::PathBuf) {
+        let tmp = TempDir::new();
+        let release = tmp.0.join("target").join("release");
+        std::fs::create_dir_all(&release).unwrap();
+        if marker == ".git" {
+            std::fs::create_dir_all(tmp.0.join(".git")).unwrap();
+        } else {
+            std::fs::write(tmp.0.join(marker), "").unwrap();
+        }
+        let exe = release.join("zylcode-desktop.exe");
+        std::fs::write(&exe, "").unwrap();
+        (tmp, release, exe)
+    }
+
+    #[test]
+    fn the_executable_directory_is_not_taken_as_the_workspace() {
+        let (tmp, release, exe) = project_with_release_exe(".git");
+        let resolved = resolve_workspace_root_from(
+            &["zylcode".to_string()],
+            None,
+            Some(release.clone()),
+            Some(exe),
+        )
+        .unwrap();
+        assert_eq!(
+            resolved,
+            resolve_dir(&tmp.0).unwrap(),
+            "the launch directory leaked into the workspace: {}",
+            resolved.display()
+        );
+        assert_ne!(
+            resolved,
+            resolve_dir(&release).unwrap(),
+            "the workspace must never be the executable's own folder"
+        );
+    }
+
+    #[test]
+    fn a_cargo_manifest_also_marks_the_project_root() {
+        let (tmp, release, exe) = project_with_release_exe("Cargo.toml");
+        let resolved =
+            resolve_workspace_root_from(&["zylcode".to_string()], None, Some(release), Some(exe))
+                .unwrap();
+        assert_eq!(resolved, resolve_dir(&tmp.0).unwrap());
+    }
+
+    #[test]
+    fn the_plain_fallback_is_kept_when_the_launch_directory_is_a_real_cwd() {
+        // cwd is not the executable's folder, so it is adopted as-is — the
+        // pre-existing fallback, unchanged.
+        let tmp = TempDir::new();
+        let exe = std::path::PathBuf::from("__no_such_install_dir__/zylcode-desktop.exe");
+        let resolved = resolve_workspace_root_from(
+            &["zylcode".to_string()],
+            None,
+            Some(tmp.0.clone()),
+            Some(exe),
+        )
+        .unwrap();
+        assert_eq!(resolved, resolve_dir(&tmp.0).unwrap());
+    }
+
+    #[test]
+    fn env_workspace_is_used_when_no_flag_is_given() {
+        let tmp = TempDir::new();
+        let resolved = resolve_workspace_root_from(
+            &["zylcode".to_string()],
+            Some(tmp.0.to_string_lossy().into_owned()),
+            Some(std::env::temp_dir()),
+            None,
+        )
+        .unwrap();
+        assert_eq!(resolved, resolve_dir(&tmp.0).unwrap());
+    }
+
+    #[test]
+    fn the_flag_beats_the_environment() {
+        let flag_dir = TempDir::new();
+        let env_dir = TempDir::new();
+        let args = vec![
+            "zylcode".to_string(),
+            "--workspace".to_string(),
+            flag_dir.0.to_string_lossy().into_owned(),
+        ];
+        let resolved = resolve_workspace_root_from(
+            &args,
+            Some(env_dir.0.to_string_lossy().into_owned()),
+            None,
+            None,
+        )
+        .unwrap();
+        assert_eq!(resolved, resolve_dir(&flag_dir.0).unwrap());
     }
 
     #[test]
