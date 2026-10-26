@@ -23,6 +23,43 @@ configure yourself (`docs/PROVIDERS.md`).
 
 ---
 
+## Product Preview
+
+> **DEVELOPER PREVIEW** — the assets below are real captures of the ZylCode desktop
+> frontend running in **browser preview** mode (no Tauri backend attached), so
+> backend-driven panels show their honest `BLOCKED` state and a mission is *composed*,
+> not run. Full capture record — starting commit, environment, redaction and
+> publication checks — in
+> [`docs/media/zylcode/README.md`](docs/media/zylcode/README.md).
+
+![ZylCode workbench — project state, mission pipeline and capability spotlight](docs/media/zylcode/01-landing.png)
+
+**Live theming** — the whole shell re-themes on the fly, no reload:
+
+<video src="docs/media/zylcode/preview-theming.mp4" width="760" controls preload="metadata">
+  <a href="docs/media/zylcode/preview-theming.mp4">Download preview-theming.mp4</a>
+</video>
+
+**Panel and dock navigation** — the bottom panel dock and the right workspace:
+
+<video src="docs/media/zylcode/preview-navigation.mp4" width="760" controls preload="metadata">
+  <a href="docs/media/zylcode/preview-navigation.mp4">Download preview-navigation.mp4</a>
+</video>
+
+**Composing a mission** — the real Mission Composer, with real keystrokes:
+
+<video src="docs/media/zylcode/preview-mission-composer.mp4" width="760" controls preload="metadata">
+  <a href="docs/media/zylcode/preview-mission-composer.mp4">Download preview-mission-composer.mp4</a>
+</video>
+
+| Surface | Capture |
+|---|---|
+| Mission Composer | ![Mission Composer](docs/media/zylcode/04-mission-composer.png) |
+| Light theme (Arctic Light) | ![Arctic Light theme](docs/media/zylcode/02-theme-arctic-light.png) |
+| Alternate theme (Nord) | ![Nord theme](docs/media/zylcode/03-theme-nord.png) |
+
+---
+
 ## Product Vision
 
 The long-term direction is an environment that carries a change all the way
