@@ -19,21 +19,60 @@ jobs:
   release:
     strategy:
       fail-fast: false
+      # Every artifact is built for an EXPLICIT target. The previous matrix was
+      # `platform: [ubuntu-22.04, windows-latest, macos-latest]` with no target,
+      # so tauri-action built only the runner's *native* architecture. That is
+      # why v0.2.1 shipped Linux x86_64 only and macOS arm64 only: `macos-latest`
+      # is Apple silicon and `ubuntu-22.04` is x86_64.
+      #
+      # The `target` is passed to tauri-action with `--target`, so each leg
+      # produces a deterministically named artifact regardless of the runner it
+      # happens to run on.
+      #
+      # Legs:
+      #   * ubuntu-22.04            -> x86_64 Linux   (native)
+      #   * ubuntu-24.04-arm        -> aarch64 Linux   (native ARM runner; the
+      #                                `cross` container has no webkit2gtk/GTK
+      #                                system libs, so we build on real arm64)
+      #   * windows-latest          -> x86_64 Windows  (native)
+      #   * macos-latest (arm64)    -> aarch64 macOS   (native Apple silicon)
+      #   * macos-latest (arm64)    -> x86_64 macOS    (cross-target; `macos-13`
+      #                                Intel is retired in 2026 and Intel runners
+      #                                are large/paid only, so we cross-compile
+      #                                from Apple silicon — the macOS SDK is
+      #                                universal and links x86_64 fine)
       matrix:
-        platform: [ubuntu-22.04, windows-latest, macos-latest]
+        include:
+          - platform: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            rust-target: x86_64-unknown-linux-gnu
+          - platform: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            rust-target: aarch64-unknown-linux-gnu
+          - platform: windows-latest
+            target: x86_64-pc-windows-msvc
+            rust-target: x86_64-pc-windows-msvc
+          - platform: macos-latest
+            target: aarch64-apple-darwin
+            rust-target: aarch64-apple-darwin
+          - platform: macos-latest
+            target: x86_64-apple-darwin
+            rust-target: x86_64-apple-darwin
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Install Linux dependencies
-        if: matrix.platform == 'ubuntu-22.04'
+        if: startsWith(matrix.platform, 'ubuntu')
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
 
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust-target }}
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v3
@@ -60,3 +99,4 @@ jobs:
           projectPath: ./apps/zylcode-desktop
           tagName: ${{ github.ref_name }}
           releaseName: "ZylCode ${{ github.ref_name }}"
+          args: --target ${{ matrix.target }}

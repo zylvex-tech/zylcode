@@ -127,13 +127,18 @@ jobs:
         run: cargo audit
         # `cargo audit` exits non-zero on a *vulnerable* crate and exits zero on
         # unmaintained/unsound advisories, which is why this is plain `cargo
-        # audit` and not `--deny warnings`. As of 2026-10-21 the workspace has
-        # 5 accepted advisories, all `unmaintained`/`unsound` rather than
-        # exploitable: RUSTSEC-2024-0370 (proc-macro-error), -2024-0449
-        # (unsafe-libyaml), -2024-0429 (glib), -2026-0002 and -2026-0253 (lru).
-        # They are documented in docs/governance/ACCEPTED_ADVISORIES.md.
+        # audit` and not `--deny warnings`. As of 2026-10-22 (main @ 3bd5059)
+        # the workspace has 3 accepted advisories, all `unmaintained`/`unsound`
+        # rather than exploitable: RUSTSEC-2024-0370 (proc-macro-error),
+        # -2024-0449 (unsafe-libyaml) and -2024-0429 (glib). They are
+        # documented in docs/governance/ACCEPTED_ADVISORIES.md.
         # Suppressing them silently would be the failure mode to avoid;
         # documenting them is what makes the gate honest.
+        #
+        # Revision note: the previous revision of this comment said "5 accepted
+        # advisories" and named RUSTSEC-2026-0002 and -2026-0253 (lru). Both
+        # were resolved by PR #24 (lru 0.12.5 -> 0.18.5, tokio 1.54.0 ->
+        # 1.54.1); the yanked tokio release is likewise resolved.
 
       - name: pnpm audit (production dependency tree)
         run: pnpm audit --prod

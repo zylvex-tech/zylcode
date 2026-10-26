@@ -111,3 +111,7 @@ Modelfile.*
 
 # Competition runtime evidence — may embed repository content. Never publish raw.
 docs/competition/natlas/evidence/
+
+# Local website secrets and Cloudflare development state
+/site/.secrets/
+/site/.wrangler/

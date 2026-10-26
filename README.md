@@ -23,6 +23,43 @@ configure yourself (`docs/PROVIDERS.md`).
 
 ---
 
+## Product Preview
+
+> **DEVELOPER PREVIEW** — the assets below are real captures of the ZylCode desktop
+> frontend running in **browser preview** mode (no Tauri backend attached), so
+> backend-driven panels show their honest `BLOCKED` state and a mission is *composed*,
+> not run. Full capture record — starting commit, environment, redaction and
+> publication checks — in
+> [`docs/media/zylcode/README.md`](docs/media/zylcode/README.md).
+
+![ZylCode workbench — project state, mission pipeline and capability spotlight](docs/media/zylcode/01-landing.png)
+
+**Live theming** — the whole shell re-themes on the fly, no reload:
+
+<video src="docs/media/zylcode/preview-theming.mp4" width="760" controls preload="metadata">
+  <a href="docs/media/zylcode/preview-theming.mp4">Download preview-theming.mp4</a>
+</video>
+
+**Panel and dock navigation** — the bottom panel dock and the right workspace:
+
+<video src="docs/media/zylcode/preview-navigation.mp4" width="760" controls preload="metadata">
+  <a href="docs/media/zylcode/preview-navigation.mp4">Download preview-navigation.mp4</a>
+</video>
+
+**Composing a mission** — the real Mission Composer, with real keystrokes:
+
+<video src="docs/media/zylcode/preview-mission-composer.mp4" width="760" controls preload="metadata">
+  <a href="docs/media/zylcode/preview-mission-composer.mp4">Download preview-mission-composer.mp4</a>
+</video>
+
+| Surface | Capture |
+|---|---|
+| Mission Composer | ![Mission Composer](docs/media/zylcode/04-mission-composer.png) |
+| Light theme (Arctic Light) | ![Arctic Light theme](docs/media/zylcode/02-theme-arctic-light.png) |
+| Alternate theme (Nord) | ![Nord theme](docs/media/zylcode/03-theme-nord.png) |
+
+---
+
 ## Product Vision
 
 The long-term direction is an environment that carries a change all the way
@@ -132,22 +169,24 @@ states what is *verified* versus what remains a *design intention*.
 
 ## Current Implementation Status
 
-Everything in this section was re-verified on this branch head (`59ab6a7`)
-rather than copied from older documents.
+Everything in this section was re-verified on this branch head (`6469bae`)
+rather than copied from older documents. See [`docs/PROJECT_MASTER_STATUS.md`](docs/PROJECT_MASTER_STATUS.md)
+for the complete phase-by-phase project status.
 
 ### Evidence
 
 | Check | When | Result |
 |---|---|---|
-| GitHub Actions CI on this commit — `cargo check --workspace --all-targets`, `cargo clippy … -D warnings`, `cargo test --workspace --all-targets`, retracted-claim guard, desktop typecheck + build | 2026-10-14 (run [`38635768031`](https://github.com/zylvex-tech/zylcode/actions/workflows/ci.yml)) | ✅ green (12 m 55 s) |
-| `cargo test -p zylcode-core` (lib + 16 integration targets) | 2026-10-19, local run on this branch head | ✅ **597 passed, 0 failed** |
-| `pnpm install --frozen-lockfile` | 2026-10-19, local | ✅ exit 0 |
-| `pnpm --filter zylcode-desktop build` (tsc + vite) | 2026-10-19, local | ✅ exit 0 |
-| `pnpm --filter zylcode-desktop test` (vitest) | 2026-10-19, local | ✅ **108 passed, 0 failed** (16 files) |
+| GitHub Actions CI on this commit — `cargo check --workspace --all-targets`, `cargo clippy … -D warnings`, `cargo test --workspace --all-targets`, retracted-claim guard, desktop typecheck + build | 2026-10-23 (run on PR #28 merge) | ✅ green (4 checks passed) |
+| `cargo test -p zylcode-core` (lib + integration targets) | 2026-10-23, local run on this branch head | ✅ **503 passed, 0 failed** |
+| `cargo test -p zylcode-mcp` (lib) | 2026-10-23, local run | ✅ **134 passed, 0 failed** |
+| `pnpm install --frozen-lockfile` | 2026-10-23, local | ✅ exit 0 |
+| `pnpm --filter zylcode-desktop build` (tsc + vite) | 2026-10-23, local | ✅ exit 0 |
+| `cargo audit` | 2026-10-23, local | ✅ **0 vulnerabilities**, 2 accepted warnings |
 
-The 597 core tests include the N-ATLAS bridge suites (17 boundary, 14
-bridge-contract, 12 runtime, 7 multilingual), factory and agent-loop
-end-to-end journeys, property tests, and crash-recovery tests — all green.
+The test suites include the agent-loop and factory end-to-end journeys,
+property tests, crash-recovery tests, N-ATLAS bridge suites, and the
+`serde-saphyr` regression tests — all green.
 
 ### Implemented and tested on this branch
 

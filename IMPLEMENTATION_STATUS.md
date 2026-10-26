@@ -1,188 +1,171 @@
-# ZylCode: Complete Implementation Status
+# ZylCode Implementation Status
 
-## 🎉 **Phase 1: COMPLETE** ✅
+> **Last updated:** 2026-10-23 · `main` @ `6469bae`
+>
+> For the complete project status including all 16 phases, see
+> [`docs/PROJECT_MASTER_STATUS.md`](docs/PROJECT_MASTER_STATUS.md).
 
-### What We've Built
+---
 
-#### 1. **Enhanced MCP Bridge (100+ Tools)**
-- **Location**: `crates/zylcode-mcp/src/enhanced_bridge.rs`
-- **Tools**: 100+ built-in tools across 8 categories
-- **Categories**: Development (25+), AI/ML (15+), Database (10+), Cloud (15+), DevOps (10+), Communication (10+), Productivity (10+), Security (5+)
+## Phase Status at a Glance
 
-#### 2. **Skills System**
-- **Location**: `crates/zylcode-mcp/src/skills_system.rs`
-- **Skills**: 5 pre-built skills (Code Review, Documentation Generator, Test Generator, Data Analysis, Security Scanner)
-- **Features**: Execution engine, marketplace integration, performance monitoring
+| Epoch | Phases | Status |
+|---|---|---|
+| **I — Trust & Understanding** | 1A, 1B, 1C, 1D, 2A, 2B | 4 ACCEPTED · **2A RE-OPENED** · 2B BLOCKED |
+| **II — Project & Agent OS** | 3A, 3B, 4 | All BLOCKED on 2A |
+| **III — Extensibility** | 5 | BLOCKED on 3A |
+| **IV — See What You Build** | 6A, 6B, 7A–7D | All NOT STARTED |
+| **V — Vision Studio** | 8A, 8B, 8C, 9 | All NOT STARTED |
+| **VI — Devices, Delivery, Ecosystem** | 10–16 | All NOT STARTED |
 
-#### 3. **Plugin Marketplace**
-- **Location**: `crates/zylcode-mcp/src/plugin_marketplace.rs`
-- **Plugins**: 5 pre-shipped plugins (AI Model Provider, File Explorer, Git Integration, Database Manager, Theme Studio)
-- **Features**: Installation management, revenue sharing, plugin discovery
+**Critical path:** Phase 2A re-acceptance → 2B → 3A → everything else.
 
-#### 4. **Premium Theme System (8 Themes)**
-- **Location**: `apps/zylcode-desktop/src/styles/themes.css`
-- **Themes**: Midnight Pro, Arctic Light, GitHub Dark, VS Code Classic, Solarized Dark, Dracula, Nord, Monokai Pro
-- **Features**: 50+ CSS variables per theme, accessibility compliance, smooth transitions
+---
 
-#### 5. **UI Component Library**
-- **Location**: `apps/zylcode-desktop/src/components/ui/index.tsx`
-- **Components**: Button, Input, Card, Badge, Tooltip, Modal, Tabs, Toast, Spinner, EmptyState, ProgressBar, Avatar, Toggle, Select, ThemeSelector
+## Accepted Foundation (Phases 1A–1D)
 
-## 📊 **Research Findings (Complete)**
+These phases form the trusted kernel of ZylCode. They are implemented, tested,
+and accepted.
 
-### Comprehensive Research Document
-- **Location**: `research-findings.md` (~1,050 lines)
-- **Topics Covered**:
-  1. **DeepSeek Technology**: 223,215+ GitHub stars, 93.3% memory reduction, cost-efficient AI
-  2. **Z.ai ZCode**: GLM-5.3-Flash model, 128K context window, bilingual support
-  3. **OpenAI Codex**: Multi-agent architecture, computer use, 90+ plugins, 2M+ weekly users
-  4. **MCP Protocol**: "USB-C for AI applications," JSON-RPC 2.0, 100+ tool integrations
-  5. **AI Coding Market**: $4.5-5.5B market, 45-55% CAGR, 65-70% developer adoption
-  6. **Monetization Strategies**: Multiple revenue streams, $1M MRR target by month 24
+### Real Tool Runtime (1A) ✅
+- Real `FileSystemTool`, `ShellTool`, `GitTool`, `SearchTool`
+- Evidence recording on every execution
+- Risk classification: Read → Write → Execute → Destructive
 
-### Key Competitive Insights (2026 Data)
-- **OpenAI Codex**: 2M+ weekly users, 124k GitHub stars, merged with ChatGPT
-- **GitHub Copilot**: 35-40% market share, 1.8M+ paying users, $100M+ ARR
-- **Cursor**: $1.25B valuation, $100M+ ARR, 1M+ users
-- **Windsurf**: $1.25B valuation, free-tier leader, privacy compliance
+### Agent Execution Loop (1B) ✅
+- Iterative state machine: Analyzing → Planning → Executing → Verifying
+- Observation feedback to model
+- Bounded execution with step limits and timeouts
 
-## 🚀 **Phase 2: READY TO BEGIN**
+### Model-Driven Agent (1C) ✅ (with conditions)
+- Formal `AgentDecision` protocol
+- Approval enforcement for destructive operations
+- Completion requires evidence
 
-### Implementation Plan
-- **Location**: `phase2-plan.md`
-- **Duration**: 12 weeks (Weeks 5-16)
-- **Focus Areas**:
-  1. **AI Input System** (Weeks 5-6): Text, voice, vision, file processing
-  2. **Computer Use System** (Weeks 7-8): Screen capture, GUI automation, workflow engine
-  3. **Enhanced MCP Bridge** (Weeks 9-10): 150+ tools, hot-reload, analytics
-  4. **Skills System Enhancement** (Weeks 11-12): 10+ skills, composition, marketplace
-  5. **Plugin Marketplace Enhancement** (Weeks 13-14): 10+ plugins, revenue features
-  6. **Integration & Testing** (Weeks 15-16): System integration, comprehensive testing
+### Durable Memory & Recovery (1D) ✅ (with conditions)
+- Append-first evidence ledger with SQLite persistence
+- Crash recovery across 3 critical windows
+- Hash-chain integrity (SHA-256)
+- Fail-closed verification
 
-### Key Differentiators to Implement
-1. **Multi-modal AI Input**: Text, voice, vision, and file processing (vs. OpenAI's text-only)
-2. **Advanced Computer Use**: Screen capture and GUI automation (vs. OpenAI's basic computer use)
-3. **MCP Bridge**: 150+ tools (vs. OpenAI's 90+ plugins)
-4. **Skills System**: Reusable capabilities (unique feature)
-5. **Plugin Marketplace**: Community-driven ecosystem (unique feature)
-6. **Privacy-First**: Local processing and BYOK model (vs. cloud-only competitors)
-7. **8 Premium Themes**: Superior UI/UX (vs. limited customization)
+---
 
-## 📁 **Key Files Created**
+## Blocked: Phase 2A — Repository Intelligence
 
-### Core Implementation
-1. `crates/zylcode-mcp/src/enhanced_bridge.rs` - 100+ tools implementation
-2. `crates/zylcode-mcp/src/skills_system.rs` - Skills system
-3. `crates/zylcode-mcp/src/plugin_marketplace.rs` - Plugin marketplace
-4. `crates/zylcode-mcp/tests/integration_test.rs` - Comprehensive tests
+**Status: NOT ACCEPTED (re-opened since 2026-09-16)**
 
-### Configuration
-5. `mcp-bridge-config.yaml` - Enhanced MCP bridge configuration
+The 7,224-line intelligence library exists and works as a library, but the
+independent audit found:
+- Metrics initially counted build artifacts
+- Benchmark failed on re-execution
+- No product surface (library only)
 
-### Frontend
-6. `apps/zylcode-desktop/src/styles/themes.css` - 8 premium themes
-7. `apps/zylcode-desktop/src/components/ui/index.tsx` - UI components
-8. `apps/zylcode-desktop/src/App.tsx` - Enhanced main application
+**Remediation:** P0 fixes applied (path exclusion, rebaseline, determinism).
+**P1 items NOT STARTED:** integration into AgentLoop, quality threshold raises,
+failing test fix.
 
-### Documentation
-9. `research-findings.md` - Comprehensive research (1,050 lines)
-10. `strategic-plan.md` - Strategic business plan (updated with 2026 data)
-11. `phase2-plan.md` - Phase 2 implementation plan
-12. `PHASE1_IMPLEMENTATION_COMPLETE.md` - Phase 1 completion summary
+This blocks Phase 2B and everything downstream.
 
-## 🎯 **Next Steps**
+See:
+- [`docs/governance/PHASE2A_INDEPENDENT_AUDIT.md`](docs/governance/PHASE2A_INDEPENDENT_AUDIT.md)
+- [`docs/governance/PHASE2A_REMEDIATION_ORDER.md`](docs/governance/PHASE2A_REMEDIATION_ORDER.md)
+- [`docs/PHASE2A_COMPLETION_REPORT.md`](docs/PHASE2A_COMPLETION_REPORT.md)
 
-### Immediate Actions (This Week)
-1. **Run Phase 1 tests** to verify implementation:
-   ```bash
-   cd C:\Projects\zylcode
-   cargo test --package zylcode-mcp --test integration_test
-   ```
+---
 
-2. **Build the project** to ensure compilation:
-   ```bash
-   cargo build --workspace
-   ```
+## Recent Changes (2026-10)
 
-3. **Start the desktop application**:
-   ```bash
-   cd apps/zylcode-desktop
-   pnpm install
-   pnpm tauri dev
-   ```
+### PR #28 — `serde-saphyr` migration (merged 2026-10-23)
+Eliminated `serde_yaml` / `unsafe-libyaml` from the dependency graph. Replaced
+with `serde-saphyr` 2.0.0 (`granit-parser`, pure Rust, `#![forbid(unsafe_code)]`).
+- Preserved strict boolean semantics (`strict_booleans: true`)
+- Preserved empty-document rejection
+- Rewrote `manifest.rs` from untyped `Value` to typed struct
+- Added 14 regression tests
+- Bumped MSRV 1.77 → 1.89
+- Resolved RUSTSEC-2024-0449
 
-### Phase 2 Implementation (Weeks 5-16)
-1. **Week 5-6**: Implement AI Input System
-2. **Week 7-8**: Implement Computer Use System
-3. **Week 9-10**: Enhance MCP Bridge (150+ tools)
-4. **Week 11-12**: Enhance Skills System (10+ skills)
-5. **Week 13-14**: Enhance Plugin Marketplace (10+ plugins)
-6. **Week 15-16**: Integration & Testing
+### PR #29 — `CODEOWNERS` (merged 2026-10-23)
+Added repository ownership governance file.
 
-## 📈 **Success Metrics**
+### PR #24 — LRU advisory fix (merged)
+Moved `lru` off 0.12.5 (two unsound advisories) and `tokio` off yanked release.
 
-### Phase 1 Achieved
-- ✅ **100+ Tools**: MCP bridge with comprehensive tool integration
-- ✅ **8 Premium Themes**: Sophisticated theme system
-- ✅ **5 Pre-built Skills**: Skills system with execution engine
-- ✅ **5 Pre-shipped Plugins**: Plugin marketplace with revenue sharing
-- ✅ **Comprehensive UI**: Accessible, responsive component library
-- ✅ **Integration Tests**: End-to-end testing coverage
+### PR #23 — Router egress spy fix (merged)
+Scoped test-only egress spy per thread, not per process.
 
-### Phase 2 Targets
-- **AI Input System**: <200ms response time for text processing
-- **Computer Use System**: <100ms for screen capture, <50ms for GUI actions
-- **MCP Bridge**: 150+ tools, <100ms execution time
-- **Skills System**: 10+ skills, <500ms execution time
-- **Plugin Marketplace**: 10+ plugins, <1s installation time
+---
 
-## 🏆 **Competitive Advantages**
+## Capability Registry Summary
 
-### vs. OpenAI Codex
-- **MCP Bridge**: 150+ tools (vs. 90+ plugins)
-- **Skills System**: Reusable capabilities (unique feature)
-- **Plugin Marketplace**: Community-driven ecosystem (unique feature)
-- **Privacy-First**: Local processing and BYOK model
-- **8 Premium Themes**: Superior UI/UX
+From `docs/capability-registry.json` (v1.4.1-audited):
 
-### vs. GitHub Copilot
-- **Computer Use**: Advanced screen capture and GUI automation
-- **Plugin Ecosystem**: Extensible with marketplace
-- **Multi-modal Input**: Voice, vision, and text
-- **Premium Themes**: 8 sophisticated themes
-- **Cost Efficiency**: DeepSeek integration reduces costs
+| Status | Count |
+|---|---|
+| GREEN | 22 |
+| DISPUTED | 12 (all Phase 2A intelligence capabilities) |
+| PARTIAL | 2 |
+| EXTERNAL_BLOCKER | 1 (remote CI — GitHub billing) |
 
-### vs. Cursor
-- **MCP Bridge**: 150+ tool integrations
-- **Skills System**: Reusable capabilities
-- **File Processing**: Comprehensive file handling
-- **Monetization**: Sustainable business model
-- **Computer Use**: GUI automation capabilities
+**Total:** 37 capabilities tracked.
 
-## 💰 **Business Model**
+---
 
-### Pricing Tiers
-- **Free**: Basic AI, limited MCP tools, BYOK
-- **Pro** ($12/month): Advanced AI, full MCP bridge, skills system
-- **Team** ($25/seat/month): Collaboration, admin dashboard, audit logs
-- **Enterprise** (Custom): Self-hosted, custom integrations, SLA
+## What Works Today
 
-### Revenue Projections
-- **Month 6**: $50,000 MRR
-- **Month 12**: $200,000 MRR
-- **Month 24**: $1,000,000 MRR
+A user can:
+1. **Install from source** (`git clone`, `pnpm install`, `cargo build`)
+2. **Run the desktop app** (Tauri v2 + React)
+3. **Configure providers** (BYOK: OpenAI, Anthropic, OpenRouter, Ollama)
+4. **Ask the agent to do something** — real iterative loop with tool execution
+5. **See real tool use** — filesystem, shell, git operations with evidence
+6. **Approve destructive actions** — permission gate is real
+7. **Save and resume sessions** — evidence ledger persists to SQLite
 
-## 🎉 **Conclusion**
+A user **cannot** (honest gaps):
+- Browse repository intelligence from the UI (library exists, not wired)
+- Run computer-use automation (R0 simulation only)
+- Download a signed installer (release pipeline configured, not producing)
+- Use multi-agent orchestration (not built)
+- Access the design canvas (not built)
 
-Phase 1 has successfully established the foundation for ZylCode with:
+---
 
-1. **Enhanced MCP Bridge**: 100+ tools across 8 categories
-2. **Skills System**: 5 pre-built skills with execution engine
-3. **Plugin Marketplace**: 5 pre-shipped plugins with revenue sharing
-4. **Premium Theme System**: 8 sophisticated themes
-5. **UI Component Library**: Comprehensive, accessible components
-6. **Comprehensive Research**: 1,050 lines of market analysis and competitive intelligence
+## Next Step
 
-The implementation is modular, extensible, and ready for Phase 2. By completing Phase 2, ZylCode will offer capabilities that surpass competitors like OpenAI Codex, GitHub Copilot, and Cursor, while maintaining its unique advantages in privacy, extensibility, and user experience.
+**Phase 2A P1 remediation.** See [`docs/PROJECT_MASTER_STATUS.md`](docs/PROJECT_MASTER_STATUS.md) §8.
 
-**Ready to proceed with Phase 2 implementation!**
+1. Verify clean worktree compiles at `main` tip
+2. Fix dirty-tree legacy (review/commit/discard 53 modified files)
+3. Fix failing router test
+4. Wire intelligence into AgentLoop context assembly
+5. Raise benchmark thresholds
+6. Request Phase 2A re-audit
+
+---
+
+## Verification
+
+```bash
+# Full workspace check
+cargo check --workspace --all-targets
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace --all-targets
+
+# Frontend
+pnpm --filter zylcode-desktop build
+pnpm --filter zylcode-desktop test
+
+# Security
+cargo audit                # 0 vulns, 2 accepted warnings
+pnpm audit --prod          # clean
+
+# Retracted-claim guard
+python scripts/check_retracted_claims.py
+```
+
+**MSRV:** 1.89 (required by `serde-saphyr` 2.0.0)
+
+---
+
+> **Built with evidence. Verified with honesty.**
