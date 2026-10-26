@@ -1,0 +1,170 @@
+# ZylCode product preview — capture record
+
+This directory holds the screenshots and short screen recordings referenced by the
+repository [README](../../README.md). Every file here is a **real capture of the real
+frontend** — no mockup, no generated animation, no staged output.
+
+They follow [`docs/community/DEMO_RECORDING_PROTOCOL.md`](../community/DEMO_RECORDING_PROTOCOL.md)
+("Record **real** software. Never generate promotional animation pretending to be product
+operation."). This file is the per-recording checklist for each asset.
+
+---
+
+## 1. What these captures are — and what they are not
+
+**They are:** the production React/TypeScript frontend of the ZylCode desktop
+application (`apps/zylcode-desktop`), built with `pnpm --filter zylcode-desktop build`
+and driven in a real Chromium browser.
+
+**They are not:**
+
+* **Not the Tauri desktop runtime.** The captures were taken with no Tauri backend
+  attached, so the app's own runtime bridge (`src/lib/runtime.ts`) reports
+  `BROWSER_PREVIEW`. Backend-dependent panels therefore render their **honest
+  controlled state** — the `BLOCKED` badge, the hint *"start `zylcode serve-intel` to
+  browse the repository tree"*, and the terminal's `terminal service error: HTTP 501`.
+  Those messages are the product telling the truth about a missing backend, not a
+  defect we hid.
+* **Not a mission execution.** `preview-mission-composer.mp4` shows a mission being
+  *composed* — the real Mission Composer surface, with real keystrokes in a real
+  textarea. The mission is **not run**: `RUN MISSION` requires the desktop backend.
+  Per the protocol's scenario catalogue, *"Mission execution — once implemented"* is
+  not staged here.
+* **Not a repository-intelligence query.** No repository-intelligence scenario is
+  staged. The protocol is explicit that this scenario is *"once accepted (currently R2,
+  not yet integrated — do not stage this until Phase 2A re-audit passes)"*, and Phase 2A
+  is `RE-OPENED`.
+* **Not a model run.** No model was invoked; no provider key was used or shown.
+
+The clips deliberately include the failure states. A recording that hides failure is
+not evidence.
+
+---
+
+## 2. Shared environment
+
+| Field | Value |
+|---|---|
+| OS | Microsoft Windows 10.0.26200.9711 (Windows 11) |
+| Browser | Chromium 153.0.8010.12 (Playwright build 1243), headless, 1180×740 |
+| Driver | `playwright-core` 1.x, local Chromium (no browser download) |
+| Node | v22.22.2 |
+| Toolchain | `rustc 1.97.1 (8bab26f4f 2026-07-14)` |
+| Build | `pnpm --filter zylcode-desktop build` → `tsc && vite build` (470 modules, exit 0) |
+| Serve | `python -m http.server 4173` over `apps/zylcode-desktop/dist` |
+| Starting commit | `e28ea8f6ba388b453ac5539fa15a8e073013af40` — *Merge pull request #30 from zylvex-tech/release/v0.2.1* (the `v0.2.1` release merge) |
+| App version shown | Status bar reads **`v0.2.1`**. The application header shows a separate in-app milestone label, **`v0.3.0-convergence`** — that is a product-milestone string, not the released version, and it is shown here exactly as it renders. |
+| Runtime mode | `BROWSER_PREVIEW` (no Tauri IPC, no `zylcode serve-intel`) |
+| Model in use | None — no model call occurs in any recorded scenario |
+
+---
+
+## 3. Per-asset checklist
+
+### `01-landing.png` — the workbench
+
+| Field | Value |
+|---|---|
+| Scenario | The landing workbench: menu bar, explorer, project panel, capability spotlight, bottom panel dock, status bar. |
+| Command / action | Load `http://localhost:4173/`, wait for the shell to settle (≈2.2 s), capture the viewport. |
+| Expected result (stated before capture) | The shell renders with the project `zylcode` (`C:\Projects\zylcode · main`) marked `AVAILABLE`, missions `0`, and the explorer in its `BLOCKED` state. |
+| Evidence | The captured frame itself: the status bar (`Circuit: CLOSED`, `Bridges: 0`, `v0.2.1`), the `AVAILABLE` / `LIMITED` / `COMING SOON` capability labels. |
+| Recording steps | Playwright `page.screenshot()` of the 1180×740 viewport. |
+
+### `02-theme-arctic-light.png` / `03-theme-nord.png` — theming
+
+| Field | Value |
+|---|---|
+| Scenario | The theme control re-themes the whole shell live. |
+| Command / action | Select `Arctic Light`, then `Nord`, in the status-bar theme `<select>`; capture after each. |
+| Expected result | The entire shell (panels, text, accents) re-colours to the selected theme without a reload. |
+| Evidence | The two captures: a light surface and a desaturated dark-blue surface, both with the same layout and the same `v0.2.1` status bar. |
+| Recording steps | `selectOption({ label })` on the theme control, then `page.screenshot()`. |
+
+### `04-mission-composer.png` / `05-mission-composer-typed.png` — mission composer
+
+| Field | Value |
+|---|---|
+| Scenario | The Mission Composer surface: intent textarea, context affordances (`+ Context`, `Files`, `History`, `/ Commands`), autonomy selector, model override, and the `RUN MISSION` action. |
+| Command / action | Click `Open mission composer →`; capture the surface; then type a sentence into the intent textarea and capture again. |
+| Expected result | The composer replaces the landing surface, the left rail becomes `MISSIONS`, and typed text appears in the intent field. |
+| Evidence | `05-mission-composer-typed.png` shows the typed intent verbatim in the textarea. |
+| Recording steps | Real `click()` and real `type()` keystrokes (18 ms/char) into the real `<textarea>`. |
+
+### `preview-theming.mp4` — live theming (12.4 s)
+
+| Field | Value |
+|---|---|
+| Scenario | The shell re-themes live across the theme set. |
+| Command / action | Cycle the theme control through `Midnight Pro → Arctic Light → Nord → GitHub Dark → Arctic Light → Midnight Pro`, 1.5 s per theme. |
+| Expected result | The full shell visibly re-colours on every selection, including two light-theme passes. |
+| Evidence | The clip itself: the light `Arctic Light` surface and the dark surfaces are visibly different renders of the same layout. |
+| Recording steps | Playwright `recordVideo` (context-level, 1180×740), then transcoded to H.264 MP4 (`libx264`, `yuv420p`, `+faststart`). |
+
+### `preview-navigation.mp4` — panel and dock navigation (20.6 s)
+
+| Field | Value |
+|---|---|
+| Scenario | The bottom panel dock and the right workspace switch surfaces. |
+| Command / action | Click the bottom dock tabs (`Terminal`, `Output`, `Problems`, `Debug Console`, `Ports`, `Tests`, `Evidence`, `Dev Tools`, `Foundation`, `Delivery`) and the right workspace tabs (`Tasks`, `Changes`, `Evidence`, `AI Agent`). |
+| Expected result | The selected tab becomes active and its panel body renders. |
+| Evidence | The clip shows the right workspace switching to the `Build Pipeline` and `Deploy Targets` panels. |
+| Recording steps | Playwright `recordVideo`, then the same MP4 transcode. |
+
+### `preview-mission-composer.mp4` — composing a mission (8.6 s)
+
+| Field | Value |
+|---|---|
+| Scenario | Composing a mission: open the composer, type an intent. |
+| Command / action | Click `Open mission composer →`; type *"Turn this acceptance criterion into a verified mission."* into the intent textarea (22 ms/char). |
+| Expected result | The composer opens and the typed intent appears verbatim in the field. |
+| Evidence | The clip shows the sentence typed character by character in the real textarea. |
+| Recording steps | Playwright `recordVideo`, then the same MP4 transcode. |
+
+---
+
+## 4. Redaction checklist (applied)
+
+* **No API keys, MCP tokens, cloud credentials or provider secrets** appear in any
+  asset. No model was invoked, so no key could be rendered.
+* **No SMTP or payment credentials** — not used in these scenarios.
+* **No personal information.** No names, emails or locations are shown.
+* **No secret environment variables** are displayed; the status bar shows only
+  `metrics: n/a`, `Circuit: CLOSED`, `Bridges: 0`.
+* **Paths.** The captures show the working directory `C:\Projects\zylcode` and the
+  branch `main`. This is the public repository's own checkout path — it exposes no
+  internal structure beyond the layout already published in the README, and it is
+  retained because the alternative (a doctored path) would misrepresent the capture.
+* **No failure was hidden.** The `BLOCKED` badges and the `HTTP 501` terminal error
+  are shown as they occurred, per the protocol's *"if a step fails, record the failure
+  too"*.
+
+---
+
+## 5. Publication checklist
+
+- [x] Starting commit SHA recorded (`e28ea8f6ba388b453ac5539fa15a8e073013af40`) and reachable in the repository.
+- [x] Environment matches what is shown (Windows 11, Chromium 153, built frontend, browser preview).
+- [x] The action performed is real and reproducible from that commit — build the frontend, serve `dist/`, open it.
+- [x] No fabricated or staged-only output presented as live behaviour.
+- [x] All secret/PII classes redacted (none were present).
+- [x] Capability status label matches the implemented rung: the assets are labelled **DEVELOPER PREVIEW / browser preview**, consistent with the README's early-access status.
+- [x] Not a concept or mockup, so no `CONCEPT` overlay is required — but the assets are explicitly labelled as *browser preview* rather than desktop runtime, so the label matches reality.
+
+---
+
+## 6. Reproducing these captures
+
+```bash
+# 1. Build the frontend exactly as captured
+pnpm --filter zylcode-desktop build
+
+# 2. Serve the production bundle
+cd apps/zylcode-desktop/dist && python -m http.server 4173
+
+# 3. Drive it with a real browser (Playwright, pointing at a local Chromium)
+#    load http://localhost:4173/, then screenshot / record as described per asset above.
+```
+
+Every asset in this directory can be regenerated from the starting commit with the
+steps above. Nothing here is hand-edited after capture.
