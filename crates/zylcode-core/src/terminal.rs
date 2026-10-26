@@ -1000,6 +1000,10 @@ mod tests {
 
     /// False on a machine without Windows PowerShell (then the PowerShell
     /// behavioural tests skip *and say so* rather than pretending).
+    ///
+    /// Every caller is a `#[cfg(target_family = "windows")]` test, so on
+    /// POSIX targets this helper has no users and would be dead code.
+    #[cfg(target_family = "windows")]
     fn powershell_available() -> bool {
         Shell::auto() == Shell::PowerShell
     }
@@ -1598,9 +1602,15 @@ mod tests {
                 wide.push(n as u8);
             }
         }
+        // `as_chunks` splits into `[u8; 2]` units and returns any trailing
+        // odd byte separately. Ignoring that remainder is exactly what
+        // `chunks_exact(2)` did: an incomplete trailing unit is dropped, not
+        // reinterpreted.
         let units: Vec<u16> = wide
-            .chunks_exact(2)
-            .map(|c| u16::from_le_bytes([c[0], c[1]]))
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .map(|c| u16::from_le_bytes(*c))
             .collect();
         String::from_utf16(&units).expect("decoded script must be valid UTF-16")
     }

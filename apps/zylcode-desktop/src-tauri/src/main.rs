@@ -1381,7 +1381,11 @@ mod workspace_resolution_tests {
     //! These tests pin the resolver that replaces it — the same process the
     //! app runs at startup, against real directories on disk.
 
-    use super::{resolve_dir, resolve_workspace_root, strip_verbatim};
+    use super::{resolve_dir, resolve_workspace_root};
+    // Only the `#[cfg(windows)]` test below calls this, so importing it
+    // unconditionally is an unused import on POSIX targets.
+    #[cfg(windows)]
+    use super::strip_verbatim;
 
     /// A unique real directory under the system temp dir (removed on drop).
     struct TempDir(std::path::PathBuf);
