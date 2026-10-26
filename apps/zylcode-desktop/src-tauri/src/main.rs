@@ -398,6 +398,17 @@ async fn terminal_exec(
     .map_err(|e| format!("terminal exec failed: {e:#}"))
 }
 
+/// Terminal reset: forget every session's remembered working directory, so
+/// the next command starts again at the workspace root. The previous
+/// desktop implementation returned `true` without doing anything — a reset
+/// that reports success it never performed. This one calls the same
+/// `TerminalHub::reset` the HTTP `/api/terminal/reset` route uses.
+#[tauri::command]
+async fn terminal_reset(state: tauri::State<'_, EngineState>) -> Result<serde_json::Value, String> {
+    state.terminal_hub.reset();
+    Ok(serde_json::json!({ "status": "ok" }))
+}
+
 /// Version & build info for the About/Diagnostics surfaces.
 #[tauri::command]
 async fn app_version(state: tauri::State<'_, EngineState>) -> Result<serde_json::Value, String> {
@@ -1166,12 +1177,95 @@ struct TelemetryAuditEntry {
     pub error: Option<String>,
 }
 
+/// Resolve the one workspace this app instance operates in.
+///
+/// Order: `--workspace <path>` / `--workspace=<path>` → `ZYLCODE_WORKSPACE` →
+/// the process working directory. The result is a canonical absolute
+/// directory (without Windows' `\\?\` verbatim prefix, so shell commands can
+/// use it verbatim). This is the path the engine, the terminal sessions and
+/// the mission queue all inherit — nothing anywhere may assume a directory.
+///
+/// # Why this exists
+///
+/// The engine used to be configured with `workspace_root = "."`, which
+/// resolves against wherever the executable happened to start — typically the
+/// install directory. Terminal commands therefore ran outside the user's
+/// project, so `git status` answered "not a git repository" even while the
+/// user was looking at a repository in the file explorer.
+fn resolve_workspace_root(args: &[String]) -> anyhow::Result<std::path::PathBuf> {
+    let from_flag = args
+        .iter()
+        .position(|a| a == "--workspace")
+        .and_then(|i| args.get(i + 1).cloned())
+        .or_else(|| {
+            args.iter()
+                .find_map(|a| a.strip_prefix("--workspace=").map(str::to_string))
+        });
+    let candidate = from_flag
+        .map(std::path::PathBuf::from)
+        .or_else(|| {
+            std::env::var("ZYLCODE_WORKSPACE")
+                .ok()
+                .map(std::path::PathBuf::from)
+        })
+        .unwrap_or_else(|| {
+            std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."))
+        });
+    resolve_dir(&candidate)
+}
+
+/// Canonicalize a workspace candidate and validate that it is a directory,
+/// with an error naming the path rather than a bare OS error.
+fn resolve_dir(path: &std::path::Path) -> anyhow::Result<std::path::PathBuf> {
+    let canonical = path
+        .canonicalize()
+        .map_err(|e| anyhow::anyhow!("cannot resolve workspace '{}': {e}", path.display()))?;
+    anyhow::ensure!(
+        canonical.is_dir(),
+        "workspace '{}' is not a directory",
+        canonical.display()
+    );
+    Ok(strip_verbatim(canonical))
+}
+
+/// Windows `canonicalize` returns verbatim (`\\?\C:\...`, `\\?\UNC\...`)
+/// paths. Shell commands and UI strings need the plain form.
+#[cfg(windows)]
+fn strip_verbatim(path: std::path::PathBuf) -> std::path::PathBuf {
+    let s = path.to_string_lossy().into_owned();
+    if let Some(rest) = s.strip_prefix(r"\\?\UNC\") {
+        std::path::PathBuf::from(format!(r"\\{rest}"))
+    } else if let Some(rest) = s.strip_prefix(r"\\?\") {
+        std::path::PathBuf::from(rest)
+    } else {
+        path
+    }
+}
+
+#[cfg(not(windows))]
+fn strip_verbatim(path: std::path::PathBuf) -> std::path::PathBuf {
+    path
+}
+
 fn main() {
     // Check for --interactive flag before Tauri initialization
     let args: Vec<String> = std::env::args().collect();
+
+    // Resolve the workspace once, before anything that depends on it. On a
+    // bad request we exit immediately with a readable message — never start
+    // the app pointed at a directory that is not there.
+    let workspace = match resolve_workspace_root(&args) {
+        Ok(w) => w,
+        Err(e) => {
+            eprintln!("ZylCode: {e:#}");
+            std::process::exit(1);
+        }
+    };
+    let workspace_str = workspace.to_string_lossy().into_owned();
+
     if args.iter().any(|a| a == "--interactive" || a == "-i") {
         let engine = ZylCodeEngine::new(EngineConfig {
-            workspace_root: ".".to_string(),
+            workspace_root: workspace_str,
             verbose: false,
             extra: Default::default(),
         });
@@ -1189,9 +1283,10 @@ fn main() {
         )
         .with_target(false)
         .init();
+    tracing::info!(workspace = %workspace_str, "workspace resolved");
 
     let engine = ZylCodeEngine::new(EngineConfig {
-        workspace_root: ".".to_string(),
+        workspace_root: workspace_str,
         verbose: false,
         extra: Default::default(),
     });
@@ -1244,6 +1339,7 @@ fn main() {
             nav_query,
             git_status,
             terminal_exec,
+            terminal_reset,
             mission_enqueue,
             missions_list,
             mission_run_next,
@@ -1274,4 +1370,128 @@ fn main() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running ZylCode desktop application");
+}
+
+#[cfg(test)]
+mod workspace_resolution_tests {
+    //! Regression tests for the working-directory defect: the engine was
+    //! configured with `workspace_root = "."`, so the terminal ran in
+    //! whatever directory the executable happened to start in and `git`
+    //! reported "not a git repository" for the user's actual project.
+    //! These tests pin the resolver that replaces it — the same process the
+    //! app runs at startup, against real directories on disk.
+
+    use super::{resolve_dir, resolve_workspace_root};
+    // Only the `#[cfg(windows)]` test below calls this, so importing it
+    // unconditionally is an unused import on POSIX targets.
+    #[cfg(windows)]
+    use super::strip_verbatim;
+
+    /// A unique real directory under the system temp dir (removed on drop).
+    struct TempDir(std::path::PathBuf);
+
+    impl TempDir {
+        fn new() -> Self {
+            let dir = std::env::temp_dir().join(format!(
+                "zylcode_ws_test_{}_{}",
+                std::process::id(),
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_nanos()
+            ));
+            std::fs::create_dir_all(&dir).unwrap();
+            Self(dir)
+        }
+    }
+
+    impl Drop for TempDir {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
+    #[test]
+    fn explicit_flag_wins_and_resolves_to_an_absolute_directory() {
+        let tmp = TempDir::new();
+        let args = vec![
+            "zylcode".to_string(),
+            "--interactive".to_string(),
+            "--workspace".to_string(),
+            tmp.0.to_string_lossy().into_owned(),
+        ];
+        let resolved = resolve_workspace_root(&args).unwrap();
+        assert!(resolved.is_absolute(), "{}", resolved.display());
+        assert_eq!(resolved, resolve_dir(&tmp.0).unwrap());
+    }
+
+    #[test]
+    fn equals_form_of_the_flag_is_accepted_too() {
+        let tmp = TempDir::new();
+        let args = vec![
+            "zylcode".to_string(),
+            format!("--workspace={}", tmp.0.to_string_lossy()),
+        ];
+        assert_eq!(
+            resolve_workspace_root(&args).unwrap(),
+            resolve_dir(&tmp.0).unwrap()
+        );
+    }
+
+    #[test]
+    fn a_missing_workspace_is_a_readable_error_not_a_silent_fallback() {
+        let args = vec![
+            "zylcode".to_string(),
+            "--workspace".to_string(),
+            "__zylcode_no_such_workspace_dir__".to_string(),
+        ];
+        let err = resolve_workspace_root(&args).unwrap_err();
+        let msg = format!("{err:#}");
+        assert!(
+            msg.contains("cannot resolve workspace"),
+            "the error must name the problem: {msg}"
+        );
+        assert!(msg.contains("__zylcode_no_such_workspace_dir__"), "{msg}");
+    }
+
+    #[test]
+    fn a_file_is_rejected_because_it_is_not_a_workspace() {
+        let tmp = TempDir::new();
+        let file = tmp.0.join("not_a_dir.txt");
+        std::fs::write(&file, "hi").unwrap();
+        let err = resolve_dir(&file).unwrap_err();
+        assert!(format!("{err:#}").contains("is not a directory"), "{err:#}");
+    }
+
+    #[test]
+    fn the_resolved_path_is_usable_in_a_shell() {
+        // `\\?\` verbatim paths break naive path handling in cmd/PowerShell
+        // and look wrong in the UI — canonicalization must strip them.
+        let tmp = TempDir::new();
+        let resolved = resolve_dir(&tmp.0).unwrap();
+        let shown = resolved.to_string_lossy();
+        assert!(
+            !shown.contains(r"\\?\"),
+            "verbatim prefix leaked into a shell-facing path: {shown}"
+        );
+        assert!(!shown.ends_with('.'), "{shown}");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn strip_verbatim_handles_both_drive_and_unc_forms() {
+        assert_eq!(
+            strip_verbatim(std::path::PathBuf::from(r"\\?\C:\repo")),
+            std::path::PathBuf::from(r"C:\repo")
+        );
+        assert_eq!(
+            strip_verbatim(std::path::PathBuf::from(r"\\?\UNC\server\share\repo")),
+            std::path::PathBuf::from(r"\\server\share\repo")
+        );
+        // Plain paths pass through untouched.
+        assert_eq!(
+            strip_verbatim(std::path::PathBuf::from(r"C:\repo")),
+            std::path::PathBuf::from(r"C:\repo")
+        );
+    }
 }

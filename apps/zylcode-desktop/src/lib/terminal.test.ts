@@ -59,3 +59,52 @@ describe("terminalExec transport classification", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
+
+describe("terminalExec shell forwarding (shell-mismatch regression)", () => {
+  /** Healthy snake_case response, as the backend actually serializes it. */
+  function response(overrides: Record<string, unknown> = {}) {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        session_id: "s1",
+        cwd: "C:\\repo",
+        shell: "powershell",
+        exit_code: 0,
+        stdout_tail: "ok",
+        stderr_tail: "",
+        duration_ms: 1,
+        ...overrides,
+      }),
+    });
+  }
+
+  it("sends the requested shell mode to the backend in snake_case", async () => {
+    response();
+    await terminalExec({ command: "dir", shell: "cmd" });
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body);
+    expect(body.shell).toBe("cmd");
+    expect(body.command).toBe("dir");
+  });
+
+  it("sends shell: null when none was chosen (backend default applies)", async () => {
+    response();
+    await terminalExec({ command: "echo hi" });
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as { body: string }).body);
+    expect(body.shell).toBeNull();
+  });
+
+  it("surfaces the shell the backend reports alongside the output", async () => {
+    response({ shell: "pwsh" });
+    const out = await terminalExec({ command: "Get-Location", shell: "pwsh" });
+    expect(out.shell).toBe("pwsh");
+    expect(out.transportError).toBe(false);
+    expect(out.stdoutTail).toBe("ok");
+  });
+
+  it("degrades to an empty shell name when an older backend omits it", async () => {
+    response({ shell: undefined });
+    const out = await terminalExec({ command: "echo hi" });
+    expect(out.shell).toBe("");
+    expect(out.exitCode).toBe(0);
+  });
+});
