@@ -12,10 +12,32 @@ const BRAND_BG = "#141414"; // the logo's own dark chip color
 export const RECOVERY_INTERVAL_MS = 2000;
 
 /**
+ * The shell modes the backend accepts. `auto` lets the platform choose
+ * (PowerShell when present on Windows, `sh` elsewhere); the rest name a
+ * concrete executable that is then used exactly or fails loudly.
+ */
+export const SHELL_MODES = ["auto", "powershell", "pwsh", "cmd", "sh"] as const;
+
+/**
+ * The AVAILABLE badge note, built from what the backend actually reported.
+ * "real shell" over-promised: this surface runs one process per command
+ * (a command runner), so the note names the shell that ran and says what
+ * persists.
+ */
+export function availableNote(shellName: string): string {
+  return `${shellName || "shell"} · command runner · cwd persists per session`;
+}
+
+/**
  * Real terminal surface: keystrokes go to a persistent backend session
  * (zylcode serve-intel HTTP route, or the Tauri terminal_exec command),
  * output comes back from actually executed commands, and the working
  * directory persists across them.
+ *
+ * Honest about what it is: a **command runner, not an interactive PTY** —
+ * each command is one separate process in the selected shell. The shell
+ * selector names the shell explicitly (`auto` = the platform default), and
+ * the backend reports which shell actually ran each command in `out.shell`.
  *
  * Health contract (regression-tested):
  * - backend down at mount → BLOCKED truthfully, then re-probe every
@@ -36,6 +58,11 @@ export const TerminalPanel: React.FC = () => {
   const [status, setStatus] = useState<CapabilityStatus>("BLOCKED");
   const [statusNote, setStatusNote] = useState("connecting to terminal service…");
   const [ready, setReady] = useState(false);
+  // Shell mode for new commands (`auto` = platform default). Kept in a ref
+  // too so the xterm data handler and recovery probe always send the current
+  // choice without being re-bound on every change.
+  const [shell, setShell] = useState("auto");
+  const shellRef = useRef("auto");
 
   // Refs used inside the xterm data handler and the recovery timer without
   // re-binding either (first-render closures stay correct via refs).
@@ -78,13 +105,14 @@ export const TerminalPanel: React.FC = () => {
       const probe = await terminalExec({
         sessionId: sessionRef.current,
         cwd: null,
+        shell: shellRef.current,
         command: "echo zylcode_terminal_ready",
       });
       if (probe.transportError) return; // still down — stay BLOCKED
       stopRecovery();
       if (probe.sessionId) sessionRef.current = probe.sessionId;
       if (probe.cwd) cwdRef.current = probe.cwd;
-      setStatusBoth("AVAILABLE", "real shell · cwd persists per session");
+      setStatusBoth("AVAILABLE", availableNote(probe.shell));
       termRef.current?.write("\r\n\u001b[32m— terminal service recovered —\u001b[0m");
       writePrompt();
     }, RECOVERY_INTERVAL_MS);
@@ -98,6 +126,7 @@ export const TerminalPanel: React.FC = () => {
       const out: TerminalOutput = await terminalExec({
         sessionId: sessionRef.current,
         cwd: cwdRef.current || null,
+        shell: shellRef.current,
         command: line,
       });
       if (out.transportError) {
@@ -114,7 +143,7 @@ export const TerminalPanel: React.FC = () => {
         // A command got through while the badge said BLOCKED (e.g. the
         // user typed before the recovery probe fired): trust the evidence.
         stopRecovery();
-        setStatusBoth("AVAILABLE", "real shell · cwd persists per session");
+        setStatusBoth("AVAILABLE", availableNote(out.shell));
       }
       if (out.sessionId) sessionRef.current = out.sessionId;
       if (out.cwd) cwdRef.current = out.cwd;
@@ -195,6 +224,7 @@ export const TerminalPanel: React.FC = () => {
         const probe = await terminalExec({
           sessionId: sessionRef.current,
           cwd: null,
+          shell: shellRef.current,
           command: "echo zylcode_terminal_ready",
         });
         if (disposed) return;
@@ -205,8 +235,11 @@ export const TerminalPanel: React.FC = () => {
         } else {
           if (probe.sessionId) sessionRef.current = probe.sessionId;
           if (probe.cwd) cwdRef.current = probe.cwd;
-          setStatusBoth("AVAILABLE", "real shell · cwd persists per session");
-          term.write("\u001b[90mZylCode terminal — commands run for real.\u001b[0m");
+          setStatusBoth("AVAILABLE", availableNote(probe.shell));
+          term.write(
+            `${"\u001b[90m"}ZylCode terminal — commands run for real in your selected shell.${"\u001b[0m"}\r\n` +
+              `${"\u001b[90m"}One process per command (command runner, not an interactive PTY); cwd persists per session.${"\u001b[0m"}`,
+          );
           writePrompt();
         }
         readyRef.current = true;
@@ -262,6 +295,24 @@ export const TerminalPanel: React.FC = () => {
           <span className="text-xs text-text-muted font-mono truncate">{statusNote}</span>
         </div>
         <div className="flex items-center gap-2">
+          <label className="flex items-center gap-1 text-xs text-text-muted font-mono">
+            shell
+            <select
+              aria-label="shell"
+              value={shell}
+              onChange={(e) => {
+                setShell(e.target.value);
+                shellRef.current = e.target.value;
+              }}
+              className="text-xs px-1 py-1 rounded border border-border bg-transparent text-text-primary"
+            >
+              {SHELL_MODES.map((mode) => (
+                <option key={mode} value={mode}>
+                  {mode}
+                </option>
+              ))}
+            </select>
+          </label>
           <button
             onClick={handleClear}
             disabled={!ready}

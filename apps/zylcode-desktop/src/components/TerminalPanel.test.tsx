@@ -59,6 +59,7 @@ function down(): TerminalOutput {
   return {
     sessionId: "",
     cwd: "",
+    shell: "",
     exitCode: null,
     timedOut: false,
     stdoutTail: "",
@@ -75,6 +76,7 @@ function up(sessionId = "s1"): TerminalOutput {
   return {
     sessionId,
     cwd: "/workspace",
+    shell: "powershell",
     exitCode: 0,
     timedOut: false,
     stdoutTail: "zylcode_terminal_ready",
@@ -90,6 +92,7 @@ function cmdFailed(): TerminalOutput {
   return {
     sessionId: "s1",
     cwd: "/workspace",
+    shell: "powershell",
     exitCode: 1,
     timedOut: false,
     stdoutTail: "",
@@ -156,7 +159,11 @@ describe("TerminalPanel backend recovery (stale BLOCKED regression)", () => {
     });
 
     expect(screen.getByText("AVAILABLE")).toBeInTheDocument();
-    expect(screen.getByText("real shell · cwd persists per session")).toBeInTheDocument();
+    // The badge names the shell the backend actually reported — no more
+    // generic "real shell" claim.
+    expect(
+      screen.getByText("powershell · command runner · cwd persists per session"),
+    ).toBeInTheDocument();
     // The recovery is announced in the terminal itself…
     expect(terminalText()).toContain("terminal service recovered");
     // …and came from real re-probes, not a reload or a lucky first render.
@@ -249,5 +256,58 @@ describe("TerminalPanel backend recovery (stale BLOCKED regression)", () => {
 
     expect(terminalText()).toContain("— session reset —");
     expect(screen.getByText("AVAILABLE")).toBeInTheDocument();
+  });
+});
+
+describe("TerminalPanel shell selection (shell-mismatch regression)", () => {
+  it("defaults to the platform shell (auto) and forwards it on every exec", async () => {
+    execMock.mockResolvedValue(up());
+
+    render(<TerminalPanel />);
+    await flush();
+
+    // The selector exists, starts on auto…
+    const select = screen.getByRole("combobox", { name: "shell" }) as HTMLSelectElement;
+    expect(select.value).toBe("auto");
+    // …and the mount probe already said so.
+    expect(execMock.mock.calls[0][0].shell).toBe("auto");
+
+    // A command typed afterwards carries the same mode.
+    type("Write-Output hi");
+    await flush();
+    const last = execMock.mock.calls[execMock.mock.calls.length - 1];
+    expect(last[0].shell).toBe("auto");
+  });
+
+  it("forwards an explicitly chosen shell on subsequent commands", async () => {
+    execMock.mockResolvedValue(up());
+
+    render(<TerminalPanel />);
+    await flush();
+
+    fireEvent.change(screen.getByRole("combobox", { name: "shell" }), {
+      target: { value: "cmd" },
+    });
+    type("dir");
+    await flush();
+
+    // The command must be executed as cmd — never silently routed to the
+    // default shell (the original defect: PowerShell syntax sent to cmd).
+    const last = execMock.mock.calls[execMock.mock.calls.length - 1];
+    expect(last[0].shell).toBe("cmd");
+  });
+
+  it("advertises the honest model: a command runner, one process per command", async () => {
+    execMock.mockResolvedValue(up());
+
+    render(<TerminalPanel />);
+    await flush();
+
+    const text = terminalText();
+    expect(text).toContain("commands run for real in your selected shell");
+    expect(text).toContain("command runner, not an interactive PTY");
+    expect(text).toContain("cwd persists per session");
+    // No claim of an interactive shell session.
+    expect(text).not.toContain("interactive shell ready");
   });
 });

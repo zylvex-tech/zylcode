@@ -131,6 +131,7 @@ pub async fn build_workspace(
         let req = TerminalRequest {
             session_id: None,
             cwd: None,
+            shell: None,
             command: step.command.clone(),
             timeout_secs: Some(step.timeout_secs),
         };

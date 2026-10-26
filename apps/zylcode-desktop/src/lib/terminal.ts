@@ -13,6 +13,13 @@ import { detectEnvironment, recordDiagnostic } from "./runtime";
 export interface TerminalRequest {
   sessionId?: string | null;
   cwd?: string | null;
+  /**
+   * Shell mode: `auto`, `powershell`, `pwsh`, `cmd` or `sh`. `undefined`
+   * means "backend default" (`auto` unless ZYLCODE_TERMINAL_SHELL says
+   * otherwise). A named mode is honoured exactly or fails loudly — the
+   * backend never substitutes a different shell.
+   */
+  shell?: string | null;
   command: string;
   timeoutSecs?: number;
 }
@@ -20,6 +27,8 @@ export interface TerminalRequest {
 export interface TerminalOutput {
   sessionId: string;
   cwd: string;
+  /** The shell that actually executed this command (`powershell`, `pwsh`, `cmd`, `sh`). */
+  shell: string;
   exitCode: number | null;
   timedOut: boolean;
   stdoutTail: string;
@@ -40,6 +49,7 @@ function failed(question: string, detail: string, transport = true): TerminalOut
   return {
     sessionId: "",
     cwd: "",
+    shell: "",
     exitCode: null,
     timedOut: false,
     stdoutTail: "",
@@ -57,6 +67,7 @@ function toSnake(req: TerminalRequest): Record<string, unknown> {
   return {
     session_id: req.sessionId ?? null,
     cwd: req.cwd ?? null,
+    shell: req.shell ?? null,
     command: req.command,
     timeout_secs: req.timeoutSecs ?? null,
   };
@@ -97,6 +108,7 @@ function normalize(raw: Record<string, unknown>): TerminalOutput {
   return {
     sessionId: String(raw.sessionId ?? raw.session_id ?? ""),
     cwd: String(raw.cwd ?? ""),
+    shell: String(raw.shell ?? ""),
     exitCode:
       typeof raw.exitCode === "number"
         ? raw.exitCode
@@ -114,7 +126,15 @@ function normalize(raw: Record<string, unknown>): TerminalOutput {
 
 export async function terminalReset(): Promise<boolean> {
   try {
-    if (isDesktop()) return true; // sessions live with the app process
+    if (isDesktop()) {
+      // Real reset: the `terminal_reset` IPC command clears every session's
+      // remembered working directory in the shared TerminalHub. The previous
+      // implementation returned `true` without touching the backend — a
+      // success claim for work that never happened.
+      const { invoke } = await import("@tauri-apps/api/core");
+      const res = await invoke<Record<string, unknown>>("terminal_reset");
+      return res?.status === "ok";
+    }
     const res = await fetch("/api/terminal/reset", { method: "POST" });
     return res.ok;
   } catch {
