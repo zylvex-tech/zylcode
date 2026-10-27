@@ -3,6 +3,7 @@ import { EvidenceCenter } from "../EvidenceCenter";
 import { EvidenceTimeline } from "../EvidenceTimeline";
 import { LiveSearch } from "../LiveSearch";
 import { MissionComposer } from "../MissionComposer";
+import { MissionPipeline } from "../MissionPipeline";
 import { RepoIntelPanel } from "../RepoIntelPanel";
 import { NavErrorBoundary, RepoNavPanel } from "../RepoNavPanel";
 import { SourceControlPanel } from "../SourceControlPanel";
@@ -112,6 +113,7 @@ export function SurfaceHost({
                 </div>
               </div>
             </header>
+            <MissionPipeline />
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <Panel title="PROJECT" className="lg:col-span-2">
                 <div className="flex items-start justify-between gap-3">

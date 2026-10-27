@@ -74,3 +74,117 @@ body {
     --color-text-secondary: #333333;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Mission pipeline — the home surface's lifecycle strip.
+
+   A pulse travels intent -> plan -> evidence -> verified. Decoration only: the
+   labels read correctly with no motion, so everything here is disabled under
+   prefers-reduced-motion rather than merely slowed down.
+   --------------------------------------------------------------------------- */
+.mission-flow {
+  position: relative;
+  padding: 20px 4px 4px;
+}
+
+.mission-flow__track {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  top: 24px;
+  height: 1px;
+  background: var(--color-border);
+}
+
+.mission-flow__pulse {
+  position: absolute;
+  top: -2px;
+  left: 0;
+  width: 26px;
+  height: 5px;
+  border-radius: 9999px;
+  background: var(--color-primary);
+  opacity: 0;
+  animation: zyl-pulse-travel 4.6s linear infinite;
+}
+
+@keyframes zyl-pulse-travel {
+  0% {
+    left: 0;
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 1;
+  }
+  100% {
+    left: calc(100% - 26px);
+    opacity: 0;
+  }
+}
+
+.mission-flow__stages {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mission-flow__stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+}
+
+.mission-flow__node {
+  width: 9px;
+  height: 9px;
+  border-radius: 9999px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  animation: zyl-stage-light 4.6s ease-in-out infinite;
+  animation-delay: var(--stage-delay, 0s);
+}
+
+@keyframes zyl-stage-light {
+  0% {
+    border-color: var(--color-border);
+    background: var(--color-surface);
+  }
+  6% {
+    border-color: var(--color-primary);
+    background: var(--color-primary);
+  }
+  18% {
+    border-color: var(--color-primary);
+    background: var(--color-primary);
+  }
+  26%,
+  100% {
+    border-color: var(--color-border);
+    background: var(--color-surface);
+  }
+}
+
+.mission-flow__label {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mission-flow__pulse,
+  .mission-flow__node {
+    animation: none;
+  }
+  .mission-flow__pulse {
+    opacity: 0;
+  }
+}
