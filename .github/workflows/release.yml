@@ -66,8 +66,12 @@ jobs:
       - name: Install Linux dependencies
         if: startsWith(matrix.platform, 'ubuntu')
         run: |
+          # `xdg-utils` is not optional: the Linux bundler shells out to
+          # `xdg-open` and aborts with "xdg-open binary not found" without it.
+          # ubuntu-22.04 happens to ship it; ubuntu-24.04-arm does not, which
+          # is why the v0.2.2 release lost its aarch64 Linux artefact.
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf xdg-utils
 
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
