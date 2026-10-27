@@ -29,6 +29,21 @@ export function availableNote(shellName: string): string {
 }
 
 /**
+ * True when the typed line means "clear the visible transcript" rather than
+ * something to hand to the shell.
+ *
+ * This has to live in the presentation layer: every command runs as a fresh
+ * non-interactive process, so `Clear-Host`/`cls` cannot clear a screen that
+ * belongs to the UI. Matching is on the **whole** trimmed line and
+ * case-insensitive — `echo clear`, `clear; git status` and `cls -Force` remain
+ * ordinary commands rather than silently wiping the transcript.
+ */
+export function isClearCommand(line: string): boolean {
+  const trimmed = line.trim().toLowerCase();
+  return trimmed === "clear" || trimmed === "cls";
+}
+
+/**
  * Real terminal surface: keystrokes go to a persistent backend session
  * (zylcode serve-intel HTTP route, or the Tauri terminal_exec command),
  * output comes back from actually executed commands, and the working
@@ -80,6 +95,17 @@ export const TerminalPanel: React.FC = () => {
     term.write(`\r\n\u001b[36m${dir}\u001b[0m \u001b[32m$\u001b[0m `);
   }, []);
 
+  /**
+   * The one implementation of "clear the visible transcript". Used by both the
+   * Clear button and the `clear`/`cls` commands, so the two can never drift.
+   * It touches only the xterm buffer: the session id, the working directory
+   * and the selected shell are all left exactly as they were.
+   */
+  const clearScreen = useCallback(() => {
+    termRef.current?.clear();
+    writePrompt();
+  }, [writePrompt]);
+
   const setStatusBoth = useCallback((next: CapabilityStatus, note: string) => {
     statusRef.current = next;
     setStatus(next);
@@ -122,6 +148,12 @@ export const TerminalPanel: React.FC = () => {
     async (line: string) => {
       const term = termRef.current;
       if (!term) return;
+      if (isClearCommand(line)) {
+        // Presentation-layer clear: the command never reaches the shell, so it
+        // cannot move the working directory, end the session or change shells.
+        clearScreen();
+        return;
+      }
       busyRef.current = true;
       const out: TerminalOutput = await terminalExec({
         sessionId: sessionRef.current,
@@ -162,7 +194,7 @@ export const TerminalPanel: React.FC = () => {
       busyRef.current = false;
       writePrompt();
     },
-    [armRecovery, setStatusBoth, stopRecovery, writePrompt],
+    [armRecovery, clearScreen, setStatusBoth, stopRecovery, writePrompt],
   );
 
   useEffect(() => {
@@ -265,11 +297,6 @@ export const TerminalPanel: React.FC = () => {
     };
   }, [armRecovery, runCommand, setStatusBoth, stopRecovery, writePrompt]);
 
-  const handleClear = useCallback(() => {
-    termRef.current?.clear();
-    writePrompt();
-  }, [writePrompt]);
-
   const handleReset = useCallback(async () => {
     const ok = await terminalReset();
     const term = termRef.current;
@@ -314,7 +341,7 @@ export const TerminalPanel: React.FC = () => {
             </select>
           </label>
           <button
-            onClick={handleClear}
+            onClick={clearScreen}
             disabled={!ready}
             className="text-xs px-2 py-1 rounded border border-border hover:border-primary/50 text-text-muted hover:text-text-primary disabled:opacity-40"
           >

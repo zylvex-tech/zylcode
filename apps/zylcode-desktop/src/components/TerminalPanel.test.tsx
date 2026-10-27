@@ -6,7 +6,7 @@
 
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { TerminalPanel, RECOVERY_INTERVAL_MS } from "./TerminalPanel";
+import { TerminalPanel, RECOVERY_INTERVAL_MS, isClearCommand } from "./TerminalPanel";
 import { terminalExec, terminalReset } from "../lib/terminal";
 import type { TerminalOutput } from "../lib/terminal";
 
@@ -18,6 +18,8 @@ import type { TerminalOutput } from "../lib/terminal";
 const sink = vi.hoisted(() => ({
   writes: [] as string[],
   dataHandler: null as ((d: string) => void) | null,
+  /** How many times the panel asked xterm to wipe the buffer. */
+  clears: 0,
 }));
 
 vi.mock("@xterm/xterm", () => {
@@ -28,7 +30,9 @@ vi.mock("@xterm/xterm", () => {
     writeln(s: string) {
       sink.writes.push(`${s}\r\n`);
     }
-    clear() {}
+    clear() {
+      sink.clears += 1;
+    }
     dispose() {}
     open() {}
     loadAddon() {}
@@ -123,6 +127,7 @@ beforeEach(() => {
   vi.useFakeTimers();
   sink.writes.length = 0;
   sink.dataHandler = null;
+  sink.clears = 0;
   execMock.mockReset();
   resetMock.mockReset();
   resetMock.mockResolvedValue(true);
@@ -130,6 +135,85 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
+});
+
+describe("TerminalPanel clearing", () => {
+  // `clear`/`cls` cannot work as shell commands here: every command is a fresh
+  // non-interactive process, so `Clear-Host` has no screen to clear. Clearing
+  // is therefore a presentation-layer operation — it must wipe the transcript
+  // and nothing else (no shell round-trip, no cwd reset, no shell change).
+
+  it("isClearCommand matches only a whole clear/cls line", () => {
+    for (const yes of ["clear", "cls", "  CLEAR  ", "Cls", "clear\n"]) {
+      expect(isClearCommand(yes), `${JSON.stringify(yes)} should clear`).toBe(true);
+    }
+    for (const no of ["", "echo clear", "clear; git status", "cls -Force", "clears", "cls;ls"]) {
+      expect(isClearCommand(no), `${JSON.stringify(no)} should not clear`).toBe(false);
+    }
+  });
+
+  it("`clear` wipes the transcript without running anything in the shell", async () => {
+    execMock.mockResolvedValue(up());
+    render(<TerminalPanel />);
+    await flush();
+    const execCallsBefore = execMock.mock.calls.length;
+
+    sink.writes.length = 0;
+    type("clear");
+    await flush();
+
+    expect(sink.clears).toBe(1);
+    expect(execMock.mock.calls.length).toBe(execCallsBefore);
+  });
+
+  it("`cls` clears too, and leaves the working directory and shell untouched", async () => {
+    execMock.mockResolvedValue(up());
+    render(<TerminalPanel />);
+    await flush();
+
+    // Pick a non-default shell so an accidental reset would be visible.
+    fireEvent.change(screen.getByLabelText("shell"), { target: { value: "cmd" } });
+    const execCallsBefore = execMock.mock.calls.length;
+
+    sink.writes.length = 0;
+    type("cls");
+    await flush();
+
+    expect(sink.clears).toBe(1);
+    expect(execMock.mock.calls.length).toBe(execCallsBefore);
+    // cwd survived: the prompt still names the session directory
+    // ("workspace"), not the "zylcode" placeholder used when cwd is empty.
+    expect(terminalText()).toContain("workspace");
+    expect((screen.getByLabelText("shell") as HTMLSelectElement).value).toBe("cmd");
+  });
+
+  it("the Clear button uses the same implementation", async () => {
+    execMock.mockResolvedValue(up());
+    render(<TerminalPanel />);
+    await flush();
+    const execCallsBefore = execMock.mock.calls.length;
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+    await flush();
+
+    expect(sink.clears).toBe(1);
+    expect(execMock.mock.calls.length).toBe(execCallsBefore);
+  });
+
+  it("does not treat commands that merely contain clear/cls as a clear", async () => {
+    execMock.mockResolvedValue(up());
+    render(<TerminalPanel />);
+    await flush();
+
+    for (const line of ["echo clear", "clear; git status", "cls -Force"]) {
+      sink.clears = 0;
+      const before = execMock.mock.calls.length;
+      type(line);
+      await flush();
+      expect(sink.clears, `${line} must not clear`).toBe(0);
+      expect(execMock.mock.calls.length, `${line} must reach the shell`).toBe(before + 1);
+    }
+  });
 });
 
 describe("TerminalPanel backend recovery (stale BLOCKED regression)", () => {

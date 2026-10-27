@@ -26,10 +26,13 @@ tauri-plugin-shell = "2"
 rusqlite = { version = "0.31", features = ["bundled"] }
 
 [features]
-# Production / standalone builds. The Tauri CLI enables this feature
-# automatically for `tauri build`; when it is off (as in plain
-# `cargo build` and `tauri dev`), the app loads `devUrl` (the Vite dev
-# server) instead of the embedded `frontendDist` assets — so an exe built
-# without it shows "localhost refused to connect" unless `pnpm dev` is
-# running. See GitHub issue #1.
+# Production / standalone builds.
+#
+# Measured 2026-10-26 on Tauri 2.12: `tauri build` does NOT set this cargo
+# feature — `CARGO_FEATURE_CUSTOM_PROTOCOL` is absent in the build script — yet
+# it still produces a working bundle with the frontend embedded. A bare
+# `cargo build --release` leaves the feature off too, and that build DOES load
+# `devUrl` (the Vite dev server), so the exe shows "localhost refused to
+# connect" unless `pnpm dev` is running. Use `tauri build`, or pass the feature
+# explicitly. See GitHub issue #1.
 custom-protocol = ["tauri/custom-protocol"]
