@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PulsePanel } from "./PulsePanel";
-import type { Mission, MissionMode } from "../lib/missions";
+import type { Mission } from "../lib/missions";
 import type { EvidenceState } from "../lib/surfaces";
 
 // ---------------------------------------------------------------------------

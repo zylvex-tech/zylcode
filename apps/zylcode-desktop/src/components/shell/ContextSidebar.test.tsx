@@ -173,7 +173,7 @@ describe("ContextSidebar", () => {
     first.unmount();
 
     git.mockResolvedValue({ kind: "unavailable", reason: "not a git repository" });
-    const second = render(<ContextSidebar activeActivity="source-control" />);
+    render(<ContextSidebar activeActivity="source-control" />);
     expect(await screen.findByText("not a git repository")).toBeInTheDocument();
   });
 

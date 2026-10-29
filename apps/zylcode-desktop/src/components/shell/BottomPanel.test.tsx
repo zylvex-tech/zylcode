@@ -6,7 +6,6 @@ import { clearDiagnostics, recordDiagnostic } from "../../lib/runtime";
 import type { EvidenceState } from "../../lib/surfaces";
 import type { Mission } from "../../lib/missions";
 import type { GitStatusState } from "../../lib/gitStatus";
-import type { ProvidersState } from "../../lib/service";
 
 // ---------------------------------------------------------------------------
 // Bottom panel (components/shell/BottomPanel.tsx).
