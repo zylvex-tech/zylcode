@@ -386,6 +386,19 @@ impl ContextRetriever {
 
         let mut scored: Vec<(f64, ContextResult)> = Vec::new();
 
+        // Test-file intent: the two flat test-file bonuses below answer
+        // "which tests …" questions. "Related" means the task is *about*
+        // tests, not that the word happens to appear: "What commands build
+        // and test the relevant components?" asks for commands, and paying
+        // every test file +0.8 there put two dozen of them above the commands
+        // that are the answer. Same shape as `dep_intent` — intent inferred
+        // from what the task asks for, not from one incidental word.
+        let tooling_intent = task_lower.contains("command")
+            || task_lower.contains("script")
+            || task_lower.contains("how do i")
+            || task_lower.contains("how to");
+        let test_intent = task_lower.contains("test") && !tooling_intent;
+
         // Determinism contract (P1.2): identical inputs must produce identical
         // output. Hash maps randomize iteration order per process; we therefore
         // score candidates in sorted-key order and break ranking ties by
@@ -610,16 +623,14 @@ impl ContextRetriever {
                 reasons.push("recently changed".to_string());
             }
 
-            // Test file bonus for test-related tasks
-            if task_lower.contains("test")
-                && file.role == crate::intelligence::types::FileRole::Test
-            {
+            // Test file bonus for test-related tasks (Q5/Q16).
+            if test_intent && file.role == crate::intelligence::types::FileRole::Test {
                 score += 0.3;
                 reasons.push("test file".to_string());
             }
 
             // Test-file name matches "tests" task word (Q5: test discovery)
-            if task_lower.contains("test")
+            if test_intent
                 && task_words.iter().any(|w| file_lower.contains(w))
                 && file.role == crate::intelligence::types::FileRole::Test
             {
@@ -826,7 +837,15 @@ impl ContextRetriever {
                 let mut cmds = self.package_commands[pkg_name].clone();
                 cmds.sort();
                 for cmd in cmds {
-                    let mut score = if asks_commands { 2.0f64 } else { 0.5f64 };
+                    // A task that asks for *commands* is answered by a
+                    // command: the flat base must clear what the file channel
+                    // can reach, because that channel stacks several flat
+                    // bonuses (0.8 per path token + up to 0.8 of test-file
+                    // rules) and a dozen incidental files at ~2.3 then crowded
+                    // every `cargo …` answer out of the top 10. Commands are
+                    // the same kind of direct answer the entry-point channel
+                    // already pays 2.0 for.
+                    let mut score = if asks_commands { 2.6f64 } else { 0.5f64 };
                     let mut reasons = vec![format!("command of package '{}'", pkg_name)];
                     if task_lower.contains(pkg_name) {
                         score += 0.3;
