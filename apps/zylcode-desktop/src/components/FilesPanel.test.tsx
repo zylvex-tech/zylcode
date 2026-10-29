@@ -47,10 +47,12 @@ describe("FilesPanel", () => {
       reason: "start `zylcode serve-intel` to browse files",
     });
     render(<FilesPanel />);
-    expect(await screen.findByText("BLOCKED")).toBeInTheDocument();
+    // BLOCKED is the initial state too — wait for the reason the backend
+    // actually returned, which only lands once the fetch settles.
     expect(
-      screen.getByText("start `zylcode serve-intel` to browse files"),
+      await screen.findByText("start `zylcode serve-intel` to browse files"),
     ).toBeInTheDocument();
+    expect(screen.getByText("BLOCKED")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /src/ })).not.toBeInTheDocument();
   });
 
@@ -74,6 +76,12 @@ describe("FilesPanel", () => {
     render(<FilesPanel />);
 
     expect(await screen.findByText("4 files indexed")).toBeInTheDocument();
+    // Expansion is applied by an effect after the data render commits — wait
+    // for a grandchild row before reading the ordering, otherwise the
+    // assertion can observe the still-collapsed tree.
+    expect(
+      await screen.findByTitle("src/lib/util.ts"),
+    ).toBeInTheDocument();
 
     const names = screen
       .getAllByTitle(/.*/)
@@ -96,8 +104,9 @@ describe("FilesPanel", () => {
     });
     render(<FilesPanel />);
     const dir = (await screen.findByTitle("src")).closest("button")!;
-    // Expanded on mount for the first top-level directory.
-    expect(dir.textContent).toContain("▾");
+    // Expanded on mount for the first top-level directory — the effect lands
+    // a tick after the rows render, so wait for the open glyph itself.
+    await waitFor(() => expect(dir.textContent).toContain("▾"));
     fireEvent.click(dir);
     expect(screen.queryByTitle("src/main.ts")).not.toBeInTheDocument();
     expect(dir.textContent).toContain("▸");
