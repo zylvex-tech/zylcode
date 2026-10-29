@@ -115,3 +115,7 @@ docs/competition/natlas/evidence/
 # Local website secrets and Cloudflare development state
 /site/.secrets/
 /site/.wrangler/
+
+# Frontend coverage output (vitest --coverage) and its json-summary dump
+apps/zylcode-desktop/coverage/
+apps/zylcode-desktop/coverage-meta/

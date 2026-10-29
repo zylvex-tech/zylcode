@@ -11,5 +11,35 @@ export default defineConfig({
     globals: false,
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.test.{ts,tsx}"],
+    coverage: {
+      provider: "v8",
+      // `json-summary` is what the threshold check and any diffing read;
+      // `text` keeps a human-readable table in the CI log.
+      reporter: ["text", "json-summary"],
+      reportsDirectory: "./coverage",
+      // Coverage is measured over application source only. Build tooling and
+      // type declarations are not shipped code and have no behaviour to
+      // cover — including them would move the denominator without moving the
+      // evidence.
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: [
+        "**/*.d.ts",
+        "src/test/**",
+        "src/main.tsx",
+        "src/**/*.test.{ts,tsx}",
+      ],
+      all: true,
+      // Enforced floor, not an aspiration: CI fails below these. They sit at
+      // the measured value so the gate ratchets — coverage can only stay level
+      // or rise, and a new untested file pulls the run red immediately rather
+      // than being absorbed silently. Raising them is a deliberate act that
+      // should accompany the tests that justify it.
+      thresholds: {
+        lines: 70,
+        branches: 83,
+        functions: 80,
+        statements: 70,
+      },
+    },
   },
 });
