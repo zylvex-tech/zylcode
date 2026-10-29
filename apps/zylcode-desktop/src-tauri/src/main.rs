@@ -3,6 +3,7 @@
 use serde::{Deserialize, Serialize};
 use std::io::{self, Write};
 use std::sync::{Arc, RwLock};
+use zylcode_core::input_validation as iv;
 use zylcode_core::router::{ProviderConfig, ProviderKind};
 use zylcode_core::{EngineConfig, Intent, McpBridgeDescriptor, ZylCodeEngine};
 
@@ -43,6 +44,12 @@ async fn process_intent(
     model: Option<String>,
     state: tauri::State<'_, EngineState>,
 ) -> Result<zylcode_core::IntentResult, String> {
+    // Reject at the boundary, before the engine — and the index build it
+    // triggers — is touched. The renderer is a trust boundary like any
+    // other caller: a 40 000-character prompt or a prompt-shaped `model`
+    // is a bad request, not a slow mission.
+    iv::validate_prompt(&prompt).map_err(|e| e.to_string())?;
+    iv::validate_model(model.as_deref()).map_err(|e| e.to_string())?;
     let intent = Intent {
         prompt,
         context: None,
@@ -84,6 +91,11 @@ async fn process_intent_stream(
     state: tauri::State<'_, EngineState>,
 ) -> Result<zylcode_core::IntentResult, String> {
     use tauri::Emitter;
+
+    // Before anything is emitted: a rejected prompt must not leave the UI
+    // in a streaming state it will never get a result for.
+    iv::validate_prompt(&prompt).map_err(|e| e.to_string())?;
+    iv::validate_model(model.as_deref()).map_err(|e| e.to_string())?;
 
     // Emit a start event so the UI can transition to streaming state.
     let _ = app.emit(
@@ -190,6 +202,7 @@ async fn preview_execution_plan(
     prompt: String,
     state: tauri::State<'_, EngineState>,
 ) -> Result<zylcode_core::ExecutionPlan, String> {
+    iv::validate_prompt(&prompt).map_err(|e| e.to_string())?;
     let planner = zylcode_core::IntentPlanner::new();
     let bridges = state.engine.list_mcp_bridges().await;
     let plan = planner.build_execution_plan(
@@ -213,6 +226,9 @@ async fn repo_context(
 ) -> Result<serde_json::Value, String> {
     let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
     let task = task.unwrap_or_default();
+    // Optional hint: empty is legitimate ("no particular task"), but a
+    // present one is bounded before it reaches the index.
+    iv::ensure_max_chars("task", &task, iv::MAX_TASK_CHARS).map_err(|e| e.to_string())?;
     tokio::task::spawn_blocking(move || {
         zylcode_core::intelligence::api::repo_intel_payload(&root, &task)
             .map_err(|e| format!("repository intelligence failed: {e:#}"))
@@ -234,8 +250,10 @@ async fn nav_query(
     args: Option<serde_json::Value>,
     state: tauri::State<'_, EngineState>,
 ) -> Result<serde_json::Value, String> {
+    iv::validate_tool_id(&tool).map_err(|e| e.to_string())?;
     let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
     let args = args.unwrap_or_else(|| serde_json::json!({}));
+    iv::validate_tool_args(&args).map_err(|e| e.to_string())?;
     tokio::task::spawn_blocking(move || {
         zylcode_core::intelligence::nav_api::nav_payload(&root, &tool, args)
             .map_err(|e| format!("repository navigation failed: {e}"))
@@ -250,6 +268,8 @@ async fn mission_enqueue(
     mode: Option<String>,
     state: tauri::State<'_, EngineState>,
 ) -> Result<serde_json::Value, String> {
+    iv::validate_task(&task).map_err(|e| e.to_string())?;
+    iv::validate_mode(mode.as_deref()).map_err(|e| e.to_string())?;
     let m = if mode.as_deref() == Some("plan") {
         zylcode_core::missions::MissionMode::Plan
     } else {
@@ -439,6 +459,7 @@ async fn repo_search(
     q: String,
     state: tauri::State<'_, EngineState>,
 ) -> Result<serde_json::Value, String> {
+    iv::validate_query(&q).map_err(|e| e.to_string())?;
     let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
     tokio::task::spawn_blocking(move || {
         zylcode_core::surfaces::search_payload(&root, &q)
@@ -466,6 +487,7 @@ async fn file_content(
     state: tauri::State<'_, EngineState>,
     path: String,
 ) -> Result<serde_json::Value, String> {
+    iv::validate_path(&path).map_err(|e| e.to_string())?;
     let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
     tokio::task::spawn_blocking(move || {
         zylcode_core::surfaces::file_content_payload(&root, &path)
@@ -484,6 +506,7 @@ async fn save_workspace_artifact(
     label: String,
     content: String,
 ) -> Result<serde_json::Value, String> {
+    iv::validate_artifact(&label, &content).map_err(|e| e.to_string())?;
     let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
     tokio::task::spawn_blocking(move || {
         zylcode_core::surfaces::save_file_payload(&root, &label, &content)
@@ -501,6 +524,7 @@ async fn apply_patch(
     state: tauri::State<'_, EngineState>,
     patch: String,
 ) -> Result<serde_json::Value, String> {
+    iv::validate_patch(&patch).map_err(|e| e.to_string())?;
     let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
     tokio::task::spawn_blocking(move || {
         zylcode_core::surfaces::apply_patch_payload(&root, &patch)
@@ -580,6 +604,8 @@ async fn execute_tool(
     params: serde_json::Value,
     state: tauri::State<'_, EngineState>,
 ) -> Result<serde_json::Value, String> {
+    iv::validate_tool_id(&id).map_err(|e| e.to_string())?;
+    iv::validate_tool_args(&params).map_err(|e| e.to_string())?;
     // The desktop surface is the human operator: bind the actor so the
     // evidence ledger attributes this invocation to "user:desktop" rather
     // than to an unidentified process.

@@ -21,6 +21,7 @@ pub mod factory;
 pub mod failure;
 pub mod first_mission;
 pub mod gitops;
+pub mod input_validation;
 pub mod intelligence;
 pub mod ledger;
 pub mod marketplace;

@@ -64,6 +64,26 @@ fn path_tokens(path: &str) -> Vec<String> {
     out
 }
 
+/// Collapse common English suffixes so a query word can meet the token the
+/// codebase actually uses.
+///
+/// Measured and **rejected**: with this in place the benchmark fell from 0.50
+/// to 0.47 precision. Stemming widened matches (`routing`→`rout` now also met
+/// `route`, `routed`, and unrelated `rout*` tokens), which added noise faster
+/// than it recovered the file it was meant to find. Kept as a record of the
+/// experiment so it is not repeated blindly; not wired into scoring.
+#[allow(dead_code)]
+fn stem(word: &str) -> &str {
+    for suffix in ["ations", "ation", "ings", "ing", "ers", "er", "ed", "s"] {
+        if let Some(base) = word.strip_suffix(suffix) {
+            if base.len() >= 3 {
+                return base;
+            }
+        }
+    }
+    word
+}
+
 impl ContextRetriever {
     /// Create a new retriever from indexed data.
     pub fn new(
@@ -273,6 +293,33 @@ impl ContextRetriever {
             ("stores", &["store"]),
             ("storing", &["store"]),
         ];
+        // Naming expansions: the task names a verb ("routing"), the codebase
+        // names the noun (`router`). Unlike the paraphrases above, these map
+        // onto an actual identifier, so they may also nominate anchor files —
+        // that is precisely what makes "Which file handles model provider
+        // routing?" reach `router.rs`, whose path shares no token with the
+        // question otherwise.
+        const NAMED_EXPANSIONS: &[(&str, &[&str])] =
+            &[("routing", &["router"]), ("routes", &["router"])];
+        // Words eligible for anchor-file nomination: everything the task said,
+        // plus naming expansions. Paraphrases are deliberately excluded —
+        // "persist"→"store" must reach `LedgerStore` by name matching, but it
+        // must not make `factory/store.rs` the anchor of a question about
+        // `SessionCheckpoint`.
+        let mut named_words: Vec<String> = task_words.clone();
+        for (k, syns) in NAMED_EXPANSIONS {
+            if !task_words.iter().any(|w| w == k) {
+                continue;
+            }
+            for syn in *syns {
+                if !task_words.iter().any(|w| w == syn) {
+                    task_words.push(syn.to_string());
+                }
+                if !named_words.iter().any(|w| w == syn) {
+                    named_words.push(syn.to_string());
+                }
+            }
+        }
         let mut expanded: Vec<&str> = Vec::new();
         for w in &task_words {
             if let Some((_, syns)) = EXPANSIONS.iter().find(|(k, _)| k == w) {
@@ -339,6 +386,19 @@ impl ContextRetriever {
 
         let mut scored: Vec<(f64, ContextResult)> = Vec::new();
 
+        // Test-file intent: the two flat test-file bonuses below answer
+        // "which tests …" questions. "Related" means the task is *about*
+        // tests, not that the word happens to appear: "What commands build
+        // and test the relevant components?" asks for commands, and paying
+        // every test file +0.8 there put two dozen of them above the commands
+        // that are the answer. Same shape as `dep_intent` — intent inferred
+        // from what the task asks for, not from one incidental word.
+        let tooling_intent = task_lower.contains("command")
+            || task_lower.contains("script")
+            || task_lower.contains("how do i")
+            || task_lower.contains("how to");
+        let test_intent = task_lower.contains("test") && !tooling_intent;
+
         // Determinism contract (P1.2): identical inputs must produce identical
         // output. Hash maps randomize iteration order per process; we therefore
         // score candidates in sorted-key order and break ranking ties by
@@ -385,6 +445,35 @@ impl ContextRetriever {
                 }
             }
 
+            // Anchor-file alignment: this symbol is *defined in* the file the
+            // task names (`git.rs` for "where are git change tracking
+            // functions implemented", `dependency.rs` for "what file defines
+            // the dependency graph"). Without this, an identically-named type
+            // in an unrelated module (`types::GitChange`, `types::Dependency`)
+            // outranked every definition living in the file the question is
+            // actually about — the ranking answered "what is named like this"
+            // instead of "where is this implemented".
+            //
+            // Two gates keep the rule from over-firing:
+            // - only words the task *said* count (never expansion synonyms);
+            // - the word must be corpus-distinctive (IDF > 0.5). "tool" names
+            //   half the identifiers in this repo, so a filename containing it
+            //   anchors nothing — without the gate `tool.rs` outranked the
+            //   `tool_catalogue.rs` the question actually asked for.
+            let sym_stem = sym.file.rsplit('/').next().unwrap_or("");
+            let stem_tokens = path_tokens(sym_stem);
+            let anchor_word = named_words.iter().find(|w| {
+                word_idf.get(w.as_str()).is_some_and(|idf| *idf > 0.5)
+                    && stem_tokens.iter().any(|t| t == w.as_str())
+            });
+            if let Some(w) = anchor_word {
+                score += 0.7;
+                reasons.push(format!(
+                    "defined in '{}', named for task word '{}'",
+                    sym_stem, w
+                ));
+            }
+
             // Recent change bonus
             if self.recent_files.contains(&sym.file) {
                 // Small recency nudge (P1.2): a flat bonus applied to ~half the
@@ -403,6 +492,7 @@ impl ContextRetriever {
                         reason: reasons.join("; "),
                         provenance: Provenance::Parsed,
                         snippet: None,
+                        file: Some(sym.file.clone()),
                     },
                 ));
             }
@@ -533,16 +623,14 @@ impl ContextRetriever {
                 reasons.push("recently changed".to_string());
             }
 
-            // Test file bonus for test-related tasks
-            if task_lower.contains("test")
-                && file.role == crate::intelligence::types::FileRole::Test
-            {
+            // Test file bonus for test-related tasks (Q5/Q16).
+            if test_intent && file.role == crate::intelligence::types::FileRole::Test {
                 score += 0.3;
                 reasons.push("test file".to_string());
             }
 
             // Test-file name matches "tests" task word (Q5: test discovery)
-            if task_lower.contains("test")
+            if test_intent
                 && task_words.iter().any(|w| file_lower.contains(w))
                 && file.role == crate::intelligence::types::FileRole::Test
             {
@@ -601,6 +689,36 @@ impl ContextRetriever {
                             pkg_q
                         ));
                     }
+                    // Forward direction (Q18/Q19): "What does zylcode-cli
+                    // depend on?" is the mirror image of the rule above — the
+                    // task names package Q, and the files *inside* each of Q's
+                    // dependencies are the answer. Only the reverse direction
+                    // was scored, so the dependency itself (zylcode-core)
+                    // scored nothing while the asking package's own files
+                    // ranked first.
+                    //
+                    let depended_on_by_named: bool =
+                        self.package_dep_pairs.iter().any(|(q, dep)| {
+                            dep == pkg_q
+                            && task_lower.contains(q.as_str())
+                            // Direction check: when the consumer package
+                            // *follows* the verb ("depends on zylcode-core"),
+                            // it is the target of the question, not a
+                            // dependent — the reverse rule above already
+                            // answers that, and scoring the forward direction
+                            // too flooded Q6 with packages zylcode-core itself
+                            // depends on instead of the packages that depend
+                            // on it.
+                            && !task_lower.contains(&format!("depends on {}", q))
+                            && !task_lower.contains(&format!("depend on {}", q))
+                        });
+                    if depended_on_by_named && dep_intent {
+                        score += 1.5;
+                        reasons.push(format!(
+                            "a package named in the task depends on package '{}'",
+                            pkg_q
+                        ));
+                    }
                 }
             }
 
@@ -614,6 +732,7 @@ impl ContextRetriever {
                         reason: reasons.join("; "),
                         provenance: Provenance::Observed,
                         snippet: None,
+                        file: Some(id.clone()),
                     },
                 ));
             }
@@ -647,6 +766,25 @@ impl ContextRetriever {
                 ));
             }
 
+            // Forward dependency (Q18/Q19): the task names package Q and asks
+            // what Q depends on — this package is one of those dependencies.
+            // Skipped when the consumer follows "depends on" (see the
+            // file-scoring rule above): that phrasing asks the reverse
+            // question and is answered by the rule above.
+            let named_consumer: bool = self.package_dep_pairs.iter().any(|(q, dep)| {
+                dep == pkg_name.as_str()
+                    && task_lower.contains(q.as_str())
+                    && !task_lower.contains(&format!("depends on {}", q))
+                    && !task_lower.contains(&format!("depend on {}", q))
+            });
+            if named_consumer && dep_intent {
+                score += 1.5;
+                reasons.push(format!(
+                    "a package named in the task depends on package '{}'",
+                    pkg_name
+                ));
+            }
+
             // Package contains relevant files
             let relevant_files: Vec<&str> = files
                 .iter()
@@ -676,6 +814,7 @@ impl ContextRetriever {
                         reason: reasons.join("; "),
                         provenance: Provenance::Parsed,
                         snippet: None,
+                        file: None,
                     },
                 ));
             }
@@ -698,7 +837,15 @@ impl ContextRetriever {
                 let mut cmds = self.package_commands[pkg_name].clone();
                 cmds.sort();
                 for cmd in cmds {
-                    let mut score = if asks_commands { 2.0f64 } else { 0.5f64 };
+                    // A task that asks for *commands* is answered by a
+                    // command: the flat base must clear what the file channel
+                    // can reach, because that channel stacks several flat
+                    // bonuses (0.8 per path token + up to 0.8 of test-file
+                    // rules) and a dozen incidental files at ~2.3 then crowded
+                    // every `cargo …` answer out of the top 10. Commands are
+                    // the same kind of direct answer the entry-point channel
+                    // already pays 2.0 for.
+                    let mut score = if asks_commands { 2.6f64 } else { 0.5f64 };
                     let mut reasons = vec![format!("command of package '{}'", pkg_name)];
                     if task_lower.contains(pkg_name) {
                         score += 0.3;
@@ -719,6 +866,7 @@ impl ContextRetriever {
                             reason: reasons.join("; "),
                             provenance: Provenance::Parsed,
                             snippet: None,
+                            file: None,
                         },
                     ));
                 }
@@ -735,10 +883,35 @@ impl ContextRetriever {
         if asks_entry {
             let asks_direct = task_lower.contains("entry point");
             for ep in &self.entry_points {
-                let mut score = if asks_direct { 2.0f64 } else { 0.9f64 };
-                let mut reasons = vec!["discovered entry point".to_string()];
+                let ep_lower = ep.to_lowercase();
+                // An entry point the task names ("desktop"/"frontend"/
+                // "tauri" appearing in its path) is the answer; one that
+                // shares no word with the task is only proof that the
+                // repository has such a file. Paying every discovered entry
+                // point the same flat bonus made the top-10 an inventory of
+                // main() functions for a query about one of them.
+                let names_it = task_words.iter().any(|w| ep_lower.contains(w.as_str()));
+                let base = match (asks_direct, names_it) {
+                    // A direct "entry point?" question has an entry point as
+                    // its answer whichever file it lands in: every discovered
+                    // entry point stays a full-strength candidate, and the
+                    // per-word matches order them ("tauri"/"desktop" place the
+                    // right one first). What the gate removes is the flat 2.0
+                    // for *indirect* questions, where entry points are only
+                    // supporting evidence.
+                    (true, _) => 2.0,
+                    (false, true) => 0.9,
+                    (false, false) => 0.4,
+                };
+                let mut score = base;
+                let mut reasons = vec![if names_it {
+                    "discovered entry point named by the task"
+                } else {
+                    "discovered entry point"
+                }
+                .to_string()];
                 for w in &task_words {
-                    if ep.to_lowercase().contains(w) {
+                    if ep_lower.contains(w.as_str()) {
                         score += 0.3;
                         reasons.push(format!("path contains '{}'", w));
                     }
@@ -752,6 +925,7 @@ impl ContextRetriever {
                         reason: reasons.join("; "),
                         provenance: Provenance::Observed,
                         snippet: None,
+                        file: Some(ep.clone()),
                     },
                 ));
             }
@@ -1027,6 +1201,7 @@ mod tests {
                 reason: "test".to_string(),
                 provenance: Provenance::Parsed,
                 snippet: None,
+                file: None,
             },
             ContextResult {
                 resource: "b".to_string(),
@@ -1035,6 +1210,7 @@ mod tests {
                 reason: "test".to_string(),
                 provenance: Provenance::Parsed,
                 snippet: None,
+                file: None,
             },
         ];
 

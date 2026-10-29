@@ -182,12 +182,21 @@ export function useArtifactStream(deltas: StreamDelta[]) {
 
   const bufferRef = useRef<string>("");
   const parsedRef = useRef<Map<string, ArtifactFile>>(new Map());
+  // How many entries of `deltas` have already been appended to the buffer.
+  // `deltas` is an accumulated array (see useStreamSubscription), so every
+  // re-render hands the effect the whole history again; without this cursor
+  // each prefix would be re-consumed, growing the buffer quadratically and
+  // resurrecting files the user just closed.
+  const consumedRef = useRef(0);
 
   // Process incoming deltas into artifact files
   useEffect(() => {
-    if (!deltas.length) return;
+    if (deltas.length <= consumedRef.current) return;
 
-    const newDeltas = deltas.slice(-50); // only process recent
+    // Only the newly appended entries; still bounded to the most recent 50
+    // so a long stall cannot replay an unbounded prefix.
+    const newDeltas = deltas.slice(consumedRef.current).slice(-50);
+    consumedRef.current = deltas.length;
     for (const delta of newDeltas) {
       if (!delta.delta) continue;
       bufferRef.current += delta.delta;
@@ -224,13 +233,15 @@ export function useArtifactStream(deltas: StreamDelta[]) {
       }
     }
 
-    // Update state
+    // Update state. The active tab is read through the functional updater so
+    // this effect does not depend on it: a dependency here would re-run the
+    // parser on every tab change, re-appending the stream to the buffer.
     setFiles(new Map(parsedRef.current));
-    if (activeTab === null && parsedRef.current.size > 0) {
-      const firstKey = parsedRef.current.keys().next().value;
-      if (firstKey) setActiveTab(firstKey);
-    }
-  }, [deltas, activeTab]);
+    setActiveTab((current) => {
+      if (current !== null) return current;
+      return parsedRef.current.keys().next().value ?? null;
+    });
+  }, [deltas]);
 
   const saveFile = useCallback(async (path: string) => {
     const file = parsedRef.current.get(path);

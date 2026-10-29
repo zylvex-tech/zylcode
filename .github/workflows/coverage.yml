@@ -24,3 +24,36 @@ jobs:
           tool: cargo-llvm-cov
       - name: Coverage gate (lines >= 78%)
         run: cargo llvm-cov --workspace --summary-only --fail-under-lines 78
+
+  # ---------------------------------------------------------------------------
+  # Frontend coverage gate.
+  #
+  # The Rust side has been gated at 78% lines since 2026-10-21; the TypeScript
+  # side had a vitest suite but nothing stopped its coverage from sliding.
+  # `test:coverage` runs vitest with the `thresholds` block in
+  # apps/zylcode-desktop/vitest.config.ts, so this job fails on a regression
+  # rather than reporting one.
+  #
+  # The dedicated script exists instead of `pnpm ... test -- --coverage`: the
+  # extra `--` changes how pnpm forwards arguments depending on version, and a
+  # gate that silently stops measuring would be worse than no gate.
+  # ---------------------------------------------------------------------------
+  frontend-coverage:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history: several frontend tests exercise repository
+          # intelligence and git state, which read `git log`. Depth 1 would
+          # make those assertions pass or fail for a checkout reason.
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v4
+        with:
+          # 22, matching ci.yml and the NodeSource line in the Dockerfile.
+          node-version: 22
+          cache: 'pnpm'
+      - name: Install dependencies (pnpm)
+        run: pnpm install --frozen-lockfile
+      - name: Frontend coverage gate (vitest thresholds)
+        run: pnpm --filter zylcode-desktop test:coverage

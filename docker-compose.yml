@@ -1,0 +1,72 @@
+# ---------------------------------------------------------------------------
+# ZylCode — reproducible environment
+#
+# ZylCode is a Tauri desktop application, so it has no databases or message
+# brokers to bring up: the only network service it owns is its own read-only
+# intelligence API (`zylcode serve-intel`), which the browser preview talks
+# to through the Vite proxy. That is what this file starts, plus the
+# toolchain container the documented checks run in. The desktop window itself
+# is a host process — it needs a real display, so it runs with
+# `pnpm --filter zylcode-desktop tauri dev` on the host.
+#
+#   docker compose up serve-intel      # backend API on http://127.0.0.1:17630
+#   pnpm --filter zylcode-desktop dev  # UI on http://localhost:1420
+#   docker compose run --rm dev        # install + full workspace check
+# ---------------------------------------------------------------------------
+
+services:
+  # The repository's HTTP surface. `--host 0.0.0.0` is an explicit opt-in:
+  # the CLI binds loopback by default, but a published container port only
+  # reaches the container's external interface.
+  serve-intel:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: zylcode-dev:local
+    command: >
+      bash -lc "cargo run -p zylcode-cli -- serve-intel
+                --host 0.0.0.0 --port 17630"
+    ports:
+      - "17630:17630"
+    volumes:
+      - .:/workspace
+      - serve-target:/workspace/target
+    environment:
+      # No provider key: the engine stays on its offline synthetic path, so
+      # `docker compose up` never makes a billed network call.
+      ZYLCODE_WORKSPACE: /workspace
+    healthcheck:
+      test:
+        ["CMD", "curl", "-fsS", "http://127.0.0.1:17630/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 300s
+
+  # The documented check suite, run in the same image as the service above.
+  #   docker compose run --rm dev
+  # Profiles keep it out of a plain `docker compose up` so a check run does
+  # not look like a service exiting; naming it on `run` enables it.
+  dev:
+    profiles: ["check"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: zylcode-dev:local
+    command: >
+      bash -lc "pnpm install --frozen-lockfile
+                && cargo check --workspace --all-targets"
+    volumes:
+      - .:/workspace
+      - dev-node-modules:/workspace/node_modules
+      - dev-target:/workspace/target
+    environment:
+      ZYLCODE_WORKSPACE: /workspace
+
+volumes:
+  # Platform-specific build output stays inside the container. A Windows
+  # checkout's node_modules and target/ would otherwise be handed to a Linux
+  # toolchain, which fails on native binaries rather than on anything real.
+  serve-target:
+  dev-node-modules:
+  dev-target:

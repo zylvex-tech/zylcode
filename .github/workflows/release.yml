@@ -31,9 +31,12 @@ jobs:
       #
       # Legs:
       #   * ubuntu-22.04            -> x86_64 Linux   (native)
-      #   * ubuntu-24.04-arm        -> aarch64 Linux   (native ARM runner; the
+      #   * ubuntu-22.04-arm        -> aarch64 Linux   (native ARM runner; the
       #                                `cross` container has no webkit2gtk/GTK
-      #                                system libs, so we build on real arm64)
+      #                                system libs, so we build on real arm64.
+      #                                22.04 (not 24.04) keeps glibc compatible
+      #                                with the x86_64 AppImage and avoids the
+      #                                webkit2gtk sysroot issues seen on 24.04.)
       #   * windows-latest          -> x86_64 Windows  (native)
       #   * macos-latest (arm64)    -> aarch64 macOS   (native Apple silicon)
       #   * macos-latest (arm64)    -> x86_64 macOS    (cross-target; `macos-13`
@@ -46,7 +49,7 @@ jobs:
           - platform: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
             rust-target: x86_64-unknown-linux-gnu
-          - platform: ubuntu-24.04-arm
+          - platform: ubuntu-22.04-arm
             target: aarch64-unknown-linux-gnu
             rust-target: aarch64-unknown-linux-gnu
           - platform: windows-latest
@@ -67,7 +70,11 @@ jobs:
         if: startsWith(matrix.platform, 'ubuntu')
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+          # xdg-utils is not incidental: the AppImage step fails outright
+          # with `xdg-open binary not found /usr/bin/xdg-open` when it is
+          # missing — that is exactly how the v0.2.2 aarch64 leg failed
+          # (run 40466938422), five minutes after a green compile.
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf xdg-utils
 
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable

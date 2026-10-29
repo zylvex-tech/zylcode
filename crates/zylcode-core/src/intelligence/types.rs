@@ -353,6 +353,15 @@ pub struct ContextResult {
     pub reason: String,
     pub provenance: Provenance,
     pub snippet: Option<String>,
+    /// The file this result lives in.
+    ///
+    /// For a file result this is the resource itself; for a symbol it is the
+    /// file that defines it. Consumers need a path to open, and an evaluation
+    /// needs to know that `...::terminal::TerminalSession` is a hit on
+    /// `terminal.rs` rather than an unrelated resource — without this the
+    /// benchmark counted every symbol as a miss.
+    #[serde(default)]
+    pub file: Option<String>,
 }
 
 /// Token budget priority levels.
