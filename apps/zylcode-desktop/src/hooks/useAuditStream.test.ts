@@ -19,7 +19,9 @@ async function load(options: {
   invoke?: ReturnType<typeof vi.fn>;
 }) {
   vi.resetModules();
-  const listen = vi.fn(() => vi.fn());
+  const listen = vi.fn(
+    (_event: string, _handler: (e: { payload: unknown }) => void) => vi.fn(),
+  );
   if (options.desktop) {
     (window as any).__TAURI__ = {
       useApp: () => ({ invoke: options.invoke ?? vi.fn(async () => []) }),
@@ -79,7 +81,7 @@ describe("in the Tauri runtime", () => {
   it("switches to the live event source, keeps 50 entries, cleans up", async () => {
     const { mod, listen } = await load({ desktop: true });
     const handlers = new Map<string, (e: { payload: unknown }) => void>();
-    listen.mockImplementation((event: string, cb: any) => {
+    listen.mockImplementation((event, cb) => {
       handlers.set(event, cb);
       return vi.fn();
     });

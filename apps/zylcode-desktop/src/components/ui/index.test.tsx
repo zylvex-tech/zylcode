@@ -240,7 +240,8 @@ describe("Card / Badge / Spinner / EmptyState", () => {
   it("sizes the spinner", () => {
     // SVG elements carry an SVGAnimatedString in `className` — read the
     // attribute instead of the property.
-    const cls = (c: HTMLElement) => c.firstChild!.getAttribute("class") ?? "";
+    const cls = (c: HTMLElement) =>
+      c.firstElementChild?.getAttribute("class") ?? "";
     const sm = render(<Spinner size="sm" />);
     expect(cls(sm.container)).toContain("w-4");
     sm.unmount();
