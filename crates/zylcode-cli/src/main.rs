@@ -544,11 +544,40 @@ fn nav_json(root: &std::path::Path, tool: &str, args: serde_json::Value) -> serd
     }
 }
 
+/// A request refused at the HTTP boundary, as an HTTP response.
+///
+/// 400 with the stable machine-readable `code` and `field` alongside the
+/// human message, so a client can branch without parsing prose. Handlers
+/// keep returning a 200 body carrying `{"error": ...}` for *engine*
+/// failures — "the index could not be built" is not the same event as "you
+/// sent a 9 MiB prompt", and the transport should say which one happened.
+fn bad_request(
+    err: zylcode_core::input_validation::InputError,
+) -> (axum::http::StatusCode, axum::Json<serde_json::Value>) {
+    (
+        axum::http::StatusCode::BAD_REQUEST,
+        axum::Json(serde_json::json!({
+            "error": err.to_string(),
+            "code": err.code(),
+            "field": err.field(),
+        })),
+    )
+}
+
+/// The normal outcome of a validated request: 200 with the payload.
+///
+/// Deliberately the same tuple shape as [`bad_request`] — a handler then has
+/// exactly one return type and both exits read the same way.
+fn ok_json(value: serde_json::Value) -> (axum::http::StatusCode, axum::Json<serde_json::Value>) {
+    (axum::http::StatusCode::OK, axum::Json(value))
+}
+
 async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()> {
     use axum::extract::State;
     use axum::routing::get;
     use axum::{Json, Router};
     use std::sync::Arc;
+    use zylcode_core::input_validation as iv;
 
     let root = match &args.repo {
         Some(r) => std::path::PathBuf::from(r).canonicalize()?,
@@ -717,8 +746,14 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
         axum::extract::Query(params): axum::extract::Query<
             std::collections::HashMap<String, String>,
         >,
-    ) -> Json<serde_json::Value> {
+    ) -> impl axum::response::IntoResponse {
         let q = params.get("q").cloned().unwrap_or_default();
+        // Bounded here rather than inside the engine: a query multiplies
+        // straight into index work, and `search_payload`'s own "must not be
+        // empty" check is a 200 body where a client expects a status.
+        if let Err(e) = iv::validate_query(&q) {
+            return bad_request(e);
+        }
         let root = Arc::clone(&root);
         let payload = tokio::task::spawn_blocking(move || {
             zylcode_core::surfaces::search_payload(&root, &q)
@@ -726,8 +761,10 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
         })
         .await;
         match payload {
-            Ok(value) => Json(value),
-            Err(e) => Json(serde_json::json!({ "error": format!("search task failed: {e}") })),
+            Ok(value) => ok_json(value),
+            Err(e) => ok_json(serde_json::json!({
+                "error": format!("search task failed: {e}"),
+            })),
         }
     }
 
@@ -1058,23 +1095,31 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
     async fn execute_tool(
         State(root): State<Arc<std::path::PathBuf>>,
         axum::Json(body): axum::Json<serde_json::Value>,
-    ) -> Json<serde_json::Value> {
-        let id = body["id"].as_str().unwrap_or("").to_string();
-        let params = match body.get("params") {
-            Some(v @ serde_json::Value::Object(_)) => v.clone(),
-            _ => serde_json::json!({}),
+    ) -> impl axum::response::IntoResponse {
+        let id = match iv::required_str(&body, "id") {
+            Ok(id) => id,
+            Err(e) => return bad_request(e),
         };
-
-        if id.trim().is_empty() {
-            return Json(serde_json::json!({
-                "error": "body must include a tool id",
-            }));
+        if let Err(e) = iv::validate_tool_id(id) {
+            return bad_request(e);
         }
-        // Fail closed before dispatch for ids the process has no real
-        // executor for — same contract as the catalogue's `executor_bound`
-        // flag, which the UI treats as "not runnable".
+        let id = id.to_string();
+        let params = match body.get("params") {
+            None | Some(serde_json::Value::Null) => serde_json::json!({}),
+            Some(v @ serde_json::Value::Object(_)) => v.clone(),
+            Some(_) => {
+                return bad_request(zylcode_core::input_validation::InputError::WrongType {
+                    field: "params",
+                    expected: "an object",
+                });
+            }
+        };
+        if let Err(e) = iv::validate_tool_args(&params) {
+            return bad_request(e);
+        }
+
         if zylcode_mcp::get_real_tool(&id).is_none() {
-            return Json(serde_json::json!({
+            return ok_json(serde_json::json!({
                 "error": format!("no real executor is bound to '{id}' — fails closed"),
             }));
         }
@@ -1095,8 +1140,8 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
         )
         .await;
         match outcome {
-            Ok(value) => Json(value),
-            Err(e) => Json(serde_json::json!({
+            Ok(value) => ok_json(value),
+            Err(e) => ok_json(serde_json::json!({
                 "error": format!("tool '{id}' failed: {e:#}"),
             })),
         }
@@ -1115,14 +1160,25 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
     async fn agent_intent(
         State(root): State<Arc<std::path::PathBuf>>,
         axum::Json(body): axum::Json<serde_json::Value>,
-    ) -> Json<serde_json::Value> {
-        let prompt = body["prompt"].as_str().unwrap_or("").to_string();
-        if prompt.trim().is_empty() {
-            return Json(serde_json::json!({ "error": "body must include a non-empty 'prompt'" }));
+    ) -> impl axum::response::IntoResponse {
+        // The prompt is the primary untrusted input: required, bounded and
+        // type-checked before the engine — and the index build it triggers —
+        // is touched at all.
+        let prompt = match iv::required_str(&body, "prompt") {
+            Ok(p) => p,
+            Err(e) => return bad_request(e),
+        };
+        if let Err(e) = iv::validate_prompt(prompt) {
+            return bad_request(e);
         }
-        let correlation_id = body
-            .get("correlation_id")
-            .and_then(|v| v.as_str().map(str::to_string));
+        let prompt = prompt.to_string();
+        let correlation_id = match iv::optional_str(&body, "correlation_id") {
+            Ok(id) => id.map(str::to_string),
+            Err(e) => return bad_request(e),
+        };
+        if let Err(e) = iv::validate_correlation_id(correlation_id.as_deref()) {
+            return bad_request(e);
+        }
         let workspace = root.as_ref().to_string_lossy().to_string();
         let payload = tokio::task::spawn_blocking(move || {
             let engine = zylcode_core::ZylCodeEngine::new(zylcode_core::EngineConfig {
@@ -1142,8 +1198,10 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
         })
         .await;
         match payload {
-            Ok(value) => Json(value),
-            Err(e) => Json(serde_json::json!({ "error": format!("intent task failed: {e}") })),
+            Ok(value) => ok_json(value),
+            Err(e) => ok_json(serde_json::json!({
+                "error": format!("intent task failed: {e}"),
+            })),
         }
     }
 
@@ -1154,9 +1212,20 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
     async fn artifact_save(
         State(root): State<Arc<std::path::PathBuf>>,
         axum::Json(body): axum::Json<serde_json::Value>,
-    ) -> Json<serde_json::Value> {
-        let label = body["label"].as_str().unwrap_or("").to_string();
-        let content = body["content"].as_str().unwrap_or("").to_string();
+    ) -> impl axum::response::IntoResponse {
+        let label = match iv::required_str(&body, "label") {
+            Ok(v) => v,
+            Err(e) => return bad_request(e),
+        };
+        let content = match iv::required_str(&body, "content") {
+            Ok(v) => v,
+            Err(e) => return bad_request(e),
+        };
+        if let Err(e) = iv::validate_artifact(label, content) {
+            return bad_request(e);
+        }
+        let label = label.to_string();
+        let content = content.to_string();
         let root = Arc::clone(&root);
         let payload = tokio::task::spawn_blocking(move || {
             zylcode_core::surfaces::save_file_payload(&root, &label, &content)
@@ -1164,8 +1233,10 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
         })
         .await;
         match payload {
-            Ok(value) => Json(value),
-            Err(e) => Json(serde_json::json!({ "error": format!("save task failed: {e}") })),
+            Ok(value) => ok_json(value),
+            Err(e) => ok_json(serde_json::json!({
+                "error": format!("save task failed: {e}"),
+            })),
         }
     }
 
@@ -1175,8 +1246,15 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
     async fn artifact_patch(
         State(root): State<Arc<std::path::PathBuf>>,
         axum::Json(body): axum::Json<serde_json::Value>,
-    ) -> Json<serde_json::Value> {
-        let patch = body["patch"].as_str().unwrap_or("").to_string();
+    ) -> impl axum::response::IntoResponse {
+        let patch = match iv::required_str(&body, "patch") {
+            Ok(v) => v,
+            Err(e) => return bad_request(e),
+        };
+        if let Err(e) = iv::validate_patch(patch) {
+            return bad_request(e);
+        }
+        let patch = patch.to_string();
         let root = Arc::clone(&root);
         let payload = tokio::task::spawn_blocking(move || {
             zylcode_core::surfaces::apply_patch_payload(&root, &patch).unwrap_or_else(
@@ -1185,8 +1263,10 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
         })
         .await;
         match payload {
-            Ok(value) => Json(value),
-            Err(e) => Json(serde_json::json!({ "error": format!("patch task failed: {e}") })),
+            Ok(value) => ok_json(value),
+            Err(e) => ok_json(serde_json::json!({
+                "error": format!("patch task failed: {e}"),
+            })),
         }
     }
 
@@ -1223,17 +1303,32 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
     async fn missions_enqueue(
         State(missions): State<Arc<zylcode_core::missions::MissionQueue>>,
         axum::Json(body): axum::Json<serde_json::Value>,
-    ) -> Json<serde_json::Value> {
-        let task = body["task"].as_str().unwrap_or("");
-        let mode = match body["mode"].as_str().unwrap_or("build") {
-            "plan" => zylcode_core::missions::MissionMode::Plan,
+    ) -> impl axum::response::IntoResponse {
+        let task = match iv::required_str(&body, "task") {
+            Ok(v) => v,
+            Err(e) => return bad_request(e),
+        };
+        if let Err(e) = iv::validate_task(task) {
+            return bad_request(e);
+        }
+        let mode = match iv::optional_str(&body, "mode") {
+            Ok(m) => m,
+            Err(e) => return bad_request(e),
+        };
+        if let Err(e) = iv::validate_mode(mode) {
+            return bad_request(e);
+        }
+        let mode = match mode {
+            Some("plan") => zylcode_core::missions::MissionMode::Plan,
             _ => zylcode_core::missions::MissionMode::Build,
         };
         match missions.enqueue(task, mode) {
-            Ok(m) => Json(
+            Ok(m) => ok_json(
                 serde_json::to_value(&m).unwrap_or(serde_json::json!({ "error": "serialization" })),
             ),
-            Err(e) => Json(serde_json::json!({ "error": format!("enqueue failed: {e:#}") })),
+            Err(e) => ok_json(serde_json::json!({
+                "error": format!("enqueue failed: {e:#}"),
+            })),
         }
     }
 
@@ -1434,17 +1529,24 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
         axum::extract::Query(params): axum::extract::Query<
             std::collections::HashMap<String, String>,
         >,
-    ) -> Json<serde_json::Value> {
+    ) -> impl axum::response::IntoResponse {
         let task = params
             .get("task")
             .map(String::as_str)
             .unwrap_or("")
             .to_string();
+        // Optional hint: absent/empty means "no particular task" and stays
+        // valid, but a present one is bounded before it reaches the index.
+        if let Err(e) = iv::ensure_max_chars("task", &task, iv::MAX_TASK_CHARS) {
+            return bad_request(e);
+        }
         let root = Arc::clone(&root);
         let payload = tokio::task::spawn_blocking(move || repo_intel_json(&root, &task)).await;
         match payload {
-            Ok(value) => Json(value),
-            Err(e) => Json(serde_json::json!({ "error": format!("intel task failed: {e}") })),
+            Ok(value) => ok_json(value),
+            Err(e) => ok_json(serde_json::json!({
+                "error": format!("intel task failed: {e}"),
+            })),
         }
     }
 
@@ -1456,7 +1558,7 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
     async fn nav(
         State(root): State<Arc<std::path::PathBuf>>,
         axum::Json(body): axum::Json<serde_json::Value>,
-    ) -> Json<serde_json::Value> {
+    ) -> impl axum::response::IntoResponse {
         let tool = body
             .get("tool")
             .and_then(serde_json::Value::as_str)
@@ -1466,11 +1568,19 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
             .get("args")
             .cloned()
             .unwrap_or_else(|| serde_json::json!({}));
+        if let Err(e) = iv::validate_tool_id(&tool) {
+            return bad_request(e);
+        }
+        if let Err(e) = iv::validate_tool_args(&args) {
+            return bad_request(e);
+        }
         let root = Arc::clone(&root);
         let payload = tokio::task::spawn_blocking(move || nav_json(&root, &tool, args)).await;
         match payload {
-            Ok(value) => Json(value),
-            Err(e) => Json(serde_json::json!({ "error": format!("nav task failed: {e}") })),
+            Ok(value) => ok_json(value),
+            Err(e) => ok_json(serde_json::json!({
+                "error": format!("nav task failed: {e}"),
+            })),
         }
     }
 
@@ -1537,6 +1647,17 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
                 "note": "no build run in this service session"
             }))),
         });
+
+    // Transport-wide body cap, applied to every route.
+    //
+    // Axum's default is 2 MiB — below this service's own documented 4 MiB
+    // artifact limit, so a legitimate large save was refused by the
+    // *transport* while the code claimed to accept it. Field-level rules in
+    // `zylcode_core::input_validation` are the precise limits; this layer
+    // only ensures a body that cannot pass any of them is never buffered.
+    let app = app.layer(axum::extract::DefaultBodyLimit::max(
+        zylcode_core::input_validation::MAX_HTTP_BODY_BYTES,
+    ));
 
     let addr = std::net::SocketAddr::from(([127, 0, 0, 1], port));
     let listener = tokio::net::TcpListener::bind(addr).await?;
@@ -1929,3 +2050,4 @@ async fn handle_package(workspace: &str, args: PackageArgs) -> Result<()> {
     );
     Ok(())
 }
+
