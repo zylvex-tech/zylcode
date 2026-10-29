@@ -263,8 +263,9 @@ licence is separate from this codebase's licence and is not modified by it.
 
 ## Development and Testing
 
-Prerequisites: Rust (stable), Node ≥ 18, pnpm ≥ 9. Linux desktop builds need
-the usual Tauri system libraries (GTK/WebKit).
+Prerequisites: Rust stable (MSRV **1.90** — measured, see `Cargo.toml`),
+Node ≥ 18 (CI and the container use 22), pnpm ≥ 9 (locked at 9.12.0).
+Linux desktop builds need the usual Tauri system libraries (GTK/WebKit).
 
 ```bash
 git clone https://github.com/zylvex-tech/zylcode.git

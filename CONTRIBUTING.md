@@ -28,7 +28,7 @@ in either direction. Investigate the discrepancy first; propose an amendment if 
 
 | Tool | Version | Source of the requirement |
 |---|---|---|
-| Rust | stable; MSRV **1.77** | `Cargo.toml` `rust-version = "1.77"`, `edition = "2021"`. No `rust-toolchain*` file, so stable is implied. |
+| Rust | stable; MSRV **1.90** | `Cargo.toml` `rust-version = "1.90"`, `edition = "2021"`. No `rust-toolchain*` file, so stable is implied. |
 | Node | **22** (floor is 18) | `package.json` `engines.node = ">=18.0.0"`, but `apps/natlas-sdk/test/smoke.mjs` is TypeScript run directly via `node --experimental-strip-types`, which needs **≥ 22.6**. CI pins 22. |
 | pnpm | **9** (9.12.0) | `package.json` `packageManager = "pnpm@9.12.0"`. CI pins 9. |
 | Tauri | v2 | desktop shell (`apps/zylcode-desktop`). |

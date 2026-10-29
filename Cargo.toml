@@ -15,7 +15,11 @@ authors = ["ZylCode Team <team@zylcode.dev>"]
 license = "MIT"
 repository = "https://github.com/zylvex-tech/zylcode"
 description = "ZylCode — autonomous, cross-platform developer desktop engine, CLI, and real-time artifact visualizer"
-rust-version = "1.89"
+# Minimum Supported Rust Version — measured, not aspirational. Verified by
+# `cargo +1.90.0 check --workspace --all-targets` on 2026-10-27: 1.89 fails
+# because tauri 2.12.4, muda 0.20.0, tauri-build 2.7.3 and
+# tree-sitter-language 0.1.9 all declare `rust-version = 1.90`.
+rust-version = "1.90"
 
 [workspace.dependencies]
 # Version is required alongside path so `cargo publish` can rewrite
