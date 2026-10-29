@@ -168,3 +168,90 @@ cd apps/zylcode-desktop/dist && python -m http.server 4173
 
 Every asset in this directory can be regenerated from the starting commit with the
 steps above. Nothing here is hand-edited after capture.
+
+---
+
+## 7. Batch 2 — 2026-10-29 (the `v0.2.3` build)
+
+`06`–`10` are the same kind of capture taken from a later commit, so the README's
+front face shows the current product instead of the `v0.2.1` one. Sections 1
+(what these are and are not) and 4 (redaction) apply to them unchanged; this
+section records what differs.
+
+### Shared environment (batch 2)
+
+| Field | Value |
+|---|---|
+| Starting commit | `c7a75d4d6a37c9a7f59c8dcdd914bbced7b5baae` — *chore(release): 0.2.3* |
+| Build | `pnpm --filter zylcode-desktop build` → `tsc && vite build` (exit 0) |
+| Serve | `python -m http.server 4173` over `apps/zylcode-desktop/dist` |
+| Driver | `playwright-core` 1.64.1, local Chromium (Playwright build 1243, no browser download) |
+| Viewport | 1180×740, headless, single page, no reload between shots unless stated |
+| App version shown | Status bar reads **`v0.2.3`** |
+| Runtime mode | `BROWSER_PREVIEW` (no Tauri IPC, no `zylcode serve-intel`) |
+| Model in use | None — no model call occurs in any captured scenario |
+
+### Per-asset checklist (batch 2)
+
+#### `06-mission-lifecycle.png` — the workbench on the current build
+
+| Field | Value |
+|---|---|
+| Scenario | The landing workbench: mission lifecycle strip, project card, next step, capability spotlight, bottom dock, status bar. |
+| Command / action | Load `http://localhost:4173/`, wait for `CAPABILITY SPOTLIGHT`, settle 2.5 s, capture the viewport. |
+| Expected result (stated before capture) | The lifecycle reads `INTENT → PLAN → EVIDENCE → VERIFIED`, the project card shows `zylcode` `AVAILABLE` with `Missions 0`, the explorer is `BLOCKED`, and the status bar reads `v0.2.3`. |
+| Evidence | The frame itself, including the honest `BLOCKED` states and the `terminal service error: HTTP 501` line. |
+| Recording steps | Playwright `page.screenshot()` of the 1180×740 viewport. |
+
+#### `07-missions-pipeline.png` — missions surface
+
+| Field | Value |
+|---|---|
+| Scenario | The missions surface: composer, missions list and the `VERIFY` terminal section. |
+| Command / action | Click `Missions` in the activity rail; wait 900 ms; capture. |
+| Expected result | The rail's `MISSIONS` panel appears with `New Mission`, the main area becomes `MISSION COMPOSER` (autonomy `Guided — AVAILABLE`) over `MISSIONS` → `No missions yet.` and `VERIFY`. |
+| Evidence | The composer's placeholder and autonomy helper text render verbatim; the terminal keeps its `BLOCKED` state. |
+| Recording steps | `getByRole("button", { name: "Missions" })` click, then `page.screenshot()`. |
+
+#### `08-provider-fallback.png` — provider fallback chain
+
+| Field | Value |
+|---|---|
+| Scenario | The right workspace's `Providers` tab, with the environment panel beside it. |
+| Command / action | Click `Settings` in the activity rail; click `Providers`; wait 1 s; capture. |
+| Expected result | The panel reports its controlled state — `Desktop runtime required — this panel uses the ZylCode desktop engine` — rather than a broken empty list, and the environment panel reads `Detected: BROWSER_PREVIEW`. |
+| Evidence | The frame itself: a backend-dependent panel telling the truth about a missing backend, which is the behaviour §1 says to keep visible. |
+| Recording steps | Two `click()`s, then `page.screenshot()`. |
+
+#### `09-evidence-center.png` — evidence ledger
+
+| Field | Value |
+|---|---|
+| Scenario | The `EVIDENCE` rail panel and the `EVIDENCE LEDGER` main surface, both with nothing captured. |
+| Command / action | Click `Evidence` in the activity rail; wait 1 s; capture. |
+| Expected result | Both surfaces read `start \`zylcode serve-intel\` to read the evidence ledger` with a `BLOCKED` badge and a `Refresh` action — an absent ledger is stated, not implied. |
+| Evidence | The frame itself: no surface claims evidence it does not have. |
+| Recording steps | `getByRole("button", { name: "Evidence" })` click, then `page.screenshot()`. |
+
+#### `10-theme-arctic-light.png` — live theming on the current build
+
+| Field | Value |
+|---|---|
+| Scenario | The whole shell re-themes live, without a reload, on the `v0.2.3` build. |
+| Command / action | On the landing surface, `selectOption({ label: "Arctic Light" })` on the status-bar theme control; wait 1.2 s; capture. |
+| Expected result | The shell turns light — header, cards, rail and composer — while the bottom dock and status bar keep their dark treatment, and the control reads `Arctic Light`. |
+| Evidence | The frame itself, alongside `02`/`03` from batch 1 for the same layout in other themes. |
+| Recording steps | `getByRole("combobox", { name: "Theme:" }).selectOption(...)`, then `page.screenshot()`. |
+
+### Reproducing batch 2
+
+```bash
+pnpm --filter zylcode-desktop build                       # exit 0
+cd apps/zylcode-desktop/dist && python -m http.server 4173
+cd <a scratch dir> && npm install playwright-core@1       # not a repo dependency
+# drive http://localhost:4173/ at 1180x740 with the locators named per asset above
+```
+
+The driver lives outside the repository on purpose: the repo gains no
+playwright dependency for a documentation task, and every step above is stated
+in the checklist rather than hidden in a script.

@@ -28,11 +28,16 @@ configure yourself (`docs/PROVIDERS.md`).
 > **DEVELOPER PREVIEW** — the assets below are real captures of the ZylCode desktop
 > frontend running in **browser preview** mode (no Tauri backend attached), so
 > backend-driven panels show their honest `BLOCKED` state and a mission is *composed*,
-> not run. Full capture record — starting commit, environment, redaction and
-> publication checks — in
-> [`docs/media/zylcode/README.md`](docs/media/zylcode/README.md).
+> not run. The first five assets are from the `v0.2.1` build (2026-10-26); the
+> numbered captures from `06` onward are the **`v0.2.3` build (2026-10-29)**.
+> Full capture record — starting commit, environment, redaction and
+> publication checks — in [`docs/media/zylcode/README.md`](docs/media/zylcode/README.md).
 
-![ZylCode workbench — project state, mission pipeline and capability spotlight](docs/media/zylcode/01-landing.png)
+![ZylCode workbench — mission lifecycle, project state and capability spotlight](docs/media/zylcode/06-mission-lifecycle.png)
+
+Missions, composer and the verify terminal on the same build:
+
+![Missions surface — composer, mission list and verify terminal](docs/media/zylcode/07-missions-pipeline.png)
 
 **Live theming** — the whole shell re-themes on the fly, no reload:
 
@@ -54,9 +59,15 @@ configure yourself (`docs/PROVIDERS.md`).
 
 | Surface | Capture |
 |---|---|
+| Workbench (current build, `v0.2.3`) | ![Workbench](docs/media/zylcode/06-mission-lifecycle.png) |
+| Missions & composer | ![Missions surface](docs/media/zylcode/07-missions-pipeline.png) |
+| Provider fallback chain (honest runtime state) | ![Providers](docs/media/zylcode/08-provider-fallback.png) |
+| Evidence ledger (nothing captured, said plainly) | ![Evidence ledger](docs/media/zylcode/09-evidence-center.png) |
+| Live theme (Arctic Light, current build) | ![Arctic Light theme](docs/media/zylcode/10-theme-arctic-light.png) |
 | Mission Composer | ![Mission Composer](docs/media/zylcode/04-mission-composer.png) |
-| Light theme (Arctic Light) | ![Arctic Light theme](docs/media/zylcode/02-theme-arctic-light.png) |
-| Alternate theme (Nord) | ![Nord theme](docs/media/zylcode/03-theme-nord.png) |
+| Light theme (Arctic Light, `v0.2.1` capture) | ![Arctic Light theme](docs/media/zylcode/02-theme-arctic-light.png) |
+| Alternate theme (Nord, `v0.2.1` capture) | ![Nord theme](docs/media/zylcode/03-theme-nord.png) |
+| Landing (earlier capture) | ![Earlier landing](docs/media/zylcode/01-landing.png) |
 
 ---
 
