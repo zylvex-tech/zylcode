@@ -313,8 +313,9 @@ pnpm --filter zylcode-desktop tauri dev    # desktop window (Tauri + Vite; first
 Build and test the frontend (typecheck + production bundle; unit tests):
 
 ```bash
-pnpm --filter zylcode-desktop build     # verified: exit 0 (2026-10-19)
-pnpm --filter zylcode-desktop test      # verified: 108 passed (2026-10-19)
+pnpm --filter zylcode-desktop build          # typecheck + production bundle
+pnpm --filter zylcode-desktop test           # verified: 453 passed (2026-10-29)
+pnpm --filter zylcode-desktop test:coverage  # the same run, plus the coverage gate
 ```
 
 Run and check the Rust workspace (what CI runs on every push to `main`):
@@ -339,14 +340,38 @@ More detail: [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md),
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md),
 [`docs/VERIFICATION.md`](docs/VERIFICATION.md).
 
+### Quality gates
+
+These are floors, not aspirations: CI fails below them, and each floor sits
+just under its measured value so it ratchets — a new untested file turns the
+run red instead of being absorbed.
+
+| Gate | Floor | Measured (2026-10-29) |
+|---|---|---|
+| Frontend coverage — lines & statements | 70% | **70.16%** (453 tests, 46 files) |
+| Frontend coverage — branches | 83% | **83.25%** |
+| Frontend coverage — functions | 80% | **80.61%** |
+| Rust coverage — lines | 78% | 80.53% (measured 2026-10-22) |
+| Repository-intelligence benchmark | 0.60 precision floor | **0.61** (recall 0.95, gate exit 0) |
+| Lint / format / lints | 0 errors | `eslint` 0 errors · `cargo fmt --check` clean · `clippy --workspace --all-targets -- -D warnings` clean |
+| Workspace tests | 0 failures | 564 core lib tests + full workspace green |
+
+Defined in [`apps/zylcode-desktop/vitest.config.ts`](apps/zylcode-desktop/vitest.config.ts)
+and enforced by [`.github/workflows/coverage.yml`](.github/workflows/coverage.yml)
+(frontend job) and [`ci.yml`](.github/workflows/ci.yml) (Rust job); the
+benchmark floor lives in
+[`crates/zylcode-core/tests/repo_intelligence_benchmark.rs`](crates/zylcode-core/tests/repo_intelligence_benchmark.rs).
+
 ---
 
 ## Project Status and Roadmap
 
 * **Status now:** a working desktop shell and CLI over a tested engineering
-  core — CI green on this branch; 597 core tests and 108 frontend tests
-  passing locally on the current head; independent acceptance of earlier
-  intelligence claims still open (12 registry entries disputed).
+  core — CI green on this branch; 564 core lib tests and 453 frontend tests
+  passing locally on the current head, frontend coverage gated at 70%
+  (measured 70.16%), and the repository-intelligence benchmark at 0.61
+  against its 0.60 floor; independent acceptance of earlier intelligence
+  claims still open (12 registry entries disputed).
 * **In progress:** Phase 2A re-acceptance evidence
   ([`docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md`](docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md)),
   honest distribution (source-install path today, signed installers later).
