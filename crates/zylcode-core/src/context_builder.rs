@@ -183,8 +183,8 @@ impl ContextBuilder {
         // The ranked stream interleaves file, symbol, package and
         // entry-point resources. Capping the mixed stream before filtering
         // starved the file list whenever symbol results outranked files
-        // (the co-change-backed agent.rs evidence sits below several symbol
-        // hits). Filter to files first, then cap.
+        // (the co-change-backed evidence for `src/ledger.rs` sits below
+        // several symbol hits). Filter to files first, then cap.
         Ok(results
             .iter()
             .filter(|r| r.resource_type == "file")
@@ -231,9 +231,19 @@ mod intelligence_integration_tests {
             "intelligence-ranked relevant_files must contain crash_recovery; got {:?}",
             ctx.relevant_files
         );
+        // The co-change half: a file whose path shares no word with the task
+        // must still surface, because it changes alongside the crash-recovery
+        // tests in git history. This used to assert `agent.rs`; the module
+        // split moved it to `agent/mod.rs`, which has no commit history of
+        // its own yet, so the strongest co-change-backed file that still
+        // lives at its historical path stands in. `repo-context` gives its
+        // reason verbatim: "changes together with 'crates/zylcode-core/tests/
+        // crash_recovery.rs' in git history".
         assert!(
-            ctx.relevant_files.iter().any(|f| f.contains("agent.rs")),
-            "co-change evidence must surface agent.rs; got {:?}",
+            ctx.relevant_files
+                .iter()
+                .any(|f| f.contains("crates/zylcode-core/src/ledger.rs")),
+            "co-change evidence must surface src/ledger.rs; got {:?}",
             ctx.relevant_files
         );
     }
