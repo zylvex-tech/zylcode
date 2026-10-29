@@ -34,7 +34,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
         <div className="space-y-3 text-xs font-mono bg-slate-950 p-4 rounded border border-slate-800">
           <div className="flex justify-between">
             <span className="text-slate-400">Version:</span>
-            <span className="text-slate-200">v0.2.1</span>
+            <span className="text-slate-200">v0.2.3</span>
           </div>
           <div className="flex justify-between">
             <span className="text-slate-400">Core Runtime:</span>

@@ -20,7 +20,7 @@ describe("AboutModal", () => {
   it("states version, runtime, protocol and circuit state", () => {
     render(<AboutModal isOpen onClose={vi.fn()} />);
     expect(screen.getByAltText("ZylCode")).toBeInTheDocument();
-    expect(screen.getByText("v0.2.1")).toBeInTheDocument();
+    expect(screen.getByText("v0.2.3")).toBeInTheDocument();
     expect(screen.getByText("Rust (memchr / tokio)")).toBeInTheDocument();
     expect(
       screen.getByText("MCP (Model Context Protocol)"),

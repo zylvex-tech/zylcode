@@ -31,7 +31,7 @@ describe("StatusBar", () => {
     expect(screen.getByText("Bridges:")).toBeInTheDocument();
     expect(screen.getByText("5")).toBeInTheDocument();
     expect(screen.getByText("Circuit: CLOSED")).toBeInTheDocument();
-    expect(screen.getByText("v0.2.1")).toBeInTheDocument();
+    expect(screen.getByText("v0.2.3")).toBeInTheDocument();
   });
 
   it("offers every theme, with the current one selected", () => {

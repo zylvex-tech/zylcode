@@ -10,7 +10,7 @@ resolver = "2"
 
 [workspace.package]
 edition = "2021"
-version = "0.2.2"
+version = "0.2.3"
 authors = ["ZylCode Team <team@zylcode.dev>"]
 license = "MIT"
 repository = "https://github.com/zylvex-tech/zylcode"
@@ -24,12 +24,12 @@ rust-version = "1.90"
 [workspace.dependencies]
 # Version is required alongside path so `cargo publish` can rewrite
 # internal deps to their crates.io versions (publishing fails without it).
-zylcode-core = { path = "crates/zylcode-core", version = "0.2.2" }
-zylcode-mcp = { path = "crates/zylcode-mcp", version = "0.2.2" }
+zylcode-core = { path = "crates/zylcode-core", version = "0.2.3" }
+zylcode-mcp = { path = "crates/zylcode-mcp", version = "0.2.3" }
 # Leaf crate: deterministic repository navigation (AST, symbols, references,
 # graphs). Sits *below* both zylcode-core and zylcode-mcp so neither has to
 # depend on the other (core -> mcp is the only edge between them).
-zylcode-nav = { path = "crates/zylcode-nav", version = "0.2.2" }
+zylcode-nav = { path = "crates/zylcode-nav", version = "0.2.3" }
 
 # Repository Navigation (AST parsing for symbols/references/imports)
 tree-sitter = "0.25"
