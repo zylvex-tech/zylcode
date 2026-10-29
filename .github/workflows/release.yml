@@ -31,9 +31,12 @@ jobs:
       #
       # Legs:
       #   * ubuntu-22.04            -> x86_64 Linux   (native)
-      #   * ubuntu-24.04-arm        -> aarch64 Linux   (native ARM runner; the
+      #   * ubuntu-22.04-arm        -> aarch64 Linux   (native ARM runner; the
       #                                `cross` container has no webkit2gtk/GTK
-      #                                system libs, so we build on real arm64)
+      #                                system libs, so we build on real arm64.
+      #                                22.04 (not 24.04) keeps glibc compatible
+      #                                with the x86_64 AppImage and avoids the
+      #                                webkit2gtk sysroot issues seen on 24.04.)
       #   * windows-latest          -> x86_64 Windows  (native)
       #   * macos-latest (arm64)    -> aarch64 macOS   (native Apple silicon)
       #   * macos-latest (arm64)    -> x86_64 macOS    (cross-target; `macos-13`
@@ -46,7 +49,7 @@ jobs:
           - platform: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
             rust-target: x86_64-unknown-linux-gnu
-          - platform: ubuntu-24.04-arm
+          - platform: ubuntu-22.04-arm
             target: aarch64-unknown-linux-gnu
             rust-target: aarch64-unknown-linux-gnu
           - platform: windows-latest
