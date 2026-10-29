@@ -126,6 +126,7 @@ impl RepoQuery {
                 ),
                 provenance: crate::intelligence::types::Provenance::Parsed,
                 snippet: None,
+                file: Some(s.file.clone()),
             })
             .collect()
     }
@@ -142,6 +143,7 @@ impl RepoQuery {
                 reason: format!("Defined in {} at line {}", s.file, s.line),
                 provenance: crate::intelligence::types::Provenance::Parsed,
                 snippet: None,
+                file: Some(s.file.clone()),
             })
     }
 
@@ -157,6 +159,7 @@ impl RepoQuery {
                 reason: format!("Defined in {}", s.file),
                 provenance: crate::intelligence::types::Provenance::Parsed,
                 snippet: None,
+                file: Some(s.file.clone()),
             })
             .collect()
     }
@@ -174,6 +177,7 @@ impl RepoQuery {
                         reason: format!("File {} belongs to package {}", file_path, pkg.name),
                         provenance: crate::intelligence::types::Provenance::Parsed,
                         snippet: None,
+                        file: Some(file_path.to_string()),
                     });
                 }
             }
@@ -193,6 +197,7 @@ impl RepoQuery {
                     ),
                     provenance: crate::intelligence::types::Provenance::Inferred,
                     snippet: None,
+                    file: Some(file_path.to_string()),
                 });
             }
         }
@@ -211,6 +216,7 @@ impl RepoQuery {
                 reason: format!("{} depends on {}", subject, d),
                 provenance: crate::intelligence::types::Provenance::Parsed,
                 snippet: None,
+                file: None,
             })
             .collect()
     }
@@ -226,6 +232,7 @@ impl RepoQuery {
                 reason: format!("{} depends on {}", d, subject),
                 provenance: crate::intelligence::types::Provenance::Parsed,
                 snippet: None,
+                file: None,
             })
             .collect()
     }

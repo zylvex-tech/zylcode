@@ -86,16 +86,28 @@ struct BenchmarkCase {
     description: &'static str,
 }
 
+/// True when a result points at one of the expected files.
+///
+/// A hit counts whether the result *is* the file or a symbol **defined inside**
+/// it: `...::terminal::TerminalSession` is a hit on `terminal.rs`. The previous
+/// metric compared `resource.contains(expected)` only, so every symbol result
+/// scored as a miss — which is how a ranking that put `terminal.rs` at rank 1
+/// still measured 0.10 precision on Q28. The resource kind was being counted as
+/// a retrieval failure.
+fn is_relevant(result: &ContextResult, expected: &[&str]) -> bool {
+    let file = result.file.as_deref().unwrap_or_default();
+    expected
+        .iter()
+        .any(|e| result.resource.contains(e) || file.contains(e))
+}
+
 /// Precision@K: fraction of top-K results that are relevant.
 fn precision_at_k(results: &[ContextResult], expected: &[&str], k: usize) -> f64 {
     let top_k: Vec<_> = results.iter().take(k).collect();
     if top_k.is_empty() {
         return 0.0;
     }
-    let relevant = top_k
-        .iter()
-        .filter(|r| expected.iter().any(|e| r.resource.contains(e)))
-        .count();
+    let relevant = top_k.iter().filter(|r| is_relevant(r, expected)).count();
     relevant as f64 / k as f64
 }
 
@@ -107,24 +119,22 @@ fn recall_at_k(results: &[ContextResult], expected: &[&str], k: usize) -> f64 {
     }
     let found = expected
         .iter()
-        .filter(|e| top_k.iter().any(|r| r.resource.contains(*e)))
+        .filter(|e| top_k.iter().any(|r| is_relevant(r, &[**e])))
         .count();
     found as f64 / expected.len() as f64
 }
 
-/// NOTE: this is a Phase 2A *quality-acceptance* evaluation of the repo
-/// intelligence retrieval, not a deterministic correctness regression test.
-/// Its Precision@K / Recall@K depend on the exact file corpus and index
-/// present on the machine that runs it, so the score is environment-sensitive
-/// (CI measured 0.40 avg precision under the 0.55 floor). Gating every merge
-/// — including unrelated dependabot/docs PRs — on a moving quality metric is
-/// the wrong architecture. The sibling `commissioning_test` is ignored for the
-/// same reason.
+/// Phase 2A quality-acceptance gate.
 ///
-/// Run it explicitly during Phase 2A re-acceptance:
-///   cargo test -p zylcode-core --test repo_intelligence_benchmark -- --ignored
+/// This **is** a merge gate. It was disabled on 2026-10-23 with the argument
+/// that a quality metric is environment-sensitive, and the measured score sat
+/// below the floor at the time. Leaving it off meant the shortfall was invisible
+/// and could not regress visibly either, so the roadmap's acceptance bar was
+/// unenforceable. It is re-enabled at the roadmap's own threshold.
+///
+/// Scores depend on the corpus, which is this repository — the benchmark indexes
+/// `CARGO_MANIFEST_DIR/../..`, so it measures the same tree on any checkout.
 #[test]
-#[ignore = "Phase 2A quality-acceptance evaluation; run explicitly during re-audit, not as a merge gate"]
 fn benchmark_repository_intelligence() {
     let query = index_zylcode();
 
@@ -262,7 +272,11 @@ fn benchmark_repository_intelligence() {
         // strong signal for in the existing benchmark runs.
         BenchmarkCase {
             question: "Which crate contains the agent loop implementation?",
-            expected_resources: vec!["zylcode-core", "agent.rs"],
+            // `agent.rs`, not `agent/mod.rs`: the module split moved the file
+            // into a directory, so the old path is no longer a resource or a
+            // `file` field anywhere in the index. The symbol id carries the
+            // new path too (`...::src::agent::mod::AgentLoop`).
+            expected_resources: vec!["zylcode-core", "agent/mod.rs"],
             description: "Q21: Package + file identification",
         },
         BenchmarkCase {
@@ -315,7 +329,15 @@ fn benchmark_repository_intelligence() {
         let dump: String = results
             .iter()
             .take(10)
-            .map(|r| format!("    {} | {:.3}", r.resource, r.relevance))
+            .map(|r| {
+                format!(
+                    "    {} | {:.3} | {} | {}",
+                    r.resource,
+                    r.relevance,
+                    r.resource_type,
+                    r.file.as_deref().unwrap_or("-")
+                )
+            })
             .collect::<Vec<_>>()
             .join(
                 "
@@ -377,23 +399,22 @@ fn benchmark_repository_intelligence() {
     println!("\nAverage Precision@{}: {:.2}", k, avg_precision);
     println!("Average Recall@{}: {:.2}", k, avg_recall);
 
-    // Phase 2A thresholds: raised 2026-10-23 as P1 remediation item.
-    // The previous threshold (0.20) was a regression-detection floor set when
-    // the scanner incorrectly indexed build output. With the corpus corrected
-    // and the benchmark expanded to 28 queries covering file, symbol and
-    // package retrieval, the floor is raised to 0.55 — a bar a naive keyword
-    // search fails on questions requiring symbol or dependency signal.
-    // Target for Phase 2A re-acceptance: 0.60 (requires running the benchmark
-    // on the target platform to verify the expanded query set).
+    // Phase 2A thresholds — the roadmap's acceptance bar, enforced.
+    //
+    // History, so the correction stays visible: the floor was 0.20 while the
+    // scanner still indexed build output. It was raised to 0.55 on 2026-10-23,
+    // but the measured score was ~0.41 and the test was switched off rather
+    // than met. It is now 0.60, per the roadmap's Phase 2A exit criterion
+    // (`Precision@10 >= 0.60`), and it runs on every merge.
     assert!(
-        avg_precision >= 0.55,
-        "Average Precision@{} = {:.2}, expected >= 0.55",
+        avg_precision >= 0.60,
+        "Average Precision@{} = {:.2}, expected >= 0.60",
         k,
         avg_precision
     );
     assert!(
-        avg_recall >= 0.55,
-        "Average Recall@{} = {:.2}, expected >= 0.55",
+        avg_recall >= 0.60,
+        "Average Recall@{} = {:.2}, expected >= 0.60",
         k,
         avg_recall
     );
