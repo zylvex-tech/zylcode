@@ -70,7 +70,11 @@ jobs:
         if: startsWith(matrix.platform, 'ubuntu')
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+          # xdg-utils is not incidental: the AppImage step fails outright
+          # with `xdg-open binary not found /usr/bin/xdg-open` when it is
+          # missing — that is exactly how the v0.2.2 aarch64 leg failed
+          # (run 40466938422), five minutes after a green compile.
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf xdg-utils
 
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
