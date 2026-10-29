@@ -510,9 +510,19 @@ async fn main() -> Result<()> {
 
 #[derive(Args, Debug)]
 struct ServeIntelArgs {
-    /// TCP port to listen on (loopback only).
+    /// TCP port to listen on.
     #[arg(long, default_value_t = 17630)]
     port: u16,
+
+    /// Interface to bind.
+    ///
+    /// Defaults to loopback so a bare `zylcode serve-intel` is never
+    /// reachable from the network by accident. `0.0.0.0` is an explicit
+    /// opt-in, needed where the listener runs in a container: publishing a
+    /// port forwards to the container's external interface, so a loopback
+    /// bind would be unreachable from the host.
+    #[arg(long, default_value = "127.0.0.1", value_name = "IP")]
+    host: std::net::IpAddr,
 
     /// Repository root to index (defaults to the workspace root).
     #[arg(long)]
@@ -590,6 +600,7 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
     );
     let root = Arc::new(root);
     let port = args.port;
+    let host = args.host;
 
     // Warm the persisted index once at startup so the first UI request is
     // fast; failures are non-fatal (the per-request build will surface them
@@ -1659,7 +1670,7 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
         zylcode_core::input_validation::MAX_HTTP_BODY_BYTES,
     ));
 
-    let addr = std::net::SocketAddr::from(([127, 0, 0, 1], port));
+    let addr = std::net::SocketAddr::new(host, port);
     let listener = tokio::net::TcpListener::bind(addr).await?;
     println!(
         "repo-intel service listening on http://{addr} (repo: {})",
@@ -2051,3 +2062,69 @@ async fn handle_package(workspace: &str, args: PackageArgs) -> Result<()> {
     Ok(())
 }
 
+// ---------------------------------------------------------------------------
+// serve-intel argument contract
+//
+// The bind address is a safety property, not a convenience: a bare
+// `zylcode serve-intel` must stay loopback-only. These tests pin the default
+// so a future edit cannot quietly expose a read surface to the network, and
+// pin that widening the bind is an explicit, typed act rather than something
+// a malformed argument can produce.
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod serve_intel_args_tests {
+    use super::{Cli, Commands};
+    use clap::error::ErrorKind;
+    use clap::Parser as _;
+    use std::net::{IpAddr, Ipv4Addr};
+
+    fn loopback() -> IpAddr {
+        IpAddr::V4(Ipv4Addr::LOCALHOST)
+    }
+
+    fn unspecified() -> IpAddr {
+        IpAddr::V4(Ipv4Addr::UNSPECIFIED)
+    }
+
+    fn parse(args: &[&str]) -> Result<super::ServeIntelArgs, clap::Error> {
+        let mut full = vec!["zylcode"];
+        full.extend_from_slice(args);
+        match Cli::try_parse_from(full)?.command {
+            Commands::ServeIntel(a) => Ok(a),
+            other => panic!("expected ServeIntel, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn defaults_to_loopback_on_the_documented_port() {
+        let args = parse(&["serve-intel"]).expect("default invocation must parse");
+        assert_eq!(args.host, loopback());
+        assert_eq!(args.port, 17630);
+    }
+
+    #[test]
+    fn a_wider_bind_is_an_explicit_opt_in() {
+        let args = parse(&["serve-intel", "--host", "0.0.0.0", "--port", "8080"])
+            .expect("a valid IP must parse");
+        assert_eq!(args.host, unspecified());
+        assert_eq!(args.port, 8080);
+    }
+
+    #[test]
+    fn an_unparseable_bind_address_is_rejected_rather_than_defaulted() {
+        let err = parse(&["serve-intel", "--host", "not-an-ip"]).unwrap_err();
+        // clap reports a failed value parse, not an unknown-flag error.
+        assert_eq!(err.kind(), ErrorKind::ValueValidation);
+        assert!(err.to_string().contains("not-an-ip"));
+        // Rejection matters: silently falling back to loopback would hide a
+        // misconfigured container, and falling back to 0.0.0.0 would widen
+        // the bind without the operator asking for it.
+    }
+
+    #[test]
+    fn an_out_of_range_port_is_rejected() {
+        let err = parse(&["serve-intel", "--port", "70000"]).unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::ValueValidation);
+    }
+}

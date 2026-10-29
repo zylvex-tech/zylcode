@@ -273,6 +273,35 @@ cd zylcode
 pnpm install --frozen-lockfile
 ```
 
+### One-command environment (container)
+
+If you would rather not install Rust, Node and the GTK/WebKit development
+libraries by hand, the repository ships the whole toolchain as an image —
+the same package list, Node version and pnpm version CI uses:
+
+```bash
+docker compose run --rm dev      # pnpm install --frozen-lockfile && cargo check --workspace
+```
+
+To bring up the backend the browser preview talks to, then the UI on the
+host:
+
+```bash
+docker compose up serve-intel     # read-only intelligence API on :17630
+pnpm --filter zylcode-desktop dev # UI on http://localhost:1420
+```
+
+The service binds loopback inside the container and is published only by the
+explicit `--host 0.0.0.0` in `docker-compose.yml`; a bare
+`zylcode serve-intel` on the host stays loopback-only.
+
+Opening the repository in VS Code / Cursor offers
+[`.devcontainer/devcontainer.json`](.devcontainer/devcontainer.json), which
+builds the same [`Dockerfile`](Dockerfile) and runs `pnpm install
+--frozen-lockfile` on create. The desktop window itself is a host process —
+it needs a real display — so run `pnpm --filter zylcode-desktop tauri dev`
+on the host as usual.
+
 Run the desktop application:
 
 ```bash

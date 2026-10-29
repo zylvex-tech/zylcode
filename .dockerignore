@@ -1,0 +1,17 @@
+# Build context only. The image copies nothing (the repository is bind
+# mounted at runtime), so everything here exists purely to keep the context
+# small and the transfer fast.
+.git
+node_modules
+**/node_modules
+target
+**/target
+coverage
+**/coverage
+coverage-meta
+**/coverage-meta
+.zylcode
+.zwt
+*.log
+*.db
+*.db.bak
