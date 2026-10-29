@@ -14,14 +14,9 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-async function load(options: {
-  desktop: boolean;
-  invoke?: ReturnType<typeof vi.fn>;
-}) {
+async function load(options: { desktop: boolean; invoke?: ReturnType<typeof vi.fn> }) {
   vi.resetModules();
-  const listen = vi.fn(
-    (_event: string, _handler: (e: { payload: unknown }) => void) => vi.fn(),
-  );
+  const listen = vi.fn((_event: string, _handler: (e: { payload: unknown }) => void) => vi.fn());
   if (options.desktop) {
     (window as any).__TAURI__ = {
       useApp: () => ({ invoke: options.invoke ?? vi.fn(async () => []) }),

@@ -58,9 +58,7 @@ describe("AuditViewer", () => {
 
   it("says so when there is no trail to show", () => {
     render(<AuditViewer entries={[]} isOpen onClose={vi.fn()} />);
-    expect(
-      screen.getByText("No audit log entries recorded yet."),
-    ).toBeInTheDocument();
+    expect(screen.getByText("No audit log entries recorded yet.")).toBeInTheDocument();
     expect(screen.getByText("0")).toBeInTheDocument();
   });
 
@@ -81,9 +79,7 @@ describe("AuditViewer", () => {
 
   it("filters by tool name, case-insensitively", () => {
     open();
-    const filter = screen.getByPlaceholderText(
-      "Filter by tool or SHA-256 hash...",
-    );
+    const filter = screen.getByPlaceholderText("Filter by tool or SHA-256 hash...");
     fireEvent.change(filter, { target: { value: "APPLY" } });
     expect(screen.getAllByText("apply_patch")).toHaveLength(2);
     expect(screen.queryByText("execute_tool")).not.toBeInTheDocument();
@@ -93,23 +89,19 @@ describe("AuditViewer", () => {
 
   it("filters by payload hash", () => {
     open();
-    fireEvent.change(
-      screen.getByPlaceholderText("Filter by tool or SHA-256 hash..."),
-      { target: { value: "deadbe" } },
-    );
+    fireEvent.change(screen.getByPlaceholderText("Filter by tool or SHA-256 hash..."), {
+      target: { value: "deadbe" },
+    });
     expect(screen.getByText("execute_tool")).toBeInTheDocument();
     expect(screen.queryByText("apply_patch")).not.toBeInTheDocument();
   });
 
   it("shows the empty state when the filter matches nothing", () => {
     open();
-    fireEvent.change(
-      screen.getByPlaceholderText("Filter by tool or SHA-256 hash..."),
-      { target: { value: "no-such-tool" } },
-    );
-    expect(
-      screen.getByText("No audit log entries recorded yet."),
-    ).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText("Filter by tool or SHA-256 hash..."), {
+      target: { value: "no-such-tool" },
+    });
+    expect(screen.getByText("No audit log entries recorded yet.")).toBeInTheDocument();
   });
 
   it("closes from the header ✕ and the footer Close", () => {

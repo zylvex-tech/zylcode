@@ -103,15 +103,18 @@ describe("ContextSidebar", () => {
     srch.mockResolvedValue({
       kind: "ready",
       data: searchResult([
-        { resource: "src/intelligence/scanner.rs", resource_type: "file", relevance: 1.2, reason: "path" },
+        {
+          resource: "src/intelligence/scanner.rs",
+          resource_type: "file",
+          relevance: 1.2,
+          reason: "path",
+        },
         { resource: "src/other.rs", resource_type: "file", relevance: 0.4, reason: "path" },
       ]),
     });
     render(<ContextSidebar activeActivity="search" />);
 
-    expect(
-      screen.getByText("Results come from the real index, ranked."),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Results come from the real index, ranked.")).toBeInTheDocument();
     const button = screen.getByRole("button", { name: "Search" });
     expect(button).toBeDisabled();
 
@@ -166,7 +169,14 @@ describe("ContextSidebar", () => {
   });
 
   it("source control summary: clean worktree and unavailable states", async () => {
-    git.mockResolvedValue(gitReady({ clean: true, ahead: 0, behind: 0, counts: { ...gitReady().data.counts, total: 0 } }));
+    git.mockResolvedValue(
+      gitReady({
+        clean: true,
+        ahead: 0,
+        behind: 0,
+        counts: { ...gitReady().data.counts, total: 0 },
+      }),
+    );
     const first = render(<ContextSidebar activeActivity="source-control" />);
     expect(await screen.findByText("No changes")).toBeInTheDocument();
     expect(screen.queryByText(/↑/)).not.toBeInTheDocument();
@@ -218,9 +228,7 @@ describe("ContextSidebar", () => {
       expect(screen.getByText(copy)).toBeInTheDocument();
       view.unmount();
     }
-    expect(
-      screen.queryByText("Select an activity"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Select an activity")).not.toBeInTheDocument();
   });
 
   it("activities without their own panel fall back to a labelled placeholder", () => {

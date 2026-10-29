@@ -31,9 +31,8 @@ vi.mock("../lib/surfaces", async (importOriginal) => {
   return { ...actual, fetchEvidence: vi.fn() };
 });
 
-const { enqueueMission, listMissions, runNextMission, clearMissions } = await import(
-  "../lib/missions"
-);
+const { enqueueMission, listMissions, runNextMission, clearMissions } =
+  await import("../lib/missions");
 const { fetchEvidence } = await import("../lib/surfaces");
 
 const mis = vi.mocked(listMissions);
@@ -91,15 +90,11 @@ describe("PulsePanel", () => {
     expect(
       screen.getByText("runs the real pipeline · verified by the test suite"),
     ).toBeInTheDocument();
-    expect(
-      screen.getByPlaceholderText("Describe the change to build…"),
-    ).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Describe the change to build…")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /Plan/ }));
     expect(screen.getByText("design only · nothing executes")).toBeInTheDocument();
-    expect(
-      screen.getByPlaceholderText("Describe what to plan…"),
-    ).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Describe what to plan…")).toBeInTheDocument();
   });
 
   it("refuses to queue an empty task and clears the input after queuing", async () => {
@@ -112,18 +107,14 @@ describe("PulsePanel", () => {
     expect(queue).toBeEnabled();
 
     fireEvent.click(queue);
-    await waitFor(() =>
-      expect(enq).toHaveBeenCalledWith("add rate limiting", "build"),
-    );
+    await waitFor(() => expect(enq).toHaveBeenCalledWith("add rate limiting", "build"));
     expect(input).toHaveValue("");
 
     // Plan mode is passed through, not coerced.
     fireEvent.click(screen.getByRole("button", { name: /Plan/ }));
     fireEvent.change(input, { target: { value: "design the queue" } });
     fireEvent.click(screen.getByRole("button", { name: "Queue" }));
-    await waitFor(() =>
-      expect(enq).toHaveBeenLastCalledWith("design the queue", "plan"),
-    );
+    await waitFor(() => expect(enq).toHaveBeenLastCalledWith("design the queue", "plan"));
   });
 
   it("queues on Enter as well as the button", async () => {
@@ -137,24 +128,22 @@ describe("PulsePanel", () => {
   it("derives the status badge from real ledger state", async () => {
     evi.mockResolvedValue(evidence({ entry_count: 42, chain_intact: true }));
     const first = render(<PulsePanel />);
-    expect(
-      await screen.findByText("42 ledger entries · chain intact"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("42 ledger entries · chain intact")).toBeInTheDocument();
     expect(screen.getByText("AVAILABLE")).toBeInTheDocument();
     first.unmount();
 
     evi.mockResolvedValue(evidence({ chain_intact: false }));
     const second = render(<PulsePanel />);
-    expect(
-      await screen.findByText("1 ledger entries · chain BROKEN"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("1 ledger entries · chain BROKEN")).toBeInTheDocument();
     second.unmount();
 
-    evi.mockResolvedValue({ kind: "empty", reason: "ledger empty — run a build mission to record evidence" });
+    evi.mockResolvedValue({
+      kind: "empty",
+      reason: "ledger empty — run a build mission to record evidence",
+    });
     const third = render(<PulsePanel />);
     expect(
-      (await screen.findAllByText("ledger empty — run a build mission to record evidence"))
-        .length,
+      (await screen.findAllByText("ledger empty — run a build mission to record evidence")).length,
     ).toBeGreaterThan(0);
     expect(screen.getByText("LIMITED")).toBeInTheDocument();
     third.unmount();
@@ -169,18 +158,19 @@ describe("PulsePanel", () => {
   it("shows the honest empty state for both panels", async () => {
     evi.mockResolvedValue({ kind: "loading" });
     render(<PulsePanel />);
-    expect(
-      await screen.findByText(/Empty\. Queue a task above/),
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByText(/No evidence yet/),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/Empty\. Queue a task above/)).toBeInTheDocument();
+    expect(await screen.findByText(/No evidence yet/)).toBeInTheDocument();
     expect(screen.getByText("MISSION QUEUE")).toBeInTheDocument();
   });
 
   it("renders missions with state, mode, task and ledger session", async () => {
     mis.mockResolvedValue([
-      mission({ state: "failed", mode: "plan", summary: "plan stopped", ledgerSession: "feedfacefeedface" }),
+      mission({
+        state: "failed",
+        mode: "plan",
+        summary: "plan stopped",
+        ledgerSession: "feedfacefeedface",
+      }),
       mission({ id: "m2", state: "done", task: "ship it" }),
     ]);
     render(<PulsePanel />);
@@ -217,9 +207,7 @@ describe("PulsePanel", () => {
     await waitFor(() => expect(run).toHaveBeenCalledTimes(1));
     // Queue is drained: the drain button disappears (no queued missions left).
     await waitFor(() =>
-      expect(
-        screen.queryByRole("button", { name: /Run \d+ queued/ }),
-      ).not.toBeInTheDocument(),
+      expect(screen.queryByRole("button", { name: /Run \d+ queued/ })).not.toBeInTheDocument(),
     );
   });
 
@@ -233,9 +221,7 @@ describe("PulsePanel", () => {
   it("renders the evidence feed with the chain verdict", async () => {
     evi.mockResolvedValue(evidence({ chain_intact: true }));
     render(<PulsePanel />);
-    expect(
-      await screen.findByText(/EVIDENCE ACTIVITY · ✓ chain intact/),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/EVIDENCE ACTIVITY · ✓ chain intact/)).toBeInTheDocument();
     expect(screen.getByText("mission.finished")).toBeInTheDocument();
     expect(screen.getByText(/session sess-abc/)).toBeInTheDocument();
   });

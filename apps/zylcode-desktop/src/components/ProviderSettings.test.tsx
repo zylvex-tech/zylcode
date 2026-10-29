@@ -74,10 +74,7 @@ function cardOf(label: string | HTMLElement): HTMLElement {
 
 /** The input inside a labelled field of a card. */
 function field(card: HTMLElement, label: string): HTMLInputElement {
-  return within(card)
-    .getByText(label)
-    .closest("label")!
-    .querySelector("input")!;
+  return within(card).getByText(label).closest("label")!.querySelector("input")!;
 }
 
 beforeEach(() => {
@@ -133,9 +130,7 @@ afterEach(() => {
 describe("ProviderSettings", () => {
   it("renders the chain sorted by fallback order with honest badges", async () => {
     render(<ProviderSettings />);
-    expect(
-      await screen.findByText("Provider Settings — Fallback Chain"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Provider Settings — Fallback Chain")).toBeInTheDocument();
 
     // The chain renders after the config load resolves — wait for it first.
     expect(await screen.findByText("Anthropic Native")).toBeInTheDocument();
@@ -163,9 +158,7 @@ describe("ProviderSettings", () => {
       "placeholder",
       "http://localhost:11434",
     );
-    expect(
-      screen.getByText(/Order defines fallback priority/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Order defines fallback priority/)).toBeInTheDocument();
   });
 
   it("re-reads the chain when Refresh is clicked", async () => {
@@ -218,17 +211,13 @@ describe("ProviderSettings", () => {
     await screen.findByText("Anthropic Native");
 
     fireEvent.click(screen.getAllByRole("button", { name: "Save" })[0]);
-    expect(
-      await screen.findByText(/Error: engine rejected the config/),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/Error: engine rejected the config/)).toBeInTheDocument();
   });
 
   it("shows the initial load failure instead of an empty shell", async () => {
     invoke.mockResolvedValue({ ok: false, reason: "desktop engine not running" } as never);
     render(<ProviderSettings />);
-    expect(
-      await screen.findByText(/desktop engine not running/),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/desktop engine not running/)).toBeInTheDocument();
     expect(screen.queryByText("Anthropic Native")).not.toBeInTheDocument();
   });
 
@@ -286,9 +275,7 @@ describe("ProviderSettings", () => {
     fireEvent.click(save);
     expect(await screen.findByRole("button", { name: "Saving…" })).toBeDisabled();
     // Reorder arrows are locked while busy.
-    expect(
-      screen.getAllByTitle("Move up (higher priority)")[0],
-    ).toBeDisabled();
+    expect(screen.getAllByTitle("Move up (higher priority)")[0]).toBeDisabled();
 
     await act(async () => {
       resolveSet({ ok: true, data: baseConfigs() });
@@ -301,13 +288,8 @@ describe("ProviderSettings", () => {
   it("streams failover events into the live indicator list", async () => {
     render(<ProviderSettings />);
     await waitFor(() => expect(listen).toHaveBeenCalledTimes(1));
-    expect(listen).toHaveBeenCalledWith(
-      "telemetry:provider_failover",
-      expect.any(Function),
-    );
-    expect(
-      screen.getByText(/No failovers yet/),
-    ).toBeInTheDocument();
+    expect(listen).toHaveBeenCalledWith("telemetry:provider_failover", expect.any(Function));
+    expect(screen.getByText(/No failovers yet/)).toBeInTheDocument();
 
     act(() => {
       failoverHandler!({

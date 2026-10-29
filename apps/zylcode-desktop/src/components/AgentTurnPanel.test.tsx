@@ -26,9 +26,7 @@ const run = vi.mocked(runAgentTurn);
 const result = (over: Partial<IntentResult> = {}): IntentResult => ({
   success: true,
   summary: "Indexed 612 files and cited 3 navigation sources.",
-  artifacts: [
-    { kind: "report", label: "analysis", content: "scanner.rs owns the walk" },
-  ],
+  artifacts: [{ kind: "report", label: "analysis", content: "scanner.rs owns the walk" }],
   ...over,
 });
 
@@ -51,9 +49,7 @@ describe("AgentTurnPanel", () => {
     run.mockResolvedValue({ kind: "idle" });
     render(<AgentTurnPanel />);
     expect(screen.getByTestId("agent-turn-badge")).toHaveTextContent("LIMITED");
-    expect(
-      screen.getByText(/the result and the summary are the engine's own/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/the result and the summary are the engine's own/)).toBeInTheDocument();
     expect(screen.getByTestId("agent-turn-run")).toBeDisabled();
     expect(run).not.toHaveBeenCalled();
   });
@@ -74,9 +70,7 @@ describe("AgentTurnPanel", () => {
       await screen.findByText("Gathering context, planning, executing tools…"),
     ).toBeInTheDocument();
     settle({ kind: "done", result: result(), via: "service" });
-    expect(screen.getByTestId("agent-turn-run")).toHaveTextContent(
-      "Running the journey…",
-    );
+    expect(screen.getByTestId("agent-turn-run")).toHaveTextContent("Running the journey…");
     expect(screen.getByTestId("agent-turn-run")).toBeDisabled();
     expect(run).toHaveBeenCalledWith("analyze this repository structure");
 
@@ -86,16 +80,10 @@ describe("AgentTurnPanel", () => {
     expect(
       screen.getByText("Indexed 612 files and cited 3 navigation sources."),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText("[report] analysis: scanner.rs owns the walk"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("[report] analysis: scanner.rs owns the walk")).toBeInTheDocument();
     expect(screen.getByTestId("agent-turn-badge")).toHaveTextContent("AVAILABLE");
-    expect(screen.getByTestId("agent-turn-timing")).toHaveTextContent(
-      /completed in \d+\.\d+s/,
-    );
-    expect(
-      screen.getByText(/never reshaped by this UI/),
-    ).toBeInTheDocument();
+    expect(screen.getByTestId("agent-turn-timing")).toHaveTextContent(/completed in \d+\.\d+s/);
+    expect(screen.getByText(/never reshaped by this UI/)).toBeInTheDocument();
   });
 
   it("renders success: false as a failure, not a success", async () => {
@@ -115,9 +103,7 @@ describe("AgentTurnPanel", () => {
     expect(await screen.findByText("✕ failed")).toBeInTheDocument();
     expect(screen.getByText("via desktop engine")).toBeInTheDocument();
     expect(screen.getByTestId("agent-turn-badge")).toHaveTextContent("BLOCKED");
-    expect(
-      screen.getByText("verification rejected the change"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("verification rejected the change")).toBeInTheDocument();
     // No artifacts → no artifact blocks rendered.
     expect(screen.queryByText(/\[report\]/)).not.toBeInTheDocument();
   });
@@ -131,9 +117,7 @@ describe("AgentTurnPanel", () => {
     type("anything");
     fireEvent.click(screen.getByTestId("agent-turn-run"));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "agent turn requires a runtime",
-    );
+    expect(await screen.findByRole("alert")).toHaveTextContent("agent turn requires a runtime");
     expect(screen.getByTestId("agent-turn-badge")).toHaveTextContent("BLOCKED");
   });
 
@@ -143,9 +127,7 @@ describe("AgentTurnPanel", () => {
     type("anything");
     fireEvent.click(screen.getByTestId("agent-turn-run"));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "process_intent exploded",
-    );
+    expect(await screen.findByRole("alert")).toHaveTextContent("process_intent exploded");
     expect(screen.getByTestId("agent-turn-badge")).toHaveTextContent("BLOCKED");
   });
 

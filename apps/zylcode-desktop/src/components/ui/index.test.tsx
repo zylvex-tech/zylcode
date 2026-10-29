@@ -53,17 +53,13 @@ describe("ThemeProvider / useTheme", () => {
       useTheme();
       return null;
     }
-    expect(() => render(<Bare />)).toThrow(
-      "useTheme must be used within a ThemeProvider",
-    );
+    expect(() => render(<Bare />)).toThrow("useTheme must be used within a ThemeProvider");
   });
 
   it("defaults to midnight-pro and writes the attribute + storage", async () => {
     renderWithTheme(<span>child</span>);
     await waitFor(() =>
-      expect(document.documentElement.getAttribute("data-theme")).toBe(
-        "midnight-pro",
-      ),
+      expect(document.documentElement.getAttribute("data-theme")).toBe("midnight-pro"),
     );
     expect(localStorage.getItem("zylcode-theme")).toBe("midnight-pro");
   });
@@ -72,9 +68,7 @@ describe("ThemeProvider / useTheme", () => {
     localStorage.setItem("zylcode-theme", "dracula");
     renderWithTheme(<span>child</span>);
     await waitFor(() =>
-      expect(document.documentElement.getAttribute("data-theme")).toBe(
-        "dracula",
-      ),
+      expect(document.documentElement.getAttribute("data-theme")).toBe("dracula"),
     );
   });
 
@@ -109,10 +103,7 @@ describe("ThemeSelector", () => {
     fireEvent.click(screen.getByText("Dracula"));
     expect(localStorage.getItem("zylcode-theme")).toBe("dracula");
     // Selecting closes the dropdown.
-    expect(screen.getByLabelText("Select theme")).toHaveAttribute(
-      "aria-expanded",
-      "false",
-    );
+    expect(screen.getByLabelText("Select theme")).toHaveAttribute("aria-expanded", "false");
   });
 
   it("closes when the click lands outside the dropdown", async () => {
@@ -121,9 +112,7 @@ describe("ThemeSelector", () => {
     expect(await screen.findByText("Select Theme")).toBeInTheDocument();
 
     fireEvent.mouseDown(document.body);
-    await waitFor(() =>
-      expect(screen.queryByText("Select Theme")).not.toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.queryByText("Select Theme")).not.toBeInTheDocument());
   });
 });
 
@@ -144,20 +133,14 @@ describe("Button", () => {
   });
 
   it("disables itself while loading and renders the spinner", () => {
-    render(
-      <Button loading>
-        Save
-      </Button>,
-    );
+    render(<Button loading>Save</Button>);
     const button = screen.getByRole("button", { name: "Save" });
     expect(button).toBeDisabled();
     expect(button.querySelector("svg.animate-spin")).not.toBeNull();
   });
 
   it("renders a supplied icon when not loading", () => {
-    render(
-      <Button icon={<span data-testid="icon">+</span>}>Add</Button>,
-    );
+    render(<Button icon={<span data-testid="icon">+</span>}>Add</Button>);
     expect(screen.getByTestId("icon")).toBeInTheDocument();
     const button = screen.getByText("Add").closest("button") as HTMLElement;
     // Icon path renders a span, not the loading spinner.
@@ -220,19 +203,10 @@ describe("Card / Badge / Spinner / EmptyState", () => {
   });
 
   it("renders every badge variant with its colour token", () => {
-    const variants = [
-      "primary",
-      "secondary",
-      "success",
-      "warning",
-      "error",
-      "info",
-    ] as const;
+    const variants = ["primary", "secondary", "success", "warning", "error", "info"] as const;
     variants.forEach((variant, i) => {
       const { unmount } = render(<Badge variant={variant}>{i}</Badge>);
-      expect(screen.getByText(String(i)).className).toContain(
-        `text-${variant}`,
-      );
+      expect(screen.getByText(String(i)).className).toContain(`text-${variant}`);
       unmount();
     });
   });
@@ -240,8 +214,7 @@ describe("Card / Badge / Spinner / EmptyState", () => {
   it("sizes the spinner", () => {
     // SVG elements carry an SVGAnimatedString in `className` — read the
     // attribute instead of the property.
-    const cls = (c: HTMLElement) =>
-      c.firstElementChild?.getAttribute("class") ?? "";
+    const cls = (c: HTMLElement) => c.firstElementChild?.getAttribute("class") ?? "";
     const sm = render(<Spinner size="sm" />);
     expect(cls(sm.container)).toContain("w-4");
     sm.unmount();
@@ -268,9 +241,7 @@ describe("Card / Badge / Spinner / EmptyState", () => {
   });
 
   it("omits icon and action when not supplied", () => {
-    const { container } = render(
-      <EmptyState title="Empty" description="none" />,
-    );
+    const { container } = render(<EmptyState title="Empty" description="none" />);
     expect(container.querySelector("[data-testid]")).toBeNull();
     expect(screen.queryByRole("button")).toBeNull();
   });
@@ -284,13 +255,9 @@ describe("Tooltip", () => {
       </Tooltip>,
     );
     fireEvent.mouseEnter(screen.getByRole("button", { name: "Run" }));
-    expect(await screen.findByRole("tooltip")).toHaveTextContent(
-      "Runs the mission",
-    );
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("Runs the mission");
     fireEvent.mouseLeave(screen.getByRole("button", { name: "Run" }));
-    await waitFor(() =>
-      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.queryByRole("tooltip")).not.toBeInTheDocument());
   });
 
   it("positions per side", async () => {
@@ -338,8 +305,8 @@ describe("Modal", () => {
       </Modal>,
     );
     expect(screen.getByText("build log")).toBeInTheDocument();
-    const panel = screen.getByRole("heading", { name: "Release" })
-      .parentElement!.parentElement as HTMLElement;
+    const panel = screen.getByRole("heading", { name: "Release" }).parentElement!
+      .parentElement as HTMLElement;
     expect(panel.className).toContain("max-w-lg");
 
     fireEvent.click(screen.getByLabelText("Close modal"));
@@ -377,19 +344,13 @@ describe("ToastProvider / useToast", () => {
       useToast();
       return null;
     }
-    expect(() => render(<Bare />)).toThrow(
-      "useToast must be used within a ToastProvider",
-    );
+    expect(() => render(<Bare />)).toThrow("useToast must be used within a ToastProvider");
   });
 
   it("renders added toasts and removes them on dismiss", async () => {
     function Toaster() {
       const { addToast } = useToast();
-      return (
-        <button onClick={() => addToast("error", "backend refused")}>
-          notify
-        </button>
-      );
+      return <button onClick={() => addToast("error", "backend refused")}>notify</button>;
     }
     render(
       <ToastProvider>
@@ -400,9 +361,7 @@ describe("ToastProvider / useToast", () => {
     expect(await screen.findByText("backend refused")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "" }));
-    await waitFor(() =>
-      expect(screen.queryByText("backend refused")).not.toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.queryByText("backend refused")).not.toBeInTheDocument());
   });
 });
 
@@ -496,15 +455,7 @@ describe("Select", () => {
   });
 
   it("surfaces an error and honours disabled", () => {
-    render(
-      <Select
-        options={options}
-        value=""
-        onChange={vi.fn()}
-        error="required"
-        disabled
-      />,
-    );
+    render(<Select options={options} value="" onChange={vi.fn()} error="required" disabled />);
     expect(screen.getByRole("combobox")).toBeDisabled();
     expect(screen.getByRole("alert")).toHaveTextContent("required");
   });

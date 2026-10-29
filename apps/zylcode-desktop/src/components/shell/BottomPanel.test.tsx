@@ -57,14 +57,14 @@ vi.mock("../../lib/gitStatus", async (importOriginal) => {
 
 // jsdom has no PointerEvent; fall back to MouseEvent so clientY survives.
 if (typeof window.PointerEvent === "undefined") {
-  (window as unknown as { PointerEvent: typeof MouseEvent }).PointerEvent = class PointerEvent
-    extends MouseEvent {
-    pointerId: number;
-    constructor(type: string, init: PointerEventInit = {}) {
-      super(type, init);
-      this.pointerId = init.pointerId ?? 0;
-    }
-  };
+  (window as unknown as { PointerEvent: typeof MouseEvent }).PointerEvent =
+    class PointerEvent extends MouseEvent {
+      pointerId: number;
+      constructor(type: string, init: PointerEventInit = {}) {
+        super(type, init);
+        this.pointerId = init.pointerId ?? 0;
+      }
+    };
 }
 
 const { listMissions } = await import("../../lib/missions");
@@ -72,10 +72,9 @@ const { fetchEvidence } = await import("../../lib/surfaces");
 const { fetchProviders } = await import("../../lib/service");
 const { fetchGitStatus } = await import("../../lib/gitStatus");
 
-function evidence(overrides: Partial<Extract<EvidenceState, { kind: "ready" }>> = {}): Extract<
-  EvidenceState,
-  { kind: "ready" }
-> {
+function evidence(
+  overrides: Partial<Extract<EvidenceState, { kind: "ready" }>> = {},
+): Extract<EvidenceState, { kind: "ready" }> {
   return {
     kind: "ready",
     chain_intact: true,
@@ -151,9 +150,7 @@ function Harness({
   onClose?: () => void;
 }) {
   const [tab, setTab] = useState<BottomTab>(initial);
-  return (
-    <BottomPanel isOpen={isOpen} onToggle={onClose} activeTab={tab} onTabChange={setTab} />
-  );
+  return <BottomPanel isOpen={isOpen} onToggle={onClose} activeTab={tab} onTabChange={setTab} />;
 }
 
 const evi = vi.mocked(fetchEvidence);
@@ -221,9 +218,7 @@ describe("BottomPanel", () => {
     ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Ports" }));
-    expect(
-      screen.getByText("zylcode serve-intel (repo intelligence API)"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("zylcode serve-intel (repo intelligence API)")).toBeInTheDocument();
     expect(screen.getByText("This app (Vite dev server)")).toBeInTheDocument();
     expect(
       screen.getByText("Ports actually served by this workspace. Nothing here is invented."),
@@ -309,9 +304,7 @@ describe("BottomPanel", () => {
     // empty → honest "nothing recorded yet", not a fake pass
     evi.mockResolvedValue({ kind: "empty", reason: "ledger has no entries yet" });
     const second = render(<Harness initial="tests" />);
-    expect(
-      await screen.findByText(/No verification runs recorded yet/),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/No verification runs recorded yet/)).toBeInTheDocument();
     second.unmount();
 
     // unavailable → the backend's own reason
@@ -361,7 +354,7 @@ describe("BottomPanel", () => {
     expect(screen.getByText("Diagnostics")).toBeInTheDocument();
     expect(screen.getByTestId("diagnostics-stub")).toBeInTheDocument();
 
-    expect((await screen.findAllByText("anthropic"))).toHaveLength(2);
+    expect(await screen.findAllByText("anthropic")).toHaveLength(2);
     expect(screen.getByText("key required")).toBeInTheDocument();
     expect(screen.getByText("enabled")).toBeInTheDocument();
     expect(screen.getByText("9✓ / 1✕")).toBeInTheDocument();
@@ -377,9 +370,7 @@ describe("BottomPanel", () => {
       measured_ranking: [],
     });
     render(<Harness initial="dev-tools" />);
-    expect(
-      await screen.findByText(/No measured outcomes yet/),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/No measured outcomes yet/)).toBeInTheDocument();
   });
 
   it("Providers view shows the backend reason when the chain cannot be read", async () => {
@@ -408,9 +399,7 @@ describe("BottomPanel", () => {
     await screen.findByText("mission.started");
     fireEvent.click(screen.getByRole("button", { name: "Ports" }));
     expect(screen.queryByText("mission.started")).not.toBeInTheDocument();
-    expect(
-      screen.getByText("zylcode serve-intel (repo intelligence API)"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("zylcode serve-intel (repo intelligence API)")).toBeInTheDocument();
     await waitFor(() => expect(evi).toHaveBeenCalled());
   });
 });

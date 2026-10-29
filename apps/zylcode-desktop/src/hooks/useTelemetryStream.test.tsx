@@ -1,10 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  useAuditIpc,
-  useBridgeIpc,
-  useTelemetryStream,
-} from "./useTelemetryStream";
+import { useAuditIpc, useBridgeIpc, useTelemetryStream } from "./useTelemetryStream";
 
 // ---------------------------------------------------------------------------
 // Telemetry hooks (hooks/useTelemetryStream.ts).
@@ -44,9 +40,7 @@ describe("outside the Tauri runtime", () => {
 
   it("useBridgeIpc degrades to a no-op circuit-breaker reset", async () => {
     const { result } = renderHook(() => useBridgeIpc());
-    await expect(
-      result.current.resetCircuitBreaker("anthropic"),
-    ).resolves.toBeUndefined();
+    await expect(result.current.resetCircuitBreaker("anthropic")).resolves.toBeUndefined();
   });
 
   it("useAuditIpc returns no entries without IPC", async () => {
@@ -81,7 +75,10 @@ describe("in the Tauri runtime", () => {
       if (cmd === "get_bridge_status") throw new Error("bridge down");
       return undefined;
     });
-    installTauri(invoke, vi.fn(() => vi.fn()));
+    installTauri(
+      invoke,
+      vi.fn(() => vi.fn()),
+    );
 
     const { result } = renderHook(() => useTelemetryStream());
     // The rejection is swallowed by design: no status, still not connected.
@@ -96,19 +93,24 @@ describe("in the Tauri runtime", () => {
       handlers.set(event, cb);
       return vi.fn();
     });
-    installTauri(vi.fn(async () => undefined), listen);
+    installTauri(
+      vi.fn(async () => undefined),
+      listen,
+    );
 
     const { result, unmount } = renderHook(() => useTelemetryStream());
     expect(listen).toHaveBeenCalledWith("telemetry:metrics", expect.any(Function));
-    expect(listen).toHaveBeenCalledWith(
-      "telemetry:bridge-status",
-      expect.any(Function),
-    );
+    expect(listen).toHaveBeenCalledWith("telemetry:bridge-status", expect.any(Function));
 
     act(() => {
       for (let i = 0; i < 25; i++) {
         handlers.get("telemetry:metrics")!({
-          payload: { input_tokens: i, output_tokens: 0, verification_saved_tokens: 0, fallback_count: 0 },
+          payload: {
+            input_tokens: i,
+            output_tokens: 0,
+            verification_saved_tokens: 0,
+            fallback_count: 0,
+          },
         });
       }
     });
@@ -118,7 +120,13 @@ describe("in the Tauri runtime", () => {
 
     act(() => {
       handlers.get("telemetry:bridge-status")!({
-        payload: { id: "mcp", transport: "stdio", status: "degraded", latency_ms: 90, circuit_breaker: "open" },
+        payload: {
+          id: "mcp",
+          transport: "stdio",
+          status: "degraded",
+          latency_ms: 90,
+          circuit_breaker: "open",
+        },
       });
     });
     expect(result.current.bridgeStatus).toMatchObject({ status: "degraded" });
@@ -131,7 +139,10 @@ describe("in the Tauri runtime", () => {
 
   it("ignores a bridge-status payload of none", async () => {
     const invoke = vi.fn(async () => []);
-    installTauri(invoke, vi.fn(() => vi.fn()));
+    installTauri(
+      invoke,
+      vi.fn(() => vi.fn()),
+    );
     const { result } = renderHook(() => useTelemetryStream());
     // Empty bridge list: stays disconnected, no crash.
     await waitFor(() => expect(invoke).toHaveBeenCalled());
@@ -144,7 +155,10 @@ describe("in the Tauri runtime", () => {
       if (cmd === "get_bridge_status") return [{ id: "first" }];
       return undefined;
     });
-    installTauri(invoke, vi.fn(() => vi.fn()));
+    installTauri(
+      invoke,
+      vi.fn(() => vi.fn()),
+    );
 
     const { result } = renderHook(() => useBridgeIpc());
     await act(async () => {
@@ -162,7 +176,10 @@ describe("in the Tauri runtime", () => {
   });
 
   it("getBridgeStatus returns null for an empty bridge list", async () => {
-    installTauri(vi.fn(async () => []), vi.fn(() => vi.fn()));
+    installTauri(
+      vi.fn(async () => []),
+      vi.fn(() => vi.fn()),
+    );
     const { result } = renderHook(() => useBridgeIpc());
     let status: any = "unset";
     await act(async () => {
@@ -174,9 +191,7 @@ describe("in the Tauri runtime", () => {
   it("useAuditIpc unwraps the entries returned by the backend", async () => {
     installTauri(
       vi.fn(async (cmd: string) =>
-        cmd === "get_recent_audit_logs"
-          ? [{ tool_id: "apply_patch" }]
-          : undefined,
+        cmd === "get_recent_audit_logs" ? [{ tool_id: "apply_patch" }] : undefined,
       ),
       vi.fn(() => vi.fn()),
     );
@@ -187,7 +202,10 @@ describe("in the Tauri runtime", () => {
   });
 
   it("useAuditIpc defaults to an empty list for a null response", async () => {
-    installTauri(vi.fn(async () => null), vi.fn(() => vi.fn()));
+    installTauri(
+      vi.fn(async () => null),
+      vi.fn(() => vi.fn()),
+    );
     const { result } = renderHook(() => useAuditIpc());
     await expect(result.current.getRecentAuditLogs()).resolves.toEqual([]);
   });

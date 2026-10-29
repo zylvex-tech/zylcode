@@ -22,13 +22,9 @@ describe("AboutModal", () => {
     expect(screen.getByAltText("ZylCode")).toBeInTheDocument();
     expect(screen.getByText("v0.2.3")).toBeInTheDocument();
     expect(screen.getByText("Rust (memchr / tokio)")).toBeInTheDocument();
-    expect(
-      screen.getByText("MCP (Model Context Protocol)"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("MCP (Model Context Protocol)")).toBeInTheDocument();
     expect(screen.getByText("CLOSED (Normal operation)")).toBeInTheDocument();
-    expect(
-      screen.getByText("Formally Verified AI Software Synthesis Engine"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Formally Verified AI Software Synthesis Engine")).toBeInTheDocument();
   });
 
   it("closes from the header ✕ and from the footer button", () => {

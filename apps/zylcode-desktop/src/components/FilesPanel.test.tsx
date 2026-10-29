@@ -66,12 +66,7 @@ describe("FilesPanel", () => {
   it("renders directories before files, first directory expanded", async () => {
     vi.mocked(fetchFileTree).mockResolvedValue({
       kind: "ready",
-      data: tree([
-        "src/lib/util.ts",
-        "README.md",
-        "src/main.ts",
-        "Cargo.toml",
-      ]),
+      data: tree(["src/lib/util.ts", "README.md", "src/main.ts", "Cargo.toml"]),
     });
     render(<FilesPanel />);
 
@@ -79,13 +74,9 @@ describe("FilesPanel", () => {
     // Expansion is applied by an effect after the data render commits — wait
     // for a grandchild row before reading the ordering, otherwise the
     // assertion can observe the still-collapsed tree.
-    expect(
-      await screen.findByTitle("src/lib/util.ts"),
-    ).toBeInTheDocument();
+    expect(await screen.findByTitle("src/lib/util.ts")).toBeInTheDocument();
 
-    const names = screen
-      .getAllByTitle(/.*/)
-      .map((el) => el.getAttribute("title"));
+    const names = screen.getAllByTitle(/.*/).map((el) => el.getAttribute("title"));
     // Directories first, then files, each alphabetical.
     expect(names.indexOf("src")).toBeLessThan(names.indexOf("README.md"));
     expect(names.indexOf("src")).toBeLessThan(names.indexOf("Cargo.toml"));

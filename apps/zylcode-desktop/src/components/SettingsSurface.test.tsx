@@ -56,7 +56,17 @@ const versionReady: VersionState = {
   },
 };
 
-function open(initialSection?: "general" | "agent" | "providers" | "extensions" | "appearance" | "hotkeys" | "diagnostics" | "about") {
+function open(
+  initialSection?:
+    | "general"
+    | "agent"
+    | "providers"
+    | "extensions"
+    | "appearance"
+    | "hotkeys"
+    | "diagnostics"
+    | "about",
+) {
   const onClose = vi.fn();
   render(<SettingsSurface open initialSection={initialSection} onClose={onClose} />);
   return { onClose };
@@ -112,24 +122,15 @@ describe("SettingsSurface", () => {
     const diag = screen.getByRole("switch", { name: "Capture diagnostics" });
     expect(diag).toHaveAttribute("aria-checked", String(DEFAULT_SETTINGS.captureDiagnostics));
     fireEvent.click(diag);
-    expect(diag).toHaveAttribute(
-      "aria-checked",
-      String(!DEFAULT_SETTINGS.captureDiagnostics),
-    );
+    expect(diag).toHaveAttribute("aria-checked", String(!DEFAULT_SETTINGS.captureDiagnostics));
   });
 
   it("resets every setting back to defaults", () => {
     open();
     fireEvent.click(screen.getByRole("radio", { name: /Plan/ }));
-    expect(screen.getByRole("radio", { name: /Plan/ })).toHaveAttribute(
-      "aria-checked",
-      "true",
-    );
+    expect(screen.getByRole("radio", { name: /Plan/ })).toHaveAttribute("aria-checked", "true");
     fireEvent.click(screen.getByText("Reset all settings to defaults"));
-    expect(screen.getByRole("radio", { name: /Build/ })).toHaveAttribute(
-      "aria-checked",
-      "true",
-    );
+    expect(screen.getByRole("radio", { name: /Build/ })).toHaveAttribute("aria-checked", "true");
   });
 
   it("closes from Escape, backdrop, ✕ and Done — all through onClose", () => {
@@ -168,7 +169,9 @@ describe("SettingsSurface", () => {
     open("providers");
     expect(screen.getByText("LIMITED")).toBeInTheDocument();
     expect(
-      screen.getByText(/cannot modify the engine&apos;s provider chain|cannot modify the engine's provider chain/),
+      screen.getByText(
+        /cannot modify the engine&apos;s provider chain|cannot modify the engine's provider chain/,
+      ),
     ).toBeInTheDocument();
     expect(screen.queryByTestId("provider-settings-stub")).not.toBeInTheDocument();
   });
@@ -212,9 +215,7 @@ describe("SettingsSurface", () => {
     ]) {
       expect(screen.getByText(key)).toBeInTheDocument();
     }
-    expect(
-      screen.getByText(/Custom hotkey rebinding is not commissioned yet/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Custom hotkey rebinding is not commissioned yet/)).toBeInTheDocument();
   });
 
   it("shows real engine version and live diagnostics count", async () => {
@@ -227,9 +228,7 @@ describe("SettingsSurface", () => {
     });
 
     expect(screen.getByText("0.2.1")).toBeInTheDocument();
-    expect(
-      screen.getByText("Engine 0.9.0 · main@abc1234 (dirty tree)"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Engine 0.9.0 · main@abc1234 (dirty tree)")).toBeInTheDocument();
     expect(screen.getByText("1")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Clear" }));
@@ -250,9 +249,7 @@ describe("SettingsSurface", () => {
   it("shows the about panel with the honesty statement", async () => {
     open("about");
     expect(screen.getByAltText("ZylCode")).toBeInTheDocument();
-    expect(
-      screen.getByText("Formally Verified AI Software Synthesis Engine"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Formally Verified AI Software Synthesis Engine")).toBeInTheDocument();
     expect(screen.getByText("App version")).toBeInTheDocument();
     expect(
       screen.getByText(/When a capability is not commissioned, the UI says so/),

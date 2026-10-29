@@ -1,12 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FoundationPanel } from "./FoundationPanel";
-import type {
-  ArtifactsState,
-  ModelsState,
-  ProjectsState,
-  ProofsState,
-} from "../lib/foundation";
+import type { ArtifactsState, ModelsState, ProjectsState, ProofsState } from "../lib/foundation";
 
 // ---------------------------------------------------------------------------
 // Foundation panel (components/FoundationPanel.tsx).
@@ -31,9 +26,8 @@ vi.mock("../lib/foundation", async (importOriginal) => {
   };
 });
 
-const { fetchProjects, fetchArtifacts, fetchProofs, fetchModels } = await import(
-  "../lib/foundation"
-);
+const { fetchProjects, fetchArtifacts, fetchProofs, fetchModels } =
+  await import("../lib/foundation");
 const proj = vi.mocked(fetchProjects);
 const art = vi.mocked(fetchArtifacts);
 const prf = vi.mocked(fetchProofs);
@@ -247,9 +241,7 @@ describe("FoundationPanel", () => {
     expect(screen.getByText("C:/Projects/zylcode")).toBeInTheDocument();
 
     // Artifacts — contract line + verified/tampered verdicts + kind fallback
-    expect(
-      screen.getByText(/Contract v3 — 2 artifacts/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Contract v3 — 2 artifacts/)).toBeInTheDocument();
     expect(screen.getByText("art-ok")).toBeInTheDocument();
     expect(screen.getByText("art-bad")).toBeInTheDocument();
     expect(screen.getByText("Spec")).toBeInTheDocument();
@@ -263,9 +255,7 @@ describe("FoundationPanel", () => {
     expect(screen.getByText("not run")).toBeInTheDocument();
     expect(screen.getByText("failed")).toBeInTheDocument();
     expect(screen.getByText("stale")).toBeInTheDocument();
-    expect(
-      screen.getByText(/never converted to passes/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/never converted to passes/)).toBeInTheDocument();
 
     // Models — note, vision flag, runtime badge
     expect(
@@ -285,21 +275,15 @@ describe("FoundationPanel", () => {
   it("says so when the project registry is empty", async () => {
     proj.mockResolvedValue({ kind: "ready", storeState: "missing", projects: [] });
     render(<FoundationPanel />);
-    expect(
-      await screen.findByText(/No projects registered yet/),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/No projects registered yet/)).toBeInTheDocument();
     expect(screen.getByText(".zylcode/projects.json")).toBeInTheDocument();
     expect(screen.getByText("missing")).toBeInTheDocument();
   });
 
   it("flags a broken proof chain verbatim and falls back for an unknown HEAD", async () => {
-    prf.mockResolvedValue(
-      proof({ chainIntact: false, currentCommit: "", count: 1 }),
-    );
+    prf.mockResolvedValue(proof({ chainIntact: false, currentCommit: "", count: 1 }));
     render(<FoundationPanel />);
-    expect(
-      await screen.findByText("BROKEN — history was modified"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("BROKEN — history was modified")).toBeInTheDocument();
     expect(screen.getByText("?")).toBeInTheDocument();
     expect(screen.getByText(/· 1 proof · HEAD/)).toBeInTheDocument();
   });

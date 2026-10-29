@@ -1,11 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { EvidenceCenter } from "./EvidenceCenter";
-import {
-  EVIDENCE_CATEGORIES,
-  NOT_CAPTURED,
-  type MissionRecord,
-} from "../lib/mission";
+import { EVIDENCE_CATEGORIES, NOT_CAPTURED, type MissionRecord } from "../lib/mission";
 
 // ---------------------------------------------------------------------------
 // Evidence centre (components/EvidenceCenter.tsx).
@@ -40,25 +36,19 @@ describe("EvidenceCenter", () => {
   it("states plainly that no evidence exists yet", () => {
     render(<EvidenceCenter missions={[]} />);
     expect(
-      screen.getByText(
-        "No missions yet — run a mission to generate verifiable evidence.",
-      ),
+      screen.getByText("No missions yet — run a mission to generate verifiable evidence."),
     ).toBeInTheDocument();
     expect(screen.getByText("EVIDENCE CENTER")).toBeInTheDocument();
   });
 
   it("marks every category NOT CAPTURED for a mission with no evidence", () => {
     render(<EvidenceCenter missions={[mission()]} />);
-    expect(
-      screen.getByText("EVIDENCE — Ship the release"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("EVIDENCE — Ship the release")).toBeInTheDocument();
     // All nine categories are listed, none captured.
     for (const cat of EVIDENCE_CATEGORIES) {
       expect(screen.getByText(cat)).toBeInTheDocument();
     }
-    expect(screen.getAllByText(NOT_CAPTURED)).toHaveLength(
-      EVIDENCE_CATEGORIES.length,
-    );
+    expect(screen.getAllByText(NOT_CAPTURED)).toHaveLength(EVIDENCE_CATEGORIES.length);
   });
 
   it("flips exactly the three supported categories to AVAILABLE", () => {
@@ -80,9 +70,7 @@ describe("EvidenceCenter", () => {
     );
     expect(screen.getAllByText("AVAILABLE")).toHaveLength(3);
     // The remaining categories keep the honest answer.
-    expect(screen.getAllByText(NOT_CAPTURED)).toHaveLength(
-      EVIDENCE_CATEGORIES.length - 3,
-    );
+    expect(screen.getAllByText(NOT_CAPTURED)).toHaveLength(EVIDENCE_CATEGORIES.length - 3);
   });
 
   it("renders one panel per mission", () => {

@@ -52,9 +52,7 @@ describe("LiveSearch", () => {
     render(<LiveSearch />);
     expect(screen.getByText("BLOCKED")).toBeInTheDocument();
     expect(
-      screen.getByText(
-        "Enter a query — results come from the real index, ranked with provenance.",
-      ),
+      screen.getByText("Enter a query — results come from the real index, ranked with provenance."),
     ).toBeInTheDocument();
     expect(fetchSearch).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Search" })).toBeDisabled();
@@ -64,10 +62,9 @@ describe("LiveSearch", () => {
     vi.mocked(fetchSearch).mockResolvedValue({ kind: "ready", data: ready() });
     render(<LiveSearch />);
 
-    fireEvent.change(
-      screen.getByPlaceholderText("Search symbols, files, packages…"),
-      { target: { value: "where is the scanner" } },
-    );
+    fireEvent.change(screen.getByPlaceholderText("Search symbols, files, packages…"), {
+      target: { value: "where is the scanner" },
+    });
     const submit = screen.getByRole("button", { name: "Search" });
     expect(submit).toBeEnabled();
     fireEvent.click(submit);
@@ -75,12 +72,8 @@ describe("LiveSearch", () => {
     expect(await screen.findByText("1.75")).toBeInTheDocument();
     expect(fetchSearch).toHaveBeenCalledWith("where is the scanner");
     expect(screen.getByText("AVAILABLE")).toBeInTheDocument();
-    expect(
-      screen.getByText("612 files indexed · 12 ms"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("crates/zylcode-core/src/intelligence/scanner.rs"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("612 files indexed · 12 ms")).toBeInTheDocument();
+    expect(screen.getByText("crates/zylcode-core/src/intelligence/scanner.rs")).toBeInTheDocument();
     expect(screen.getByText("[file]")).toBeInTheDocument();
     expect(screen.getByText("path token 'scanner'")).toBeInTheDocument();
   });
@@ -93,26 +86,21 @@ describe("LiveSearch", () => {
       }),
     );
     render(<LiveSearch />);
-    fireEvent.change(
-      screen.getByPlaceholderText("Search symbols, files, packages…"),
-      { target: { value: "scanner" } },
-    );
+    fireEvent.change(screen.getByPlaceholderText("Search symbols, files, packages…"), {
+      target: { value: "scanner" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Search" }));
 
     expect(await screen.findByText("LIMITED")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Searching…" })).toBeDisabled();
 
     resolveSearch({ kind: "ready", data: ready() });
-    await waitFor(() =>
-      expect(screen.getByText("AVAILABLE")).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText("AVAILABLE")).toBeInTheDocument());
   });
 
   it("refuses to search an empty or whitespace query", async () => {
     render(<LiveSearch />);
-    const input = screen.getByPlaceholderText(
-      "Search symbols, files, packages…",
-    );
+    const input = screen.getByPlaceholderText("Search symbols, files, packages…");
     fireEvent.change(input, { target: { value: "   " } });
     fireEvent.submit(input.closest("form")!);
     expect(fetchSearch).not.toHaveBeenCalled();
@@ -124,14 +112,11 @@ describe("LiveSearch", () => {
       data: ready({ results: [], query: "nothing here" }),
     });
     render(<LiveSearch />);
-    fireEvent.change(
-      screen.getByPlaceholderText("Search symbols, files, packages…"),
-      { target: { value: "nothing here" } },
-    );
+    fireEvent.change(screen.getByPlaceholderText("Search symbols, files, packages…"), {
+      target: { value: "nothing here" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Search" }));
-    expect(
-      await screen.findByText("No results for “nothing here”."),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("No results for “nothing here”.")).toBeInTheDocument();
   });
 
   it("surfaces the backend's own unavailability reason", async () => {
@@ -140,14 +125,11 @@ describe("LiveSearch", () => {
       reason: "intelligence service is not running",
     });
     render(<LiveSearch />);
-    fireEvent.change(
-      screen.getByPlaceholderText("Search symbols, files, packages…"),
-      { target: { value: "scanner" } },
-    );
+    fireEvent.change(screen.getByPlaceholderText("Search symbols, files, packages…"), {
+      target: { value: "scanner" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Search" }));
-    expect(
-      await screen.findByText("intelligence service is not running"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("intelligence service is not running")).toBeInTheDocument();
     expect(screen.getByText("BLOCKED")).toBeInTheDocument();
   });
 
@@ -155,8 +137,6 @@ describe("LiveSearch", () => {
     vi.mocked(fetchSearch).mockResolvedValue({ kind: "ready", data: ready() });
     render(<LiveSearch initialQuery="scanner" />);
     await waitFor(() => expect(fetchSearch).toHaveBeenCalledWith("scanner"));
-    expect(
-      screen.getByPlaceholderText("Search symbols, files, packages…"),
-    ).toHaveValue("scanner");
+    expect(screen.getByPlaceholderText("Search symbols, files, packages…")).toHaveValue("scanner");
   });
 });
