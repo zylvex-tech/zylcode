@@ -21,7 +21,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # Full history, not the default depth 1: Repository Intelligence
           # derives co-change evidence from `git log`, and a single-commit
