@@ -31,10 +31,20 @@ function jsonResponse(body: unknown, status = 200): Response {
   } as Response;
 }
 
+// Both transports are exercised: the service path in the runner's TEST
+// environment, the Tauri IPC path with the environment stubbed to desktop.
+const env = { value: "TEST" };
+
+vi.mock("./runtime", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./runtime")>();
+  return { ...actual, detectEnvironment: () => env.value };
+});
+
 describe("fetchGitStatus", () => {
   const fetchMock = vi.fn();
 
   beforeEach(() => {
+    env.value = "TEST";
     fetchMock.mockReset();
     vi.stubGlobal("fetch", fetchMock);
   });
@@ -96,5 +106,34 @@ describe("fetchGitStatus", () => {
     fetchMock.mockResolvedValue(jsonResponse({ error: null }));
 
     expect((await fetchGitStatus()).kind).toBe("unavailable");
+  });
+
+  it("reads the tree through the git_status IPC command on desktop", async () => {
+    env.value = "TAURI_DESKTOP";
+    const invoke = vi.fn().mockResolvedValue(SAMPLE);
+    vi.doMock("@tauri-apps/api/core", () => ({ invoke }));
+
+    const state = await fetchGitStatus();
+
+    expect(invoke).toHaveBeenCalledWith("git_status");
+    expect(state).toEqual({ kind: "ready", data: SAMPLE, via: "desktop" });
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    vi.doUnmock("@tauri-apps/api/core");
+  });
+
+  it("degrades to a desktop-specific reason when the engine cannot read git", async () => {
+    env.value = "TAURI_DESKTOP";
+    const invoke = vi.fn().mockRejectedValue(new Error("not a repo"));
+    vi.doMock("@tauri-apps/api/core", () => ({ invoke }));
+
+    const state = await fetchGitStatus();
+
+    expect(state).toEqual({
+      kind: "unavailable",
+      reason: "desktop engine could not read the git state",
+    });
+
+    vi.doUnmock("@tauri-apps/api/core");
   });
 });

@@ -328,10 +328,17 @@ fn benchmark_repository_intelligence() {
         // determinism can be verified across runs and quality audited.
         let dump: String = results
             .iter()
-            .take(10)
-            .map(|r| {
+            .take(50)
+            .enumerate()
+            .map(|(i, r)| {
                 format!(
-                    "    {} | {:.3} | {} | {}",
+                    "    #{:02} {} {} | {:.3} | {} | {}",
+                    i + 1,
+                    if is_relevant(r, &case.expected_resources) {
+                        "HIT "
+                    } else {
+                        "MISS"
+                    },
                     r.resource,
                     r.relevance,
                     r.resource_type,

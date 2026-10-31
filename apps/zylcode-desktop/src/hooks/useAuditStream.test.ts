@@ -1,5 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { TauriRuntime } from "../lib/runtime";
 
 // ---------------------------------------------------------------------------
 // Audit stream (hooks/useAuditStream.ts).
@@ -9,8 +10,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 // that is the only way to exercise both branches in one file.
 // ---------------------------------------------------------------------------
 
+/** The injected global, typed through the shared `TauriRuntime` contract. */
+const tauriScope = window as unknown as { __TAURI__?: TauriRuntime };
+
 afterEach(() => {
-  delete (window as any).__TAURI__;
+  delete tauriScope.__TAURI__;
   vi.clearAllMocks();
 });
 
@@ -18,12 +22,14 @@ async function load(options: { desktop: boolean; invoke?: ReturnType<typeof vi.f
   vi.resetModules();
   const listen = vi.fn((_event: string, _handler: (e: { payload: unknown }) => void) => vi.fn());
   if (options.desktop) {
-    (window as any).__TAURI__ = {
+    tauriScope.__TAURI__ = {
       useApp: () => ({ invoke: options.invoke ?? vi.fn(async () => []) }),
-      listen,
+      // The spy is deliberately not generic; it records (event, handler) pairs,
+      // and the contract it must satisfy is asserted by the tests below.
+      listen: listen as unknown as TauriRuntime["listen"],
     };
   } else {
-    delete (window as any).__TAURI__;
+    delete tauriScope.__TAURI__;
   }
   const mod = await import("./useAuditStream");
   return { mod, listen };
@@ -99,5 +105,21 @@ describe("in the Tauri runtime", () => {
     for (const r of listen.mock.results) {
       expect(r.value).toHaveBeenCalledTimes(1);
     }
+  });
+
+  it("degrades gracefully when the runtime exposes no app IPC surface", async () => {
+    // `useApp` is optional in the TauriRuntime contract, so a shell that
+    // injects only the event bus must still subscribe and settle — the hook
+    // must not throw just because app-scoped invoke is absent.
+    vi.resetModules();
+    const listen = vi.fn(() => vi.fn());
+    tauriScope.__TAURI__ = { listen: listen as unknown as TauriRuntime["listen"] };
+    const mod = await import("./useAuditStream");
+
+    const { result } = renderHook(() => mod.useAuditStream());
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(listen).toHaveBeenCalledWith("telemetry:audit", expect.any(Function));
+    expect(["events", "invoke"]).toContain(result.current.source);
   });
 });

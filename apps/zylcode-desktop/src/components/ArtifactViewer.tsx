@@ -62,6 +62,20 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
     setOriginalContent("");
   }, [diffMode, activeTab]);
 
+  const handleSave = React.useCallback(async () => {
+    if (!editingFile) return;
+    await saveFile(editingFile);
+    setSaveBanner({ show: true, message: "File saved!", type: "success" });
+    setTimeout(() => setSaveBanner({ show: false, message: "", type: "success" }), 2000);
+  }, [editingFile, saveFile]);
+
+  const handleApplyPatch = React.useCallback(async () => {
+    if (!activeTab) return;
+    await applyPatch(activeTab);
+    setSaveBanner({ show: true, message: "Patch applied!", type: "success" });
+    setTimeout(() => setSaveBanner({ show: false, message: "", type: "success" }), 2000);
+  }, [activeTab, applyPatch]);
+
   // Global keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -84,21 +98,7 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [editingFile, activeTab, saveFile, applyPatch]);
-
-  const handleSave = async () => {
-    if (!editingFile) return;
-    await saveFile(editingFile);
-    setSaveBanner({ show: true, message: "File saved!", type: "success" });
-    setTimeout(() => setSaveBanner({ show: false, message: "", type: "success" }), 2000);
-  };
-
-  const handleApplyPatch = async () => {
-    if (!activeTab) return;
-    await applyPatch(activeTab);
-    setSaveBanner({ show: true, message: "Patch applied!", type: "success" });
-    setTimeout(() => setSaveBanner({ show: false, message: "", type: "success" }), 2000);
-  };
+  }, [editingFile, activeTab, handleSave, handleApplyPatch]);
 
   // Monaco editor options
   //
@@ -227,8 +227,11 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
             {diffMode ? "Code View" : "Diff View"}
           </button>
           <button
-            onClick={() => setEditingFile(activeTab ?? null)}
-            disabled={isEditing || !activeTab}
+            onClick={() => setEditingFile(isEditing ? null : (activeTab ?? null))}
+            // NB: must stay enabled while editing — this is the only control
+            // that leaves edit mode. Gating on `isEditing` (and always assigning
+            // the active path) made edit mode a one-way door.
+            disabled={!activeTab}
             className={`
               rounded-md border border-zyl-border px-3 py-1.5 text-sm font-semibold transition-colors
               ${isEditing ? "bg-zyl-accent text-white" : "text-zyl-muted hover:bg-zyl-surface"}
@@ -253,8 +256,11 @@ export const ArtifactViewer: React.FC<ArtifactViewerProps> = ({
 
       {/* Save banner */}
       {saveBanner.show && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 rounded-md px-4 py-2 text-sm font-medium transition-colors">
-          {saveBanner.type === "success" ? "bg-zyl-accent text-white" : "bg-red-600 text-white"}
+        <div
+          className={`fixed bottom-4 left-1/2 -translate-x-1/2 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+            saveBanner.type === "success" ? "bg-zyl-accent text-white" : "bg-red-600 text-white"
+          }`}
+        >
           {saveBanner.message}
         </div>
       )}

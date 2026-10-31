@@ -32,12 +32,21 @@ configure yourself (`docs/PROVIDERS.md`).
 > numbered captures from `06` onward are the **`v0.2.3` build (2026-10-29)**.
 > Full capture record — starting commit, environment, redaction and
 > publication checks — in [`docs/media/zylcode/README.md`](docs/media/zylcode/README.md).
+>
+> **Batch 3 (`11`–`13`, 2026-10-31) is the exception:** those three run against a
+> live `zylcode serve-intel`, so the explorer reads `AVAILABLE`, source control reads
+> the real branch, and the terminal executes real commands. Batches 1–2 have no
+> backend behind them — which is why `06`/`07` show `terminal service error: HTTP 501`
+> and batch 3 does not.
 
-![ZylCode workbench — mission lifecycle, project state and capability spotlight](docs/media/zylcode/06-mission-lifecycle.png)
+ZylCode workbench with the backend live — explorer, terminal and status bar all reporting
+real state:
 
-Missions, composer and the verify terminal on the same build:
+![ZylCode workbench — live explorer, terminal running git log, mission lifecycle and capability spotlight](docs/media/zylcode/11-workbench-live-terminal.png)
 
-![Missions surface — composer, mission list and verify terminal](docs/media/zylcode/07-missions-pipeline.png)
+Missions, composer and the verify terminal on the same build, same session:
+
+![Missions surface — composer, mission list and a live terminal](docs/media/zylcode/12-missions-pipeline-live.png)
 
 **Live theming** — the whole shell re-themes on the fly, no reload:
 
@@ -59,8 +68,11 @@ Missions, composer and the verify terminal on the same build:
 
 | Surface | Capture |
 |---|---|
-| Workbench (current build, `v0.2.3`) | ![Workbench](docs/media/zylcode/06-mission-lifecycle.png) |
-| Missions & composer | ![Missions surface](docs/media/zylcode/07-missions-pipeline.png) |
+| Workbench, live backend (`v0.2.3`, batch 3) | ![Workbench](docs/media/zylcode/11-workbench-live-terminal.png) |
+| Missions & composer, live terminal (batch 3) | ![Missions surface](docs/media/zylcode/12-missions-pipeline-live.png) |
+| Source control reading the real branch (batch 3) | ![Source control](docs/media/zylcode/13-source-control-live.png) |
+| Workbench without a backend (batch 2) | ![Workbench](docs/media/zylcode/06-mission-lifecycle.png) |
+| Missions & composer without a backend (batch 2) | ![Missions surface](docs/media/zylcode/07-missions-pipeline.png) |
 | Provider fallback chain (honest runtime state) | ![Providers](docs/media/zylcode/08-provider-fallback.png) |
 | Evidence ledger (nothing captured, said plainly) | ![Evidence ledger](docs/media/zylcode/09-evidence-center.png) |
 | Live theme (Arctic Light, current build) | ![Arctic Light theme](docs/media/zylcode/10-theme-arctic-light.png) |

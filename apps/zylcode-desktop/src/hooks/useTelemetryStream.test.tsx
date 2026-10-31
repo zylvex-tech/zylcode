@@ -1,5 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { TauriRuntime } from "../lib/runtime";
 import { useAuditIpc, useBridgeIpc, useTelemetryStream } from "./useTelemetryStream";
 
 // ---------------------------------------------------------------------------
@@ -17,15 +18,18 @@ import { useAuditIpc, useBridgeIpc, useTelemetryStream } from "./useTelemetryStr
 type Invoke = ReturnType<typeof vi.fn>;
 type Listen = ReturnType<typeof vi.fn>;
 
+/** The injected global, typed through the shared `TauriRuntime` contract. */
+const tauriScope = window as unknown as { __TAURI__?: TauriRuntime };
+
 function installTauri(invoke: Invoke, listen: Listen) {
-  (window as any).__TAURI__ = {
+  tauriScope.__TAURI__ = {
     useApp: () => ({ invoke }),
     listen,
   };
 }
 
 afterEach(() => {
-  delete (window as any).__TAURI__;
+  delete tauriScope.__TAURI__;
   vi.clearAllMocks();
 });
 
@@ -168,7 +172,7 @@ describe("in the Tauri runtime", () => {
       bridge_id: "anthropic",
     });
 
-    let status: any = undefined;
+    let status: unknown = undefined;
     await act(async () => {
       status = await result.current.getBridgeStatus();
     });
@@ -181,7 +185,7 @@ describe("in the Tauri runtime", () => {
       vi.fn(() => vi.fn()),
     );
     const { result } = renderHook(() => useBridgeIpc());
-    let status: any = "unset";
+    let status: unknown = "unset";
     await act(async () => {
       status = await result.current.getBridgeStatus();
     });

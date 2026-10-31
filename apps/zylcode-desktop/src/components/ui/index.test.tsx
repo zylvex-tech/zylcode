@@ -17,10 +17,9 @@ import {
   ToastProvider,
   Tooltip,
   Toggle,
-  themes,
-  useTheme,
-  useToast,
 } from "./index";
+import { themes, useTheme } from "./theme";
+import { useToast } from "./toast";
 
 // ---------------------------------------------------------------------------
 // Design-system primitives (components/ui/index.tsx).

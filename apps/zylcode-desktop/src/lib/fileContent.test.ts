@@ -20,6 +20,15 @@ const SAMPLE: FileContentResult = {
   content: "export function detectEnvironment() {}\n",
 };
 
+// Both transports are exercised: the service path in the runner's TEST
+// environment, the Tauri IPC path with the environment stubbed to desktop.
+const env = { value: "TEST" };
+
+vi.mock("./runtime", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./runtime")>();
+  return { ...actual, detectEnvironment: () => env.value };
+});
+
 function jsonResponse(body: unknown, status = 200): Response {
   return {
     ok: status >= 200 && status < 300,
@@ -32,6 +41,7 @@ describe("fetchFileContent", () => {
   const fetchMock = vi.fn();
 
   beforeEach(() => {
+    env.value = "TEST";
     clearDiagnostics();
     fetchMock.mockReset();
     vi.stubGlobal("fetch", fetchMock);
@@ -105,5 +115,32 @@ describe("fetchFileContent", () => {
     if (state.kind === "unavailable") {
       expect(state.reason).toBe("[object Object]");
     }
+  });
+
+  it("reads the file through the file_content IPC command on desktop", async () => {
+    env.value = "TAURI_DESKTOP";
+    const invoke = vi.fn().mockResolvedValue(SAMPLE);
+    vi.doMock("@tauri-apps/api/core", () => ({ invoke }));
+
+    const state = await fetchFileContent("src/lib/runtime.ts");
+
+    expect(invoke).toHaveBeenCalledWith("file_content", { path: "src/lib/runtime.ts" });
+    expect(state).toEqual({ kind: "ready", data: SAMPLE });
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    vi.doUnmock("@tauri-apps/api/core");
+  });
+
+  it("degrades to unavailable when the desktop engine rejects", async () => {
+    env.value = "TAURI_DESKTOP";
+    const invoke = vi.fn().mockRejectedValue(new Error("engine offline"));
+    vi.doMock("@tauri-apps/api/core", () => ({ invoke }));
+
+    const state = await fetchFileContent("src/lib/runtime.ts");
+
+    expect(state).toEqual({ kind: "unavailable", reason: "Error: engine offline" });
+    expect(getDiagnostics().map((d) => d.source)).toEqual(["fileContent"]);
+
+    vi.doUnmock("@tauri-apps/api/core");
   });
 });

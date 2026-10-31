@@ -2,13 +2,14 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
 // https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [react()],
-  clearScreen: false,
-  server: {
-    port: 1420,
-    strictPort: true,
-    proxy: {
+// Browser preview: forward backend surface requests to the local
+// `zylcode serve-intel` service.
+//
+// `vite dev` and `vite preview` share this table. Without it the production
+// bundle served by `preview` has no backend at all: a `POST /api/terminal/exec`
+// lands on a bare static file server and comes back as HTTP 501, which the
+// terminal then reports honestly as `terminal service error: HTTP 501`.
+const backendProxy = {
       // Browser preview: forward backend surface requests to the local
       // `zylcode serve-intel` service.
       "/api/repo-intel": "http://127.0.0.1:17630",
@@ -31,8 +32,21 @@ export default defineConfig({
       "/api/models": "http://127.0.0.1:17630",
       "/api/deploy": "http://127.0.0.1:17630",
       "/api/build": "http://127.0.0.1:17630",
-      "/api/package": "http://127.0.0.1:17630",
-    },
+  "/api/package": "http://127.0.0.1:17630",
+};
+
+export default defineConfig({
+  plugins: [react()],
+  clearScreen: false,
+  server: {
+    port: 1420,
+    strictPort: true,
+    proxy: backendProxy,
+  },
+  preview: {
+    port: 4173,
+    strictPort: true,
+    proxy: backendProxy,
   },
   envPrefix: ["VITE_", "TAURI_"],
   build: {

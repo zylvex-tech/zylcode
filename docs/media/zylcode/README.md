@@ -25,6 +25,11 @@ and driven in a real Chromium browser.
   browse the repository tree"*, and the terminal's `terminal service error: HTTP 501`.
   Those messages are the product telling the truth about a missing backend, not a
   defect we hid.
+
+  **Batches 1 and 2 (assets `01`–`10`) are the ones described above.** **Batch 3
+  (`11`–`13`, §8) is the opposite case**: it runs against a live
+  `zylcode serve-intel`, so the explorer reads `AVAILABLE`, the terminal executes
+  real shell commands, and no error line appears. §8 records that run.
 * **Not a mission execution.** `preview-mission-composer.mp4` shows a mission being
   *composed* — the real Mission Composer surface, with real keystrokes in a real
   textarea. The mission is **not run**: `RUN MISSION` requires the desktop backend.
@@ -137,7 +142,8 @@ not evidence.
   retained because the alternative (a doctored path) would misrepresent the capture.
 * **No failure was hidden.** The `BLOCKED` badges and the `HTTP 501` terminal error
   are shown as they occurred, per the protocol's *"if a step fails, record the failure
-  too"*.
+  too"*. Batch 3 (§8) takes the other position deliberately: it shows the product
+  *working*, which is why it runs the backend the earlier batches did not have.
 
 ---
 
@@ -255,3 +261,79 @@ cd <a scratch dir> && npm install playwright-core@1       # not a repo dependenc
 The driver lives outside the repository on purpose: the repo gains no
 playwright dependency for a documentation task, and every step above is stated
 in the checklist rather than hidden in a script.
+
+---
+
+## 8. Batch 3 — 2026-10-31 (the first capture with a live backend)
+
+`06` and `07` are the README's front-face images, and both carried the line
+`terminal service error: HTTP 501`. That line was real, and it was a
+*documentation* defect rather than a product one: the batch-1/2 recipe served
+`dist/` with `python -m http.server`, which answers `POST /api/terminal/exec`
+with `501 Unsupported method`. `vite preview` had no proxy at all, so there was
+no way to serve the production bundle with a backend behind it —
+`apps/zylcode-desktop/vite.config.ts` now shares one proxy table between
+`server` and `preview` for exactly that reason.
+
+Batch 3 is the same frontend, built the same way, **with `zylcode serve-intel`
+running**. Sections 1 (what these are and are not) and 4 (redaction) apply;
+what changes is that nothing is in a controlled failure state.
+
+### Shared environment (batch 3)
+
+| Field | Value |
+|---|---|
+| Starting commit | `1d2c627` — *feat(desktop): serve the preview bundle through the same backend proxy as dev*, working tree clean (`/api/version` reported `dirty: false`) |
+| Build | `pnpm --filter zylcode-desktop build` → `tsc && vite build` (exit 0) |
+| Backend | `cargo run -p zylcode-cli -- serve-intel` on `127.0.0.1:17630` — index warm: 669 files, 2949 symbols, 8 packages |
+| Serve | `pnpm --filter zylcode-desktop preview` → `vite preview` on `4173`, proxying `/api/*` to `17630` |
+| Driver | The Freebuff preview browser (Chromium) at 1180×740, driven with real clicks and real keystrokes |
+| App version shown | Status bar reads **`v0.2.3`**; the header shows the in-app milestone label **`v0.3.0-convergence`** |
+| Runtime mode | `BROWSER_PREVIEW` in the page, against a live `serve-intel` on loopback |
+| Model in use | None — no model call occurs in any captured scenario |
+
+### Per-asset checklist (batch 3)
+
+#### `11-workbench-live-terminal.png` — the workbench with the terminal working
+
+| Field | Value |
+|---|---|
+| Scenario | The landing workbench with every backend-dependent panel live: explorer, terminal, status bar. |
+| Command / action | Load `http://localhost:4173/`, wait for `CAPABILITY SPOTLIGHT`, type `git log --oneline -3` into the terminal input and press Enter; capture the viewport. |
+| Expected result (stated before capture) | The explorer reads `AVAILABLE` with a file count instead of `BLOCKED`; the terminal reports `AVAILABLE · powershell · command runner · cwd persists per session` and shows the command with its real output; the status bar reads `v0.2.3`; no `HTTP 501` anywhere on the page. |
+| Evidence | The frame itself: three real commit lines ending at `1d2c627`, `672 files` in the explorer, and a page-wide search of `document.body.innerText` for `terminal service error` returning nothing. |
+| Recording steps | Real typing into the real `<input>`, then a viewport screenshot. |
+
+#### `12-missions-pipeline-live.png` — the missions surface with the backend up
+
+| Field | Value |
+|---|---|
+| Scenario | The missions surface: composer, mission history, and the `VERIFY` dock with the live terminal below. |
+| Command / action | Click `Missions` in the activity rail; wait for `MISSION COMPOSER`; capture. |
+| Expected result | The composer, `MISSIONS` → `No missions yet.` and the `VERIFY` dock all render, with the same real terminal transcript still in the panel. |
+| Evidence | The frame itself — the transcript is the same `git log` run captured in `11`, so it is one session, not two staged ones. |
+| Recording steps | One `click()`, then a viewport screenshot. |
+
+#### `13-source-control-live.png` — source control reading the real repository
+
+| Field | Value |
+|---|---|
+| Scenario | The `SOURCE CONTROL` rail panel and main surface, reporting the live git state of this checkout. |
+| Command / action | Click `Source Control` in the activity rail; wait for `SOURCE CONTROL`; capture. |
+| Expected result | The panel reports `AVAILABLE · via intel service`, the branch `feat/home-mission-pipeline → origin/feat/home-mission-pipeline@1d2c627`, and the untracked files present at that moment — the two captures already written to `docs/media/zylcode/`. |
+| Evidence | The frame itself: a backend-dependent panel that previously would have said `start \`zylcode serve-intel\` to see live source-control data` now showing real data. |
+| Recording steps | One `click()`, then a viewport screenshot. |
+
+### Reproducing batch 3
+
+```bash
+pnpm --filter zylcode-desktop build                       # exit 0
+cargo run -p zylcode-cli -- serve-intel                   # 127.0.0.1:17630
+pnpm --filter zylcode-desktop preview                     # 4173, proxies /api/* to 17630
+# drive http://localhost:4173/ at 1180x740 with the actions named per asset above
+```
+
+The difference from batch 2 is one process (`serve-intel`) and one config line
+(`preview.proxy`). Everything else — the build, the port, the viewport, the
+locator-per-asset discipline — is unchanged, and no asset here is edited after
+capture.

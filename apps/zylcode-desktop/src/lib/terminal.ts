@@ -10,6 +10,34 @@
 
 import { detectEnvironment, recordDiagnostic } from "./runtime";
 
+/**
+ * The AVAILABLE badge note, built from what the backend actually reported.
+ * "real shell" over-promised: the terminal surface runs one process per
+ * command (a command runner), so the note names the shell that ran and says
+ * what persists.
+ *
+ * Lives beside the transport rather than in the component so the panel module
+ * stays a single component export (and therefore hot-reloadable).
+ */
+export function availableNote(shellName: string): string {
+  return `${shellName || "shell"} · command runner · cwd persists per session`;
+}
+
+/**
+ * True when the typed line means "clear the visible transcript" rather than
+ * something to hand to the shell.
+ *
+ * Every command runs as a fresh non-interactive process, so `Clear-Host`/`cls`
+ * cannot clear a screen that belongs to the UI. Matching is on the **whole**
+ * trimmed line and case-insensitive — `echo clear`, `clear; git status` and
+ * `cls -Force` remain ordinary commands rather than silently wiping the
+ * transcript.
+ */
+export function isClearCommand(line: string): boolean {
+  const trimmed = line.trim().toLowerCase();
+  return trimmed === "clear" || trimmed === "cls";
+}
+
 export interface TerminalRequest {
   sessionId?: string | null;
   cwd?: string | null;

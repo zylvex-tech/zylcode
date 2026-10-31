@@ -7,13 +7,14 @@ import { usePersistentState, useDragResize } from "./lib/layout";
 import { StatusBar } from "./components/StatusBar";
 import TokenMetricsWidget from "./components/TokenMetricsWidget";
 import { ExplorerTree } from "./components/ExplorerTree";
-import { ThemeProvider, useTheme, ThemeSelector } from "./components/ui";
+import { ThemeProvider, ThemeSelector } from "./components/ui";
+import { useTheme } from "./components/ui/theme";
 import CommandPalette from "./components/CommandPalette";
 import EditorPane from "./components/EditorPane";
 import SettingsSurface from "./components/SettingsSurface";
 import { useSettings } from "./lib/settings";
 import { MenuBar, type Menu } from "./components/shell/MenuBar";
-import { isEmbeddedPreview } from "./components/shell/RightWorkspace";
+import { isEmbeddedPreview } from "./lib/runtime";
 import {
   ActivityRail,
   ContextSidebar,
@@ -213,7 +214,7 @@ function AppContent() {
           : m,
       ),
     );
-  }, [activeMissionId, deltas, mcpCalls, done]);
+  }, [activeMissionId, deltas, mcpCalls, done, verification]);
 
   const startMission = useCallback(async (goal: string, autonomy: string, model: string | null) => {
     const id = newMissionId();

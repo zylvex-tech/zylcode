@@ -136,6 +136,14 @@ async fn live_provider_commissioning_probe() {
     let mut any_http_outcome = false;
 
     let candidates: Vec<(ModelProvider, &str, &str)> = vec![
+        // The Respan hosted gateway probes first when its key is present: it is
+        // the only candidate whose request is traced server-side, so a live
+        // completion here also proves the path the integration exists for.
+        (
+            ModelProvider::Respan,
+            zylcode_core::router::RESPAN_DEFAULT_MODEL,
+            "[Respan gateway]",
+        ),
         (ModelProvider::DeepSeek, "deepseek-chat", "[DeepSeek]"),
         (
             ModelProvider::OpenRouter,
@@ -154,6 +162,7 @@ async fn live_provider_commissioning_probe() {
             ModelProvider::DeepSeek => "DEEPSEEK_API_KEY",
             ModelProvider::OpenRouter => "OPENROUTER_API_KEY",
             ModelProvider::Anthropic => "ANTHROPIC_API_KEY",
+            ModelProvider::Respan => "RESPAN_API_KEY",
             _ => "",
         };
         let present = std::env::var(key_env)

@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { StatusBadge, type CapabilityStatus } from "../CapabilityStatus";
 import AgentWorkspace from "../AgentWorkspace";
+import { isEmbeddedPreview } from "../../lib/runtime";
 
 type RightTab = "preview" | "design" | "responsive";
 
@@ -10,15 +11,6 @@ const WIDTHS: { id: string; label: string; px: number | null }[] = [
   { id: "tablet", label: "768", px: 768 },
   { id: "mobile", label: "375", px: 375 },
 ];
-
-/** True when this page itself is the embedded preview target (prevents recursion). */
-export function isEmbeddedPreview(): boolean {
-  try {
-    return new URLSearchParams(window.location.search).has("embed");
-  } catch {
-    return false;
-  }
-}
 
 /**
  * Right workspace: Preview (the actual running project in an iframe),

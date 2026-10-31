@@ -1,5 +1,5 @@
 import React from "react";
-import { Theme, themes } from "./ui";
+import { Theme, themes } from "./ui/theme";
 
 interface StatusBarProps {
   theme: Theme;

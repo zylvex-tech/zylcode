@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SettingsSurface } from "./SettingsSurface";
 import { AUTONOMY_MODES } from "../lib/mission";
-import { DEFAULT_SETTINGS } from "../lib/settings";
+import { DEFAULT_SETTINGS, loadSettings } from "../lib/settings";
 import { clearDiagnostics, recordDiagnostic } from "../lib/runtime";
 import type { VersionState } from "../lib/version";
 
@@ -260,5 +260,32 @@ describe("SettingsSurface", () => {
   it("reports the settings schema footer state", () => {
     open();
     expect(screen.getByText("Settings persist locally")).toBeInTheDocument();
+  });
+
+  // Every other test jumps to a section through `initialSection`, which
+  // bypasses the rail entirely. These interactions are the rail's own
+  // wiring — navigation plus the controls each section exposes.
+  it("navigates through the section rail and persists the controls it exposes", () => {
+    open();
+
+    fireEvent.click(screen.getByRole("button", { name: /Agent & Sessions/ }));
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "OBSERVE" } });
+    fireEvent.click(screen.getByRole("switch", { name: "Tool call summary" }));
+    fireEvent.click(screen.getByRole("switch", { name: "Auto-fold finished work" }));
+
+    expect(loadSettings().defaultAutonomy).toBe("OBSERVE");
+    expect(loadSettings().toolCallSummary).toBe(!DEFAULT_SETTINGS.toolCallSummary);
+    expect(loadSettings().autoFoldMessages).toBe(!DEFAULT_SETTINGS.autoFoldMessages);
+
+    fireEvent.click(screen.getByRole("button", { name: /Appearance/ }));
+    fireEvent.click(screen.getByRole("switch", { name: "Reduced motion" }));
+    fireEvent.click(screen.getByRole("switch", { name: "Compact density" }));
+    fireEvent.click(screen.getByRole("switch", { name: "Editor line numbers" }));
+
+    expect(loadSettings().reducedMotion).toBe(!DEFAULT_SETTINGS.reducedMotion);
+    expect(loadSettings().compactDensity).toBe(!DEFAULT_SETTINGS.compactDensity);
+    expect(loadSettings().editorLineNumbers).toBe(!DEFAULT_SETTINGS.editorLineNumbers);
+    // The rail really moved: the appearance section's own content is on screen.
+    expect(screen.getByText("Theme")).toBeInTheDocument();
   });
 });

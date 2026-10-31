@@ -3,6 +3,8 @@ import { IS_DESKTOP, ENVIRONMENT } from "./events";
 import { safeInvoke, recordDiagnostic } from "./runtime";
 import type { StreamDelta } from "./events";
 
+export type SaveStatus = Record<string, "idle" | "saving" | "saved" | "error">;
+
 export interface ArtifactFile {
   path: string;
   kind: string;
@@ -176,9 +178,7 @@ export function useArtifactStream(deltas: StreamDelta[]) {
   const [files, setFiles] = useState<Map<string, ArtifactFile>>(new Map());
   const [activeTab, setActiveTab] = useState<string | null>(null);
   const [diffMode, setDiffMode] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<
-    Record<string, "idle" | "saving" | "saved" | "error">
-  >({});
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>({});
 
   const bufferRef = useRef<string>("");
   const parsedRef = useRef<Map<string, ArtifactFile>>(new Map());

@@ -15,6 +15,8 @@ import { Panel } from "../Panel";
 import { StatusBadge } from "../CapabilityStatus";
 import { NOT_CAPTURED, type MissionRecord } from "../../lib/mission";
 import { IS_DESKTOP } from "../../lib/runtime";
+import type { StreamDelta } from "../../lib/events";
+import type { ArtifactFile, SaveStatus } from "../../lib/useArtifactStream";
 
 type SurfaceType =
   | "home"
@@ -36,7 +38,7 @@ interface SurfaceHostProps {
   surface: SurfaceType;
   activeMission: MissionRecord | null;
   missions: MissionRecord[];
-  verification: any;
+  verification: MissionRecord["verification"];
   busy: boolean;
   isStreaming: boolean;
   onMissionStart: (goal: string, autonomy: string, model: string | null) => void;
@@ -45,14 +47,14 @@ interface SurfaceHostProps {
   onOpenMissions: () => void;
   activeTab: string | null;
   setActiveTab: React.Dispatch<React.SetStateAction<string | null>>;
-  files: any;
+  files: Map<string, ArtifactFile>;
   diffMode: boolean;
   setDiffMode: React.Dispatch<React.SetStateAction<boolean>>;
-  saveStatus: any;
-  saveFile: any;
-  applyPatch: any;
-  closeTab: any;
-  deltas: any[];
+  saveStatus: SaveStatus;
+  saveFile: (path: string) => Promise<void>;
+  applyPatch: (path: string) => Promise<void>;
+  closeTab: (path: string) => void;
+  deltas: StreamDelta[];
   /** Click-to-navigate from a graph fact into the editor. */
   onNavigateToFile: (path: string) => void;
 }
@@ -407,7 +409,7 @@ export function SurfaceHost({
                 {verification && (
                   <div className="mt-2 space-y-1">
                     <VerificationRungBadge rung={verification.rung} />
-                    {verification.checks.map((c: any) => (
+                    {verification.checks.map((c) => (
                       <p key={c.name} className="text-[11px]">
                         {c.passed ? "✓" : "✗"} {c.name}: {c.message}
                       </p>

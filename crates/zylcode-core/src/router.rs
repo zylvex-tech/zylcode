@@ -1,5 +1,6 @@
 //! Multi-provider token router — routes LLM prompts across OpenRouter,
-//! DeepSeek, Anthropic, and local Ollama with fallback + telemetry.
+//! DeepSeek, Anthropic, the Respan hosted gateway, and local Ollama with
+//! fallback + telemetry.
 
 pub mod cache;
 pub mod decision;
@@ -44,6 +45,37 @@ thread_local! {
 }
 
 // ---------------------------------------------------------------------------
+// Respan hosted gateway
+// ---------------------------------------------------------------------------
+
+/// Base URL of the Respan hosted gateway — one OpenAI-compatible surface for
+/// every upstream provider. Respan traces each request server-side, so a
+/// request that arrives here is logged as a trace without any client-side
+/// tracing SDK.
+///
+/// `RouterConfig::from_env` selects [`ModelProvider::Respan`] when
+/// `RESPAN_API_KEY` is set; [`RouterConfig::base_url`] honours
+/// `RESPAN_BASE_URL` (Respan Enterprise exposes a different endpoint).
+pub const RESPAN_GATEWAY_BASE_URL: &str = "https://api.respan.ai/api";
+
+/// Model used when the gateway is selected but neither `RESPAN_MODEL` nor
+/// `ZYLCODE_PRIMARY_MODEL` names one. Any model the gateway serves works
+/// here — it is a plain string sent in the request body.
+pub const RESPAN_DEFAULT_MODEL: &str = "gpt-5.5";
+
+/// Read an environment variable, trimmed, treating blank as unset.
+///
+/// Every credential and endpoint the router reads from the environment goes
+/// through this, so `KEY=` in a shell profile cannot select a provider that
+/// would then fail on an empty bearer token.
+fn env_nonempty(name: &str) -> Option<String> {
+    std::env::var(name)
+        .ok()
+        .map(|v| v.trim().to_string())
+        .filter(|v| !v.is_empty())
+}
+
+// ---------------------------------------------------------------------------
 // Model provider
 // ---------------------------------------------------------------------------
 
@@ -61,6 +93,10 @@ pub enum ModelProvider {
     DeepSeek,
     Anthropic,
     LocalOllama,
+    /// The Respan hosted gateway: OpenAI-compatible chat completions at
+    /// [`RESPAN_GATEWAY_BASE_URL`], authenticated with `RESPAN_API_KEY`.
+    /// Provider routing stays inside Respan; every call is traced there.
+    Respan,
     SyntheticOffline,
 }
 
@@ -71,6 +107,7 @@ impl std::fmt::Display for ModelProvider {
             Self::DeepSeek => write!(f, "deepseek"),
             Self::Anthropic => write!(f, "anthropic"),
             Self::LocalOllama => write!(f, "ollama"),
+            Self::Respan => write!(f, "respan"),
             Self::SyntheticOffline => write!(f, "synthetic-offline"),
         }
     }
@@ -84,6 +121,8 @@ impl ModelProvider {
             Self::DeepSeek => "https://api.deepseek.com/v1",
             Self::Anthropic => "https://api.anthropic.com",
             Self::LocalOllama => "http://localhost:11434",
+            // No trailing slash: `completions_path` supplies the leading one.
+            Self::Respan => RESPAN_GATEWAY_BASE_URL,
             // No endpoint — synthetic dispatch never builds a URL.
             Self::SyntheticOffline => "",
         }
@@ -388,11 +427,23 @@ impl RouterConfig {
     }
 
     /// Resolve the base URL for a provider (override or default).
+    ///
+    /// The Respan gateway also honours `RESPAN_BASE_URL`, which is how Respan
+    /// Enterprise points at its own endpoint. An explicit per-provider override
+    /// in the configuration still wins, so a caller can pin a URL for tests.
     pub fn base_url(&self, provider: &ModelProvider) -> String {
-        self.base_url_overrides
-            .get(&provider.to_string())
-            .cloned()
-            .unwrap_or_else(|| provider.default_base_url().to_string())
+        if let Some(url) = self.base_url_overrides.get(&provider.to_string()) {
+            return url.clone();
+        }
+        if *provider == ModelProvider::Respan {
+            if let Some(url) = env_nonempty("RESPAN_BASE_URL") {
+                let url = url.trim_end_matches('/');
+                if !url.is_empty() {
+                    return url.to_string();
+                }
+            }
+        }
+        provider.default_base_url().to_string()
     }
 
     /// Resolve the API key for a provider, checking config then env as fallback.
@@ -416,6 +467,7 @@ impl RouterConfig {
             ModelProvider::DeepSeek => "DEEPSEEK_API_KEY",
             ModelProvider::Anthropic => "ANTHROPIC_API_KEY",
             ModelProvider::LocalOllama => return None,
+            ModelProvider::Respan => "RESPAN_API_KEY",
             ModelProvider::SyntheticOffline => return None,
         };
         std::env::var(env_key).ok().filter(|v| !v.is_empty())
@@ -441,15 +493,50 @@ impl RouterConfig {
     }
 
     /// Build from environment variables with sensible defaults.
+    ///
+    /// Setting `RESPAN_API_KEY` routes every model call through the Respan
+    /// hosted gateway (see [`RouterConfig::connect_respan_gateway`]). Absent the
+    /// key, routing is exactly what it was before — including the fully offline
+    /// synthetic path when no provider credential is configured.
     pub fn from_env() -> Self {
         let mut cfg = Self::default();
-        if let Ok(v) = std::env::var("ZYLCODE_PRIMARY_MODEL") {
+        let primary_model = env_nonempty("ZYLCODE_PRIMARY_MODEL");
+        let fallback_model = env_nonempty("ZYLCODE_FALLBACK_MODEL");
+        if let Some(v) = primary_model.clone() {
             cfg.primary_model = v;
         }
-        if let Ok(v) = std::env::var("ZYLCODE_FALLBACK_MODEL") {
+        if let Some(v) = fallback_model {
             cfg.fallback_model = v;
         }
+        cfg.connect_respan_gateway();
         cfg
+    }
+
+    /// Make the Respan hosted gateway this router's primary provider when
+    /// `RESPAN_API_KEY` is present, and report whether it did.
+    ///
+    /// The gateway is OpenAI-compatible, so dispatch keeps its existing shape:
+    /// the same request body, the same `choices[0].message.content` extraction,
+    /// the same fallback chain underneath. Only the endpoint and the credential
+    /// change. Respan traces the call on its side, which is why no tracing
+    /// client is involved here.
+    ///
+    /// Model precedence: `RESPAN_MODEL` → `ZYLCODE_PRIMARY_MODEL` →
+    /// [`RESPAN_DEFAULT_MODEL`]. The gateway serves models by its own names, so
+    /// the provider-native default model is not reused when nothing names one.
+    ///
+    /// Returns `false` and changes nothing when the key is absent or blank, so
+    /// an unconfigured checkout behaves exactly as before.
+    pub fn connect_respan_gateway(&mut self) -> bool {
+        let Some(key) = env_nonempty("RESPAN_API_KEY") else {
+            return false;
+        };
+        self.api_keys.insert(ModelProvider::Respan.to_string(), key);
+        self.primary_provider = ModelProvider::Respan;
+        self.primary_model = env_nonempty("RESPAN_MODEL")
+            .or_else(|| env_nonempty("ZYLCODE_PRIMARY_MODEL"))
+            .unwrap_or_else(|| RESPAN_DEFAULT_MODEL.to_string());
+        true
     }
 }
 
@@ -1389,6 +1476,154 @@ mod tests {
         assert_eq!(
             cfg.base_url(&ModelProvider::OpenRouter),
             "https://custom.example"
+        );
+    }
+
+    /// Process-global provider environment, saved and restored around a test.
+    ///
+    /// `cargo test` shares one environment across threads in one process, and
+    /// the shell that launched it may already export provider keys, so every
+    /// test that sets one must put back what it found — including on panic.
+    struct EnvScope {
+        saved: Vec<(&'static str, Option<String>)>,
+    }
+
+    impl EnvScope {
+        fn capture(names: &[&'static str]) -> Self {
+            Self {
+                saved: names.iter().map(|k| (*k, std::env::var(k).ok())).collect(),
+            }
+        }
+    }
+
+    impl Drop for EnvScope {
+        fn drop(&mut self) {
+            for (name, value) in &self.saved {
+                match value {
+                    Some(v) => std::env::set_var(name, v),
+                    None => std::env::remove_var(name),
+                }
+            }
+        }
+    }
+
+    /// `RESPAN_API_KEY` is the whole switch: with it the hosted gateway becomes
+    /// the primary provider and the credential reaches the request; without it
+    /// routing is exactly what the default configuration says.
+    #[tokio::test]
+    async fn respan_gateway_is_selected_by_its_api_key() {
+        let _guard = DISPATCH_MUTEX.lock().await;
+        let _env = EnvScope::capture(&[
+            "RESPAN_API_KEY",
+            "RESPAN_MODEL",
+            "RESPAN_BASE_URL",
+            "ZYLCODE_PRIMARY_MODEL",
+        ]);
+
+        // Absent key: nothing about routing moves.
+        std::env::remove_var("RESPAN_API_KEY");
+        std::env::remove_var("RESPAN_MODEL");
+        std::env::remove_var("RESPAN_BASE_URL");
+        std::env::remove_var("ZYLCODE_PRIMARY_MODEL");
+
+        let untouched = RouterConfig::from_env();
+        assert_eq!(
+            untouched.primary_provider,
+            RouterConfig::default().primary_provider,
+            "an unset RESPAN_API_KEY must not change provider selection"
+        );
+        assert!(
+            untouched.api_key(&ModelProvider::Respan).is_none(),
+            "no Respan credential may be resolved when none is configured"
+        );
+
+        // Present key: the gateway becomes primary, with the gateway's own
+        // endpoint and OpenAI-compatible request path.
+        std::env::set_var(
+            "RESPAN_API_KEY",
+            "placeholder-credential-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        );
+        let cfg = RouterConfig::from_env();
+        assert_eq!(cfg.primary_provider, ModelProvider::Respan);
+        assert_eq!(cfg.primary_model, RESPAN_DEFAULT_MODEL);
+        assert_eq!(
+            cfg.base_url(&ModelProvider::Respan),
+            RESPAN_GATEWAY_BASE_URL
+        );
+        assert_eq!(
+            ModelProvider::Respan.completions_path(),
+            "/chat/completions"
+        );
+        assert!(
+            cfg.api_key(&ModelProvider::Respan).is_some(),
+            "the configured key must resolve for the gateway provider"
+        );
+        // The pre-existing chain is what a gateway failure falls back to.
+        assert_eq!(
+            cfg.fallback_provider,
+            RouterConfig::default().fallback_provider
+        );
+
+        // Model precedence: RESPAN_MODEL beats ZYLCODE_PRIMARY_MODEL.
+        std::env::set_var("ZYLCODE_PRIMARY_MODEL", "gateway-model-from-primary");
+        assert_eq!(
+            RouterConfig::from_env().primary_model,
+            "gateway-model-from-primary"
+        );
+        std::env::set_var("RESPAN_MODEL", "gateway-model-from-respan");
+        assert_eq!(
+            RouterConfig::from_env().primary_model,
+            "gateway-model-from-respan"
+        );
+
+        // Respan Enterprise endpoint, with the trailing slash its docs show.
+        std::env::set_var("RESPAN_BASE_URL", "https://endpoint.respan.ai/api/");
+        assert_eq!(
+            RouterConfig::from_env().base_url(&ModelProvider::Respan),
+            "https://endpoint.respan.ai/api",
+            "RESPAN_BASE_URL must be honoured and stripped of its trailing slash"
+        );
+
+        // An explicit per-provider override still wins (test pinning, mirrors).
+        let mut pinned = RouterConfig::from_env();
+        pinned.base_url_overrides.insert(
+            ModelProvider::Respan.to_string(),
+            "http://127.0.0.1:1".to_string(),
+        );
+        assert_eq!(
+            pinned.base_url(&ModelProvider::Respan),
+            "http://127.0.0.1:1"
+        );
+    }
+
+    /// `connect_respan_gateway` is the same switch, exposed for callers that
+    /// build their configuration some other way than `from_env`.
+    #[tokio::test]
+    async fn connect_respan_gateway_reports_whether_it_routed() {
+        let _guard = DISPATCH_MUTEX.lock().await;
+        let _env = EnvScope::capture(&["RESPAN_API_KEY", "RESPAN_MODEL"]);
+
+        std::env::remove_var("RESPAN_API_KEY");
+        let mut cfg = RouterConfig::default();
+        assert!(!cfg.connect_respan_gateway(), "no key means no rerouting");
+        assert_eq!(
+            cfg.primary_provider,
+            RouterConfig::default().primary_provider
+        );
+
+        std::env::set_var(
+            "RESPAN_API_KEY",
+            "placeholder-credential-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        );
+        assert!(cfg.connect_respan_gateway());
+        assert_eq!(cfg.primary_provider, ModelProvider::Respan);
+
+        // A blank key is not a key (`RESPAN_API_KEY=` in a shell profile).
+        std::env::set_var("RESPAN_API_KEY", "   ");
+        let mut blank = RouterConfig::default();
+        assert!(
+            !blank.connect_respan_gateway(),
+            "a blank RESPAN_API_KEY must not select the gateway"
         );
     }
 

@@ -6,7 +6,8 @@
 
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { TerminalPanel, RECOVERY_INTERVAL_MS, isClearCommand } from "./TerminalPanel";
+import { TerminalPanel, RECOVERY_INTERVAL_MS } from "./TerminalPanel";
+import { isClearCommand } from "../lib/terminal";
 import { terminalExec, terminalReset } from "../lib/terminal";
 import type { TerminalOutput } from "../lib/terminal";
 
@@ -20,6 +21,8 @@ const sink = vi.hoisted(() => ({
   dataHandler: null as ((d: string) => void) | null,
   /** How many times the panel asked xterm to wipe the buffer. */
   clears: 0,
+  /** How many times the panel asked the fit addon to re-measure. */
+  fits: 0,
 }));
 
 vi.mock("@xterm/xterm", () => {
@@ -45,15 +48,19 @@ vi.mock("@xterm/xterm", () => {
 
 vi.mock("@xterm/addon-fit", () => ({
   FitAddon: class {
-    fit() {}
+    fit() {
+      sink.fits += 1;
+    }
     loadAddon() {}
   },
 }));
 
-vi.mock("../lib/terminal", () => ({
-  terminalExec: vi.fn(),
-  terminalReset: vi.fn(),
-}));
+// `availableNote` / `isClearCommand` are pure helpers that moved into
+// `../lib/terminal`; only the transport is stubbed.
+vi.mock("../lib/terminal", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../lib/terminal")>();
+  return { ...actual, terminalExec: vi.fn(), terminalReset: vi.fn() };
+});
 
 const execMock = vi.mocked(terminalExec);
 const resetMock = vi.mocked(terminalReset);
@@ -128,6 +135,7 @@ beforeEach(() => {
   sink.writes.length = 0;
   sink.dataHandler = null;
   sink.clears = 0;
+  sink.fits = 0;
   execMock.mockReset();
   resetMock.mockReset();
   resetMock.mockResolvedValue(true);
@@ -393,5 +401,64 @@ describe("TerminalPanel shell selection (shell-mismatch regression)", () => {
     expect(text).toContain("cwd persists per session");
     // No claim of an interactive shell session.
     expect(text).not.toContain("interactive shell ready");
+  });
+});
+
+describe("TerminalPanel input and layout", () => {
+  it("refits the terminal when the window is resized", async () => {
+    execMock.mockResolvedValue(up());
+    render(<TerminalPanel />);
+    await flush();
+
+    const before = sink.fits;
+    expect(before).toBeGreaterThanOrEqual(1);
+
+    fireEvent(window, new Event("resize"));
+
+    expect(sink.fits).toBe(before + 1);
+  });
+
+  it("erases the last character on backspace and stops at an empty line", async () => {
+    execMock.mockResolvedValue(up());
+    render(<TerminalPanel />);
+    await flush();
+    sink.writes.length = 0;
+
+    act(() => {
+      sink.dataHandler?.("a");
+      sink.dataHandler?.("b");
+      sink.dataHandler?.("\u007f");
+      // A fourth backspace on an empty line must be a no-op, not a crash.
+      sink.dataHandler?.("\u007f");
+      sink.dataHandler?.("\u007f");
+    });
+
+    expect(terminalText()).toBe("ab\b \b\b \b");
+  });
+
+  it("reprints the prompt on an empty Enter instead of calling the shell", async () => {
+    execMock.mockResolvedValue(up());
+    render(<TerminalPanel />);
+    await flush();
+    const before = execMock.mock.calls.length;
+    sink.writes.length = 0;
+
+    act(() => sink.dataHandler?.("\r"));
+    await flush();
+
+    expect(execMock.mock.calls.length).toBe(before);
+    expect(sink.writes.join("")).toContain("$");
+  });
+
+  it("marks truncated output in the transcript so a cut tail is visible", async () => {
+    execMock.mockResolvedValue(up());
+    render(<TerminalPanel />);
+    await flush();
+
+    execMock.mockResolvedValue({ ...up(), stdoutTail: "partial tail", truncated: true });
+    type("generate-a-huge-report");
+    await flush();
+
+    expect(terminalText()).toContain("output truncated — showing tail");
   });
 });
