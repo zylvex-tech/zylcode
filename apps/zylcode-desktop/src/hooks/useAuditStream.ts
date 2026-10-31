@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
+import { getTauriRuntime, type Unlisten } from "../lib/runtime";
 
-// @ts-expect-error - Tauri module
-const tauri: any = typeof window?.__TAURI__ !== "undefined" ? window.__TAURI__ : null;
+// Read once at module load: the test suite installs `window.__TAURI__` before
+// importing this module, and the desktop shell injects it before any bundle
+// evaluates. The shape of that global lives in `lib/runtime.ts`.
+const tauri = getTauriRuntime();
 const { invoke } = tauri?.useApp ? tauri.useApp() : { invoke: () => Promise.resolve() };
 
 /**
@@ -13,11 +16,10 @@ const { invoke } = tauri?.useApp ? tauri.useApp() : { invoke: () => Promise.reso
  * Maintains a rolling 50-entry log of audit events that have arrived
  * via the IPC event system. Falls back gracefully when outside a
  * Tauri runtime (e.g. web browser dev tools).
- * @ts-ignore - Tauri module resolution is handled at runtime
  */
 export function useAuditStream() {
   const [state, setState] = useState<{
-    logs: any[];
+    logs: AuditLogEntry[];
     isLoading: boolean;
     source: "events" | "invoke" | "standalone";
   }>({
@@ -49,7 +51,9 @@ export function useAuditStream() {
     }
     // Prime the log once on mount
     invoke("get_recent_audit_logs")
-      .then((entries: any[]) => {
+      .then((raw) => {
+        // IPC boundary: the engine answers with `AuditLogEntry[]`.
+        const entries = raw as AuditLogEntry[];
         setState({
           logs: entries,
           isLoading: false,
@@ -67,11 +71,11 @@ export function useAuditStream() {
 
   // Effect-teardown: clean up event listeners on unmount
   useEffect(() => {
-    let unlisten: any = null;
+    let unlisten: Unlisten | null = null;
 
     // Subscribe to telemetry:audit events when running inside Tauri
     if (tauri) {
-      unlisten = tauri.listen("telemetry:audit", (event: any) => {
+      unlisten = tauri.listen<AuditLogEntry>("telemetry:audit", (event) => {
         setState((prev) => {
           const newLogs = [event.payload, ...prev.logs].slice(0, 50);
           return {

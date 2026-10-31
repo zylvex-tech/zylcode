@@ -85,50 +85,40 @@ export const MenuBar: React.FC<MenuBarProps> = ({ menus, brand, right }) => {
                 aria-label={menu.label}
                 className="absolute left-0 top-full mt-1 z-50 min-w-[260px] rounded-md border border-border bg-surface shadow-xl py-1"
               >
-                {menu.items
-                  .map((item) =>
-                    item.separatorBefore ? (
-                      <div
-                        key={`sep-${item.id}`}
-                        className="my-1 border-t border-border"
-                        role="separator"
-                      />
-                    ) : null,
-                  )
-                  .concat(
-                    menu.items
-                      .filter((i) => !i.separatorBefore)
-                      .map((item) => (
-                        <button
-                          key={item.id}
-                          role="menuitem"
-                          disabled={item.disabled}
-                          title={item.disabled ? item.disabledReason : undefined}
-                          onClick={() => {
-                            if (item.disabled) return;
-                            setOpenMenu(null);
-                            item.run?.();
-                          }}
-                          className={`w-full text-left px-3 py-1.5 text-xs flex items-center justify-between gap-6 ${
-                            item.disabled
-                              ? "text-text-muted/50 cursor-not-allowed"
-                              : "text-text-primary hover:bg-primary/10"
-                          }`}
-                        >
-                          <span className="flex items-center gap-1.5">
-                            {item.checked !== undefined && (
-                              <span className="w-3 text-primary">{item.checked ? "✓" : ""}</span>
-                            )}
-                            {item.label}
-                          </span>
-                          {item.shortcut && (
-                            <span className="text-[10px] text-text-muted font-mono">
-                              {item.shortcut}
-                            </span>
-                          )}
-                        </button>
-                      )),
-                  )}
+                {menu.items.map((item) => (
+                  <React.Fragment key={item.id}>
+                    {item.separatorBefore && (
+                      <div className="my-1 border-t border-border" role="separator" />
+                    )}
+                    <button
+                      role="menuitem"
+                      disabled={item.disabled}
+                      title={item.disabled ? item.disabledReason : undefined}
+                      onClick={() => {
+                        if (item.disabled) return;
+                        setOpenMenu(null);
+                        item.run?.();
+                      }}
+                      className={`w-full text-left px-3 py-1.5 text-xs flex items-center justify-between gap-6 ${
+                        item.disabled
+                          ? "text-text-muted/50 cursor-not-allowed"
+                          : "text-text-primary hover:bg-primary/10"
+                      }`}
+                    >
+                      <span className="flex items-center gap-1.5">
+                        {item.checked !== undefined && (
+                          <span className="w-3 text-primary">{item.checked ? "✓" : ""}</span>
+                        )}
+                        {item.label}
+                      </span>
+                      {item.shortcut && (
+                        <span className="text-[10px] text-text-muted font-mono">
+                          {item.shortcut}
+                        </span>
+                      )}
+                    </button>
+                  </React.Fragment>
+                ))}
               </div>
             )}
           </div>

@@ -3,8 +3,10 @@ import { ProofInspector, McpInspector, ProviderSettings, DiagnosticsPanel } from
 import PulsePanel from "../PulsePanel";
 import ChangesPanel from "../ChangesPanel";
 import FilesPanel from "../FilesPanel";
-import { useTheme } from "../ui";
+import { useTheme } from "../ui/theme";
 import { IS_DESKTOP, DESKTOP_REQUIRED_MESSAGE } from "../../lib/runtime";
+import type { MissionRecord } from "../../lib/mission";
+import type { StreamDelta } from "../../lib/events";
 
 type DockModule =
   | "agent"
@@ -20,8 +22,8 @@ type DockModule =
 interface AgentDockProps {
   activeModule: DockModule;
   onModuleChange: (module: DockModule) => void;
-  activeMission: any;
-  deltas: any[];
+  activeMission: MissionRecord | null;
+  deltas: StreamDelta[];
   isStreaming: boolean;
 }
 

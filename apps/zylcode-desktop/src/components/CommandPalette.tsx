@@ -29,18 +29,18 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onClose, m
 
   const commands: FlatCommand[] = useMemo(
     () =>
+      // Every menu item is a command, including the ones that open a section
+      // after a separator — what the menu bar shows is what the palette finds.
       menus.flatMap((m) =>
-        m.items
-          .filter((i) => !i.separatorBefore)
-          .map((i) => ({
-            id: `${m.id}.${i.id}`,
-            menu: m.label,
-            label: i.label,
-            shortcut: i.shortcut,
-            run: i.run,
-            disabled: i.disabled,
-            disabledReason: i.disabledReason,
-          })),
+        m.items.map((i) => ({
+          id: `${m.id}.${i.id}`,
+          menu: m.label,
+          label: i.label,
+          shortcut: i.shortcut,
+          run: i.run,
+          disabled: i.disabled,
+          disabledReason: i.disabledReason,
+        })),
       ),
     [menus],
   );

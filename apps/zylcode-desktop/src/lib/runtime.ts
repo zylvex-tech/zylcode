@@ -119,3 +119,61 @@ export function unwrapInvoke<T>(result: { ok: true; data: T } | { ok: false; rea
   if (!result.ok) throw new Error(result.reason);
   return result.data;
 }
+
+// ---------------------------------------------------------------------------
+// Injected Tauri global
+//
+// Tauri injects `window.__TAURI__` at start-up. There is no ambient
+// declaration for it (the app talks to IPC through `safeInvoke` above), so
+// the handful of hooks that subscribe to *events* state its shape once, here,
+// instead of typing every call site `any`.
+// ---------------------------------------------------------------------------
+
+/** An event delivered over the Tauri event bus. */
+export interface TauriEvent<T> {
+  payload: T;
+}
+
+/** Dispose function returned by `listen`. */
+export type Unlisten = () => void;
+
+/**
+ * The slice of the injected global these hooks actually use.
+ *
+ * `listen` returns the unsubscribe function directly — callers invoke it in an
+ * effect cleanup, which is the contract this app's hooks and tests rely on.
+ */
+export interface TauriRuntime {
+  listen: <T>(event: string, handler: (event: TauriEvent<T>) => void) => Unlisten;
+  useApp?: () => {
+    invoke: (cmd: string, args?: Record<string, unknown>) => Promise<unknown>;
+  };
+}
+
+/**
+ * Read the injected Tauri global, or `null` outside the desktop runtime.
+ *
+ * Deliberately re-reads on every call: callers that need the desktop runtime
+ * must observe it appearing, and callers outside it must stay a no-op.
+ */
+export function getTauriRuntime(): TauriRuntime | null {
+  const scope = (typeof window === "undefined" ? {} : window) as {
+    __TAURI__?: TauriRuntime;
+  };
+  return typeof scope.__TAURI__ !== "undefined" ? (scope.__TAURI__ ?? null) : null;
+}
+
+/**
+ * True when this page itself is the embedded preview target (prevents
+ * recursion — an embedded preview must not render a second shell).
+ *
+ * Environment detection, so it lives with the rest of it rather than in the
+ * component that also happens to need it.
+ */
+export function isEmbeddedPreview(): boolean {
+  try {
+    return new URLSearchParams(window.location.search).has("embed");
+  } catch {
+    return false;
+  }
+}

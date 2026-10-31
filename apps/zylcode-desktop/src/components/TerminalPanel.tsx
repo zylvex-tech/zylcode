@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { Terminal } from "@xterm/xterm";
+import type { FitAddon } from "@xterm/addon-fit";
 import { StatusBadge, type CapabilityStatus } from "./CapabilityStatus";
-import { terminalExec, terminalReset, type TerminalOutput } from "../lib/terminal";
+import {
+  availableNote,
+  isClearCommand,
+  terminalExec,
+  terminalReset,
+  type TerminalOutput,
+} from "../lib/terminal";
 
 const BRAND_BG = "#141414"; // the logo's own dark chip color
 
@@ -17,31 +25,6 @@ export const RECOVERY_INTERVAL_MS = 2000;
  * concrete executable that is then used exactly or fails loudly.
  */
 export const SHELL_MODES = ["auto", "powershell", "pwsh", "cmd", "sh"] as const;
-
-/**
- * The AVAILABLE badge note, built from what the backend actually reported.
- * "real shell" over-promised: this surface runs one process per command
- * (a command runner), so the note names the shell that ran and says what
- * persists.
- */
-export function availableNote(shellName: string): string {
-  return `${shellName || "shell"} · command runner · cwd persists per session`;
-}
-
-/**
- * True when the typed line means "clear the visible transcript" rather than
- * something to hand to the shell.
- *
- * This has to live in the presentation layer: every command runs as a fresh
- * non-interactive process, so `Clear-Host`/`cls` cannot clear a screen that
- * belongs to the UI. Matching is on the **whole** trimmed line and
- * case-insensitive — `echo clear`, `clear; git status` and `cls -Force` remain
- * ordinary commands rather than silently wiping the transcript.
- */
-export function isClearCommand(line: string): boolean {
-  const trimmed = line.trim().toLowerCase();
-  return trimmed === "clear" || trimmed === "cls";
-}
 
 /**
  * Real terminal surface: keystrokes go to a persistent backend session
@@ -65,8 +48,8 @@ export function isClearCommand(line: string): boolean {
  */
 export const TerminalPanel: React.FC = () => {
   const hostRef = useRef<HTMLDivElement | null>(null);
-  const termRef = useRef<any | null>(null);
-  const fitRef = useRef<any | null>(null);
+  const termRef = useRef<Terminal | null>(null);
+  const fitRef = useRef<FitAddon | null>(null);
   const sessionRef = useRef<string | null>(null);
   const cwdRef = useRef<string>("");
   const busyRef = useRef(false);

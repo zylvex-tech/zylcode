@@ -1,11 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
+import { getTauriRuntime, type Unlisten } from "../lib/runtime";
 
-/**
- * Type declarations for Tauri IPC - these are available at runtime
- * when running inside a Tauri application. TypeScript cannot resolve
- * the module statically, so we use `any` types and `// @ts-ignore`
- * comments to bypass compile-time checking.
- */
 export interface TelemetryMetrics {
   input_tokens: number;
   output_tokens: number;
@@ -40,11 +35,10 @@ export interface TelemetryStreamState {
  * for ResourceGraph consumption, and tracks the latest bridge status.
  *
  * Falls back gracefully when outside a Tauri runtime (e.g. web browser dev).
- * @ts-ignore - Tauri module resolution is handled at runtime
+ * The injected global's shape lives in `lib/runtime.ts` as `TauriRuntime`.
  */
 export function useTelemetryStream() {
-  // @ts-expect-error - Tauri module
-  const tauri: any = typeof window?.__TAURI__ !== "undefined" ? window.__TAURI__ : null;
+  const tauri = getTauriRuntime();
   const { invoke } = tauri?.useApp ? tauri.useApp() : { invoke: () => Promise.resolve() };
 
   const [state, setState] = useState<TelemetryStreamState>({
@@ -73,7 +67,9 @@ export function useTelemetryStream() {
     }
     // Prime the bridge status once so UI isn't blank on first render
     invoke("get_bridge_status")
-      .then((bridges: any[]) => {
+      .then((raw) => {
+        // IPC boundary: the engine answers with `BridgeStatus[]`.
+        const bridges = raw as BridgeStatus[];
         if (bridges.length > 0) {
           setState((prev) => ({
             ...prev,
@@ -91,12 +87,12 @@ export function useTelemetryStream() {
   }, [invoke, tauri]);
 
   useEffect(() => {
-    let metricsUnlisten: any = null;
-    let bridgeUnlisten: any = null;
+    let metricsUnlisten: Unlisten | null = null;
+    let bridgeUnlisten: Unlisten | null = null;
 
     if (tauri) {
       // Subscribe to telemetry:metrics events
-      metricsUnlisten = tauri.listen("telemetry:metrics", (event: any) => {
+      metricsUnlisten = tauri.listen<TelemetryMetrics>("telemetry:metrics", (event) => {
         setState((prev) => {
           const newHistory = [event.payload, ...prev.metricsHistory].slice(0, 20);
           return {
@@ -109,7 +105,7 @@ export function useTelemetryStream() {
       });
 
       // Subscribe to telemetry:bridge-status events
-      bridgeUnlisten = tauri.listen("telemetry:bridge-status", (event: any) => {
+      bridgeUnlisten = tauri.listen<BridgeStatus>("telemetry:bridge-status", (event) => {
         setState((prev) => ({
           ...prev,
           bridgeStatus: event.payload,
@@ -132,11 +128,9 @@ export function useTelemetryStream() {
 /**
  * Convenience hook that provides IPC invoke access for
  * bridge control actions from the UI.
- * @ts-ignore - Tauri module
  */
 export function useBridgeIpc() {
-  // @ts-expect-error - Tauri module
-  const tauri: any = typeof window?.__TAURI__ !== "undefined" ? window.__TAURI__ : null;
+  const tauri = getTauriRuntime();
   const { invoke } = tauri?.useApp ? tauri.useApp() : { invoke: () => Promise.resolve() };
 
   const resetCircuitBreaker = useCallback(
@@ -147,9 +141,10 @@ export function useBridgeIpc() {
     [invoke],
   );
 
-  const getBridgeStatus = useCallback(async (): Promise<any> => {
+  const getBridgeStatus = useCallback(async (): Promise<BridgeStatus | null> => {
     if (!invoke) return null;
-    const bridges: any[] = await invoke("get_bridge_status");
+    // IPC boundary: the engine answers with `BridgeStatus[]`.
+    const bridges = (await invoke("get_bridge_status")) as BridgeStatus[];
     return bridges.length > 0 ? bridges[0] : null;
   }, [invoke]);
 
@@ -159,19 +154,18 @@ export function useBridgeIpc() {
 /**
  * Convenience hook that provides IPC invoke access for
  * audit log retrieval from the UI.
- * @ts-ignore - Tauri module
  */
 export const useAuditIpc = (): {
-  getRecentAuditLogs: () => Promise<any[]>;
+  getRecentAuditLogs: () => Promise<AuditLogEntry[]>;
 } => {
-  // @ts-expect-error - Tauri module
-  const tauri: any = typeof window?.__TAURI__ !== "undefined" ? window.__TAURI__ : null;
+  const tauri = getTauriRuntime();
   const { invoke } = tauri?.useApp ? tauri.useApp() : { invoke: () => Promise.resolve() };
 
-  const getRecentAuditLogs = useCallback(async (): Promise<any[]> => {
+  const getRecentAuditLogs = useCallback(async (): Promise<AuditLogEntry[]> => {
     if (!invoke) return [];
     try {
-      const entries: any[] = await invoke("get_recent_audit_logs");
+      // IPC boundary: the engine answers with `AuditLogEntry[]`.
+      const entries = (await invoke("get_recent_audit_logs")) as AuditLogEntry[];
       return entries || [];
     } catch {
       return [];
