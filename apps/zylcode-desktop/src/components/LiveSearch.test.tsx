@@ -79,7 +79,7 @@ describe("LiveSearch", () => {
   });
 
   it("labels itself LIMITED while searching and disables the button", async () => {
-    let resolveSearch: (v: any) => void = () => {};
+    let resolveSearch: (v: Awaited<ReturnType<typeof fetchSearch>>) => void = () => {};
     vi.mocked(fetchSearch).mockReturnValue(
       new Promise((r) => {
         resolveSearch = r;

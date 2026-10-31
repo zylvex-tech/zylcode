@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { StatusBar } from "./StatusBar";
-import { themes } from "./ui";
+import { themes } from "./ui/theme";
 
 // ---------------------------------------------------------------------------
 // Status bar (components/StatusBar.tsx).

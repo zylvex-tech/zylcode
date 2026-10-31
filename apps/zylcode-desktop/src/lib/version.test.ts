@@ -10,10 +10,17 @@ import { clearDiagnostics, getDiagnostics } from "./runtime";
 // to a controlled `unavailable` state carrying a human-readable reason, and
 // records a diagnostic so the raw cause stays reachable from Diagnostics.
 //
-// The test runner is classified as TEST, so the browser/service path is the
-// one exercised here; the Tauri path is gated on an environment this suite
-// deliberately does not emulate.
+// The browser/service path and the Tauri IPC path are both exercised:
+// `detectEnvironment` is stubbed, so the transport split is real code rather
+// than a branch this suite never reaches.
 // ---------------------------------------------------------------------------
+
+const env = { value: "TEST" };
+
+vi.mock("./runtime", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./runtime")>();
+  return { ...actual, detectEnvironment: () => env.value };
+});
 
 const SAMPLE: VersionInfo = {
   app_version: "0.2.2",
@@ -35,6 +42,7 @@ describe("fetchVersion", () => {
   const fetchMock = vi.fn();
 
   beforeEach(() => {
+    env.value = "TEST";
     clearDiagnostics();
     fetchMock.mockReset();
     vi.stubGlobal("fetch", fetchMock);
@@ -109,5 +117,33 @@ describe("fetchVersion", () => {
     if (state.kind === "unavailable") {
       expect(state.reason).toBe("plain string failure");
     }
+  });
+
+  it("reads the version through the app_version IPC command on desktop", async () => {
+    env.value = "TAURI_DESKTOP";
+    const invoke = vi.fn().mockResolvedValue(SAMPLE);
+    vi.doMock("@tauri-apps/api/core", () => ({ invoke }));
+
+    const state = await fetchVersion();
+
+    expect(invoke).toHaveBeenCalledWith("app_version");
+    expect(state).toEqual({ kind: "ready", data: SAMPLE });
+    // the desktop transport must not touch the HTTP surface
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    vi.doUnmock("@tauri-apps/api/core");
+  });
+
+  it("degrades to unavailable when the desktop engine rejects", async () => {
+    env.value = "TAURI_DESKTOP";
+    const invoke = vi.fn().mockRejectedValue(new Error("no engine"));
+    vi.doMock("@tauri-apps/api/core", () => ({ invoke }));
+
+    const state = await fetchVersion();
+
+    expect(state).toEqual({ kind: "unavailable", reason: "Error: no engine" });
+    expect(getDiagnostics().map((d) => d.source)).toEqual(["version"]);
+
+    vi.doUnmock("@tauri-apps/api/core");
   });
 });

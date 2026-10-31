@@ -170,4 +170,37 @@ describe("ChangesPanel", () => {
 
     await waitFor(() => expect(screen.getByText("AVAILABLE")).toBeInTheDocument());
   });
+
+  it("stays LIMITED while the state is still loading, without inventing a branch", async () => {
+    vi.mocked(fetchGitStatus).mockResolvedValue({ kind: "loading" });
+
+    render(<ChangesPanel />);
+
+    await waitFor(() => expect(screen.getByText("LIMITED")).toBeInTheDocument());
+    expect(screen.getByText("reading git state…")).toBeInTheDocument();
+    expect(screen.queryByText(/feat\/home-mission-pipeline/)).not.toBeInTheDocument();
+    expect(screen.queryByText("No changes — working tree clean.")).not.toBeInTheDocument();
+  });
+
+  it("classifies each porcelain letter the user actually sees", async () => {
+    vi.mocked(fetchGitStatus).mockResolvedValue(
+      ready({
+        entries: [
+          { status: "A ", path: "added.ts" },
+          { status: " D", path: "deleted.ts" },
+          { status: "MM", path: "modified.ts" },
+          { status: "C ", path: "copied.ts" },
+        ],
+      }),
+    );
+
+    render(<ChangesPanel />);
+
+    await waitFor(() => expect(screen.getByText("added.ts")).toBeInTheDocument());
+    expect(screen.getByText("A")).toBeInTheDocument();
+    expect(screen.getByText("D")).toBeInTheDocument();
+    expect(screen.getByText("M")).toBeInTheDocument();
+    // Anything outside A/M/D/R/U falls through to the neutral chip.
+    expect(screen.getByText("C")).toBeInTheDocument();
+  });
 });

@@ -86,6 +86,46 @@ describe("useArtifactStream — parsing", () => {
     expect(result.current.files.get("docs/plan.md")?.language).toBe("markdown");
   });
 
+  it("maps every extension the emitter can name to the editor's language id", async () => {
+    // The extension table is what decides syntax highlighting when the tag
+    // omits `language` — a wrong mapping silently degrades the editor.
+    const expected: Record<string, string> = {
+      "src/lib.rs": "rust",
+      "src/App.tsx": "typescript",
+      "src/app.js": "javascript",
+      "src/app.jsx": "javascript",
+      "package.json": "json",
+      "ci.yml": "yaml",
+      "Cargo.toml": "toml",
+      "cmd/main.go": "go",
+      "native/core.c": "c",
+      "native/api.h": "c",
+      "native/bridge.cpp": "cpp",
+      "native/shim.hpp": "cpp",
+      "build.zig": "zig",
+      "src/index.ts": "typescript",
+      "config.yaml": "yaml",
+      "scripts/run.py": "python",
+      "README.md": "markdown",
+      Makefile: "plaintext",
+      "src/parse.rs": "rust",
+    };
+
+    const block = Object.keys(expected)
+      .map((p) => `<artifact path="${p}" kind="file">content</artifact>`)
+      .join("");
+
+    const { result } = renderHook(({ deltas: d }) => useArtifactStream(d), {
+      initialProps: { deltas: deltas(block) },
+    });
+
+    await waitFor(() => expect(result.current.files.size).toBe(Object.keys(expected).length));
+
+    for (const [path, language] of Object.entries(expected)) {
+      expect(result.current.files.get(path)?.language).toBe(language);
+    }
+  });
+
   it("keeps the <content> wrapper's body as the file content", async () => {
     const block = '<artifact path="x.py" kind="file"><content>print("hi")</content></artifact>';
 

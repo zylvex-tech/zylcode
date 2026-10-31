@@ -238,6 +238,81 @@ describe("RepoNavPanel", () => {
     expect(openFile).toHaveBeenCalledWith("src/api.rs");
   });
 
+  it("lets the reviewer point at an exact file/line and narrow the rendered rows", async () => {
+    const openFile = vi.fn();
+    render(<RepoNavPanel onNavigateToFile={openFile} />);
+
+    // The file/line selectors belong to the user, and stay editable.
+    fireEvent.change(screen.getByLabelText("Repository-relative file"), {
+      target: { value: "src/lib.rs" },
+    });
+    fireEvent.change(screen.getByLabelText("Line number"), { target: { value: "42" } });
+
+    await submitSymbol("helper");
+
+    // The rendered rows can be narrowed by a free-text filter.
+    const filter = screen.getByLabelText("Filter results");
+    fireEvent.change(filter, { target: { value: "api" } });
+    expect(screen.queryByText("HEURISTIC")).not.toBeInTheDocument();
+    fireEvent.change(filter, { target: { value: "" } });
+    expect(screen.getByText("HEURISTIC")).toBeInTheDocument();
+
+    // The definition itself is a navigation target, not just a heading.
+    const definition = screen.getByText(/src\/lib\.rs:L\d+:C\d+/).closest("button");
+    expect(definition).not.toBeNull();
+    fireEvent.click(definition as HTMLElement);
+    expect(openFile).toHaveBeenCalledWith("src/lib.rs");
+  });
+
+  it("navigates from a call in the hierarchy back to the file that holds it", async () => {
+    const openFile = vi.fn();
+    render(<RepoNavPanel onNavigateToFile={openFile} />);
+    await submitSymbol("helper");
+
+    fireEvent.click(screen.getByRole("tab", { name: "Call hierarchy" }));
+    await flush();
+
+    expect(screen.getByText("1 deterministic")).toBeInTheDocument();
+    fireEvent.click(screen.getByTitle("Open src/api.rs"));
+    expect(openFile).toHaveBeenCalledWith("src/api.rs");
+  });
+
+  it("opens a source edge in the editor and refuses a non-source edge", async () => {
+    const openFile = vi.fn();
+    render(<RepoNavPanel onNavigateToFile={openFile} />);
+    await submitSymbol("helper");
+
+    fireEvent.click(screen.getByRole("tab", { name: "Dependency graph" }));
+    await flush();
+
+    expect(screen.getByText("2 of 2 edges")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Edge kind filter"), {
+      target: { value: "references" },
+    });
+    expect(screen.getByText("1 of 2 edges")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Edge kind filter"), { target: { value: "all" } });
+
+    fireEvent.click(screen.getByTitle("Open src/util.rs"));
+    expect(openFile).toHaveBeenCalledWith("src/util.rs");
+
+    fireEvent.click(screen.getByTitle("Not a source file — no navigation"));
+    expect(openFile).toHaveBeenCalledTimes(1);
+  });
+
+  it("navigates from an impact row back to the dependent file", async () => {
+    const openFile = vi.fn();
+    render(<RepoNavPanel onNavigateToFile={openFile} />);
+    await submitSymbol("helper");
+
+    queryNavMock.mockResolvedValueOnce({ kind: "ready", data: IMPACT, via: "service" } as const);
+    fireEvent.click(screen.getByRole("tab", { name: "Impact" }));
+    await flush();
+
+    expect(screen.getByText("1 direct dependent within depth 2.")).toBeInTheDocument();
+    fireEvent.click(screen.getByTitle("Open src/api.rs"));
+    expect(openFile).toHaveBeenCalledWith("src/api.rs");
+  });
+
   it("narrows to a single evidence class when the reviewer asks for one", async () => {
     render(<RepoNavPanel onNavigateToFile={vi.fn()} />);
     await submitSymbol("helper");

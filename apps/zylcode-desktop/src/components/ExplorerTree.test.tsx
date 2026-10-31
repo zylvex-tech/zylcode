@@ -3,7 +3,7 @@
 // backend starting *after* the Explorer must recover into a real file tree
 // without a page reload; BLOCKED must stay honest while the backend is down.
 
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ExplorerTree, TREE_RETRY_MS } from "./ExplorerTree";
 import { fetchFileTree } from "../lib/surfaces";
@@ -111,5 +111,74 @@ describe("ExplorerTree backend recovery (stale BLOCKED regression)", () => {
     expect(screen.getByText("BLOCKED")).toBeInTheDocument();
     expect(screen.queryByText("main.rs")).not.toBeInTheDocument();
     expect(fetchFileTreeMock.mock.calls.length).toBeGreaterThanOrEqual(4);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Presentation of a ready tree: ordering, expand/collapse, and file opening.
+// The tree fixture deliberately gives one directory three children so the
+// directory-before-file ordering rule actually has something to sort.
+// ---------------------------------------------------------------------------
+describe("ExplorerTree interactions", () => {
+  const TREE: FileTreeResult = {
+    total_scanned: 5,
+    truncated: false,
+    elapsed_ms: 1,
+    rows: [
+      { path: "src/zeta.ts", language: "TypeScript" },
+      { path: "src/alpha.ts", language: "TypeScript" },
+      { path: "src/nested/beta.rs", language: "Rust" },
+      { path: "README.md", language: "Markdown" },
+    ],
+  };
+
+  const buttonLabels = () =>
+    Array.from(document.querySelectorAll("button")).map((b) => b.textContent ?? "");
+
+  it("lists directories before files, and files alphabetically, inside a folder", async () => {
+    fetchFileTreeMock.mockResolvedValue({ kind: "ready", data: TREE });
+
+    render(<ExplorerTree />);
+    await flush();
+
+    const labels = buttonLabels();
+    const at = (needle: string) => {
+      const index = labels.findIndex((t) => t.includes(needle));
+      expect(index, `expected "${needle}" to be rendered`).toBeGreaterThanOrEqual(0);
+      return index;
+    };
+
+    expect(at("nested")).toBeLessThan(at("alpha.ts"));
+    expect(at("alpha.ts")).toBeLessThan(at("zeta.ts"));
+  });
+
+  it("collapses and re-expands a directory when its row is toggled", async () => {
+    fetchFileTreeMock.mockResolvedValue({ kind: "ready", data: TREE });
+
+    render(<ExplorerTree />);
+    await flush();
+
+    const src = screen.getByText("src").closest("button") as HTMLElement;
+    expect(screen.getByText("alpha.ts")).toBeInTheDocument();
+
+    fireEvent.click(src);
+    expect(screen.queryByText("alpha.ts")).not.toBeInTheDocument();
+    expect(screen.queryByText("nested")).not.toBeInTheDocument();
+
+    fireEvent.click(src);
+    expect(screen.getByText("alpha.ts")).toBeInTheDocument();
+    expect(screen.getByText("nested")).toBeInTheDocument();
+  });
+
+  it("opens the clicked file and marks the one already in the editor", async () => {
+    const onOpenFile = vi.fn();
+    fetchFileTreeMock.mockResolvedValue({ kind: "ready", data: TREE });
+
+    render(<ExplorerTree onOpenFile={onOpenFile} activePath="src/alpha.ts" />);
+    await flush();
+
+    fireEvent.click(screen.getByText("zeta.ts"));
+    expect(onOpenFile).toHaveBeenCalledWith("src/zeta.ts");
+    expect(onOpenFile).toHaveBeenCalledTimes(1);
   });
 });

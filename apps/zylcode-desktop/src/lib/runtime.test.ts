@@ -1,15 +1,21 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { invoke } from "@tauri-apps/api/core";
 import {
   DESKTOP_REQUIRED_MESSAGE,
   clearDiagnostics,
   detectEnvironment,
   getDiagnostics,
+  getTauriRuntime,
   isDesktopRuntime,
   recordDiagnostic,
   safeInvoke,
   unwrapInvoke,
   type RuntimeEnvironment,
 } from "./runtime";
+
+// `safeInvoke` reaches Tauri through a dynamic import, so the module has to be
+// stubbed for the desktop branch to be exercisable outside a real shell.
+vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 
 // ---------------------------------------------------------------------------
 // Environment detection + safe IPC bridge (Product Architecture v3 §11).
@@ -45,6 +51,20 @@ describe("detectEnvironment", () => {
 
   it("never reports TAURI_DESKTOP in plain jsdom", () => {
     expect(detectEnvironment()).not.toBe("TAURI_DESKTOP");
+  });
+
+  it("degrades to UNKNOWN and records a diagnostic when probing throws", () => {
+    clearDiagnostics();
+    Object.defineProperty(globalThis, "__TAURI_INTERNALS__", {
+      configurable: true,
+      get() {
+        throw new Error("probe exploded");
+      },
+    });
+
+    expect(detectEnvironment()).toBe("UNKNOWN");
+    const entry = getDiagnostics().find((d) => d.source === "runtime.detectEnvironment");
+    expect(entry?.message).toContain("probe exploded");
   });
 });
 
@@ -103,5 +123,90 @@ describe("unwrapInvoke", () => {
 
   it("throws so existing try/catch handling keeps working", () => {
     expect(() => unwrapInvoke({ ok: false, reason: "nope" })).toThrow("nope");
+  });
+});
+
+describe("safeInvoke inside the desktop runtime", () => {
+  const invokeMock = vi.mocked(invoke);
+
+  beforeEach(() => {
+    clearDiagnostics();
+    invokeMock.mockReset();
+  });
+
+  it("returns the payload the engine resolved with", async () => {
+    invokeMock.mockResolvedValue({ tools: ["terminal_exec"] });
+
+    const result = await safeInvoke<{ tools: string[] }>("TAURI_DESKTOP", "list_tools");
+
+    expect(result).toEqual({ ok: true, data: { tools: ["terminal_exec"] } });
+    expect(invokeMock).toHaveBeenCalledWith("list_tools", undefined);
+  });
+
+  it("forwards the command arguments it was given", async () => {
+    invokeMock.mockResolvedValue(null);
+
+    await safeInvoke("TAURI_DESKTOP", "execute_tool", { id: "read_file", params: {} });
+
+    expect(invokeMock).toHaveBeenCalledWith("execute_tool", {
+      id: "read_file",
+      params: {},
+    });
+  });
+
+  it("captures a rejected invoke as a failure instead of throwing", async () => {
+    invokeMock.mockRejectedValue(new Error("engine exploded"));
+
+    const result = await safeInvoke("TAURI_DESKTOP", "execute_tool");
+
+    expect(result).toEqual({ ok: false, reason: "Error: engine exploded" });
+  });
+
+  it("mirrors the raw failure to Diagnostics under the command name", async () => {
+    invokeMock.mockRejectedValue(new Error("engine exploded"));
+
+    await safeInvoke("TAURI_DESKTOP", "execute_tool");
+
+    const entry = getDiagnostics().find((d) => d.source === "ipc.execute_tool");
+    expect(entry?.message).toContain("engine exploded");
+  });
+
+  it("refuses to touch IPC when the caller passes a non-desktop environment", async () => {
+    const result = await safeInvoke("BROWSER_PREVIEW", "list_tools");
+
+    expect(result.ok).toBe(false);
+    expect(invokeMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("diagnostics buffer bound", () => {
+  it("drops the oldest entry once the cap is exceeded", () => {
+    clearDiagnostics();
+    for (let i = 0; i < 205; i++) recordDiagnostic("overflow", `m${i}`);
+
+    const entries = getDiagnostics();
+    expect(entries.length).toBe(200);
+    // The first five were shifted out; the oldest survivor is m5.
+    expect(entries[0].message).toBe("m5");
+    expect(entries[entries.length - 1].message).toBe("m204");
+
+    clearDiagnostics();
+  });
+});
+
+describe("getTauriRuntime", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    delete (window as unknown as Record<string, unknown>).__TAURI__;
+  });
+
+  it("stays a no-op outside a window, as well as outside the desktop", () => {
+    vi.stubGlobal("window", undefined);
+    expect(getTauriRuntime()).toBeNull();
+  });
+
+  it("reports a present-but-nullish injection as absent rather than crashing", () => {
+    (window as unknown as Record<string, unknown>).__TAURI__ = null;
+    expect(getTauriRuntime()).toBeNull();
   });
 });

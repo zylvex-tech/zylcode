@@ -264,3 +264,165 @@ describe("startBuild / startPackage", () => {
     expect(result).toEqual({ started: false, error: "offline" });
   });
 });
+
+// ---------------------------------------------------------------------------
+// Both sides of every optional field. Each `x ? String(x) : undefined` and
+// each `a ?? b` in the normalisers has to be exercised: a backend that starts
+// sending a field (or stops sending one) must not change the shape of what
+// the panels render. Non-`Error` rejections are pinned too, because the
+// fallback reason string is what the user sees when transport wraps a failure.
+// ---------------------------------------------------------------------------
+describe("delivery — optional fields on both sides", () => {
+  const fetchMock = vi.fn();
+
+  beforeEach(() => {
+    fetchMock.mockReset();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("falls back to an empty head when the service omits one", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({}));
+
+    const state = await fetchDeploy();
+
+    expect(state).toMatchObject({ kind: "ready", head: "" });
+  });
+
+  it("renders a non-Error deploy failure with the generic reason", async () => {
+    fetchMock.mockRejectedValue("transport wrapper string");
+
+    expect(await fetchDeploy()).toEqual({
+      kind: "unavailable",
+      reason: "deploy status unavailable",
+    });
+  });
+
+  it("renders a non-Error build failure with the generic reason", async () => {
+    fetchMock.mockRejectedValue("transport wrapper string");
+
+    expect(await fetchBuildState()).toEqual({
+      kind: "unavailable",
+      reason: "build status unavailable",
+    });
+  });
+
+  it("marks a step with no name or command rather than dropping it", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ state: "running", steps: [{ passed: false }] }));
+
+    const state = await fetchBuildState();
+
+    expect(state.kind).toBe("ready");
+    if (state.kind === "ready") {
+      expect(state.steps[0]).toEqual({
+        name: "?",
+        command: "",
+        passed: false,
+        exit_code: null,
+        duration_ms: null,
+      });
+    }
+  });
+
+  it("passes through a fully populated build payload", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        state: "done",
+        started_at: "2026-10-30T10:00:00Z",
+        finished_at: "2026-10-30T10:04:00Z",
+        passed: false,
+        error: "cargo test failed",
+        note: "attempt 2",
+        steps: [{ name: "test", command: "cargo test", passed: false }],
+        packaged: {
+          release_dir: "dist/",
+          artifact_id: "art-1",
+          version: "0.2.3",
+          content_hash: "abc123",
+          file_count: 12,
+        },
+      }),
+    );
+
+    const state = await fetchBuildState();
+
+    expect(state.kind).toBe("ready");
+    if (state.kind === "ready") {
+      expect(state.started_at).toBe("2026-10-30T10:00:00Z");
+      expect(state.finished_at).toBe("2026-10-30T10:04:00Z");
+      expect(state.error).toBe("cargo test failed");
+      expect(state.note).toBe("attempt 2");
+      expect(state.passed).toBe(false);
+      expect(state.packaged).toEqual({
+        release_dir: "dist/",
+        artifact_id: "art-1",
+        version: "0.2.3",
+        content_hash: "abc123",
+        file_count: 12,
+      });
+    }
+  });
+
+  it("leaves build timings and note undefined when the payload omits them", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ state: "idle", packaged: {} }));
+
+    const state = await fetchBuildState();
+
+    expect(state.kind).toBe("ready");
+    if (state.kind === "ready") {
+      expect(state.started_at).toBeUndefined();
+      expect(state.finished_at).toBeUndefined();
+      expect(state.error).toBeUndefined();
+      expect(state.note).toBeUndefined();
+      // `packaged` present but empty: every field degrades to undefined.
+      expect(state.packaged).toEqual({});
+    }
+  });
+
+  it("surfaces the engine's error on a build launch acknowledgement", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ started: false, error: "toolchain missing" }));
+
+    const result = await startBuild();
+
+    expect(result.started).toBe(false);
+    expect(result.error).toBe("toolchain missing");
+    expect(result.note).toBeUndefined();
+  });
+
+  it("stringifies a non-Error launch failure instead of losing it", async () => {
+    fetchMock.mockRejectedValue("plain string failure");
+
+    expect(await startBuild()).toEqual({ started: false, error: "plain string failure" });
+  });
+
+  it("reports an HTTP failure from the package endpoint as an error", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({}, 502));
+
+    const result = await startPackage("0.2.3", false);
+
+    expect(result.started).toBe(false);
+    expect(result.error).toContain("HTTP 502");
+  });
+
+  it("passes both note and error through on a package acknowledgement", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({ started: true, note: "packaging", error: "partial upload" }),
+    );
+
+    expect(await startPackage("0.2.3", false)).toEqual({
+      started: true,
+      note: "packaging",
+      error: "partial upload",
+    });
+  });
+
+  it("stringifies a non-Error package failure instead of losing it", async () => {
+    fetchMock.mockRejectedValue("plain string failure");
+
+    expect(await startPackage("0.2.3", false)).toEqual({
+      started: false,
+      error: "plain string failure",
+    });
+  });
+});

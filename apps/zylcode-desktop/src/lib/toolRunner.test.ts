@@ -9,8 +9,14 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { invoke } from "@tauri-apps/api/core";
+import { clearDiagnostics, getDiagnostics } from "./runtime";
 import { runTool, type ToolRunState } from "./toolRunner";
 import type { ToolRow } from "./service";
+
+// The desktop transport is reached through a dynamic import, so the Tauri
+// module has to be stubbed for that branch to be exercisable in jsdom.
+vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 
 const BOUND: ToolRow[] = [
   {
@@ -126,5 +132,124 @@ describe("runTool — success and tool-level failure payloads", () => {
     expect(state.kind).toBe("unavailable");
     if (state.kind === "unavailable") expect(state.reason).toMatch(/serve-intel/);
     vi.unstubAllGlobals();
+  });
+});
+
+describe("runTool — a payload the engine failed without a message", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("names the bound operation rather than inventing a reason", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Promise.resolve({
+          json: async () => ({
+            tool: "fs.write",
+            executed: true,
+            success: false,
+            bound_operation: "fs.write",
+          }),
+        }),
+      ) as unknown as typeof fetch,
+    );
+
+    const state = await runTool("fs.write", {}, BOUND);
+
+    expect(state.kind).toBe("failed");
+    if (state.kind === "failed") {
+      expect(state.error).toBe("the tool reported failure (operation: fs.write)");
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Desktop transport: `execute_tool` through Tauri IPC. The environment is
+// forced to TAURI_DESKTOP by injecting Tauri's internals global, which is
+// exactly the signal `detectEnvironment` looks for.
+// ---------------------------------------------------------------------------
+describe("runTool — desktop IPC transport", () => {
+  const invokeMock = vi.mocked(invoke);
+  const internals = globalThis as Record<string, unknown>;
+
+  beforeEach(() => {
+    clearDiagnostics();
+    invokeMock.mockReset();
+    internals.__TAURI_INTERNALS__ = {};
+  });
+
+  afterEach(() => {
+    delete internals.__TAURI_INTERNALS__;
+    vi.unstubAllGlobals();
+  });
+
+  it("returns the engine payload tagged desktop and skips HTTP entirely", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    invokeMock.mockResolvedValue({
+      tool: "fs.read",
+      executed: true,
+      success: true,
+      output: { content: "# ZylCode" },
+      invocation_id: "ev-9",
+    });
+
+    const state = await runTool("fs.read", { path: "README.md" }, BOUND);
+
+    expect(state.kind).toBe("done");
+    if (state.kind === "done") {
+      expect(state.via).toBe("desktop");
+      expect(state.result.invocation_id).toBe("ev-9");
+    }
+    expect(invokeMock).toHaveBeenCalledWith("execute_tool", {
+      id: "fs.read",
+      params: { path: "README.md" },
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("surfaces a desktop success=false with the tool's own error", async () => {
+    invokeMock.mockResolvedValue({
+      tool: "fs.read",
+      executed: true,
+      success: false,
+      output: { error: "path escapes the workspace root" },
+    });
+
+    const state = await runTool("fs.read", {}, BOUND);
+
+    expect(state.kind).toBe("failed");
+    if (state.kind === "failed") {
+      expect(state.via).toBe("desktop");
+      expect(state.error).toMatch(/escapes the workspace root/);
+    }
+  });
+
+  it("falls back to the engine's phrasing when IPC reports no message", async () => {
+    invokeMock.mockResolvedValue({
+      tool: "fs.read",
+      executed: true,
+      success: false,
+      bound_operation: "fs.read",
+    });
+
+    const state = await runTool("fs.read", {}, BOUND);
+
+    expect(state.kind).toBe("failed");
+    if (state.kind === "failed") {
+      expect(state.error).toBe("the tool reported failure (operation: fs.read)");
+    }
+  });
+
+  it("classifies a rejected IPC call as a desktop failure with a diagnostic", async () => {
+    invokeMock.mockRejectedValue(new Error("engine registry unavailable"));
+
+    const state = await runTool("fs.read", {}, BOUND);
+
+    expect(state.kind).toBe("failed");
+    if (state.kind === "failed") {
+      expect(state.via).toBe("desktop");
+      expect(state.error).toMatch(/engine registry unavailable/);
+    }
+    expect(getDiagnostics().some((d) => d.source === "toolRunner")).toBe(true);
   });
 });
