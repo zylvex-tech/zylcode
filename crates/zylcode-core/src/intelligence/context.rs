@@ -437,10 +437,17 @@ impl ContextRetriever {
 
             // File path contains task word as a path TOKEN (IDF-weighted).
             // Token equality, not substring: 'code' must not match 'zylcode'.
+            //
+            // 0.5, not 0.3: a symbol's path is half its identity, and on
+            // "where is X implemented" it is the primary evidence. The old
+            // 0.3 left symbols in the answer file (`symbols.rs`) below
+            // identically-named lookalikes in files the task never mentioned
+            // (`query.rs::RepoQuery::symbols`), so the ranking answered
+            // "what is named like this" instead of "where is it indexed".
             let sym_file_tokens = path_tokens(&sym.file);
             for word in &task_words {
                 if sym_file_tokens.iter().any(|t| t == word) {
-                    score += 0.3 * word_idf[word];
+                    score += 0.5 * word_idf[word];
                     reasons.push(format!("path token '{}'", word));
                 }
             }
@@ -460,17 +467,33 @@ impl ContextRetriever {
             //   half the identifiers in this repo, so a filename containing it
             //   anchors nothing — without the gate `tool.rs` outranked the
             //   `tool_catalogue.rs` the question actually asked for.
+            //
+            // Count EVERY distinct task word the stem carries, capped at two
+            // (1.4): `context_builder.rs` answers "context builder" on both
+            // words while `context_manager.rs` matches only "context", and a
+            // first-match-only bonus scored them identically — nine
+            // `context_manager` lookalikes held ranks 6-18 while the answer's
+            // own symbols sat at ranks 19-24. The cap keeps a stem that echoes
+            // three task words from outranking a verbatim symbol-name match.
             let sym_stem = sym.file.rsplit('/').next().unwrap_or("");
             let stem_tokens = path_tokens(sym_stem);
-            let anchor_word = named_words.iter().find(|w| {
-                word_idf.get(w.as_str()).is_some_and(|idf| *idf > 0.5)
-                    && stem_tokens.iter().any(|t| t == w.as_str())
-            });
-            if let Some(w) = anchor_word {
-                score += 0.7;
+            let anchor_words: Vec<&String> = named_words
+                .iter()
+                .filter(|w| {
+                    word_idf.get(w.as_str()).is_some_and(|idf| *idf > 0.5)
+                        && stem_tokens.iter().any(|t| t == w.as_str())
+                })
+                .collect();
+            if !anchor_words.is_empty() {
+                score += (0.7 * anchor_words.len() as f64).min(1.4);
                 reasons.push(format!(
-                    "defined in '{}', named for task word '{}'",
-                    sym_stem, w
+                    "defined in '{}', named for task word(s) '{}'",
+                    sym_stem,
+                    anchor_words
+                        .iter()
+                        .map(|w| w.as_str())
+                        .collect::<Vec<_>>()
+                        .join("', '")
                 ));
             }
 
@@ -545,6 +568,37 @@ impl ContextRetriever {
                 if file_tokens.iter().any(|t| t == word) {
                     score += 0.8 * word_idf[word];
                     reasons.push(format!("path token '{}'", word));
+                }
+            }
+
+            // Anchor-file alignment for the FILE itself (P1.2): the symbol
+            // rule above rewards living in the file the task names, but the
+            // file resource — the most literal answer to "which file" — was
+            // left out, so `dependency.rs` scored 1.001 and sat at rank 12
+            // while unrelated `EvidenceGraph` symbols held ranks 2-6. Same two
+            // gates as the symbol rule: only Source/Test files, only words the
+            // task actually said, only corpus-distinctive words (IDF > 0.5),
+            // capped at two words so a stem echoing three task words cannot
+            // outrank a verbatim symbol-name match.
+            if matches!(
+                file.role,
+                crate::intelligence::types::FileRole::Source
+                    | crate::intelligence::types::FileRole::Test
+            ) {
+                let stem_tokens = path_tokens(id.rsplit('/').next().unwrap_or(""));
+                let anchor_count = named_words
+                    .iter()
+                    .filter(|w| {
+                        word_idf.get(w.as_str()).is_some_and(|idf| *idf > 0.5)
+                            && stem_tokens.iter().any(|t| t == w.as_str())
+                    })
+                    .count();
+                if anchor_count > 0 {
+                    score += (0.7 * anchor_count as f64).min(1.4);
+                    reasons.push(format!(
+                        "filename is named for {} task word(s)",
+                        anchor_count
+                    ));
                 }
             }
 
