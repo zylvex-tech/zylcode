@@ -100,6 +100,25 @@ jobs:
       - name: Cargo test (workspace)
         run: cargo test --workspace --all-targets
 
+      - name: Root lint (repository-wide configuration discoverability)
+        run: pnpm exec eslint . --ext .ts,.tsx --max-warnings 999
+        # The root ESLint config delegates to the one real package config so the
+        # tooling is discoverable at the repository root; the per-file rules are
+        # enforced by `apps/zylcode-desktop/eslint.config.js` (lint gates at 0
+        # errors, 36 accepted warnings itemised in
+        # docs/governance/ACCEPTED_LINT_WARNINGS.md).
+        -
+      - name: Root format check
+        run: pnpm run format:check
+        # `pnpm run format:check` = `prettier --check .` against .prettierignore;
+        # mirrors the package-scoped `format:check` the same way lint does.
+        -
+      - name: Root typecheck
+        run: pnpm run typecheck
+        # `pnpm run typecheck` = `pnpm -r typecheck`, which runs `tsc --noEmit`
+        # inside the one workspace package that has a tsconfig. Root carries
+        # only `typescript` as a devDependency.
+        -
       - name: Retracted-claim guard
         run: python scripts/check_retracted_claims.py
         # Enforces that claims already measured, found unsupported, and removed

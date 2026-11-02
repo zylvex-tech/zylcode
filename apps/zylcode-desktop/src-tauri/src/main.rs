@@ -569,6 +569,9 @@ async fn register_mcp_bridge(
     transport: Option<String>,
     state: tauri::State<'_, EngineState>,
 ) -> Result<(), String> {
+    iv::validate_tool_id(&id).map_err(|e| e.to_string())?;
+    iv::validate_endpoint(&endpoint).map_err(|e| e.to_string())?;
+    iv::validate_transport(transport.as_deref()).map_err(|e| e.to_string())?;
     state
         .engine
         .register_mcp_bridge(McpBridgeDescriptor {
@@ -625,6 +628,7 @@ async fn marketplace_search(
     query: String,
     state: tauri::State<'_, EngineState>,
 ) -> Result<Vec<zylcode_core::MarketplaceExtension>, String> {
+    iv::validate_marketplace_query(&query).map_err(|e| e.to_string())?;
     let extensions = state.engine.marketplace_snapshot().await;
     let mut reg = zylcode_core::ExtensionRegistry::new();
     for ext in extensions {

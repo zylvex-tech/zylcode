@@ -186,6 +186,12 @@ export interface NatlasConfig {
   apiKey?: string;
   /** Our own wait bound, in milliseconds. */
   timeoutMs?: number;
+  /**
+   * Which surface serves the call: `"natlas"` for a local runtime (the
+   * default) or `"respan"` when the Respan hosted gateway is selected.
+   * Recorded in evidence, so a run is never attributed to the wrong provider.
+   */
+  provider?: "natlas" | "respan";
 }
 
 export const OPENAI_CHAT_PATH = "/v1/chat/completions";
@@ -206,13 +212,64 @@ export function defaultEnv(): EnvLike {
   return g.process?.env ?? {};
 }
 
+// ---------------------------------------------------------------------------
+// Respan hosted gateway — the same client, one OpenAI-compatible surface in
+// front of every upstream provider, which logs each request it serves.
+//
+// `RESPAN_API_KEY` is the whole switch, mirroring
+// `RouterConfig::connect_respan_gateway` in `zylcode-core`: the endpoint and the
+// credential change, the request body does not. It is a **server secret** —
+// read from the process environment only, so a browser bundle (where
+// `defaultEnv()` is empty) never carries it.
+// ---------------------------------------------------------------------------
+
+/** Base URL of the Respan hosted gateway. */
+export const RESPAN_GATEWAY_BASE_URL = "https://api.respan.ai/api";
+
+/** Chat-completions path on the gateway (OpenAI-compatible). */
+export const RESPAN_GATEWAY_CHAT_PATH = "/chat/completions";
+
+/** Model the gateway is asked for when `RESPAN_MODEL` names none. */
+export const RESPAN_DEFAULT_MODEL = "gpt-5.5";
+
+/**
+ * Configuration for the Respan hosted gateway, or `undefined` when
+ * `RESPAN_API_KEY` is absent or blank.
+ *
+ * `RESPAN_BASE_URL` points at Respan Enterprise (the trailing slash its docs
+ * show is stripped). Absent the key, this returns `undefined` and
+ * {@link configFromEnv} reads the N-ATLAS variables exactly as before.
+ */
+export function configFromRespanGateway(env: EnvLike = defaultEnv()): NatlasConfig | undefined {
+  const apiKey = env["RESPAN_API_KEY"]?.trim();
+  if (!apiKey) return undefined;
+
+  const baseUrl = (env["RESPAN_BASE_URL"]?.trim() || RESPAN_GATEWAY_BASE_URL).replace(/\/+$/, "");
+  const model = env["RESPAN_MODEL"]?.trim() || RESPAN_DEFAULT_MODEL;
+  const timeoutMs = Number.parseInt(env["NATLAS_TIMEOUT_MS"] ?? "", 10);
+
+  return {
+    baseUrl,
+    requestPath: RESPAN_GATEWAY_CHAT_PATH,
+    model,
+    apiKey,
+    timeoutMs: Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : DEFAULT_TIMEOUT_MS,
+    provider: "respan",
+  };
+}
+
 /**
  * Read configuration from the environment.
  *
- * Mirrors the Rust boundary: required variables have **no defaults**, because
- * every one of them is an interface detail we would otherwise be inventing.
+ * `RESPAN_API_KEY` makes the hosted gateway the endpoint (see
+ * {@link configFromRespanGateway}). Without it, this mirrors the Rust
+ * boundary: required variables have **no defaults**, because every one of them
+ * is an interface detail we would otherwise be inventing.
  */
 export function configFromEnv(env: EnvLike = defaultEnv()): NatlasConfig {
+  const gateway = configFromRespanGateway(env);
+  if (gateway) return gateway;
+
   const missing: string[] = [];
   const need = (name: string): string => {
     const v = env[name]?.trim();
@@ -530,7 +587,7 @@ export class NatlasBridge {
 
     const base: Omit<NatlasEvidence, "status" | "success"> = {
       timestamp: new Date().toISOString(),
-      provider: "natlas",
+      provider: this.config.provider ?? "natlas",
       model: this.config.model,
       requestClassification: classification,
       language: normaliseLanguage(request.language),

@@ -14,7 +14,12 @@ import {
   NatlasError,
   OPENAI_CHAT_PATH,
   INTENT_SYSTEM_PREAMBLE,
+  RESPAN_DEFAULT_MODEL,
+  RESPAN_GATEWAY_BASE_URL,
+  RESPAN_GATEWAY_CHAT_PATH,
   classifyHttp,
+  configFromEnv,
+  configFromRespanGateway,
   guidance,
   humanMessage,
   isRetryable,
@@ -210,6 +215,74 @@ await test("config: fromEnv lists every missing variable rather than defaulting"
     () => NatlasBridge.fromEnv({}),
     (e) => e instanceof NatlasError && e.code === "NOT_CONFIGURED" && e.message.includes("NATLAS_BASE_URL"),
   );
+});
+
+// --- Respan hosted gateway: RESPAN_API_KEY is the whole switch ---------------
+
+await test("gateway: RESPAN_API_KEY selects the hosted gateway", () => {
+  const cfg = configFromEnv({ RESPAN_API_KEY: TEST_FIXTURE_API_KEY });
+  assert.equal(cfg.baseUrl, RESPAN_GATEWAY_BASE_URL);
+  assert.equal(cfg.requestPath, RESPAN_GATEWAY_CHAT_PATH);
+  assert.equal(cfg.model, RESPAN_DEFAULT_MODEL);
+  assert.equal(cfg.apiKey, TEST_FIXTURE_API_KEY);
+  assert.equal(cfg.provider, "respan");
+  // The gateway is OpenAI-compatible, so the request body is unchanged.
+  const local = NatlasBridge.configure({
+    baseUrl: "http://127.0.0.1:11434",
+    requestPath: OPENAI_CHAT_PATH,
+    model: "n-atlas:latest",
+  }).redactedConfig;
+  assert.equal(local.provider, undefined, "a local runtime stays unlabelled");
+});
+
+await test("gateway: RESPAN_MODEL and RESPAN_BASE_URL override, trailing slash stripped", () => {
+  const cfg = configFromEnv({
+    RESPAN_API_KEY: TEST_FIXTURE_API_KEY,
+    RESPAN_MODEL: "claude-sonnet-4-5-20250929",
+    RESPAN_BASE_URL: "https://endpoint.respan.ai/api/",
+  });
+  assert.equal(cfg.model, "claude-sonnet-4-5-20250929");
+  assert.equal(cfg.baseUrl, "https://endpoint.respan.ai/api");
+});
+
+await test("gateway: a blank or absent key leaves N-ATLAS configuration untouched", () => {
+  assert.equal(configFromRespanGateway({ RESPAN_API_KEY: "   " }), undefined);
+  assert.equal(configFromRespanGateway({}), undefined);
+  const natlas = configFromEnv({
+    NATLAS_BASE_URL: "http://127.0.0.1:11434",
+    NATLAS_REQUEST_PATH: OPENAI_CHAT_PATH,
+    NATLAS_MODEL: "n-atlas:latest",
+    NATLAS_API_KEY: "",
+  });
+  assert.equal(natlas.baseUrl, "http://127.0.0.1:11434");
+  assert.equal(natlas.provider, undefined, "an unset gateway key must not relabel the provider");
+});
+
+await test("gateway: evidence records the gateway as the provider", async () => {
+  const stub = await startStub((req, res) => {
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(
+      JSON.stringify({
+        id: "stub-gateway-1",
+        model: "gpt-5.5",
+        choices: [{ index: 0, message: { role: "assistant", content: "hello" }, finish_reason: "stop" }],
+        usage: { prompt_tokens: 3, completion_tokens: 1 },
+      }),
+    );
+  });
+  try {
+    const bridge = NatlasBridge.configure({
+      ...configFromEnv({ RESPAN_API_KEY: TEST_FIXTURE_API_KEY }),
+      baseUrl: stub.url,
+    });
+    const inv = await bridge.invoke({ intent: "x", system: "y" });
+    assert.equal(inv.status, "succeeded");
+    assert.equal(inv.evidence.provider, "respan");
+    assert.equal(inv.evidence.model, "gpt-5.5", "the server's model identity is recorded");
+    assert.ok(!JSON.stringify(inv.evidence).includes(TEST_FIXTURE_API_KEY));
+  } finally {
+    stub.close();
+  }
 });
 
 // --- NAT-A-001 / NAT-A-003: quota classification + human-readable guidance ----

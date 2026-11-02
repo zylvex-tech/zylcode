@@ -363,6 +363,57 @@ More detail: [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md),
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md),
 [`docs/VERIFICATION.md`](docs/VERIFICATION.md).
 
+### Fresh Clone Setup
+
+The verified, re-runnable sequence below reproduces a green build from a pristine checkout. Run it exactly as written;
+any deviation that fails a step is a real environment drift to fix, not to paper over.
+
+```bash
+# 1. Fresh clone of the repository
+git clone https://github.com/zylvex-tech/zylcode.git
+cd zylcode
+
+# 2. Install system dependencies (Linux, the only OS where the Tauri shell
+#    needs native libraries at build time)
+sudo apt-get update
+sudo apt-get install -y \
+  libwebkit2gtk-4.1-dev \
+  build-essential \
+  curl \
+  wget \
+  file \
+  libssl-dev \
+  libgtk-3-dev \
+  libayatana-appindicator3-dev \
+  librsvg2-dev
+
+# 3. Install the pinned package manager and lock
+pnpm install --frozen-lockfile
+
+# 4. Rust — stable toolchain with clippy and rustfmt (the two tools CI checks)
+rustup install stable
+rustup component add clippy rustfmt
+
+# 5. Verify, in order — every step must exit 0
+cargo check --workspace --all-targets
+cargo clippy --workspace --all-targets -- -D warnings
+cargo fmt --all -- --check
+cargo test --workspace --all-targets
+
+# 6. Frontend — typecheck, lint, format check, then the test suite with coverage
+pnpm --filter zylcode-desktop typecheck
+pnpm --filter zylcode-desktop lint
+pnpm --filter zylcode-desktop format:check
+pnpm --filter zylcode-desktop test:coverage
+```
+
+**Expected final output** — the last command prints a `coverage` summary block whose `total` line reads
+`lines: 97.2%` (or higher) with `statements: 97.2%` and `functions: 96.54%`. If any step exits non-zero,
+fix the printed error rather than re-running the batch: the point of this script is to catch a broken
+fresh clone, not to paper over a regression.
+
+---
+
 ### Quality gates
 
 These are floors, not aspirations: CI fails below them, and each floor sits

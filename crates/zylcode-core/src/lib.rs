@@ -22,6 +22,12 @@ pub mod failure;
 pub mod first_mission;
 pub mod gitops;
 pub mod input_validation;
+
+#[doc(inline)]
+pub use input_validation::{
+    validate_endpoint, validate_marketplace_query, validate_tool_args, validate_transport,
+    MAX_TOOL_ID_CHARS, MAX_URL_CHARS,
+};
 pub mod intelligence;
 pub mod ledger;
 pub mod marketplace;

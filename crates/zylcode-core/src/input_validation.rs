@@ -19,9 +19,13 @@
 //!   string can report the same thing.
 //! * **Limits are named constants, not literals at the call sites.** Each one
 //!   is documented with why it is that number.
-//!
-//! Both transports share this module so the browser preview cannot send a
-//! request the desktop would have rejected — the rules are one list, not two.
+//! * **Two untrusted entry points share this boundary.** The Tauri IPC layer
+//!   and the `serve-intel` HTTP surface both POST untrusted JSON here, so a
+//!   malformed request must be rejected identically on both. `Url` parses an
+//!   endpoint field; `Value` owns the structured-argument tree check. Keeping
+//!   the imports narrow like this keeps the dependency surface small — the
+//!   module documents its contract, and the rest of the crate imports
+//!   `zylcode_core::input_validation` rather than reaching into the detail.
 
 use serde_json::Value;
 
@@ -29,9 +33,6 @@ use serde_json::Value;
 // Limits
 // ---------------------------------------------------------------------------
 
-/// 32 768 characters. An agent prompt is prose plus, at most, a pasted diff;
-/// this is roughly a 32 KiB document. Generous enough that no legitimate use
-/// hits it, small enough that a single request cannot pin the planner.
 pub const MAX_PROMPT_CHARS: usize = 32_768;
 
 /// 16 384 characters for a queued mission task — the same order of magnitude
@@ -42,6 +43,9 @@ pub const MAX_TASK_CHARS: usize = 16_384;
 /// 1 024 characters for a search query. A search box has no use for more,
 /// and query length multiplies directly into index work.
 pub const MAX_QUERY_CHARS: usize = 1_024;
+
+/// 256 characters for a URL endpoint.
+pub const MAX_URL_CHARS: usize = 512;
 
 /// 256 characters for a model identifier such as
 /// `anthropic/claude-3.5-sonnet`. Real identifiers are far shorter; the
@@ -54,9 +58,12 @@ pub const MAX_CORRELATION_ID_CHARS: usize = 128;
 /// 128 characters for an MCP tool id.
 pub const MAX_TOOL_ID_CHARS: usize = 128;
 
-/// 4 096 characters for a workspace-relative path. This comfortably exceeds
-/// the longest path on any supported filesystem while ruling out a path used
-/// as an unbounded allocation.
+/// Validate a workspace-relative path.
+///
+/// At 4 096 characters this sits above every supported filesystem's
+/// maximum path length while remaining far below any allocation bound the
+/// engine would otherwise reach. The comment below the constant keeps the
+/// rationale on the definition line it explains.
 pub const MAX_PATH_CHARS: usize = 4_096;
 
 /// 4 096 characters for an artifact label (the editor's display name).
@@ -328,6 +335,77 @@ pub fn validate_path(path: &str) -> Result<(), InputError> {
         });
     }
     Ok(())
+}
+
+/// Validate a URL endpoint (http/https, http://127.0.0.1:3000/
+/// style). Reject non-URL, malformed, or scheme/port-mismatched values.
+pub fn validate_endpoint(endpoint: &str) -> Result<(), InputError> {
+    if endpoint.trim().is_empty() {
+        return Err(InputError::Empty { field: "endpoint" });
+    }
+    if endpoint.len() > MAX_URL_CHARS {
+        return Err(InputError::TooLong {
+            field: "endpoint",
+            chars: endpoint.len(),
+            max: MAX_URL_CHARS,
+        });
+    }
+    let parsed = match url::Url::parse(endpoint) {
+        Ok(u) => u,
+        Err(_) => {
+            return Err(InputError::Invalid {
+                field: "endpoint",
+                detail: "must be a valid http:// or https:// URL".to_string(),
+            });
+        }
+    };
+    if !matches!(parsed.scheme(), "http" | "https") {
+        return Err(InputError::Invalid {
+            field: "endpoint",
+            detail: "only http:// and https:// schemes are allowed".to_string(),
+        });
+    }
+    // Loopback-only dev surface: block public-hostnames that can be used to
+    // reach services outside the local machine.
+    if parsed.host_str() == Some("127.0.0.1") || parsed.host_str() == Some("[::1]") {
+        return Ok(());
+    }
+    if let Some(host) = parsed.host_str() {
+        if host.contains('.') || host == "localhost" {
+            return Err(InputError::Invalid {
+                field: "endpoint",
+                detail: "loopback host only (127.0.0.1 or ::1)".to_string(),
+            });
+        }
+    }
+    Ok(())
+}
+
+/// Validate a client-sent transport name for MCP bridges: stdio, sse,
+/// websocket.
+pub fn validate_transport(transport: Option<&str>) -> Result<(), InputError> {
+    match transport {
+        None => Ok(()),
+        Some(t) => {
+            ensure_not_blank("transport", t)?;
+            ensure_max_chars("transport", t, MAX_TOOL_ID_CHARS)?;
+            ensure_charset("transport", t, |c| {
+                c.is_ascii_alphanumeric() || matches!(c, '-' | '_')
+            })?;
+            match t {
+                "stdio" | "sse" | "websocket" => Ok(()),
+                other => Err(InputError::Invalid {
+                    field: "transport",
+                    detail: format!("expected 'stdio', 'sse' or 'websocket', got {other:?}"),
+                }),
+            }
+        }
+    }
+}
+
+/// Validate a marketplace search query.
+pub fn validate_marketplace_query(query: &str) -> Result<(), InputError> {
+    validate_query(query)
 }
 
 /// Validate an MCP tool id.

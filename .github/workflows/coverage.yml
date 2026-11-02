@@ -52,7 +52,7 @@ jobs:
         with:
           # 22, matching ci.yml and the NodeSource line in the Dockerfile.
           node-version: 22
-          cache: 'pnpm'
+          cache: "pnpm"
       - name: Install dependencies (pnpm)
         run: pnpm install --frozen-lockfile
       - name: Frontend coverage gate (vitest thresholds)

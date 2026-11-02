@@ -25,7 +25,8 @@
     "tauri:build": "pnpm --filter zylcode-desktop tauri build",
     "lint": "pnpm -r lint",
     "format": "pnpm -r format",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "format:check": "prettier --check ."
   },
   "devDependencies": {
     "typescript": "^5.5.0"

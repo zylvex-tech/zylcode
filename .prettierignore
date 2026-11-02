@@ -1,0 +1,21 @@
+# Build and generated output — never format these
+dist/
+build/
+coverage/
+node_modules/
+*.lock
+*.tsbuildinfo
+
+# Rust targets and Tauri gen
+src-tauri/target/
+src-tauri/gen/
+target/
+Cargo.lock
+
+# Platform/OS artefacts
+.DS_Store
+*.swp
+.DS_Store?
+
+# Freebuff agent-marked project files
+.freebuff/
