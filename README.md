@@ -115,7 +115,7 @@ zylcode/
 │   ├── zylcode-desktop/        Tauri v2 + React desktop application
 │   │   ├── src/                Panels: agent workspace, tool runner, repo
 │   │   │                       navigation & intel, terminal, git, settings
-│   │   └── src-tauri/          36 backend commands (process_intent,
+│   │   └── src-tauri/          37 backend commands (process_intent,
 │   │                           execute_tool, repo_context, nav_query,
 │   │                           git_status, file_content, …)
 │   └── natlas-sdk/             TypeScript SDK + zero-build playground for the
@@ -137,7 +137,7 @@ zylcode/
 How the pieces relate:
 
 * **User-facing application** — the desktop app drives the same core engine
-  the CLI does, over two transports: Tauri IPC (36 commands; the UI currently
+  the CLI does, over two transports: Tauri IPC (37 commands; the UI currently
   invokes the agent journey, tool execution, repository context/navigation,
   git and file surfaces among them) and the loopback-only `zylcode
   serve-intel` HTTP service used by the browser preview.
@@ -192,20 +192,29 @@ states what is *verified* versus what remains a *design intention*.
 
 ## Current Implementation Status
 
-Everything in this section was re-verified on this branch head (`6469bae`)
-rather than copied from older documents. See [`docs/PROJECT_MASTER_STATUS.md`](docs/PROJECT_MASTER_STATUS.md)
+Everything in this section was re-verified at `29e492b` (2026-11-04) or
+carries the date it was last measured; nothing here is copied from older
+documents. See [`docs/PROJECT_MASTER_STATUS.md`](docs/PROJECT_MASTER_STATUS.md)
 for the complete phase-by-phase project status.
 
 ### Evidence
 
 | Check | When | Result |
 |---|---|---|
-| GitHub Actions CI on this commit — `cargo check --workspace --all-targets`, `cargo clippy … -D warnings`, `cargo test --workspace --all-targets`, retracted-claim guard, desktop typecheck + build | 2026-10-23 (run on PR #28 merge) | ✅ green (4 checks passed) |
-| `cargo test -p zylcode-core` (lib + integration targets) | 2026-10-23, local run on this branch head | ✅ **503 passed, 0 failed** |
+| `cargo test -p zylcode-core --lib` | 2026-11-04, local run at `29e492b` | ✅ **596 passed, 0 failed** — includes 62 input-validation and 38 terminal-session tests |
+| `cargo clippy -p zylcode-core -p zylcode-cli --all-targets -- -D warnings` | 2026-11-04, local | ✅ exit 0 |
+| `cargo fmt -p zylcode-core -p zylcode-cli -- --check` | 2026-11-04, local | ✅ exit 0 |
+| `cargo check -p zylcode-core -p zylcode-cli -p zylcode-desktop` | 2026-11-04, local | ✅ exit 0 (all 37 Tauri commands compile) |
+| `npx tsc --noEmit` (in `apps/zylcode-desktop`) | 2026-11-04, local | ✅ exit 0 |
+| GitHub Actions CI — `cargo check --workspace --all-targets`, `cargo clippy … -D warnings`, `cargo test --workspace --all-targets`, retracted-claim guard, desktop typecheck + build | 2026-10-23 (run on PR #28 merge) | ✅ green (4 checks passed) |
 | `cargo test -p zylcode-mcp` (lib) | 2026-10-23, local run | ✅ **134 passed, 0 failed** |
 | `pnpm install --frozen-lockfile` | 2026-10-23, local | ✅ exit 0 |
 | `pnpm --filter zylcode-desktop build` (tsc + vite) | 2026-10-23, local | ✅ exit 0 |
 | `cargo audit` | 2026-10-23, local | ✅ **0 vulnerabilities**, 2 accepted warnings |
+
+Rows dated 2026-10-23 name the run they came from rather than claiming to be
+fresh on this head: the full-workspace and desktop-build runs were not repeated
+for the 2026-11-04 changes, which touched the core, CLI and IPC layers only.
 
 The test suites include the agent-loop and factory end-to-end journeys,
 property tests, crash-recovery tests, N-ATLAS bridge suites, and the
@@ -224,6 +233,14 @@ property tests, crash-recovery tests, N-ATLAS bridge suites, and the
 * Provider routing with full-chain failover before any offline degrade.
 * Evidence ledger, claims/evidence graph, missions, terminal sessions,
   project store, crash recovery — each with tests in the suites above.
+* Input validation at the command boundary: every command that spawns a
+  shell, derives a file name from caller input, opens a transport, or scans
+  the registry validates its arguments in `zylcode_core::input_validation`
+  before doing any work — 4 096-character command lines that may not carry
+  NUL or escape controls, a `cwd` confined to the workspace, 1 s–24 h
+  timeouts, and portable version labels. *Verified:* the 62 input-validation
+  and 38 terminal-session tests above, including confinement regressions for
+  Windows verbatim (`\\?\`) and 8.3-short-name paths.
 * N-ATLAS bridge: genuine `NCAIR1/N-ATLaS` transport, four languages, precise
   failure states (see *N-ATLAS Integration*).
 
@@ -428,7 +445,7 @@ run red instead of being absorbed.
 | Rust coverage — lines | 78% | 80.53% (measured 2026-10-22) |
 | Repository-intelligence benchmark | 0.60 precision floor | **0.61** (recall 0.95, gate exit 0) |
 | Lint / format / lints | 0 errors | `eslint` 0 errors · `cargo fmt --check` clean · `clippy --workspace --all-targets -- -D warnings` clean |
-| Workspace tests | 0 failures | 564 core lib tests + full workspace green |
+| Workspace tests | 0 failures | **596 core lib tests**, 0 failures (2026-11-04); full-workspace suite last green 2026-10-23 |
 
 Defined in [`apps/zylcode-desktop/vitest.config.ts`](apps/zylcode-desktop/vitest.config.ts)
 and enforced by [`.github/workflows/coverage.yml`](.github/workflows/coverage.yml)
@@ -441,8 +458,8 @@ benchmark floor lives in
 ## Project Status and Roadmap
 
 * **Status now:** a working desktop shell and CLI over a tested engineering
-  core — CI green on this branch; 564 core lib tests and 453 frontend tests
-  passing locally on the current head, frontend coverage gated at 70%
+  core — CI green on this branch; 596 core lib tests passing locally on the
+  current head, 453 frontend tests in the gated suite, frontend coverage gated at 70%
   (measured 70.16%), and the repository-intelligence benchmark at 0.61
   against its 0.60 floor; independent acceptance of earlier intelligence
   claims still open (12 registry entries disputed).
