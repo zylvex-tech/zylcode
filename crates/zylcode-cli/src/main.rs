@@ -1283,14 +1283,22 @@ async fn handle_serve_intel(workspace: &str, args: ServeIntelArgs) -> Result<()>
 
     async fn terminal_exec(
         State(hub): State<Arc<zylcode_core::terminal::TerminalHub>>,
+        State(root): State<Arc<std::path::PathBuf>>,
         axum::Json(req): axum::Json<zylcode_core::terminal::TerminalRequest>,
-    ) -> Json<serde_json::Value> {
-        match hub.exec(&req).await {
-            Ok(out) => Json(serde_json::to_value(&out).unwrap_or_else(
-                |_| serde_json::json!({ "error": "terminal output serialization failed" }),
-            )),
-            Err(e) => Json(serde_json::json!({ "error": format!("terminal exec failed: {e:#}") })),
+    ) -> (axum::http::StatusCode, Json<serde_json::Value>) {
+        // Same gate as the Tauri command: a command carrying a control character,
+        // or a cwd that resolves outside the workspace, is a 400 here and never
+        // becomes a child process.
+        if let Err(e) = iv::validate_terminal_request_in(root.as_path(), &req) {
+            return bad_request(e);
         }
+        let value = match hub.exec(&req).await {
+            Ok(out) => serde_json::to_value(&out).unwrap_or_else(
+                |_| serde_json::json!({ "error": "terminal output serialization failed" }),
+            ),
+            Err(e) => serde_json::json!({ "error": format!("terminal exec failed: {e:#}") }),
+        };
+        (axum::http::StatusCode::OK, Json(value))
     }
 
     async fn terminal_reset(

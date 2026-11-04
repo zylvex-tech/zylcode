@@ -642,6 +642,12 @@ impl TerminalHub {
         }
     }
 
+    /// The workspace directory that caller-supplied working directories are
+    /// confined to.
+    pub fn root(&self) -> &Path {
+        &self.root
+    }
+
     /// The default mode for requests that do not name one.
     fn default_mode(&self) -> Result<ShellMode> {
         match &self.env_mode {
@@ -674,10 +680,21 @@ impl TerminalHub {
                 id: id.clone(),
                 cwd: None,
             });
+        // A relative cwd is the workspace-relative form the validator judges
+        // (`validate_terminal_cwd` joins it to the same root), so resolve it
+        // here rather than against the service process's own cwd — otherwise a
+        // checked-and-accepted `crates/x` would fail as "does not exist".
         let base = req
             .cwd
             .as_ref()
-            .map(PathBuf::from)
+            .map(|cwd| {
+                let asked = PathBuf::from(cwd);
+                if asked.is_absolute() {
+                    asked
+                } else {
+                    self.root.join(asked)
+                }
+            })
             .or_else(|| session.cwd.clone())
             .unwrap_or_else(|| self.root.clone());
         (session.clone(), base)
@@ -711,6 +728,15 @@ impl TerminalHub {
             anyhow::bail!("terminal command must not contain NUL bytes");
         }
         let shell = self.shell_for(req)?;
+        // Defence in depth: the IPC and HTTP layers run the same rule, but the
+        // hub is where a request becomes a child process, so it re-checks the
+        // caller-supplied directory against its own workspace root. The
+        // session's remembered cwd is deliberately not constrained here — that
+        // is where the operator's own `cd` left it.
+        if let Some(cwd) = req.cwd.as_deref() {
+            crate::input_validation::validate_terminal_cwd(&self.root, cwd)
+                .map_err(|e| anyhow::anyhow!("invalid terminal cwd: {e}"))?;
+        }
         if !base.is_dir() {
             anyhow::bail!(
                 "working directory '{}' does not exist — pick an existing workspace \
@@ -846,6 +872,52 @@ mod tests {
             (Ok(a), Ok(b)) => a == b,
             _ => reported == expected.to_path_buf(),
         }
+    }
+
+    /// Defence in depth: the hub re-checks the request cwd itself, so a surface
+    /// that forgets `validate_terminal_request_in` still cannot start a command
+    /// outside the workspace.
+    #[tokio::test]
+    async fn a_cwd_outside_the_workspace_is_rejected() {
+        let (_dir, root) = temp_repo();
+        let hub = TerminalHub::new(root.clone());
+        let outside = root.parent().expect("temp repo has a parent").to_path_buf();
+        let err = hub
+            .exec(&TerminalRequest {
+                session_id: None,
+                cwd: Some(outside.to_string_lossy().to_string()),
+                shell: None,
+                command: "echo should-not-run".into(),
+                timeout_secs: Some(5),
+            })
+            .await
+            .unwrap_err();
+        assert!(err.to_string().contains("invalid terminal cwd"), "{err}");
+    }
+
+    /// A workspace-relative cwd is resolved against the hub root, so the value
+    /// the validator accepted is the directory the command actually runs in.
+    #[tokio::test]
+    async fn a_relative_cwd_runs_inside_the_workspace() {
+        let (_dir, root) = temp_repo();
+        let hub = TerminalHub::new(root.clone());
+        let out = hub
+            .exec(&TerminalRequest {
+                session_id: None,
+                cwd: Some("sub".into()),
+                shell: None,
+                command: "echo inside".into(),
+                timeout_secs: Some(10),
+            })
+            .await
+            .unwrap();
+        assert!(out.stdout_tail.contains("inside"), "{out:?}");
+        assert!(
+            same_path(&out.cwd, &root.join("sub")),
+            "expected cwd {}, got {}",
+            root.join("sub").display(),
+            out.cwd
+        );
     }
 
     #[tokio::test]

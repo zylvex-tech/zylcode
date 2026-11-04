@@ -26,8 +26,29 @@
 //!   the imports narrow like this keeps the dependency surface small — the
 //!   module documents its contract, and the rest of the crate imports
 //!   `zylcode_core::input_validation` rather than reaching into the detail.
+//!
+//! ## Commands that reach the operating system
+//!
+//! Most commands take text and hand it to the engine. The four below go further
+//! — they spawn a child process, write a file whose name they derive from
+//! input, open a socket, or scan the extension registry — so each one is gated
+//! here *before* the work starts, with a bound derived from what that command is
+//! actually for rather than from one shared default.
+//!
+//! | Command | Reaches | Validators | Bounds |
+//! | --- | --- | --- | --- |
+//! | `terminal_exec` | spawns a shell child process | [`validate_terminal_request_in`] (command, cwd, shell, timeout, session id) | 4 096-char command with no NUL/escape controls; `cwd` confined to the workspace; 1 s – 24 h timeout; 128-char session id |
+//! | `package_start` | names the release artifact it writes | [`validate_release_version`] | 128 chars; no path separator or `..`; portable version charset |
+//! | `register_mcp_bridge` | opens a transport to an endpoint | [`validate_tool_id`], [`validate_endpoint`], [`validate_transport`] | 128-char id, 512-char URL, `stdio`/`sse`/`websocket` |
+//! | `marketplace_search` | scans the extension registry | [`validate_marketplace_query`] | 1 024 chars |
+//!
+//! Confinement for `terminal_exec` lives in [`validate_terminal_cwd`]: the
+//! command itself is a shell command line by contract, so the property with
+//! security weight is the directory the child starts in.
 
+use crate::terminal::{ShellMode, TerminalRequest, DEFAULT_TIMEOUT_SECS};
 use serde_json::Value;
+use std::path::{Component, Path, PathBuf};
 
 // ---------------------------------------------------------------------------
 // Limits
@@ -44,7 +65,7 @@ pub const MAX_TASK_CHARS: usize = 16_384;
 /// and query length multiplies directly into index work.
 pub const MAX_QUERY_CHARS: usize = 1_024;
 
-/// 256 characters for a URL endpoint.
+/// 512 characters for a URL endpoint.
 pub const MAX_URL_CHARS: usize = 512;
 
 /// 256 characters for a model identifier such as
@@ -76,6 +97,25 @@ pub const MAX_ARTIFACT_BYTES: usize = 4 * 1024 * 1024;
 
 /// 64 KiB for a structured tool-argument object.
 pub const MAX_ARGS_BYTES: usize = 64 * 1024;
+
+/// 4 096 characters for a terminal command. This is far above any shell
+/// command the engine will honestly run and below anything that can turn the
+/// terminal into a storage path for arbitrary content. The limit is on the
+/// length of the command string, not on what the child process reads from
+/// its own stdin.
+pub const MAX_TERMINAL_COMMAND_CHARS: usize = 4_096;
+
+/// 128 characters for a terminal session id. The id is a client-chosen nonce
+/// used to group output for a single shell session; it is not trusted as an
+/// identifier for any server-side resource.
+pub const MAX_TERMINAL_SESSION_ID_CHARS: usize = 128;
+
+/// 86 400 seconds (24 hours) for a terminal request timeout. This is the
+/// maximum wall-clock time a single terminal_exec call may block before the
+/// engine gives up the child process. Ordinary commands return far faster; the
+/// cap exists so a hung or accidentally interactive shell has a ceiling and
+/// does not hold a worker indefinitely.
+pub const MAX_TERMINAL_TIMEOUT_SECS: usize = 86_400;
 
 // ---------------------------------------------------------------------------
 // Typed error
@@ -434,6 +474,315 @@ pub fn validate_mode(mode: Option<&str>) -> Result<(), InputError> {
 }
 
 // ---------------------------------------------------------------------------
+// Terminal requests and release versions
+// ---------------------------------------------------------------------------
+
+/// Control characters a shell command line legitimately carries: horizontal
+/// tab, line feed, and carriage return.
+///
+/// They are line structure, not payload. [`validate_terminal_request_command`]
+/// accepts them because the engine hands the whole string to a real shell
+/// (`sh -c`, `cmd.exe /C`, PowerShell `-EncodedCommand`), where a newline
+/// separates statements exactly like `;` does. Every other control character —
+/// NUL, escape, BEL, DEL and the rest — is rejected there.
+const COMMAND_LINE_CONTROLS: [char; 3] = ['\t', '\n', '\r'];
+
+/// One component of a path, folded for comparison.
+///
+/// Windows paths are case-insensitive, so the drive letter and directory names
+/// are compared case-folded there. ASCII folding covers the realistic
+/// differences (a caller typing `c:\projects` for `C:\Projects`) and can
+/// never make two genuinely different components compare equal.
+fn path_component_key(component: Component<'_>) -> String {
+    let part = component.as_os_str().to_string_lossy().into_owned();
+    if cfg!(windows) {
+        part.to_ascii_lowercase()
+    } else {
+        part
+    }
+}
+
+/// Resolve `.` and `..` in `path` without touching the filesystem.
+///
+/// A working directory that does not exist yet must still be judged on where it
+/// points, so the decision cannot depend on `is_dir`.
+fn normalize_lexically(path: &Path) -> PathBuf {
+    let mut out = PathBuf::new();
+    for component in path.components() {
+        match component {
+            Component::CurDir => {}
+            Component::ParentDir => {
+                out.pop();
+            }
+            Component::Prefix(prefix) => out.push(prefix.as_os_str()),
+            Component::RootDir => out.push(std::path::MAIN_SEPARATOR_STR),
+            Component::Normal(part) => out.push(part),
+        }
+    }
+    out
+}
+
+/// Resolve a path to the absolute location it names, without requiring the
+/// whole thing to exist.
+///
+/// The filesystem's own answer is preferred: canonicalize resolves symlinks and
+/// junctions, so a link planted inside the workspace cannot be used to step
+/// outside it, and it returns one canonical spelling of each existing directory.
+///
+/// A directory that does not exist yet is resolved as far as it does. Falling
+/// back to a purely lexical answer for the whole path would compare two
+/// different spellings of the same place: on Windows the workspace root
+/// canonicalizes to `\\?\C:\…` while the not-yet-created child is spelled
+/// `C:\…`, and an 8.3 short name such as `MBARIE~1` is canonicalized to its long
+/// form. Either mismatch made a legitimate in-workspace directory look like
+/// traversal. Canonicalizing the deepest existing ancestor and re-appending the
+/// missing tail keeps the comparison honest in both directions: an inside path
+/// compares equal, and a sibling of the workspace still does not.
+fn resolve_for_confinement(path: &Path) -> PathBuf {
+    let normalized = normalize_lexically(path);
+    if let Ok(canonical) = std::fs::canonicalize(&normalized) {
+        return canonical;
+    }
+    let mut missing: Vec<std::ffi::OsString> = Vec::new();
+    let mut cursor = normalized.as_path();
+    while let Some(name) = cursor.file_name() {
+        missing.push(name.to_os_string());
+        cursor = match cursor.parent() {
+            Some(parent) => parent,
+            None => break,
+        };
+        if let Ok(base) = std::fs::canonicalize(cursor) {
+            let mut out = base;
+            for part in missing.iter().rev() {
+                out.push(part);
+            }
+            return out;
+        }
+    }
+    normalized
+}
+
+/// Resolve a request `cwd` to the absolute directory it names.
+///
+/// A relative `cwd` is workspace-relative, which is what the contract says: the
+/// desktop terminal shows the workspace root as its "here".
+fn resolve_terminal_cwd(root: &Path, cwd: &str) -> PathBuf {
+    let raw = if Path::new(cwd).is_absolute() {
+        PathBuf::from(cwd)
+    } else {
+        root.join(cwd)
+    };
+    resolve_for_confinement(&raw)
+}
+
+/// True when `candidate` is `root` or lives underneath it, compared by whole
+/// path components — so `…/zylcode-evil` is not inside `…/zylcode`.
+fn path_is_within(root: &Path, candidate: &Path) -> bool {
+    let root_parts: Vec<String> = root.components().map(path_component_key).collect();
+    let candidate_parts: Vec<String> = candidate.components().map(path_component_key).collect();
+    candidate_parts.len() >= root_parts.len()
+        && candidate_parts[..root_parts.len()] == root_parts[..]
+}
+
+/// Characters allowed in a terminal session id: a portable identifier with no
+/// whitespace, quotes, control characters, or path separators.
+fn is_session_id_char(c: char) -> bool {
+    c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.' | ':')
+}
+
+/// Characters allowed in a release version: ASCII alphanumerics plus the four
+/// separators semver and its build metadata actually use.
+fn is_release_version_char(c: char) -> bool {
+    c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_' | '+' | '~')
+}
+
+/// Reject path separators and relative-traversal components in a small
+/// machine-readable token such as a release version.
+fn ensure_no_path_traversal(field: &'static str, value: &str) -> Result<(), InputError> {
+    if value.contains('/') || value.contains('\\') {
+        return Err(InputError::Invalid {
+            field,
+            detail: "path separators are not allowed".to_string(),
+        });
+    }
+    if value.contains("..") {
+        return Err(InputError::Invalid {
+            field,
+            detail: "relative traversal is not allowed".to_string(),
+        });
+    }
+    Ok(())
+}
+
+/// Validate a `cwd` string on its own: a usable path, no control characters,
+/// inside the path length cap.
+fn validate_cwd_field(cwd: &str) -> Result<(), InputError> {
+    ensure_not_blank("cwd", cwd)?;
+    ensure_max_chars("cwd", cwd, MAX_PATH_CHARS)?;
+    if let Some(c) = cwd.chars().find(|c| c.is_control()) {
+        return Err(InputError::Invalid {
+            field: "cwd",
+            detail: format!(
+                "control character U+{:04X} is not allowed in a path",
+                c as u32
+            ),
+        });
+    }
+    Ok(())
+}
+
+/// Validate a terminal working directory against the workspace it must stay in.
+///
+/// This is the real security boundary for `terminal_exec`: the command itself
+/// is a shell command line by design, so the property worth enforcing is
+/// *where* the process runs. Relative paths inside the workspace — `src`,
+/// `crates/x`, `src/../src/lib` — are legitimate and pass, as does an absolute
+/// path that happens to point inside the workspace. Anything resolving above
+/// `root` is refused, including an absolute path elsewhere on the machine and a
+/// sibling directory whose name merely starts with the workspace's.
+pub fn validate_terminal_cwd(root: &Path, cwd: &str) -> Result<(), InputError> {
+    validate_cwd_field(cwd)?;
+    let root = resolve_for_confinement(root);
+    let candidate = resolve_terminal_cwd(&root, cwd);
+    if !path_is_within(&root, &candidate) {
+        return Err(InputError::Invalid {
+            field: "cwd",
+            detail: "must stay inside the permitted workspace directory".to_string(),
+        });
+    }
+    Ok(())
+}
+
+/// Validate the fields of a [`TerminalRequest`] that do not depend on a
+/// workspace root, and validate `cwd` as a path string.
+///
+/// Callers that know the workspace should use [`validate_terminal_request_in`]
+/// instead: this one cannot tell whether `cwd` points at the workspace or at
+/// `C:\Windows`.
+pub fn validate_terminal_request(req: &TerminalRequest) -> Result<(), InputError> {
+    validate_terminal_request_command(&req.command)?;
+
+    if let Some(cwd) = req.cwd.as_deref() {
+        validate_cwd_field(cwd)?;
+    }
+
+    if let Some(shell) = req.shell.as_deref() {
+        ShellMode::parse(shell).map_err(|e| InputError::Invalid {
+            field: "shell",
+            detail: e.to_string(),
+        })?;
+    }
+
+    validate_terminal_request_timeout(req.timeout_secs.unwrap_or(DEFAULT_TIMEOUT_SECS))?;
+
+    if let Some(session_id) = req.session_id.as_deref() {
+        validate_terminal_request_session_id(session_id)?;
+    }
+    Ok(())
+}
+
+/// Validate a [`TerminalRequest`] in full against the workspace it may run in.
+///
+/// Both untrusted surfaces call this one. The command is a shell command line,
+/// so the boundary that carries security weight is the directory the child
+/// process is started in; [`validate_terminal_cwd`] is what keeps it inside
+/// `root`.
+pub fn validate_terminal_request_in(root: &Path, req: &TerminalRequest) -> Result<(), InputError> {
+    validate_terminal_request(req)?;
+    if let Some(cwd) = req.cwd.as_deref() {
+        validate_terminal_cwd(root, cwd)?;
+    }
+    Ok(())
+}
+
+/// Validate the `command` field of a [`TerminalRequest`].
+///
+/// The command is a **shell command line**, not an argument vector: the engine
+/// hands it to `sh -c`, `cmd.exe /C` or PowerShell `-EncodedCommand` as
+/// written. Pipes, redirection, quoting, `$VAR` / `%VAR%`, globbing, `&&` and
+/// `;` are therefore part of the contract and are accepted. A charset filter
+/// over them would break every real workflow while stopping nothing, because a
+/// shell command that survives a filter is still a shell command.
+///
+/// What is enforced here is integrity, not sanitisation: at most
+/// [`MAX_TERMINAL_COMMAND_CHARS`] characters, not blank, and no control
+/// character other than the line structure listed in
+/// `COMMAND_LINE_CONTROLS` (tab, line feed, carriage return).
+/// NUL cannot cross into a child process, and escape and the remaining C0/DEL
+/// codes have no legitimate place in a command while being exactly what
+/// terminal-escape injection is built from.
+///
+/// Confinement lives in [`validate_terminal_cwd`], and the child inherits only
+/// the operator's own environment and privileges.
+pub fn validate_terminal_request_command(command: &str) -> Result<(), InputError> {
+    ensure_not_blank("command", command)?;
+    ensure_max_chars("command", command, MAX_TERMINAL_COMMAND_CHARS)?;
+    if let Some(c) = command
+        .chars()
+        .find(|c| c.is_control() && !COMMAND_LINE_CONTROLS.contains(c))
+    {
+        return Err(InputError::Invalid {
+            field: "command",
+            detail: format!(
+                "control character U+{:04X} is not allowed in a command (NUL, escape and the other C0/DEL codes are rejected)",
+                c as u32
+            ),
+        });
+    }
+    Ok(())
+}
+
+/// Validate the `timeout_secs` field of a [`TerminalRequest`].
+///
+/// The timeout is bounded into a hard range so a caller cannot hand the engine
+/// a zero-second wait or a multi-day one. The ceiling is the public constant, so
+/// a future review of the worst acceptable case changes one number.
+pub fn validate_terminal_request_timeout(timeout_secs: u64) -> Result<(), InputError> {
+    if timeout_secs == 0 {
+        return Err(InputError::Invalid {
+            field: "timeout_secs",
+            detail: "timeout must be at least 1 second".to_string(),
+        });
+    }
+    if timeout_secs > MAX_TERMINAL_TIMEOUT_SECS as u64 {
+        return Err(InputError::TooLong {
+            field: "timeout_secs",
+            chars: timeout_secs as usize,
+            max: MAX_TERMINAL_TIMEOUT_SECS,
+        });
+    }
+    Ok(())
+}
+
+/// Validate the optional `session_id` field of a [`TerminalRequest`].
+///
+/// The id is not a trusted key for anything on the server, but letting it carry
+/// control characters or separators would be letting an untrusted value transit
+/// the boundary unchecked.
+pub fn validate_terminal_request_session_id(session_id: &str) -> Result<(), InputError> {
+    ensure_max_chars("session_id", session_id, MAX_TERMINAL_SESSION_ID_CHARS)?;
+    ensure_single_line("session_id", session_id)?;
+    ensure_charset("session_id", session_id, is_session_id_char)?;
+    Ok(())
+}
+
+/// Validate a release version string for the `package_start` command.
+///
+/// A release version is a small machine-readable label, not free text: it must
+/// be non-blank, free of path separators and relative traversal, and limited to
+/// the portable version charset (ASCII alphanumerics plus `.` `-` `_` `+` `~`).
+/// The length bound is the small-token cap, since a version is a label and never
+/// a payload.
+pub fn validate_release_version(version: &str) -> Result<(), InputError> {
+    ensure_not_blank("version", version)?;
+    ensure_max_chars("version", version, MAX_TERMINAL_SESSION_ID_CHARS)?;
+    ensure_no_path_traversal("version", version)?;
+    ensure_single_line("version", version)?;
+    ensure_charset("version", version, is_release_version_char)?;
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
 // Transport-wide caps
 // ---------------------------------------------------------------------------
 
@@ -567,6 +916,383 @@ mod tests {
         let err = required_value(&json!({}), "params").unwrap_err();
         assert_eq!(err.code(), "missing_field");
         assert_eq!(err.field(), "params");
+    }
+
+    // ----
+    // Terminal requests and release versions
+    // ----
+
+    /// A workspace root that deliberately does not exist on disk: traversal must
+    /// be judged on where a path points, never on whether `is_dir` happens to
+    /// answer yes.
+    fn workspace_root() -> PathBuf {
+        std::env::temp_dir().join("zylcode-r05-workspace")
+    }
+
+    fn terminal_request(command: &str, cwd: Option<&str>) -> TerminalRequest {
+        TerminalRequest {
+            command: command.to_string(),
+            cwd: cwd.map(str::to_string),
+            shell: Some("sh".to_string()),
+            timeout_secs: Some(60),
+            session_id: None,
+        }
+    }
+
+    /// Regression: the terminal is a real command runner. A validator that
+    /// rejects a path separator breaks `cat src/lib.rs` and every relative
+    /// command a user types, so these must all be accepted.
+    #[test]
+    fn legitimate_commands_with_relative_paths_are_accepted() {
+        for command in [
+            "cat src/lib.rs",
+            "ls ../src",
+            r"Get-Content .\src\lib.rs",
+            "cargo test -p zylcode-core",
+            "git status",
+            "npm run build",
+        ] {
+            assert!(
+                validate_terminal_request_command(command).is_ok(),
+                "{command} must be accepted"
+            );
+        }
+    }
+
+    /// Regression: commands run through a shell, so its syntax is the contract.
+    #[test]
+    fn shell_syntax_is_part_of_the_command_contract() {
+        for command in [
+            "ls -la | head -20",
+            "cargo test 2>&1 | tail -5",
+            "echo hi > out.txt",
+            "echo a && echo b",
+            "FOO=1 cargo run",
+            "echo $HOME",
+            "echo $(pwd)",
+            "echo %PATH%",
+            r"Select-String -Path .\src\*.rs -Pattern fn",
+            "echo one\necho two",
+        ] {
+            assert!(
+                validate_terminal_request_command(command).is_ok(),
+                "{command} must be accepted"
+            );
+        }
+    }
+
+    #[test]
+    fn a_normal_terminal_request_is_valid() {
+        assert!(validate_terminal_request_in(
+            &workspace_root(),
+            &terminal_request("cargo test --quiet", Some("crates/zylcode-core")),
+        )
+        .is_ok());
+    }
+
+    #[test]
+    fn relative_cwds_inside_the_workspace_are_accepted() {
+        let root = workspace_root();
+        for cwd in [
+            ".",
+            "./src",
+            "crates/zylcode-core",
+            "src/../src/lib",
+            "target/debug",
+        ] {
+            assert!(
+                validate_terminal_request_in(&root, &terminal_request("pwd", Some(cwd))).is_ok(),
+                "{cwd} must be accepted"
+            );
+        }
+    }
+
+    #[test]
+    fn an_absolute_cwd_inside_the_workspace_is_accepted() {
+        let root = workspace_root();
+        let inside = root.join("crates").join("zylcode-core");
+        assert!(validate_terminal_cwd(&root, &inside.to_string_lossy()).is_ok());
+    }
+
+    #[test]
+    fn a_request_without_a_cwd_is_valid() {
+        assert!(validate_terminal_request(&terminal_request("pwd", None)).is_ok());
+    }
+
+    /// A real directory on disk, removed on drop.
+    struct TempDir(PathBuf);
+
+    impl TempDir {
+        fn new(tag: &str) -> Self {
+            let dir = std::env::temp_dir().join(format!(
+                "zylcode-r05-{tag}-{}-{}",
+                std::process::id(),
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_nanos()
+            ));
+            std::fs::create_dir_all(&dir).unwrap();
+            Self(dir)
+        }
+    }
+
+    impl Drop for TempDir {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
+    /// Regression: the workspace root is a real directory, so it canonicalizes
+    /// (on Windows to a `\\?\C:\...` verbatim path), while a subdirectory of it
+    /// that does not exist yet can only be judged lexically (`C:\...`). Both
+    /// name the same place, so the request must be accepted and the hub left to
+    /// report "does not exist" — the confinement check must not blame traversal
+    /// for a path that is inside the workspace.
+    #[test]
+    fn a_cwd_inside_a_real_workspace_is_accepted_when_it_does_not_exist_yet() {
+        let root = TempDir::new("existing-root");
+        assert!(
+            validate_terminal_cwd(&root.0, "not-yet-created").is_ok(),
+            "a relative missing child of a real workspace must be accepted"
+        );
+        let absolute = root.0.join("not-yet-created");
+        assert!(
+            validate_terminal_cwd(&root.0, &absolute.to_string_lossy()).is_ok(),
+            "an absolute missing child of a real workspace must be accepted"
+        );
+    }
+
+    /// The counterpart: a real workspace root must not widen the boundary. A
+    /// sibling of it is still outside.
+    #[test]
+    fn a_sibling_of_a_real_workspace_is_still_rejected() {
+        let root = TempDir::new("real-sibling");
+        let sibling = root.0.with_file_name(format!(
+            "{}-evil",
+            root.0
+                .file_name()
+                .expect("the temp child has a file name")
+                .to_string_lossy()
+        ));
+        assert_eq!(
+            validate_terminal_cwd(&root.0, &sibling.to_string_lossy())
+                .unwrap_err()
+                .field(),
+            "cwd"
+        );
+    }
+
+    #[test]
+    fn a_cwd_that_climbs_out_of_the_workspace_is_rejected() {
+        let root = workspace_root();
+        for cwd in ["..", "../..", "../../elsewhere", "src/../../.."] {
+            let err = validate_terminal_request_in(&root, &terminal_request("pwd", Some(cwd)))
+                .unwrap_err();
+            assert_eq!(err.field(), "cwd", "{cwd}");
+            assert_eq!(err.code(), "invalid_value", "{cwd}");
+        }
+    }
+
+    #[test]
+    fn an_absolute_cwd_outside_the_workspace_is_rejected() {
+        let root = workspace_root();
+        let outside = root.parent().expect("the temp directory has a parent");
+        let err = validate_terminal_cwd(&root, &outside.to_string_lossy()).unwrap_err();
+        assert_eq!(err.field(), "cwd");
+    }
+
+    #[test]
+    fn a_sibling_directory_sharing_the_workspace_name_prefix_is_rejected() {
+        let root = workspace_root();
+        let sibling = root
+            .parent()
+            .expect("the temp directory has a parent")
+            .join("zylcode-r05-workspace-evil");
+        let err = validate_terminal_cwd(&root, &sibling.to_string_lossy()).unwrap_err();
+        assert_eq!(err.code(), "invalid_value");
+    }
+
+    #[test]
+    fn a_cwd_with_a_control_character_is_rejected() {
+        let root = workspace_root();
+        let err = validate_terminal_request_in(&root, &terminal_request("pwd", Some("src\nlib")))
+            .unwrap_err();
+        assert_eq!(err.field(), "cwd");
+        assert_eq!(err.code(), "invalid_value");
+    }
+
+    #[test]
+    fn a_terminal_command_may_not_be_blank() {
+        assert_eq!(
+            validate_terminal_request_command("").unwrap_err().code(),
+            "empty_field"
+        );
+        assert_eq!(
+            validate_terminal_request_command("   ").unwrap_err().code(),
+            "empty_field"
+        );
+    }
+
+    #[test]
+    fn a_terminal_command_over_the_limit_is_rejected() {
+        let over = "x".repeat(MAX_TERMINAL_COMMAND_CHARS + 1);
+        assert_eq!(
+            validate_terminal_request_command(&over).unwrap_err().code(),
+            "too_long"
+        );
+        let at_limit = "x".repeat(MAX_TERMINAL_COMMAND_CHARS);
+        assert!(validate_terminal_request_command(&at_limit).is_ok());
+    }
+
+    #[test]
+    fn control_characters_in_a_command_are_rejected() {
+        for command in ["ls \0/tmp", "ls \u{1b}[31m", "echo \u{7}", "rm -rf x\u{7f}"] {
+            let err = validate_terminal_request_command(command).unwrap_err();
+            assert_eq!(err.code(), "invalid_value", "{command:?}");
+            assert_eq!(err.field(), "command");
+        }
+    }
+
+    #[test]
+    fn a_terminal_timeout_of_zero_is_rejected() {
+        let err = validate_terminal_request(&TerminalRequest {
+            command: "pwd".into(),
+            cwd: Some(".".into()),
+            shell: Some("sh".into()),
+            timeout_secs: Some(0),
+            session_id: None,
+        })
+        .unwrap_err();
+        assert_eq!(err.field(), "timeout_secs");
+    }
+
+    #[test]
+    fn a_terminal_timeout_over_the_maximum_is_rejected() {
+        assert_eq!(
+            validate_terminal_request_timeout(MAX_TERMINAL_TIMEOUT_SECS as u64 + 1)
+                .unwrap_err()
+                .code(),
+            "too_long"
+        );
+    }
+
+    #[test]
+    fn a_terminal_timeout_at_the_maximum_is_accepted() {
+        assert!(validate_terminal_request_timeout(MAX_TERMINAL_TIMEOUT_SECS as u64).is_ok());
+    }
+
+    #[test]
+    fn a_terminal_request_with_an_invalid_shell_is_rejected() {
+        let err = validate_terminal_request(&TerminalRequest {
+            command: "echo hi".into(),
+            cwd: Some(".".into()),
+            shell: Some("nuke".into()),
+            timeout_secs: Some(10),
+            session_id: None,
+        })
+        .unwrap_err();
+        assert_eq!(err.field(), "shell");
+        let text = err.to_string();
+        assert!(text.contains("expected one of"), "{text}");
+        assert!(text.contains("pwsh"), "{text}");
+    }
+
+    #[test]
+    fn an_optional_session_id_may_be_absent() {
+        assert!(validate_terminal_request(&TerminalRequest {
+            command: "pwd".into(),
+            cwd: Some(".".into()),
+            shell: Some("sh".into()),
+            timeout_secs: Some(10),
+            session_id: None,
+        })
+        .is_ok());
+    }
+
+    #[test]
+    fn a_session_id_over_the_limit_is_rejected() {
+        assert_eq!(
+            validate_terminal_request_session_id(&"x".repeat(MAX_TERMINAL_SESSION_ID_CHARS + 1))
+                .unwrap_err()
+                .code(),
+            "too_long"
+        );
+    }
+
+    #[test]
+    fn a_session_id_with_control_characters_is_rejected() {
+        assert_eq!(
+            validate_terminal_request_session_id("abc\nxyz")
+                .unwrap_err()
+                .code(),
+            "invalid_value"
+        );
+    }
+
+    #[test]
+    fn a_session_id_with_a_path_separator_is_rejected() {
+        assert_eq!(
+            validate_terminal_request_session_id("../../etc/passwd")
+                .unwrap_err()
+                .code(),
+            "invalid_value"
+        );
+    }
+
+    #[test]
+    fn a_valid_session_id_is_accepted() {
+        assert!(validate_terminal_request_session_id("session-1").is_ok());
+        assert!(
+            validate_terminal_request_session_id("9f1c2a44-1f0e-4c2b-9d55-2a0d6c3f8e11").is_ok()
+        );
+    }
+
+    #[test]
+    fn a_release_version_may_not_be_blank() {
+        assert_eq!(
+            validate_release_version("").unwrap_err().code(),
+            "empty_field"
+        );
+        assert_eq!(
+            validate_release_version("   ").unwrap_err().code(),
+            "empty_field"
+        );
+    }
+
+    #[test]
+    fn a_release_version_may_not_carry_path_separators() {
+        assert_eq!(
+            validate_release_version("1.0/../oops").unwrap_err().code(),
+            "invalid_value"
+        );
+        assert_eq!(
+            validate_release_version("v1/2").unwrap_err().code(),
+            "invalid_value"
+        );
+        assert_eq!(
+            validate_release_version(r"v1\2").unwrap_err().code(),
+            "invalid_value"
+        );
+    }
+
+    #[test]
+    fn a_release_version_must_match_the_allowed_charset() {
+        assert_eq!(
+            validate_release_version("1.0 beta").unwrap_err().code(),
+            "invalid_value"
+        );
+        assert_eq!(
+            validate_release_version("v1.0\n").unwrap_err().code(),
+            "invalid_value"
+        );
+    }
+
+    #[test]
+    fn a_normal_release_version_is_valid() {
+        assert!(validate_release_version("1.2.3").is_ok());
+        assert!(validate_release_version("v0.1.0-rc.1").is_ok());
+        assert!(validate_release_version("1.0.0+build.123").is_ok());
     }
 
     // -------------------------------------------------------------------------

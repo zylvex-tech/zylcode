@@ -405,6 +405,10 @@ async fn terminal_exec(
 ) -> Result<serde_json::Value, String> {
     let req: zylcode_core::terminal::TerminalRequest =
         serde_json::from_value(request).map_err(|e| format!("invalid terminal request: {e}"))?;
+    // Untrusted IPC input: check the command, shell, timeout and session id, and
+    // keep the working directory inside the workspace, before a child process
+    // exists. The HTTP surface runs the same gate.
+    iv::validate_terminal_request_in(state.terminal_hub.root(), &req).map_err(|e| e.to_string())?;
     let hub = state.terminal_hub.clone();
     // TerminalHub::exec is &self; run it without blocking the IPC thread.
     tokio::task::spawn(async move {
@@ -731,6 +735,12 @@ async fn package_start(
     package_only: Option<bool>,
     state: tauri::State<'_, EngineState>,
 ) -> Result<serde_json::Value, String> {
+    // A supplied version becomes a path component of the release artifact, so it
+    // is validated before the build starts. An absent or blank version is left
+    // alone: that is the "resolve it from the workspace" request, not bad input.
+    if let Some(v) = version.as_deref().filter(|v| !v.trim().is_empty()) {
+        iv::validate_release_version(v).map_err(|e| e.to_string())?;
+    }
     let running = {
         let cell = state
             .build_status
