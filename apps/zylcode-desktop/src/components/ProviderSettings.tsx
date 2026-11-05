@@ -36,11 +36,70 @@ const KIND_DOT: Record<ProviderKind, string> = {
   synthetic_offline: "bg-zinc-500",
 };
 
+/**
+ * Result of one real probe (`test_provider_connection`).
+ *
+ * `status` is the classification the backend produced; it is the only thing
+ * this panel is allowed to call "working". A configured provider with a key is
+ * not "ready" — only `connected` is.
+ */
+type Probe = {
+  provider: string;
+  model: string;
+  endpoint: string;
+  key_source: string;
+  status: ProbeStatus;
+  http_status?: number | null;
+  latency_ms: number;
+  response_chars: number;
+  detail: string;
+};
+
+type ProbeStatus =
+  | "connected"
+  | "offline_provider"
+  | "configuration_incomplete"
+  | "authentication_failed"
+  | "invalid_endpoint"
+  | "model_unavailable"
+  | "provider_rejected"
+  | "network_error";
+
+const PROBE_LABEL: Record<ProbeStatus, string> = {
+  connected: "Connected",
+  offline_provider: "Offline provider (no request sent)",
+  configuration_incomplete: "Configuration incomplete",
+  authentication_failed: "Authentication failed",
+  invalid_endpoint: "Invalid endpoint",
+  model_unavailable: "Model unavailable",
+  provider_rejected: "Provider rejected request",
+  network_error: "Network error",
+};
+
+const PROBE_STYLE: Record<ProbeStatus, string> = {
+  connected: "border-emerald-800 bg-emerald-950/40 text-emerald-300",
+  offline_provider: "border-zinc-700 bg-zinc-900 text-zinc-300",
+  configuration_incomplete: "border-amber-900 bg-amber-950/40 text-amber-300",
+  authentication_failed: "border-red-900 bg-red-950/40 text-red-300",
+  invalid_endpoint: "border-red-900 bg-red-950/40 text-red-300",
+  model_unavailable: "border-red-900 bg-red-950/40 text-red-300",
+  provider_rejected: "border-red-900 bg-red-950/40 text-red-300",
+  network_error: "border-red-900 bg-red-950/40 text-red-300",
+};
+
+const KEY_SOURCE_LABEL: Record<string, string> = {
+  config: "saved key",
+  not_required: "no key required",
+  none: "no key found",
+};
+
 export default function ProviderSettings() {
   const [configs, setConfigs] = useState<ProviderConfig[]>([]);
   const [failovers, setFailovers] = useState<Failover[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [probing, setProbing] = useState<string | null>(null);
+  const [probes, setProbes] = useState<Record<string, Probe>>({});
   const [edit, setEdit] = useState<
     Record<string, { endpoint: string; timeout_ms: string; model: string }>
   >({});
@@ -126,6 +185,37 @@ export default function ProviderSettings() {
       setErr(String(ex));
     } finally {
       setBusy(null);
+    }
+  }
+
+  /**
+   * Send one real request with the values in the form and record what the
+   * provider said. Deliberately uses the *form* values rather than the saved
+   * chain: the question is "does this configuration work?", and the answer has
+   * to be about the configuration the user is looking at.
+   */
+  async function testConnection(kind: ProviderKind) {
+    const e = edit[kind];
+    setProbing(kind);
+    setErr(null);
+    try {
+      const timeout = e?.timeout_ms.trim() ? Number(e.timeout_ms) : null;
+      if (timeout !== null && (isNaN(timeout) || timeout < 1000 || timeout > 300000)) {
+        throw new Error("timeout_ms must be 1000..300000");
+      }
+      const probe = unwrapInvoke(
+        await safeInvoke<Probe>(ENVIRONMENT, "test_provider_connection", {
+          kind,
+          endpoint: e?.endpoint.trim() || null,
+          model: e?.model.trim() || null,
+          timeoutMs: timeout,
+        }),
+      );
+      setProbes((p) => ({ ...p, [kind]: probe }));
+    } catch (ex) {
+      setErr(String(ex));
+    } finally {
+      setProbing(null);
     }
   }
 
@@ -263,7 +353,15 @@ export default function ProviderSettings() {
               </label>
             </div>
 
-            <div className="flex justify-end">
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <button
+                onClick={() => testConnection(c.kind)}
+                disabled={probing !== null}
+                className="rounded border border-zyl-border px-3 py-1.5 text-xs font-semibold hover:bg-zyl-surface disabled:opacity-40"
+                title="Send one real request with these values and report what the provider says"
+              >
+                {probing === c.kind ? "Testing…" : "Test connection"}
+              </button>
               <button
                 onClick={() => handleSet(c.kind)}
                 disabled={busy === c.kind}
@@ -272,6 +370,39 @@ export default function ProviderSettings() {
                 {busy === c.kind ? "Saving…" : "Save"}
               </button>
             </div>
+
+            {probes[c.kind] && (
+              <div
+                className={`rounded border p-2 text-xs ${PROBE_STYLE[probes[c.kind].status]}`}
+                data-testid={`provider-probe-${c.kind}`}
+              >
+                <div className="flex flex-wrap items-center gap-2 font-semibold">
+                  <span>{PROBE_LABEL[probes[c.kind].status]}</span>
+                  {probes[c.kind].http_status != null && (
+                    <span className="font-mono text-[10px] opacity-80">
+                      HTTP {probes[c.kind].http_status}
+                    </span>
+                  )}
+                  {probes[c.kind].status === "connected" && (
+                    <span className="font-mono text-[10px] opacity-80">
+                      {probes[c.kind].latency_ms}ms · {probes[c.kind].response_chars} chars
+                    </span>
+                  )}
+                </div>
+                <div className="mt-1 font-mono text-[10px] opacity-80 break-all">
+                  {probes[c.kind].endpoint}
+                </div>
+                <div className="mt-1 font-mono text-[10px] opacity-80">
+                  model {probes[c.kind].model} · key{" "}
+                  {KEY_SOURCE_LABEL[probes[c.kind].key_source] ?? probes[c.kind].key_source}
+                </div>
+                {probes[c.kind].detail && (
+                  <div className="mt-1 break-words text-[10px] opacity-90">
+                    {probes[c.kind].detail}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -305,7 +436,11 @@ export default function ProviderSettings() {
         Order defines fallback priority (top = first attempt). Timeout is per-request
         (1000–300000ms). Ollama default host is{" "}
         <span className="font-mono">http://localhost:11434</span>. Synthetic offline requires no key
-        and is last-resort.
+        and is last-resort. A provider shows “API key” when it needs one; the key itself is read
+        from the environment (<span className="font-mono">ANTHROPIC_API_KEY</span>,{" "}
+        <span className="font-mono">OPENROUTER_API_KEY</span>) and is never displayed here.{" "}
+        <span className="font-semibold">Test connection</span> sends one real request with the
+        values in the form and reports exactly what the provider answered.
       </p>
     </div>
   );

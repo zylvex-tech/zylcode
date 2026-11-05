@@ -105,6 +105,23 @@ beforeEach(() => {
       );
       return { ok: true, data: next } as never;
     }
+    if (cmd === "test_provider_connection") {
+      const patch = args as { kind: string; endpoint: string | null; model: string | null };
+      const cfg = baseConfigs().find((c) => c.kind === patch.kind)!;
+      return {
+        ok: true,
+        data: {
+          provider: patch.kind,
+          model: patch.model ?? cfg.model,
+          endpoint: `${patch.endpoint ?? cfg.endpoint}/v1/messages`,
+          key_source: cfg.requires_api_key ? "env:ANTHROPIC_API_KEY" : "not_required",
+          status: "connected",
+          latency_ms: 41,
+          response_chars: 2,
+          detail: "provider answered with a completion",
+        },
+      } as never;
+    }
     if (cmd === "reorder_provider_chain") {
       const order = (args as { order: string[] }).order;
       return {
@@ -329,6 +346,59 @@ describe("ProviderSettings", () => {
     await waitFor(() => expect(listen).toHaveBeenCalledTimes(1));
     unmount();
     expect(unlisten).toHaveBeenCalledTimes(1);
+  });
+
+  it("tests a provider with the values in the form and shows what came back", async () => {
+    render(<ProviderSettings />);
+    const card = cardOf(await screen.findByText("Anthropic Native"));
+    fireEvent.change(field(card, "Model"), { target: { value: "claude-opus-4" } });
+    fireEvent.click(within(card).getByText("Test connection"));
+
+    const badge = await screen.findByTestId("provider-probe-anthropic");
+    expect(within(badge).getByText("Connected")).toBeInTheDocument();
+
+    // The probe is sent with the form's model, not the saved one: the question
+    // is whether the configuration on screen works.
+    const call = invoke.mock.calls.find((c) => c[1] === "test_provider_connection")!;
+    const sent = call[2] as Record<string, unknown>;
+    expect(sent.kind).toBe("anthropic");
+    expect(sent.model).toBe("claude-opus-4");
+    // The credential source is surfaced, and the key itself never is.
+    expect(within(badge).getByText(/env:ANTHROPIC_API_KEY/)).toBeInTheDocument();
+    expect(badge.textContent).not.toMatch(/sk-/);
+  });
+
+  it("reports a refused credential as a failure rather than as ready", async () => {
+    invoke.mockImplementation(async (_env, cmd) => {
+      if (cmd === "get_provider_configs") return { ok: true, data: baseConfigs() } as never;
+      if (cmd === "test_provider_connection") {
+        return {
+          ok: true,
+          data: {
+            provider: "anthropic",
+            model: "claude-sonnet-4",
+            endpoint: "https://api.anthropic.com/v1/messages",
+            key_source: "env:ANTHROPIC_API_KEY",
+            status: "authentication_failed",
+            http_status: 401,
+            latency_ms: 12,
+            response_chars: 0,
+            detail: "invalid x-api-key",
+          },
+        } as never;
+      }
+      return { ok: true, data: [] } as never;
+    });
+
+    render(<ProviderSettings />);
+    const card = cardOf(await screen.findByText("Anthropic Native"));
+    fireEvent.click(within(card).getByText("Test connection"));
+
+    const badge = await screen.findByTestId("provider-probe-anthropic");
+    expect(within(badge).getByText("Authentication failed")).toBeInTheDocument();
+    expect(within(badge).getByText("HTTP 401")).toBeInTheDocument();
+    expect(within(badge).getByText(/invalid x-api-key/)).toBeInTheDocument();
+    expect(within(badge).queryByText("Connected")).not.toBeInTheDocument();
   });
 
   it("survives a runtime without the event bridge", async () => {

@@ -1383,6 +1383,339 @@ pub struct StreamEvent {
 // Error helpers
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Provider connection probe
+// ---------------------------------------------------------------------------
+//
+// The settings surface can list a provider chain, but before this there was no
+// way — for the operator or for a test — to ask "does this configuration
+// actually work?". The panel's own fields were not evidence: an endpoint and a
+// model can be saved and still be wrong, and "an API key is present" says
+// nothing about whether the provider accepts it.
+//
+// [`probe_provider`] answers that question the only way it can be answered: by
+// sending one real request through [`TokenRouter::call_provider`] — the same
+// function `dispatch_prompt` uses — and classifying the outcome. It is
+// deliberately **not** routed through `dispatch_prompt`, because that would
+// apply fallback and report a *secondary* provider's success as if the
+// configuration under test had worked.
+
+/// Outcome of one provider probe.
+///
+/// The variants are the distinctions an operator can act on, not a restatement
+/// of HTTP codes: `AuthenticationFailed` means "fix the key",
+/// `InvalidEndpoint` means "fix the URL", `ModelUnavailable` means "fix the
+/// model name", `NetworkError` means "the host is unreachable from here", and
+/// `ConfigurationIncomplete` means nothing was sent at all.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ProbeStatus {
+    /// The provider answered with a usable completion.
+    Connected,
+    /// Synthetic offline: no network is involved by construction.
+    OfflineProvider,
+    /// A credential the provider requires is missing; no request was sent.
+    ConfigurationIncomplete,
+    /// 401/403 — the provider rejected the credential.
+    AuthenticationFailed,
+    /// The URL is not reachable or not an API endpoint (404/405/HTML, bad URL).
+    InvalidEndpoint,
+    /// The endpoint answered but does not serve the requested model.
+    ModelUnavailable,
+    /// The provider refused the request (400/422/429/5xx).
+    ProviderRejected,
+    /// Transport-level failure: DNS, refused connection, timeout, TLS.
+    NetworkError,
+}
+
+impl ProbeStatus {
+    /// Stable machine-readable label, mirrored by the desktop UI.
+    pub fn code(&self) -> &'static str {
+        match self {
+            Self::Connected => "connected",
+            Self::OfflineProvider => "offline_provider",
+            Self::ConfigurationIncomplete => "configuration_incomplete",
+            Self::AuthenticationFailed => "authentication_failed",
+            Self::InvalidEndpoint => "invalid_endpoint",
+            Self::ModelUnavailable => "model_unavailable",
+            Self::ProviderRejected => "provider_rejected",
+            Self::NetworkError => "network_error",
+        }
+    }
+}
+
+/// Evidence for one probe: what was contacted, with which model and credential
+/// source, what came back, and how long it took.
+///
+/// `detail` carries the provider's own message (truncated) so a failure can be
+/// diagnosed without a second run.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProviderProbe {
+    pub provider: String,
+    pub model: String,
+    /// The URL actually requested, or the provider's default when none was set.
+    pub endpoint: String,
+    /// Where the credential came from: `config`, `env:NAME`, `not_required`,
+    /// or `none`.
+    pub key_source: String,
+    pub status: ProbeStatus,
+    /// The provider's HTTP status when a response was received.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub http_status: Option<u16>,
+    pub latency_ms: u64,
+    /// Characters returned by a successful probe (0 otherwise).
+    pub response_chars: usize,
+    pub detail: String,
+}
+
+impl ProviderProbe {
+    pub fn ok(&self) -> bool {
+        matches!(
+            self.status,
+            ProbeStatus::Connected | ProbeStatus::OfflineProvider
+        )
+    }
+}
+
+/// Read the `[status=NNN]` annotation [`annotate_status`] embeds in an error.
+fn status_in(err: &str) -> Option<u16> {
+    let idx = err.find("[status=")? + "[status=".len();
+    let digits: String = err[idx..]
+        .chars()
+        .take_while(|c| c.is_ascii_digit())
+        .collect();
+    digits.parse().ok()
+}
+
+/// The message body of a provider error, for `detail`.
+fn body_in(err: &str) -> &str {
+    match err.find(": ") {
+        Some(i) => err[i + 2..].split(" [status=").next().unwrap_or(""),
+        None => err,
+    }
+}
+
+/// Classify a provider error into an actionable status.
+///
+/// Pure, so every branch is unit-testable without a socket.
+fn classify_probe_error(err: &str) -> (ProbeStatus, Option<u16>) {
+    let Some(code) = status_in(err) else {
+        // No HTTP status: the request never completed. A URL that reqwest could
+        // not even build is a configuration error, not a network fault.
+        let lower = err.to_lowercase();
+        let status =
+            if lower.contains("relative url without a base") || lower.contains("invalid url") {
+                ProbeStatus::InvalidEndpoint
+            } else {
+                ProbeStatus::NetworkError
+            };
+        return (status, None);
+    };
+    let body = body_in(err).to_lowercase();
+    let mentions_model = body.contains("model");
+    let status = match code {
+        401 | 403 => ProbeStatus::AuthenticationFailed,
+        404 | 405 => {
+            if mentions_model {
+                ProbeStatus::ModelUnavailable
+            } else {
+                ProbeStatus::InvalidEndpoint
+            }
+        }
+        400 | 422 => {
+            if mentions_model {
+                ProbeStatus::ModelUnavailable
+            } else {
+                ProbeStatus::ProviderRejected
+            }
+        }
+        _ => ProbeStatus::ProviderRejected,
+    };
+    (status, Some(code))
+}
+
+/// Which credential a probe would use, named so the operator can see it.
+fn key_source_for(cfg: &RouterConfig, kind: &ProviderKind, provider: &ModelProvider) -> String {
+    if *provider == ModelProvider::SyntheticOffline {
+        return "not_required".to_string();
+    }
+    if *provider == ModelProvider::LocalOllama {
+        return "not_required".to_string();
+    }
+    let name = provider.to_string();
+    if cfg
+        .api_keys
+        .get(&name)
+        .map(|k| !k.is_empty())
+        .unwrap_or(false)
+    {
+        return "config".to_string();
+    }
+    let env = match kind {
+        ProviderKind::Anthropic => "ANTHROPIC_API_KEY",
+        ProviderKind::OpenRouter => "OPENROUTER_API_KEY",
+        ProviderKind::Ollama => return "not_required".to_string(),
+        ProviderKind::SyntheticOffline => return "not_required".to_string(),
+    };
+    match std::env::var(env).ok().map(|v| !v.trim().is_empty()) {
+        Some(true) => format!("env:{env}"),
+        _ => "none".to_string(),
+    }
+}
+
+/// Probe one provider with the settings the operator typed.
+///
+/// `endpoint` and `model` override the defaults when supplied; the credential
+/// is resolved exactly as dispatch resolves it (config, then the provider's
+/// environment variable). A provider that requires a key and has none returns
+/// [`ProbeStatus::ConfigurationIncomplete`] **without sending a request** —
+/// there is nothing to learn from an unauthenticated call that the missing key
+/// does not already tell us, and probing must not become an accidental way to
+/// hammer a provider.
+///
+/// A successful probe is not a claim that dispatch uses these values: the
+/// caller is testing a candidate configuration, and the desktop surfaces the
+/// values it probed in the result.
+pub async fn probe_provider(
+    kind: &ProviderKind,
+    endpoint: Option<&str>,
+    model: Option<&str>,
+    timeout_ms: u64,
+) -> ProviderProbe {
+    let provider = match kind_to_model_provider(kind) {
+        Some(p) => p,
+        None => {
+            return ProviderProbe {
+                provider: kind.to_string(),
+                model: model.unwrap_or_default().to_string(),
+                endpoint: endpoint.unwrap_or_default().to_string(),
+                key_source: "none".to_string(),
+                status: ProbeStatus::ConfigurationIncomplete,
+                http_status: None,
+                latency_ms: 0,
+                response_chars: 0,
+                detail: format!("provider {kind} has no dispatch implementation"),
+            }
+        }
+    };
+
+    let mut cfg = RouterConfig::from_env();
+    cfg.timeout_ms = timeout_ms.clamp(1_000, 300_000);
+
+    // Model: explicit override, else the chain entry's, else the router default.
+    let model = model
+        .map(|m| m.trim().to_string())
+        .filter(|m| !m.is_empty())
+        .or_else(|| {
+            cfg.provider_configs
+                .iter()
+                .find(|c| c.kind == *kind)
+                .map(|c| c.model.clone())
+                .filter(|m| !m.is_empty())
+        })
+        .unwrap_or_else(|| cfg.primary_model.clone());
+
+    let endpoint_override = endpoint
+        .map(|e| e.trim().trim_end_matches('/').to_string())
+        .filter(|e| !e.is_empty());
+    if let Some(url) = &endpoint_override {
+        cfg.base_url_overrides
+            .insert(provider.to_string(), url.clone());
+    }
+
+    let effective_endpoint = format!("{}{}", cfg.base_url(&provider), provider.completions_path());
+    let key_source = key_source_for(&cfg, kind, &provider);
+
+    if *kind == ProviderKind::SyntheticOffline {
+        return ProviderProbe {
+            provider: provider.to_string(),
+            model,
+            endpoint: "(no network)".to_string(),
+            key_source,
+            status: ProbeStatus::OfflineProvider,
+            http_status: None,
+            latency_ms: 0,
+            response_chars: 0,
+            detail: "synthetic offline is a first-class provider: it never sends a request"
+                .to_string(),
+        };
+    }
+
+    if provider != ModelProvider::LocalOllama && cfg.api_key(&provider).is_none() {
+        return ProviderProbe {
+            provider: provider.to_string(),
+            model,
+            endpoint: effective_endpoint,
+            key_source,
+            status: ProbeStatus::ConfigurationIncomplete,
+            http_status: None,
+            latency_ms: 0,
+            response_chars: 0,
+            detail: format!(
+                "no credential for {provider}: set {} or save a key for it; nothing was sent",
+                match kind {
+                    ProviderKind::Anthropic => "ANTHROPIC_API_KEY",
+                    ProviderKind::OpenRouter => "OPENROUTER_API_KEY",
+                    _ => "an API key",
+                }
+            ),
+        };
+    }
+
+    let router = match TokenRouter::without_vector_cache(cfg) {
+        Ok(r) => r,
+        Err(e) => {
+            return ProviderProbe {
+                provider: provider.to_string(),
+                model,
+                endpoint: effective_endpoint,
+                key_source,
+                status: ProbeStatus::NetworkError,
+                http_status: None,
+                latency_ms: 0,
+                response_chars: 0,
+                detail: format!("could not build an HTTP client: {e:#}"),
+            }
+        }
+    };
+
+    let started = std::time::Instant::now();
+    let outcome = router
+        .call_provider(&provider, &model, "Reply with the single word OK.", "")
+        .await;
+    let latency_ms = started.elapsed().as_millis() as u64;
+
+    match outcome {
+        Ok(text) => ProviderProbe {
+            provider: provider.to_string(),
+            model,
+            endpoint: effective_endpoint,
+            key_source,
+            status: ProbeStatus::Connected,
+            http_status: None,
+            latency_ms,
+            response_chars: text.chars().count(),
+            detail: "provider answered with a completion".to_string(),
+        },
+        Err(err) => {
+            let message = format!("{err:#}");
+            let (status, http_status) = classify_probe_error(&message);
+            let body: String = body_in(&message).chars().take(300).collect();
+            ProviderProbe {
+                provider: provider.to_string(),
+                model,
+                endpoint: effective_endpoint,
+                key_source,
+                status,
+                http_status,
+                latency_ms,
+                response_chars: 0,
+                detail: body,
+            }
+        }
+    }
+}
+
 fn annotate_status(err: anyhow::Error, status: u16) -> anyhow::Error {
     // Store status in the error chain via context so `is_retryable` can inspect.
     anyhow::anyhow!("{err} [status={status}]")
@@ -2194,5 +2527,179 @@ mod tests {
             d1 != sentinel && d3 != sentinel,
             "Case 4: the seeded sentinel never leaks"
         );
+    }
+
+    // -----------------------------------------------------------------------
+    // Provider probe
+    // -----------------------------------------------------------------------
+
+    /// A one-shot HTTP server on a real loopback socket.
+    ///
+    /// The probe is evidence only if a real request crosses a real socket, so
+    /// the tests below answer it themselves instead of mocking the transport:
+    /// a canned response is written, the probe runs, and the classification is
+    /// asserted. `status_line` is the full status line (`HTTP/1.1 401 Unauthorized`).
+    fn serve_once(status_line: &'static str, body: &'static str) -> (String, u16) {
+        use std::io::{Read, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind loopback");
+        let port = listener.local_addr().expect("local addr").port();
+        std::thread::spawn(move || {
+            if let Ok((mut stream, _)) = listener.accept() {
+                let mut buf = [0u8; 4096];
+                let _ = stream.read(&mut buf);
+                let response = format!(
+                    "{status_line}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                    body.len()
+                );
+                let _ = stream.write_all(response.as_bytes());
+                let _ = stream.flush();
+            }
+        });
+        (format!("http://127.0.0.1:{port}"), port)
+    }
+
+    #[test]
+    fn probe_error_classification_is_actionable() {
+        let cases = [
+            (
+                "provider ollama returned 401 Unauthorized: {\"error\":\"bad key\"} [status=401]",
+                ProbeStatus::AuthenticationFailed,
+                Some(401),
+            ),
+            (
+                "provider ollama returned 404 Not Found: {\"error\":\"no route\"} [status=404]",
+                ProbeStatus::InvalidEndpoint,
+                Some(404),
+            ),
+            (
+                "provider ollama returned 404 Not Found: {\"error\":{\"message\":\"model 'x' not found\"}} [status=404]",
+                ProbeStatus::ModelUnavailable,
+                Some(404),
+            ),
+            (
+                "provider ollama returned 400 Bad Request: {\"error\":\"model is required\"} [status=400]",
+                ProbeStatus::ModelUnavailable,
+                Some(400),
+            ),
+            (
+                "provider ollama returned 429 Too Many Requests: slow down [status=429]",
+                ProbeStatus::ProviderRejected,
+                Some(429),
+            ),
+            (
+                "provider ollama returned 503 Service Unavailable: down [status=503]",
+                ProbeStatus::ProviderRejected,
+                Some(503),
+            ),
+            (
+                "HTTP request failed: builder error for url",
+                ProbeStatus::NetworkError,
+                None,
+            ),
+        ];
+        for (message, expected, code) in cases {
+            let (status, http) = classify_probe_error(message);
+            assert_eq!(status, expected, "wrong classification for {message:?}");
+            assert_eq!(http, code, "wrong HTTP status for {message:?}");
+        }
+    }
+
+    #[tokio::test]
+    async fn probe_reports_connected_against_a_real_endpoint() {
+        let _guard = DISPATCH_MUTEX.lock().await;
+        let (base, _port) = serve_once(
+            "HTTP/1.1 200 OK",
+            r#"{"message":{"content":"OK"},"prompt_eval_count":3,"eval_count":1}"#,
+        );
+        let probe =
+            probe_provider(&ProviderKind::Ollama, Some(&base), Some("llama3.1"), 5_000).await;
+        assert_eq!(
+            probe.status,
+            ProbeStatus::Connected,
+            "detail: {}",
+            probe.detail
+        );
+        assert!(probe.ok());
+        assert_eq!(probe.key_source, "not_required");
+        assert_eq!(probe.response_chars, 2);
+        assert!(probe.endpoint.ends_with("/api/chat"), "{}", probe.endpoint);
+    }
+
+    #[tokio::test]
+    async fn probe_classifies_a_rejected_credential() {
+        let _guard = DISPATCH_MUTEX.lock().await;
+        let (base, _port) = serve_once(
+            "HTTP/1.1 401 Unauthorized",
+            r#"{"error":{"message":"invalid x-api-key"}}"#,
+        );
+        let probe =
+            probe_provider(&ProviderKind::Ollama, Some(&base), Some("llama3.1"), 5_000).await;
+        assert_eq!(probe.status, ProbeStatus::AuthenticationFailed);
+        assert_eq!(probe.http_status, Some(401));
+        assert!(!probe.ok());
+        assert!(probe.detail.contains("invalid"), "{}", probe.detail);
+    }
+
+    #[tokio::test]
+    async fn probe_classifies_an_unavailable_model() {
+        let _guard = DISPATCH_MUTEX.lock().await;
+        let (base, _port) = serve_once(
+            "HTTP/1.1 404 Not Found",
+            r#"{"error":{"message":"model 'nope' not found"}}"#,
+        );
+        let probe = probe_provider(&ProviderKind::Ollama, Some(&base), Some("nope"), 5_000).await;
+        assert_eq!(probe.status, ProbeStatus::ModelUnavailable);
+        assert_eq!(probe.http_status, Some(404));
+    }
+
+    #[tokio::test]
+    async fn probe_classifies_a_refused_connection_as_network_error() {
+        let _guard = DISPATCH_MUTEX.lock().await;
+        // Bind then drop, so the port is closed but not reused by the test.
+        let base = {
+            let l = std::net::TcpListener::bind("127.0.0.1:0").expect("bind");
+            let port = l.local_addr().expect("addr").port();
+            drop(l);
+            format!("http://127.0.0.1:{port}")
+        };
+        let probe =
+            probe_provider(&ProviderKind::Ollama, Some(&base), Some("llama3.1"), 2_000).await;
+        assert_eq!(
+            probe.status,
+            ProbeStatus::NetworkError,
+            "detail: {}",
+            probe.detail
+        );
+        assert_eq!(probe.http_status, None);
+    }
+
+    /// A provider that requires a credential and has none is not probed: the
+    /// missing key is the whole answer, and sending an unauthenticated request
+    /// would only spend the provider's rate limit to learn nothing.
+    #[tokio::test]
+    async fn probe_without_a_credential_sends_nothing() {
+        let _guard = DISPATCH_MUTEX.lock().await;
+        let _env = EnvScope::capture(&["ANTHROPIC_API_KEY"]);
+        std::env::remove_var("ANTHROPIC_API_KEY");
+        NETWORK_EGRESS_COUNT.with(|c| c.set(0));
+
+        let probe = probe_provider(&ProviderKind::Anthropic, None, None, 5_000).await;
+        assert_eq!(probe.status, ProbeStatus::ConfigurationIncomplete);
+        assert_eq!(probe.key_source, "none");
+        assert_eq!(
+            NETWORK_EGRESS_COUNT.with(|c| c.get()),
+            0,
+            "an incomplete configuration must not egress"
+        );
+    }
+
+    #[tokio::test]
+    async fn probe_of_the_offline_provider_sends_nothing() {
+        let _guard = DISPATCH_MUTEX.lock().await;
+        NETWORK_EGRESS_COUNT.with(|c| c.set(0));
+        let probe = probe_provider(&ProviderKind::SyntheticOffline, None, None, 5_000).await;
+        assert_eq!(probe.status, ProbeStatus::OfflineProvider);
+        assert!(probe.ok());
+        assert_eq!(NETWORK_EGRESS_COUNT.with(|c| c.get()), 0);
     }
 }

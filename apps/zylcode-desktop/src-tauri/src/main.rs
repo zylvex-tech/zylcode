@@ -660,6 +660,43 @@ async fn get_provider_configs(
     Ok(sorted)
 }
 
+/// Probe one provider configuration with a real request and classify the
+/// outcome.
+///
+/// This is the only honest answer to "is my configuration working?": the
+/// saved chain is evidence of intent, not of reachability. The probe sends a
+/// minimal completion through the same dispatch function a turn uses and
+/// reports `connected`, `authentication_failed`, `invalid_endpoint`,
+/// `model_unavailable`, `network_error`, `provider_rejected` or
+/// `configuration_incomplete` — with the endpoint, model and credential source
+/// it actually used, so the result cannot be mistaken for a different config.
+#[tauri::command]
+async fn test_provider_connection(
+    kind: ProviderKind,
+    endpoint: Option<String>,
+    model: Option<String>,
+    timeout_ms: Option<u64>,
+) -> Result<zylcode_core::router::ProviderProbe, String> {
+    let endpoint = endpoint.filter(|e| !e.trim().is_empty());
+    if let Some(ep) = endpoint.as_deref() {
+        iv::validate_provider_endpoint(ep).map_err(|e| e.to_string())?;
+    }
+    let model = model.filter(|m| !m.trim().is_empty());
+    // `Some("")` would pass `validate_model` as absent; filter first so a
+    // whitespace-only field is treated as "use the default" rather than sent.
+    if let Some(m) = model.as_deref() {
+        iv::validate_model(Some(m)).map_err(|e| e.to_string())?;
+    }
+    let timeout = timeout_ms.unwrap_or(30_000);
+    if !(1_000..=300_000).contains(&timeout) {
+        return Err(format!("timeout_ms out of range 1000..300000: {timeout}"));
+    }
+    Ok(
+        zylcode_core::router::probe_provider(&kind, endpoint.as_deref(), model.as_deref(), timeout)
+            .await,
+    )
+}
+
 /// Read-only view of the measured provider scorecard (best first). The same
 /// Laplace-smoothed records that inform dispatch order in the core router.
 #[tauri::command]
@@ -1463,6 +1500,7 @@ fn main() {
             execute_tool,
             marketplace_search,
             get_provider_configs,
+            test_provider_connection,
             get_provider_scorecard,
             set_provider_config,
             reorder_provider_chain,

@@ -41,6 +41,7 @@
 //! | `package_start` | names the release artifact it writes | [`validate_release_version`] | 128 chars; no path separator or `..`; portable version charset |
 //! | `register_mcp_bridge` | opens a transport to an endpoint | [`validate_tool_id`], [`validate_endpoint`], [`validate_transport`] | 128-char id, 512-char URL, `stdio`/`sse`/`websocket` |
 //! | `marketplace_search` | scans the extension registry | [`validate_marketplace_query`] | 1 024 chars |
+//! | `test_provider_connection` | sends a real request to a model provider | [`validate_provider_endpoint`], [`validate_model`] | 512-char http(s) URL with no embedded credentials; 256-char model id; 1 s – 300 s timeout |
 //!
 //! Confinement for `terminal_exec` lives in [`validate_terminal_cwd`]: the
 //! command itself is a shell command line by contract, so the property with
@@ -441,6 +442,72 @@ pub fn validate_transport(transport: Option<&str>) -> Result<(), InputError> {
             }
         }
     }
+}
+
+/// Validate a model-provider base URL typed by the operator (the "Base URL"
+/// field of provider settings).
+///
+/// This is deliberately **not** [`validate_endpoint`]: that one guards an MCP
+/// bridge endpoint — a local process the app launches — and therefore admits
+/// loopback only. A model provider is the opposite case: `api.anthropic.com`
+/// and `https://api.deepseek.com/v1` are the normal, intended values, so
+/// rejecting public hosts there would make the feature unusable while
+/// protecting nothing (the request already leaves the machine by design).
+///
+/// What is rejected is what makes a URL ambiguous rather than remote: a
+/// non-http(s) scheme, embedded credentials, a fragment, control characters
+/// or whitespace, a missing host, and anything over the URL bound.
+pub fn validate_provider_endpoint(endpoint: &str) -> Result<(), InputError> {
+    if endpoint.trim().is_empty() {
+        return Err(InputError::Empty { field: "endpoint" });
+    }
+    if endpoint.len() > MAX_URL_CHARS {
+        return Err(InputError::TooLong {
+            field: "endpoint",
+            chars: endpoint.len(),
+            max: MAX_URL_CHARS,
+        });
+    }
+    if endpoint.chars().any(|c| c.is_control() || c == ' ') {
+        return Err(InputError::Invalid {
+            field: "endpoint",
+            detail: "whitespace and control characters are not allowed in a URL".to_string(),
+        });
+    }
+    let parsed = match url::Url::parse(endpoint) {
+        Ok(u) => u,
+        Err(_) => {
+            return Err(InputError::Invalid {
+                field: "endpoint",
+                detail: "must be a valid http:// or https:// URL".to_string(),
+            });
+        }
+    };
+    if !matches!(parsed.scheme(), "http" | "https") {
+        return Err(InputError::Invalid {
+            field: "endpoint",
+            detail: "only http:// and https:// schemes are allowed".to_string(),
+        });
+    }
+    if parsed.host_str().unwrap_or("").is_empty() {
+        return Err(InputError::Invalid {
+            field: "endpoint",
+            detail: "the URL must name a host".to_string(),
+        });
+    }
+    if !parsed.username().is_empty() || parsed.password().is_some() {
+        return Err(InputError::Invalid {
+            field: "endpoint",
+            detail: "credentials must not be embedded in the URL; use an API key field".to_string(),
+        });
+    }
+    if parsed.fragment().is_some() {
+        return Err(InputError::Invalid {
+            field: "endpoint",
+            detail: "a fragment is not part of a request URL".to_string(),
+        });
+    }
+    Ok(())
 }
 
 /// Validate a marketplace search query.
@@ -1444,6 +1511,73 @@ mod tests {
         assert_eq!(validate_path("").unwrap_err().code(), "empty_field");
         assert_eq!(
             validate_path(&"x".repeat(MAX_PATH_CHARS + 1))
+                .unwrap_err()
+                .code(),
+            "too_long"
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // Provider base URL (a *remote* endpoint, unlike an MCP bridge endpoint)
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn a_provider_base_url_may_point_at_a_public_host() {
+        for url in [
+            "https://api.anthropic.com",
+            "https://api.deepseek.com/v1",
+            "https://openrouter.ai/api/v1",
+            "http://localhost:11434",
+            "http://127.0.0.1:11434",
+            "https://gateway.example.co.uk:8443/v1",
+        ] {
+            assert!(validate_provider_endpoint(url).is_ok(), "rejected {url}");
+        }
+    }
+
+    #[test]
+    fn a_provider_base_url_rejects_what_makes_a_url_ambiguous() {
+        // The MCP-bridge validator admits loopback only; this one must not be
+        // reused for it, or every real provider would be rejected.
+        assert!(validate_endpoint("https://api.anthropic.com").is_err());
+        assert!(validate_provider_endpoint("https://api.anthropic.com").is_ok());
+
+        assert_eq!(
+            validate_provider_endpoint("").unwrap_err().code(),
+            "empty_field"
+        );
+        assert_eq!(
+            validate_provider_endpoint("api.anthropic.com")
+                .unwrap_err()
+                .code(),
+            "invalid_value"
+        );
+        assert_eq!(
+            validate_provider_endpoint("file:///etc/passwd")
+                .unwrap_err()
+                .code(),
+            "invalid_value"
+        );
+        assert_eq!(
+            validate_provider_endpoint("https://user:pw@api.anthropic.com")
+                .unwrap_err()
+                .code(),
+            "invalid_value"
+        );
+        assert_eq!(
+            validate_provider_endpoint("https://api.anthropic.com/#frag")
+                .unwrap_err()
+                .code(),
+            "invalid_value"
+        );
+        assert_eq!(
+            validate_provider_endpoint("https://api.anthropic.com/a b")
+                .unwrap_err()
+                .code(),
+            "invalid_value"
+        );
+        assert_eq!(
+            validate_provider_endpoint(&format!("https://{}/v1", "x".repeat(MAX_URL_CHARS)))
                 .unwrap_err()
                 .code(),
             "too_long"
