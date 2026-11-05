@@ -701,9 +701,9 @@ export default function ProviderSettings() {
         after a restart. Timeout is per provider (1000–300000ms). Disabled providers are skipped;
         adding one does not change what an existing configuration tries first. API keys are kept in
         the OS credential store (never in the workspace or this panel) and are shown only as a
-        masked hint; an environment variable still works as a fallback and takes precedence when
-        set. <span className="font-semibold">Test saved</span> sends one real request with the saved
-        values — the same ones the next agent turn will use;{" "}
+        masked hint and a stored key is used first, with the provider's environment variable as the
+        fallback when nothing is stored. <span className="font-semibold">Test saved</span> sends one
+        real request with the saved values — the same ones the next agent turn will use;{" "}
         <span className="font-semibold">Test unsaved values</span> checks a draft before saving it.
       </p>
     </div>

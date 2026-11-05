@@ -11,7 +11,9 @@
 //!
 //! At startup the two are merged in one direction: the file supplies the
 //! configuration, the store supplies keys, and the result becomes the live
-//! router configuration that dispatch reads.
+//! router configuration that dispatch reads. Within that configuration a stored
+//! key wins over the provider's environment variable (the variable is the
+//! fallback), which is why the panel names the active source.
 
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};

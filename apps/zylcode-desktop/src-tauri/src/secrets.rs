@@ -12,9 +12,10 @@
 //! consumer is [`crate::provider_store`], which moves a key into the in-memory
 //! router configuration and reports a masked hint upwards.
 //!
-//! Environment variables remain a first-class source. This store is consulted
-//! *after* the environment, so a key exported for one shell still wins, and
-//! before nothing — a missing entry simply means "no stored key".
+//! Environment variables remain a first-class source. Resolution order is
+//! config (where stored keys are injected) and then the environment, so a key
+//! saved here is used first and the variable is the fallback; a missing entry
+//! simply means "no stored key" and leaves the variable to supply one.
 
 use std::fmt;
 
