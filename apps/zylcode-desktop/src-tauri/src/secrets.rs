@@ -34,6 +34,11 @@ pub enum StoreError {
     /// This build has no implementation for the host platform.
     Unsupported,
     /// The operating system refused the operation.
+    ///
+    /// Only the Windows implementation calls an OS API, so only that build can
+    /// produce this variant: gating it keeps the enum honest per platform
+    /// instead of carrying an unreachable arm everywhere else.
+    #[cfg(windows)]
     Os(String),
     /// The name or secret failed validation before reaching the OS.
     Invalid(String),
@@ -47,6 +52,7 @@ impl fmt::Display for StoreError {
                 "no credential store implementation for this platform yet — \
                  set the provider's environment variable instead"
             ),
+            #[cfg(windows)]
             Self::Os(msg) => write!(f, "credential store error: {msg}"),
             Self::Invalid(msg) => write!(f, "invalid credential request: {msg}"),
         }
