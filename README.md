@@ -354,7 +354,7 @@ Build and test the frontend (typecheck + production bundle; unit tests):
 
 ```bash
 pnpm --filter zylcode-desktop build          # typecheck + production bundle
-pnpm --filter zylcode-desktop test           # verified: 453 passed (2026-10-29)
+pnpm --filter zylcode-desktop test           # verified: 760 passed in 67 files (2026-11-05)
 pnpm --filter zylcode-desktop test:coverage  # the same run, plus the coverage gate
 ```
 
@@ -437,20 +437,35 @@ These are floors, not aspirations: CI fails below them, and each floor sits
 just under its measured value so it ratchets — a new untested file turns the
 run red instead of being absorbed.
 
-| Gate | Floor | Measured (2026-10-29) |
+| Gate | Floor | Measured (each row dated) |
 |---|---|---|
-| Frontend coverage — lines & statements | 70% | **70.16%** (453 tests, 46 files) |
-| Frontend coverage — branches | 83% | **83.25%** |
-| Frontend coverage — functions | 80% | **80.61%** |
-| Rust coverage — lines | 78% | 80.53% (measured 2026-10-22) |
-| Repository-intelligence benchmark | 0.60 precision floor | **0.61** (recall 0.95, gate exit 0) |
-| Lint / format / lints | 0 errors | `eslint` 0 errors · `cargo fmt --check` clean · `clippy --workspace --all-targets -- -D warnings` clean |
-| Workspace tests | 0 failures | **596 core lib tests**, 0 failures (2026-11-04); full-workspace suite last green 2026-10-23 |
+| Frontend coverage — lines & statements | 70% | **97.2%** (760 tests, 67 files — 2026-11-05) |
+| Frontend coverage — branches | 83% | **91.06%** (2026-11-05) |
+| Frontend coverage — functions | 80% | **96.54%** (2026-11-05) |
+| Rust coverage — lines | 78% | **80.96%** (CI `Coverage` job, 2026-11-04) |
+| Repository-intelligence benchmark | 0.60 precision floor | **0.61** (recall 0.95, gate exit 0 — 2026-10-29) |
+| Lint / format / lints | 0 errors | `eslint` 0 errors · `cargo fmt --check` clean · `clippy --workspace --all-targets -- -D warnings` clean (2026-11-05) |
+| Workspace tests | 0 failures | **962 tests**, 0 failures, `cargo test --workspace` (2026-11-05); 596 of them in `zylcode-core`'s lib |
 
-Defined in [`apps/zylcode-desktop/vitest.config.ts`](apps/zylcode-desktop/vitest.config.ts)
-and enforced by [`.github/workflows/coverage.yml`](.github/workflows/coverage.yml)
-(frontend job) and [`ci.yml`](.github/workflows/ci.yml) (Rust job); the
-benchmark floor lives in
+**What each number measures.** The frontend rows are
+`pnpm --filter zylcode-desktop test:coverage` — vitest with the v8 provider over
+`src/**/*.{ts,tsx}`, excluding `**/*.d.ts`, `src/test/**`, `src/main.tsx` and
+`src/**/*.test.{ts,tsx}` (`apps/zylcode-desktop/vitest.config.ts`). That exact
+command was run on a **pristine clone** of `d4497b6` on 2026-11-05 and printed
+`All files 97.2 | 91.06 | 96.54 | 97.2` (statements / branches / functions /
+lines) with `Test Files 67 passed (67)` and `Tests 760 passed (760)`, exit 0.
+The Rust row comes from the `coverage` job's own command,
+`cargo llvm-cov --workspace --summary-only --fail-under-lines 78`, and is
+quoted from that job's log (`TOTAL … Lines 42381, missed 8070, 80.96%`), not
+from a local run.
+
+Both coverage gates live in
+[`.github/workflows/coverage.yml`](.github/workflows/coverage.yml) — job
+`coverage` for Rust, job `frontend-coverage` for vitest;
+[`ci.yml`](.github/workflows/ci.yml) runs the tests, clippy, fmt and the doc
+claims, and measures no coverage of its own. Thresholds sit in
+[`apps/zylcode-desktop/vitest.config.ts`](apps/zylcode-desktop/vitest.config.ts)
+and in the `--fail-under-lines` argument; the benchmark floor lives in
 [`crates/zylcode-core/tests/repo_intelligence_benchmark.rs`](crates/zylcode-core/tests/repo_intelligence_benchmark.rs).
 
 ---
@@ -458,9 +473,10 @@ benchmark floor lives in
 ## Project Status and Roadmap
 
 * **Status now:** a working desktop shell and CLI over a tested engineering
-  core — CI green on this branch; 596 core lib tests passing locally on the
-  current head, 453 frontend tests in the gated suite, frontend coverage gated at 70%
-  (measured 70.16%), and the repository-intelligence benchmark at 0.61
+  core — CI green on this branch; 962 workspace tests and 760 frontend tests in
+  67 files passing on the current head, frontend coverage gated at 70%
+  (measured 97.2% lines, reproduced on a pristine clone on 2026-11-05), and the
+  repository-intelligence benchmark at 0.61
   against its 0.60 floor; independent acceptance of earlier intelligence
   claims still open (12 registry entries disputed).
 * **In progress:** Phase 2A re-acceptance evidence
