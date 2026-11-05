@@ -107,18 +107,15 @@ jobs:
         # enforced by `apps/zylcode-desktop/eslint.config.js` (lint gates at 0
         # errors, 36 accepted warnings itemised in
         # docs/governance/ACCEPTED_LINT_WARNINGS.md).
-        -
       - name: Root format check
         run: pnpm run format:check
         # `pnpm run format:check` = `prettier --check .` against .prettierignore;
         # mirrors the package-scoped `format:check` the same way lint does.
-        -
       - name: Root typecheck
         run: pnpm run typecheck
         # `pnpm run typecheck` = `pnpm -r typecheck`, which runs `tsc --noEmit`
         # inside the one workspace package that has a tsconfig. Root carries
         # only `typescript` as a devDependency.
-        -
       - name: Retracted-claim guard
         run: python scripts/check_retracted_claims.py
         # Enforces that claims already measured, found unsupported, and removed
