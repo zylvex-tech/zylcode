@@ -2,10 +2,13 @@
 
 use serde::{Deserialize, Serialize};
 use std::io::{self, Write};
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use zylcode_core::input_validation as iv;
 use zylcode_core::router::{ProviderConfig, ProviderKind};
 use zylcode_core::{EngineConfig, Intent, McpBridgeDescriptor, ZylCodeEngine};
+
+mod provider_store;
+mod secrets;
 
 // ---------------------------------------------------------------------------
 // Shared engine state — managed by Tauri
@@ -13,7 +16,6 @@ use zylcode_core::{EngineConfig, Intent, McpBridgeDescriptor, ZylCodeEngine};
 
 struct EngineState {
     engine: ZylCodeEngine,
-    provider_configs: Arc<RwLock<Vec<ProviderConfig>>>,
     vector_cache: Arc<zylcode_core::cache::VectorCacheStore>,
     /// Terminal sessions: cwd state persists for the app's lifetime.
     terminal_hub: Arc<zylcode_core::terminal::TerminalHub>,
@@ -646,16 +648,15 @@ async fn marketplace_search(
 // ---------------------------------------------------------------------------
 
 /// Return current provider configs sorted by fallback_order.
+///
+/// Read from the engine's live router, not from a copy: a settings panel that
+/// renders a different list than the one dispatch walks is the defect this
+/// command exists to make impossible.
 #[tauri::command]
 async fn get_provider_configs(
     state: tauri::State<'_, EngineState>,
 ) -> Result<Vec<ProviderConfig>, String> {
-    let cfgs = state
-        .provider_configs
-        .read()
-        .map_err(|e| format!("lock poisoned: {}", e))?
-        .clone();
-    let mut sorted = cfgs;
+    let mut sorted = state.engine.pipeline().router().config().provider_configs;
     sorted.sort_by_key(|c| c.fallback_order);
     Ok(sorted)
 }
@@ -676,7 +677,16 @@ async fn test_provider_connection(
     endpoint: Option<String>,
     model: Option<String>,
     timeout_ms: Option<u64>,
+    saved: Option<bool>,
+    state: tauri::State<'_, EngineState>,
 ) -> Result<zylcode_core::router::ProviderProbe, String> {
+    // "Test connection" on a saved card must exercise the saved configuration:
+    // the model, endpoint and timeout dispatch would use, with whatever
+    // credential the router actually resolves. A draft has to be tested
+    // separately, so a green result can never stand for values nobody saved.
+    if saved.unwrap_or(false) {
+        return Ok(state.engine.pipeline().router().probe_saved(&kind).await);
+    }
     let endpoint = endpoint.filter(|e| !e.trim().is_empty());
     if let Some(ep) = endpoint.as_deref() {
         iv::validate_provider_endpoint(ep).map_err(|e| e.to_string())?;
@@ -853,7 +863,12 @@ async fn package_start(
     Ok(serde_json::json!({ "started": true, "state": "running" }))
 }
 
-/// Update settings for a single provider at runtime.
+/// Update settings for a single provider, in the live router.
+///
+/// The change reaches dispatch because it is applied to the engine's own
+/// `TokenRouter` (which normalises the chain), and it is durable because the
+/// same configuration is written to `providers.json`. Validation happens before
+/// any mutation, so a rejected field leaves the running configuration intact.
 #[tauri::command]
 async fn set_provider_config(
     kind: ProviderKind,
@@ -863,40 +878,65 @@ async fn set_provider_config(
     model: Option<String>,
     state: tauri::State<'_, EngineState>,
 ) -> Result<Vec<ProviderConfig>, String> {
-    let mut cfgs = state
-        .provider_configs
-        .write()
-        .map_err(|e| format!("lock poisoned: {}", e))?;
-    let mut found = false;
-    for cfg in cfgs.iter_mut() {
-        if cfg.kind == kind {
-            if let Some(ep) = endpoint.clone() {
-                cfg.endpoint = ep;
-            }
-            if let Some(t) = timeout_ms {
-                if (1000..=300_000).contains(&t) {
-                    cfg.timeout_ms = t;
-                } else {
-                    return Err(format!("timeout_ms out of range 1000..300000: {}", t));
-                }
-            }
-            if let Some(en) = enabled {
-                cfg.enabled = en;
-            }
-            if let Some(m) = model.clone() {
-                if !m.trim().is_empty() {
-                    cfg.model = m;
-                }
-            }
-            found = true;
-            break;
+    if let Some(ep) = endpoint.as_deref().map(str::trim).filter(|e| !e.is_empty()) {
+        iv::validate_provider_endpoint(ep).map_err(|e| e.to_string())?;
+    }
+    if let Some(t) = timeout_ms {
+        if !(1_000..=300_000).contains(&t) {
+            return Err(format!("timeout_ms out of range 1000..300000: {t}"));
         }
     }
-    if !found {
-        return Err(format!("unknown provider kind: {}", kind));
+    if let Some(m) = model.as_deref().map(str::trim).filter(|m| !m.is_empty()) {
+        iv::validate_model(Some(m)).map_err(|e| e.to_string())?;
     }
-    let mut sorted = cfgs.clone();
+    // A local daemon address is a base URL, not a completions path.
+    if matches!(kind, ProviderKind::Ollama) {
+        if let Some(ep) = endpoint.as_deref().map(str::trim).filter(|e| !e.is_empty()) {
+            if !ep.starts_with("http://") && !ep.starts_with("https://") {
+                return Err("Ollama endpoint must be an http(s) URL".to_string());
+            }
+        }
+    }
+
+    let router = state.engine.pipeline().router();
+    if !router
+        .config()
+        .provider_configs
+        .iter()
+        .any(|c| c.kind == kind)
+    {
+        return Err(format!("unknown provider kind: {kind}"));
+    }
+
+    router.update_config(|cfg| {
+        for entry in cfg.provider_configs.iter_mut() {
+            if entry.kind != kind {
+                continue;
+            }
+            if let Some(ep) = &endpoint {
+                entry.endpoint = ep.trim().to_string();
+            }
+            if let Some(t) = timeout_ms {
+                entry.timeout_ms = t;
+            }
+            if let Some(en) = enabled {
+                entry.enabled = en;
+            }
+            // `Some("")` is an explicit clear; `None` leaves the field alone.
+            // The panel sends the trimmed field (possibly empty) so a model or
+            // endpoint can be removed, and sends `null` only from the toggle
+            // path where it must not touch either.
+            if let Some(m) = &model {
+                entry.model = m.trim().to_string();
+            }
+            break;
+        }
+    });
+
+    let mut sorted = router.config().provider_configs;
     sorted.sort_by_key(|c| c.fallback_order);
+    provider_store::save(&router.config())
+        .map_err(|e| format!("applied in memory but not saved: {e}"))?;
     Ok(sorted)
 }
 
@@ -923,7 +963,11 @@ async fn get_cache_stats(state: tauri::State<'_, EngineState>) -> Result<CacheSt
     })
 }
 
-/// Reorder fallback chain — `order` is authoritative; first element = fallback_order 0.
+/// Reorder the fallback chain — `order` is authoritative; first element is
+/// attempted first.
+///
+/// Applied to the live router and persisted, so the order the operator dragged
+/// is the order dispatch attempts, across restarts.
 #[tauri::command]
 async fn reorder_provider_chain(
     order: Vec<ProviderKind>,
@@ -932,42 +976,141 @@ async fn reorder_provider_chain(
     if order.is_empty() {
         return Err("order must not be empty".to_string());
     }
-    let mut cfgs = state
-        .provider_configs
-        .write()
-        .map_err(|e| format!("lock poisoned: {}", e))?;
-    // Validate all kinds exist and no duplicates
+    let router = state.engine.pipeline().router();
+    let existing = router.config().provider_configs;
     let mut seen = std::collections::HashSet::new();
-    for k in &order {
-        if !seen.insert(k.to_string()) {
-            return Err(format!("duplicate provider in order: {}", k));
+    for kind in &order {
+        if !seen.insert(kind.to_string()) {
+            return Err(format!("duplicate provider in order: {kind}"));
         }
-        if !cfgs.iter().any(|c| &c.kind == k) {
-            return Err(format!("unknown provider: {}", k));
-        }
-    }
-    // Assign new fallback_order for supplied kinds; keep remaining at tail
-    for (idx, kind) in order.iter().enumerate() {
-        if let Some(cfg) = cfgs.iter_mut().find(|c| &c.kind == kind) {
-            cfg.fallback_order = idx as u32;
+        if !existing.iter().any(|c| &c.kind == kind) {
+            return Err(format!("unknown provider: {kind}"));
         }
     }
-    // Remaining configs not in order get pushed to end in previous relative order
-    let mut remaining: Vec<_> = cfgs
-        .iter()
-        .filter(|c| !order.contains(&c.kind))
-        .cloned()
-        .collect();
-    remaining.sort_by_key(|c| c.fallback_order);
-    let base = order.len() as u32;
-    for (idx, rcfg) in remaining.into_iter().enumerate() {
-        if let Some(cfg) = cfgs.iter_mut().find(|c| c.kind == rcfg.kind) {
-            cfg.fallback_order = base + idx as u32;
+
+    router.update_config(|cfg| {
+        for (idx, kind) in order.iter().enumerate() {
+            if let Some(entry) = cfg.provider_configs.iter_mut().find(|c| &c.kind == kind) {
+                entry.fallback_order = idx as u32;
+            }
         }
-    }
-    let mut sorted = cfgs.clone();
+        // Entries the caller did not mention keep their relative order, after
+        // the ones it did.
+        let mut remaining: Vec<_> = cfg
+            .provider_configs
+            .iter()
+            .filter(|c| !order.contains(&c.kind))
+            .cloned()
+            .collect();
+        remaining.sort_by_key(|c| c.fallback_order);
+        let base = order.len() as u32;
+        for (idx, entry) in remaining.into_iter().enumerate() {
+            if let Some(target) = cfg
+                .provider_configs
+                .iter_mut()
+                .find(|c| c.kind == entry.kind)
+            {
+                target.fallback_order = base + idx as u32;
+            }
+        }
+    });
+
+    let mut sorted = router.config().provider_configs;
     sorted.sort_by_key(|c| c.fallback_order);
+    provider_store::save(&router.config())
+        .map_err(|e| format!("applied in memory but not saved: {e}"))?;
     Ok(sorted)
+}
+
+// ---------------------------------------------------------------------------
+// Credentials — the OS credential store. A key enters through one command and
+// never leaves through any: status reports a source and a masked hint only.
+// ---------------------------------------------------------------------------
+
+/// Where each provider's credential comes from.
+#[tauri::command]
+async fn provider_key_status(
+    state: tauri::State<'_, EngineState>,
+) -> Result<Vec<provider_store::ProviderKeyStatus>, String> {
+    let cfg = state.engine.pipeline().router().config();
+    Ok(ProviderKind::all()
+        .iter()
+        .map(|kind| provider_store::key_status(kind, &cfg))
+        .collect())
+}
+
+/// Store a provider key in the OS credential store and make it live.
+///
+/// The key is written to the vault and then into the in-memory router; it is
+/// never written to `providers.json`, never logged, and never returned.
+#[tauri::command]
+async fn set_provider_key(
+    kind: ProviderKind,
+    api_key: String,
+    state: tauri::State<'_, EngineState>,
+) -> Result<Vec<provider_store::ProviderKeyStatus>, String> {
+    let provider = kind
+        .dispatch_name()
+        .ok_or_else(|| format!("provider {kind} has no dispatch implementation"))?;
+    if !kind.requires_api_key() {
+        return Err(format!("{kind} does not use an API key"));
+    }
+    if !secrets::is_supported() {
+        return Err(secrets::StoreError::Unsupported.to_string());
+    }
+    secrets::set(&provider, api_key.trim()).map_err(|e| e.to_string())?;
+
+    let router = state.engine.pipeline().router();
+    let mut cfg = router.config();
+    cfg.api_keys
+        .insert(provider.clone(), api_key.trim().to_string());
+    router.set_api_keys(cfg.api_keys);
+
+    let cfg = router.config();
+    Ok(ProviderKind::all()
+        .iter()
+        .map(|k| provider_store::key_status(k, &cfg))
+        .collect())
+}
+
+/// Remove a provider key from the vault and from memory.
+#[tauri::command]
+async fn delete_provider_key(
+    kind: ProviderKind,
+    state: tauri::State<'_, EngineState>,
+) -> Result<Vec<provider_store::ProviderKeyStatus>, String> {
+    let provider = kind
+        .dispatch_name()
+        .ok_or_else(|| format!("provider {kind} has no dispatch implementation"))?;
+    let removed = if secrets::is_supported() {
+        secrets::delete(&provider).map_err(|e| e.to_string())?
+    } else {
+        false
+    };
+
+    let router = state.engine.pipeline().router();
+    let mut cfg = router.config();
+    cfg.api_keys.remove(&provider);
+    router.set_api_keys(cfg.api_keys);
+
+    let cfg = router.config();
+    let mut statuses: Vec<_> = ProviderKind::all()
+        .iter()
+        .map(|k| provider_store::key_status(k, &cfg))
+        .collect();
+    if !removed {
+        // `delete` is idempotent; say so rather than implying a key was removed
+        // when none was stored (an environment variable may still supply one).
+        for status in statuses.iter_mut() {
+            if status.kind == kind.to_string() && status.source == "environment" {
+                status.store_error = Some(format!(
+                    "no key stored in the credential store; {} still supplies one",
+                    status.env_var.clone().unwrap_or_default()
+                ));
+            }
+        }
+    }
+    Ok(statuses)
 }
 
 // ---------------------------------------------------------------------------
@@ -1432,9 +1575,28 @@ fn main() {
         verbose: false,
         extra: Default::default(),
     });
-    let provider_configs = Arc::new(RwLock::new(
-        engine.pipeline().router().config().provider_configs.clone(),
-    ));
+    // Startup order matters: durable settings first, then credentials, then
+    // the live router. Each step is non-fatal on its own — a corrupt settings
+    // file or an unreadable credential must not stop the app from starting.
+    match provider_store::load() {
+        Some(mut persisted) => {
+            for warning in provider_store::inject_secrets(&mut persisted) {
+                tracing::warn!(warning = %warning, "stored provider credential unavailable");
+            }
+            engine.pipeline().router().set_config(persisted);
+            tracing::info!(
+                path = %provider_store::settings_path().display(),
+                "provider settings restored"
+            );
+        }
+        None => {
+            let mut cfg = engine.pipeline().router().config();
+            for warning in provider_store::inject_secrets(&mut cfg) {
+                tracing::warn!(warning = %warning, "stored provider credential unavailable");
+            }
+            engine.pipeline().router().set_api_keys(cfg.api_keys);
+        }
+    }
     let vector_cache = Arc::new(
         zylcode_core::cache::VectorCacheStore::with_default_path()
             .unwrap_or_else(|e| {
@@ -1461,7 +1623,6 @@ fn main() {
             let workspace_root = std::path::PathBuf::from(&engine.config().workspace_root);
             EngineState {
                 engine,
-                provider_configs,
                 vector_cache,
                 terminal_hub: Arc::new(zylcode_core::terminal::TerminalHub::new(
                     workspace_root.clone(),
@@ -1504,6 +1665,9 @@ fn main() {
             get_provider_scorecard,
             set_provider_config,
             reorder_provider_chain,
+            provider_key_status,
+            set_provider_key,
+            delete_provider_key,
             deploy_status,
             build_status,
             build_start,

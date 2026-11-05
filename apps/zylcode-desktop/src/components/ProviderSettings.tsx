@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { safeInvoke, unwrapInvoke } from "../lib/runtime";
 import { ENVIRONMENT, safeListen } from "../lib/events";
 
-type ProviderKind = "anthropic" | "open_router" | "ollama" | "synthetic_offline";
+type ProviderKind =
+  "anthropic" | "open_router" | "open_ai" | "deep_seek" | "ollama" | "custom" | "synthetic_offline";
 
 type ProviderConfig = {
   kind: ProviderKind;
@@ -12,6 +13,24 @@ type ProviderConfig = {
   enabled: boolean;
   fallback_order: number;
   requires_api_key: boolean;
+};
+
+/**
+ * Where a provider's credential comes from.
+ *
+ * This is a *source*, never a value. `hint` is four trailing characters of a
+ * key held by the OS credential store, so two stored keys can be told apart
+ * without either being rendered.
+ */
+type KeyStatus = {
+  kind: ProviderKind;
+  provider: string | null;
+  requires_key: boolean;
+  configured: boolean;
+  source: "credential_store" | "environment" | "config" | "none" | "not_required";
+  env_var: string | null;
+  hint: string | null;
+  store_error: string | null;
 };
 
 type Failover = {
@@ -24,16 +43,33 @@ type Failover = {
 
 const KIND_LABEL: Record<ProviderKind, string> = {
   anthropic: "Anthropic Native",
+  open_ai: "OpenAI",
   open_router: "OpenRouter API",
+  deep_seek: "DeepSeek",
   ollama: "Ollama Local",
+  custom: "Custom (OpenAI-compatible)",
   synthetic_offline: "Synthetic Offline",
 };
 
 const KIND_DOT: Record<ProviderKind, string> = {
   anthropic: "bg-violet-500",
+  open_ai: "bg-teal-500",
   open_router: "bg-sky-500",
+  deep_seek: "bg-indigo-500",
   ollama: "bg-emerald-500",
+  custom: "bg-orange-500",
   synthetic_offline: "bg-zinc-500",
+};
+
+/** Endpoint placeholder per provider: the value dispatch would use by default. */
+const ENDPOINT_PLACEHOLDER: Record<ProviderKind, string> = {
+  anthropic: "https://api.anthropic.com",
+  open_ai: "https://api.openai.com/v1",
+  open_router: "https://openrouter.ai/api/v1",
+  deep_seek: "https://api.deepseek.com/v1",
+  ollama: "http://localhost:11434",
+  custom: "required — e.g. http://gateway.internal/v1",
+  synthetic_offline: "no endpoint",
 };
 
 /**
@@ -89,32 +125,62 @@ const PROBE_STYLE: Record<ProbeStatus, string> = {
 
 const KEY_SOURCE_LABEL: Record<string, string> = {
   config: "saved key",
+  credential_store: "OS credential store",
+  environment: "environment variable",
   not_required: "no key required",
   none: "no key found",
 };
 
+function keySourceLabel(status: KeyStatus | undefined, probeKeySource: string | undefined) {
+  if (probeKeySource && probeKeySource.startsWith("env:")) return probeKeySource;
+  if (status) {
+    const base = KEY_SOURCE_LABEL[status.source] ?? status.source;
+    return status.source === "environment" && status.env_var ? `${base} (${status.env_var})` : base;
+  }
+  return KEY_SOURCE_LABEL[probeKeySource ?? ""] ?? probeKeySource ?? "unknown";
+}
+
+type Edit = { endpoint: string; timeout_ms: string; model: string };
+
 export default function ProviderSettings() {
   const [configs, setConfigs] = useState<ProviderConfig[]>([]);
+  const [keys, setKeys] = useState<KeyStatus[]>([]);
   const [failovers, setFailovers] = useState<Failover[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
+  const [keyBusy, setKeyBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [probing, setProbing] = useState<string | null>(null);
   const [probes, setProbes] = useState<Record<string, Probe>>({});
-  const [edit, setEdit] = useState<
-    Record<string, { endpoint: string; timeout_ms: string; model: string }>
-  >({});
+  const [edit, setEdit] = useState<Record<string, Edit>>({});
+  const [keyDraft, setKeyDraft] = useState<Record<string, string>>({});
+
+  function applyConfigs(res: ProviderConfig[]) {
+    res.sort((a, b) => a.fallback_order - b.fallback_order);
+    setConfigs(res);
+    const draft: Record<string, Edit> = {};
+    for (const c of res)
+      draft[c.kind] = { endpoint: c.endpoint, timeout_ms: String(c.timeout_ms), model: c.model };
+    setEdit(draft);
+  }
+
+  function applyKeys(res: KeyStatus[]) {
+    setKeys(res);
+  }
 
   async function refresh() {
     try {
       const res = unwrapInvoke(
         await safeInvoke<ProviderConfig[]>(ENVIRONMENT, "get_provider_configs"),
       );
-      res.sort((a, b) => a.fallback_order - b.fallback_order);
-      setConfigs(res);
-      const draft: Record<string, { endpoint: string; timeout_ms: string; model: string }> = {};
-      for (const c of res)
-        draft[c.kind] = { endpoint: c.endpoint, timeout_ms: String(c.timeout_ms), model: c.model };
-      setEdit(draft);
+      applyConfigs(res);
+      try {
+        applyKeys(unwrapInvoke(await safeInvoke<KeyStatus[]>(ENVIRONMENT, "provider_key_status")));
+      } catch (keyErr) {
+        // The chain is still usable when credential status is unavailable; say
+        // so instead of blanking the panel.
+        setErr(String(keyErr));
+      }
       setErr(null);
     } catch (e) {
       setErr(String(e));
@@ -132,18 +198,26 @@ export default function ProviderSettings() {
         unlisten = fn;
       } catch {
         // No listener available in this runtime. Deliberately swallowed: the
-        // fallback polling above still surfaces provider state, and failing
-        // the effect here would take the whole settings surface down.
+        // settings surface still works without the live failover feed.
       }
     })();
     return () => unlisten?.();
   }, []);
+
+  function isDirty(c: ProviderConfig) {
+    const e = edit[c.kind];
+    if (!e) return false;
+    return (
+      e.model !== c.model || e.endpoint !== c.endpoint || e.timeout_ms !== String(c.timeout_ms)
+    );
+  }
 
   async function handleSet(kind: ProviderKind) {
     const e = edit[kind];
     if (!e) return;
     setBusy(kind);
     setErr(null);
+    setNotice(null);
     try {
       const timeout = e.timeout_ms.trim() ? Number(e.timeout_ms) : undefined;
       if (timeout !== undefined && (isNaN(timeout) || timeout < 1000 || timeout > 300000)) {
@@ -152,14 +226,19 @@ export default function ProviderSettings() {
       const next = unwrapInvoke(
         await safeInvoke<ProviderConfig[]>(ENVIRONMENT, "set_provider_config", {
           kind,
-          endpoint: e.endpoint.trim() || null,
+          // Sent as strings, not null: an emptied field is how a model or
+          // endpoint override is removed. `null` means "leave unchanged" and is
+          // used only by the enable toggle.
+          endpoint: e.endpoint.trim(),
           timeoutMs: timeout ?? null,
           enabled: null,
-          model: e.model.trim() || null,
+          model: e.model.trim(),
         }),
       );
-      next.sort((a, b) => a.fallback_order - b.fallback_order);
-      setConfigs(next);
+      applyConfigs(next);
+      setNotice(
+        `${KIND_LABEL[kind]} saved — the next request uses these values, and they survive a restart.`,
+      );
     } catch (ex) {
       setErr(String(ex));
     } finally {
@@ -169,6 +248,7 @@ export default function ProviderSettings() {
 
   async function toggleEnabled(kind: ProviderKind, enabled: boolean) {
     setBusy(kind);
+    setErr(null);
     try {
       const next = unwrapInvoke(
         await safeInvoke<ProviderConfig[]>(ENVIRONMENT, "set_provider_config", {
@@ -179,8 +259,29 @@ export default function ProviderSettings() {
           model: null,
         }),
       );
-      next.sort((a, b) => a.fallback_order - b.fallback_order);
-      setConfigs(next);
+      applyConfigs(next);
+    } catch (ex) {
+      setErr(String(ex));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function move(kind: ProviderKind, dir: -1 | 1) {
+    const sorted = [...configs].sort((a, b) => a.fallback_order - b.fallback_order);
+    const idx = sorted.findIndex((c) => c.kind === kind);
+    const nxt = idx + dir;
+    if (nxt < 0 || nxt >= sorted.length) return;
+    const order = sorted.map((c) => c.kind);
+    [order[idx], order[nxt]] = [order[nxt], order[idx]];
+    setBusy("reorder");
+    setErr(null);
+    try {
+      const res = unwrapInvoke(
+        await safeInvoke<ProviderConfig[]>(ENVIRONMENT, "reorder_provider_chain", { order }),
+      );
+      applyConfigs(res);
+      setNotice("Order saved — it is the order dispatch will attempt.");
     } catch (ex) {
       setErr(String(ex));
     } finally {
@@ -189,12 +290,34 @@ export default function ProviderSettings() {
   }
 
   /**
-   * Send one real request with the values in the form and record what the
-   * provider said. Deliberately uses the *form* values rather than the saved
-   * chain: the question is "does this configuration work?", and the answer has
-   * to be about the configuration the user is looking at.
+   * Probe the saved configuration: exactly what the next real request will use.
    */
-  async function testConnection(kind: ProviderKind) {
+  async function testSaved(kind: ProviderKind) {
+    setProbing(kind);
+    setErr(null);
+    try {
+      const probe = unwrapInvoke(
+        await safeInvoke<Probe>(ENVIRONMENT, "test_provider_connection", {
+          kind,
+          endpoint: null,
+          model: null,
+          timeoutMs: null,
+          saved: true,
+        }),
+      );
+      setProbes((p) => ({ ...p, [`${kind}:saved`]: probe }));
+    } catch (ex) {
+      setErr(String(ex));
+    } finally {
+      setProbing(null);
+    }
+  }
+
+  /**
+   * Probe the values currently in the form, so a configuration can be checked
+   * before it is saved. The result is labelled as unsaved.
+   */
+  async function testDraft(kind: ProviderKind) {
     const e = edit[kind];
     setProbing(kind);
     setErr(null);
@@ -209,9 +332,10 @@ export default function ProviderSettings() {
           endpoint: e?.endpoint.trim() || null,
           model: e?.model.trim() || null,
           timeoutMs: timeout,
+          saved: false,
         }),
       );
-      setProbes((p) => ({ ...p, [kind]: probe }));
+      setProbes((p) => ({ ...p, [`${kind}:draft`]: probe }));
     } catch (ex) {
       setErr(String(ex));
     } finally {
@@ -219,25 +343,49 @@ export default function ProviderSettings() {
     }
   }
 
-  async function move(kind: ProviderKind, dir: -1 | 1) {
-    const sorted = [...configs].sort((a, b) => a.fallback_order - b.fallback_order);
-    const idx = sorted.findIndex((c) => c.kind === kind);
-    const nxt = idx + dir;
-    if (nxt < 0 || nxt >= sorted.length) return;
-    const order = sorted.map((c) => c.kind);
-    [order[idx], order[nxt]] = [order[nxt], order[idx]];
-    setBusy("reorder");
+  async function saveKey(kind: ProviderKind) {
+    const value = (keyDraft[kind] ?? "").trim();
+    if (!value) return;
+    setKeyBusy(kind);
+    setErr(null);
+    setNotice(null);
     try {
       const res = unwrapInvoke(
-        await safeInvoke<ProviderConfig[]>(ENVIRONMENT, "reorder_provider_chain", { order }),
+        await safeInvoke<KeyStatus[]>(ENVIRONMENT, "set_provider_key", {
+          kind,
+          apiKey: value,
+        }),
       );
-      res.sort((a, b) => a.fallback_order - b.fallback_order);
-      setConfigs(res);
+      applyKeys(res);
+      // The key is held by the OS now; drop the field so it is not re-submitted
+      // or left visible in the DOM.
+      setKeyDraft((s) => ({ ...s, [kind]: "" }));
+      setNotice(`${KIND_LABEL[kind]} key stored in the OS credential store.`);
     } catch (ex) {
       setErr(String(ex));
     } finally {
-      setBusy(null);
+      setKeyBusy(null);
     }
+  }
+
+  async function removeKey(kind: ProviderKind) {
+    setKeyBusy(kind);
+    setErr(null);
+    setNotice(null);
+    try {
+      const res = unwrapInvoke(
+        await safeInvoke<KeyStatus[]>(ENVIRONMENT, "delete_provider_key", { kind }),
+      );
+      applyKeys(res);
+    } catch (ex) {
+      setErr(String(ex));
+    } finally {
+      setKeyBusy(null);
+    }
+  }
+
+  function keyStatus(kind: ProviderKind) {
+    return keys.find((k) => k.kind === kind);
   }
 
   return (
@@ -258,153 +406,269 @@ export default function ProviderSettings() {
           {err}
         </div>
       )}
+      {notice && (
+        <div className="rounded border border-emerald-900 bg-emerald-950/30 p-2 text-xs font-mono text-emerald-300">
+          {notice}
+        </div>
+      )}
 
       <div className="grid gap-3">
-        {configs.map((c) => (
-          <div
-            key={c.kind}
-            className="rounded border border-zyl-border bg-zyl-bg p-3 flex flex-col gap-2"
-          >
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <span
-                  className={`inline-block h-2 w-2 rounded-full ${KIND_DOT[c.kind]} ${c.enabled ? "opacity-100" : "opacity-30"}`}
-                />
-                <span className="text-sm font-semibold">{KIND_LABEL[c.kind]}</span>
-                <span className="text-xs font-mono text-zyl-muted">
-                  #{c.fallback_order} · {c.kind}
-                </span>
-                {c.requires_api_key && (
-                  <span className="rounded bg-amber-950/50 border border-amber-900 px-1.5 py-0.5 text-[10px] text-amber-300">
-                    API key
-                  </span>
-                )}
-                {!c.enabled && (
-                  <span className="rounded bg-zinc-800 border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-400">
-                    disabled
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-1">
-                <button
-                  disabled={busy !== null}
-                  onClick={() => move(c.kind, -1)}
-                  className="rounded border border-zyl-border px-2 py-1 text-xs hover:bg-zyl-surface disabled:opacity-40"
-                  title="Move up (higher priority)"
-                >
-                  ↑
-                </button>
-                <button
-                  disabled={busy !== null}
-                  onClick={() => move(c.kind, 1)}
-                  className="rounded border border-zyl-border px-2 py-1 text-xs hover:bg-zyl-surface disabled:opacity-40"
-                  title="Move down (lower priority)"
-                >
-                  ↓
-                </button>
-                <label className="ml-2 flex items-center gap-1 text-xs">
-                  <input
-                    type="checkbox"
-                    checked={c.enabled}
-                    onChange={(e) => toggleEnabled(c.kind, e.target.checked)}
-                    disabled={busy === c.kind}
+        {configs.map((c) => {
+          const status = keyStatus(c.kind);
+          const draftProbe = probes[`${c.kind}:draft`];
+          const savedProbe = probes[`${c.kind}:saved`];
+          return (
+            <div
+              key={c.kind}
+              className="rounded border border-zyl-border bg-zyl-bg p-3 flex flex-col gap-2"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`inline-block h-2 w-2 rounded-full ${KIND_DOT[c.kind]} ${c.enabled ? "opacity-100" : "opacity-30"}`}
                   />
-                  enabled
+                  <span className="text-sm font-semibold">{KIND_LABEL[c.kind]}</span>
+                  <span className="text-xs font-mono text-zyl-muted">
+                    #{c.fallback_order} · {c.kind}
+                  </span>
+                  {c.requires_api_key && (
+                    <span
+                      className={`rounded border px-1.5 py-0.5 text-[10px] ${
+                        status?.configured
+                          ? "border-emerald-900 bg-emerald-950/40 text-emerald-300"
+                          : "border-amber-900 bg-amber-950/50 text-amber-300"
+                      }`}
+                      data-testid={`provider-key-source-${c.kind}`}
+                      title={status?.store_error ?? undefined}
+                    >
+                      {status?.configured
+                        ? `key: ${keySourceLabel(status, undefined)}${status.hint ? ` ${status.hint}` : ""}`
+                        : "key: not configured"}
+                    </span>
+                  )}
+                  {!c.enabled && (
+                    <span className="rounded bg-zinc-800 border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-400">
+                      disabled
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    disabled={busy !== null}
+                    onClick={() => move(c.kind, -1)}
+                    className="rounded border border-zyl-border px-2 py-1 text-xs hover:bg-zyl-surface disabled:opacity-40"
+                    title="Move up (higher priority)"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    disabled={busy !== null}
+                    onClick={() => move(c.kind, 1)}
+                    className="rounded border border-zyl-border px-2 py-1 text-xs hover:bg-zyl-surface disabled:opacity-40"
+                    title="Move down (lower priority)"
+                  >
+                    ↓
+                  </button>
+                  <label className="ml-2 flex items-center gap-1 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={c.enabled}
+                      onChange={(e) => toggleEnabled(c.kind, e.target.checked)}
+                      disabled={busy === c.kind}
+                    />
+                    enabled
+                  </label>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr_0.7fr] gap-2">
+                <label className="text-xs space-y-1">
+                  <span className="text-zyl-muted">Model</span>
+                  <input
+                    value={edit[c.kind]?.model ?? ""}
+                    onChange={(e) =>
+                      setEdit((s) => ({ ...s, [c.kind]: { ...s[c.kind], model: e.target.value } }))
+                    }
+                    placeholder={c.model || "required"}
+                    className="w-full rounded border border-zyl-border bg-zyl-surface px-2 py-1.5 font-mono text-xs outline-none focus:border-zyl-accent"
+                  />
+                </label>
+                <label className="text-xs space-y-1">
+                  <span className="text-zyl-muted">Endpoint override</span>
+                  <input
+                    value={edit[c.kind]?.endpoint ?? ""}
+                    onChange={(e) =>
+                      setEdit((s) => ({
+                        ...s,
+                        [c.kind]: { ...s[c.kind], endpoint: e.target.value },
+                      }))
+                    }
+                    placeholder={ENDPOINT_PLACEHOLDER[c.kind]}
+                    className="w-full rounded border border-zyl-border bg-zyl-surface px-2 py-1.5 font-mono text-xs outline-none focus:border-zyl-accent"
+                  />
+                </label>
+                <label className="text-xs space-y-1">
+                  <span className="text-zyl-muted">Timeout ms</span>
+                  <input
+                    value={edit[c.kind]?.timeout_ms ?? ""}
+                    onChange={(e) =>
+                      setEdit((s) => ({
+                        ...s,
+                        [c.kind]: { ...s[c.kind], timeout_ms: e.target.value },
+                      }))
+                    }
+                    placeholder={String(c.timeout_ms)}
+                    className="w-full rounded border border-zyl-border bg-zyl-surface px-2 py-1.5 font-mono text-xs outline-none focus:border-zyl-accent"
+                  />
                 </label>
               </div>
-            </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr_0.7fr] gap-2">
-              <label className="text-xs space-y-1">
-                <span className="text-zyl-muted">Model</span>
-                <input
-                  value={edit[c.kind]?.model ?? ""}
-                  onChange={(e) =>
-                    setEdit((s) => ({ ...s, [c.kind]: { ...s[c.kind], model: e.target.value } }))
-                  }
-                  placeholder={c.model}
-                  className="w-full rounded border border-zyl-border bg-zyl-surface px-2 py-1.5 font-mono text-xs outline-none focus:border-zyl-accent"
-                />
-              </label>
-              <label className="text-xs space-y-1">
-                <span className="text-zyl-muted">Endpoint override</span>
-                <input
-                  value={edit[c.kind]?.endpoint ?? ""}
-                  onChange={(e) =>
-                    setEdit((s) => ({ ...s, [c.kind]: { ...s[c.kind], endpoint: e.target.value } }))
-                  }
-                  placeholder={c.kind === "ollama" ? "http://localhost:11434" : "default"}
-                  className="w-full rounded border border-zyl-border bg-zyl-surface px-2 py-1.5 font-mono text-xs outline-none focus:border-zyl-accent"
-                />
-              </label>
-              <label className="text-xs space-y-1">
-                <span className="text-zyl-muted">Timeout ms</span>
-                <input
-                  value={edit[c.kind]?.timeout_ms ?? ""}
-                  onChange={(e) =>
-                    setEdit((s) => ({
-                      ...s,
-                      [c.kind]: { ...s[c.kind], timeout_ms: e.target.value },
-                    }))
-                  }
-                  placeholder={String(c.timeout_ms)}
-                  className="w-full rounded border border-zyl-border bg-zyl-surface px-2 py-1.5 font-mono text-xs outline-none focus:border-zyl-accent"
-                />
-              </label>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              <button
-                onClick={() => testConnection(c.kind)}
-                disabled={probing !== null}
-                className="rounded border border-zyl-border px-3 py-1.5 text-xs font-semibold hover:bg-zyl-surface disabled:opacity-40"
-                title="Send one real request with these values and report what the provider says"
-              >
-                {probing === c.kind ? "Testing…" : "Test connection"}
-              </button>
-              <button
-                onClick={() => handleSet(c.kind)}
-                disabled={busy === c.kind}
-                className="rounded bg-zyl-accent px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-40"
-              >
-                {busy === c.kind ? "Saving…" : "Save"}
-              </button>
-            </div>
-
-            {probes[c.kind] && (
-              <div
-                className={`rounded border p-2 text-xs ${PROBE_STYLE[probes[c.kind].status]}`}
-                data-testid={`provider-probe-${c.kind}`}
-              >
-                <div className="flex flex-wrap items-center gap-2 font-semibold">
-                  <span>{PROBE_LABEL[probes[c.kind].status]}</span>
-                  {probes[c.kind].http_status != null && (
-                    <span className="font-mono text-[10px] opacity-80">
-                      HTTP {probes[c.kind].http_status}
+              {c.requires_api_key && (
+                <div className="flex flex-wrap items-end gap-2 rounded border border-zyl-border/60 bg-zyl-surface/40 p-2">
+                  <label className="flex-1 text-xs space-y-1">
+                    <span className="text-zyl-muted">
+                      API key — stored in the OS credential store, never in the workspace
+                      {status?.env_var ? (
+                        <>
+                          {" "}
+                          · env fallback <span className="font-mono">{status.env_var}</span>
+                        </>
+                      ) : null}
                     </span>
-                  )}
-                  {probes[c.kind].status === "connected" && (
-                    <span className="font-mono text-[10px] opacity-80">
-                      {probes[c.kind].latency_ms}ms · {probes[c.kind].response_chars} chars
-                    </span>
-                  )}
+                    <input
+                      type="password"
+                      autoComplete="off"
+                      spellCheck={false}
+                      value={keyDraft[c.kind] ?? ""}
+                      onChange={(e) => setKeyDraft((s) => ({ ...s, [c.kind]: e.target.value }))}
+                      placeholder={
+                        status?.source === "credential_store"
+                          ? `replace stored key ${status.hint ?? ""}`.trim()
+                          : "paste key"
+                      }
+                      className="w-full rounded border border-zyl-border bg-zyl-bg px-2 py-1.5 font-mono text-xs outline-none focus:border-zyl-accent"
+                    />
+                  </label>
+                  <button
+                    onClick={() => saveKey(c.kind)}
+                    disabled={keyBusy === c.kind || !(keyDraft[c.kind] ?? "").trim()}
+                    className="rounded border border-zyl-border px-3 py-1.5 text-xs font-semibold hover:bg-zyl-surface disabled:opacity-40"
+                  >
+                    {keyBusy === c.kind
+                      ? "Storing…"
+                      : status?.source === "credential_store"
+                        ? "Replace key"
+                        : "Store key"}
+                  </button>
+                  <button
+                    onClick={() => removeKey(c.kind)}
+                    disabled={keyBusy === c.kind || status?.source !== "credential_store"}
+                    className="rounded border border-zyl-border px-2 py-1.5 text-xs hover:bg-zyl-surface disabled:opacity-40"
+                    title="Remove the key from the OS credential store"
+                  >
+                    Remove
+                  </button>
                 </div>
-                <div className="mt-1 font-mono text-[10px] opacity-80 break-all">
-                  {probes[c.kind].endpoint}
-                </div>
-                <div className="mt-1 font-mono text-[10px] opacity-80">
-                  model {probes[c.kind].model} · key{" "}
-                  {KEY_SOURCE_LABEL[probes[c.kind].key_source] ?? probes[c.kind].key_source}
-                </div>
-                {probes[c.kind].detail && (
-                  <div className="mt-1 break-words text-[10px] opacity-90">
-                    {probes[c.kind].detail}
-                  </div>
-                )}
+              )}
+
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <button
+                  onClick={() => testSaved(c.kind)}
+                  disabled={probing !== null}
+                  className="rounded border border-zyl-border px-3 py-1.5 text-xs font-semibold hover:bg-zyl-surface disabled:opacity-40"
+                  title="Send one real request with the saved configuration — the same values the next agent turn will use"
+                >
+                  {probing === c.kind ? "Testing…" : "Test saved"}
+                </button>
+                <button
+                  onClick={() => testDraft(c.kind)}
+                  disabled={probing !== null}
+                  className="rounded border border-zyl-border px-3 py-1.5 text-xs hover:bg-zyl-surface disabled:opacity-40"
+                  title="Send one real request with the values in the form, without saving them"
+                >
+                  {probing === c.kind ? "Testing…" : "Test unsaved values"}
+                </button>
+                <button
+                  onClick={() => handleSet(c.kind)}
+                  disabled={busy === c.kind}
+                  className="rounded bg-zyl-accent px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-40"
+                >
+                  {busy === c.kind ? "Saving…" : "Save"}
+                </button>
               </div>
-            )}
-          </div>
-        ))}
+
+              {savedProbe && (
+                <div
+                  className={`rounded border p-2 text-xs ${PROBE_STYLE[savedProbe.status]}`}
+                  data-testid={`provider-probe-saved-${c.kind}`}
+                >
+                  <div className="flex flex-wrap items-center gap-2 font-semibold">
+                    <span>Saved configuration · {PROBE_LABEL[savedProbe.status]}</span>
+                    {savedProbe.http_status != null && (
+                      <span className="font-mono text-[10px] opacity-80">
+                        HTTP {savedProbe.http_status}
+                      </span>
+                    )}
+                    {savedProbe.status === "connected" && (
+                      <span className="font-mono text-[10px] opacity-80">
+                        {savedProbe.latency_ms}ms · {savedProbe.response_chars} chars
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-1 font-mono text-[10px] opacity-80 break-all">
+                    {savedProbe.endpoint}
+                  </div>
+                  <div className="mt-1 font-mono text-[10px] opacity-80">
+                    model {savedProbe.model} · key {keySourceLabel(status, savedProbe.key_source)}
+                  </div>
+                  {savedProbe.detail && (
+                    <div className="mt-1 break-words text-[10px] opacity-90">
+                      {savedProbe.detail}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {draftProbe && (
+                <div
+                  className={`rounded border p-2 text-xs ${PROBE_STYLE[draftProbe.status]}`}
+                  data-testid={`provider-probe-draft-${c.kind}`}
+                >
+                  <div className="flex flex-wrap items-center gap-2 font-semibold">
+                    <span>Unsaved values · {PROBE_LABEL[draftProbe.status]}</span>
+                    {draftProbe.http_status != null && (
+                      <span className="font-mono text-[10px] opacity-80">
+                        HTTP {draftProbe.http_status}
+                      </span>
+                    )}
+                    {draftProbe.status === "connected" && (
+                      <span className="font-mono text-[10px] opacity-80">
+                        {draftProbe.latency_ms}ms · {draftProbe.response_chars} chars
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-1 font-mono text-[10px] opacity-80 break-all">
+                    {draftProbe.endpoint}
+                  </div>
+                  <div className="mt-1 font-mono text-[10px] opacity-80">
+                    model {draftProbe.model} · key {keySourceLabel(status, draftProbe.key_source)}
+                  </div>
+                  {draftProbe.detail && (
+                    <div className="mt-1 break-words text-[10px] opacity-90">
+                      {draftProbe.detail}
+                    </div>
+                  )}
+                  {isDirty(c) && (
+                    <div className="mt-1 text-[10px] font-semibold opacity-90">
+                      These values are not saved — the next request still uses the saved
+                      configuration until you press Save.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       <div className="rounded border border-zyl-border bg-zyl-bg p-3">
@@ -433,14 +697,14 @@ export default function ProviderSettings() {
       </div>
 
       <p className="text-[11px] leading-relaxed text-zyl-muted">
-        Order defines fallback priority (top = first attempt). Timeout is per-request
-        (1000–300000ms). Ollama default host is{" "}
-        <span className="font-mono">http://localhost:11434</span>. Synthetic offline requires no key
-        and is last-resort. A provider shows “API key” when it needs one; the key itself is read
-        from the environment (<span className="font-mono">ANTHROPIC_API_KEY</span>,{" "}
-        <span className="font-mono">OPENROUTER_API_KEY</span>) and is never displayed here.{" "}
-        <span className="font-semibold">Test connection</span> sends one real request with the
-        values in the form and reports exactly what the provider answered.
+        Order defines fallback priority (top = first attempt) and is the order dispatch attempts
+        after a restart. Timeout is per provider (1000–300000ms). Disabled providers are skipped;
+        adding one does not change what an existing configuration tries first. API keys are kept in
+        the OS credential store (never in the workspace or this panel) and are shown only as a
+        masked hint; an environment variable still works as a fallback and takes precedence when
+        set. <span className="font-semibold">Test saved</span> sends one real request with the saved
+        values — the same ones the next agent turn will use;{" "}
+        <span className="font-semibold">Test unsaved values</span> checks a draft before saving it.
       </p>
     </div>
   );
