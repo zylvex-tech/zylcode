@@ -11,23 +11,23 @@ Picture feeds are 1280×720 native; the assembly pipeline rescales every feed to
 
 ### Picture
 
-| Feed | Source | Native | Use |
-|---|---|---|---|
-| Scene 1 — mission lifecycle | `04-graphics/scene-01-mission-lifecycle.webm` | 1280×720 | Opening: lifecycle animation |
-| Scene 2 — architecture | `04-graphics/scene-02-architecture.webm` | 1280×720 | Architecture workspace graph |
-| Scene 3 — evidence ladder | `04-graphics/scene-03-evidence-ladder.webm` | 1280×720 | Evidence ladder animation |
-| Footage 01 | `01-footage/take-01-workbench.webm` | check before use | Product opening |
-| Footage 02 | `01-footage/take-02-agent-execution.webm` | check before use | Workbench surfaces |
-| Footage 03 | `01-footage/take-03-verification-evidence.webm` | check before use | Repository understanding |
+| Feed                        | Source                                          | Native           | Use                          |
+| --------------------------- | ----------------------------------------------- | ---------------- | ---------------------------- |
+| Scene 1 — mission lifecycle | `04-graphics/scene-01-mission-lifecycle.webm`   | 1280×720         | Opening: lifecycle animation |
+| Scene 2 — architecture      | `04-graphics/scene-02-architecture.webm`        | 1280×720         | Architecture workspace graph |
+| Scene 3 — evidence ladder   | `04-graphics/scene-03-evidence-ladder.webm`     | 1280×720         | Evidence ladder animation    |
+| Footage 01                  | `01-footage/take-01-workbench.webm`             | check before use | Product opening              |
+| Footage 02                  | `01-footage/take-02-agent-execution.webm`       | check before use | Workbench surfaces           |
+| Footage 03                  | `01-footage/take-03-verification-evidence.webm` | check before use | Repository understanding     |
 
 ### Sound
 
-| Feed | Path | Role |
-|---|---|---|
-| Narration 15 clips | `05-audio/narration/narration-01..15.mp3` | Speaker: en-AU-NatashaNeural |
-| Music cue 1 | `05-audio/music/cue-1-open-swell.mp3` | Title / open swell |
-| Music cue 2 | `05-audio/music/cue-2-documentary-tone.mp3` | Documentary bed (main body) |
-| Music cue 3 | `05-audio/music/cue-3-resolve.mp3` | Resolve under closing brand line |
+| Feed               | Path                                        | Role                             |
+| ------------------ | ------------------------------------------- | -------------------------------- |
+| Narration 15 clips | `05-audio/narration/narration-01..15.mp3`   | Speaker: en-AU-NatashaNeural     |
+| Music cue 1        | `05-audio/music/cue-1-open-swell.mp3`       | Title / open swell               |
+| Music cue 2        | `05-audio/music/cue-2-documentary-tone.mp3` | Documentary bed (main body)      |
+| Music cue 3        | `05-audio/music/cue-3-resolve.mp3`          | Resolve under closing brand line |
 
 ---
 
@@ -76,17 +76,17 @@ Picture feeds are 1280×720 native; the assembly pipeline rescales every feed to
 
 ## Deliverables
 
-| Path | Kind |
-|---|---|
-| `06-narration/NARRATION_SCRIPT.md` | narrated lines keyed to filmed beats |
-| `06-narration/NARRATION_ASSEMBLY.md` | edit map |
-| `06-narration/MASTER_ASSEMBLY_SEQUENCE.md` | this file |
-| `06-narration/narration-lines.txt` | source line list |
-| `05-audio/narration/narration-01..15.mp3` | rendered narration |
-| `05-audio/music/cue-1-open-swell.mp3` | open swell |
-| `05-audio/music/cue-2-documentary-tone.mp3` | documentary bed |
-| `05-audio/music/cue-3-resolve.mp3` | resolve |
-| `03-deliverables/zylcode-intro-master.mp4` | final master (pending) |
+| Path                                        | Kind                                 |
+| ------------------------------------------- | ------------------------------------ |
+| `06-narration/NARRATION_SCRIPT.md`          | narrated lines keyed to filmed beats |
+| `06-narration/NARRATION_ASSEMBLY.md`        | edit map                             |
+| `06-narration/MASTER_ASSEMBLY_SEQUENCE.md`  | this file                            |
+| `06-narration/narration-lines.txt`          | source line list                     |
+| `05-audio/narration/narration-01..15.mp3`   | rendered narration                   |
+| `05-audio/music/cue-1-open-swell.mp3`       | open swell                           |
+| `05-audio/music/cue-2-documentary-tone.mp3` | documentary bed                      |
+| `05-audio/music/cue-3-resolve.mp3`          | resolve                              |
+| `03-deliverables/zylcode-intro-master.mp4`  | final master (pending)               |
 
 ---
 

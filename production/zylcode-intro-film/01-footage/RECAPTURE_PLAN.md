@@ -8,11 +8,11 @@ native resolution must be confirmed before the assembly treats them as primary.
 
 ## Current state
 
-| File | Directory | Subject | Native resolution |
-|---|---|---|---|
-| `take-01-workbench.webm` | `01-footage/` | Product opening (header, milestone label, workbench, version badge `v0.2.3`) | to verify |
-| `take-02-agent-execution.webm` | `01-footage/` | Hero build: plan → tool calls → real failure → repair → re-run | to verify |
-| `take-03-verification-evidence.webm` | `01-footage/` | Final mission report: proven 2 / derived 5 / hypotheses 1 / unknowns 1, ledger+graph+claims integrity | to verify |
+| File                                 | Directory     | Subject                                                                                               | Native resolution |
+| ------------------------------------ | ------------- | ----------------------------------------------------------------------------------------------------- | ----------------- |
+| `take-01-workbench.webm`             | `01-footage/` | Product opening (header, milestone label, workbench, version badge `v0.2.3`)                          | to verify         |
+| `take-02-agent-execution.webm`       | `01-footage/` | Hero build: plan → tool calls → real failure → repair → re-run                                        | to verify         |
+| `take-03-verification-evidence.webm` | `01-footage/` | Final mission report: proven 2 / derived 5 / hypotheses 1 / unknowns 1, ledger+graph+claims integrity | to verify         |
 
 ## To record at true 1920×1080
 

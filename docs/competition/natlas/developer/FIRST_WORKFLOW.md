@@ -7,7 +7,7 @@ and reproducible.
 
 ## The task
 
-> *"Add a health-check endpoint to the router and a test for it."*
+> _"Add a health-check endpoint to the router and a test for it."_
 
 ---
 
@@ -53,9 +53,9 @@ printf 'pub fn router() {}\n' > routes.rs
 Context is chosen by ZylCode's repository intelligence, not by the model. Keep it small — a
 handful of files — and record which paths were sent:
 
-| Field | Example |
-|---|---|
-| path | `routes.rs` |
+| Field   | Example              |
+| ------- | -------------------- |
+| path    | `routes.rs`          |
 | excerpt | `pub fn router() {}` |
 
 The context is attached to the **user turn** with explicit path labels, so the model can see
@@ -88,10 +88,14 @@ The model must answer in this contract (ZylCode's own — not N-ATLAS's native f
 {
   "summary": "Add a health endpoint",
   "steps": [
-    { "kind": "analyse",   "description": "find the router" },
-    { "kind": "implement", "description": "add GET /health", "target_path": "routes.rs" },
-    { "kind": "test",      "description": "run the suite" },
-    { "kind": "approve",   "description": "supervisor sign-off" }
+    { "kind": "analyse", "description": "find the router" },
+    {
+      "kind": "implement",
+      "description": "add GET /health",
+      "target_path": "routes.rs"
+    },
+    { "kind": "test", "description": "run the suite" },
+    { "kind": "approve", "description": "supervisor sign-off" }
   ]
 }
 ```
@@ -109,7 +113,7 @@ The intent becomes a **dependency-chained TaskGraph**: each step depends on the 
 the first step is the only one initially ready.
 
 The `approve` step maps to a **real** human-approval gate. The `implement` and `test` steps map to
-*notes* in the current phase, because ZylCode will not invent file contents or a test command that
+_notes_ in the current phase, because ZylCode will not invent file contents or a test command that
 the model did not supply. Executing a real write requires the approved content to be present.
 
 > **This is deliberate.** Fabricating a patch or a test command would be worse than not executing
@@ -158,13 +162,13 @@ The API key never appears. See [EVIDENCE_AND_VALIDATION.md](EVIDENCE_AND_VALIDAT
 
 ## What is genuinely working today, and what is not
 
-| Stage | State |
-|---|---|
-| Configuration, boundary, parsing, evidence, redaction | **TESTED** |
-| Local transport (real HTTP, OpenAI-compatible) | **TESTED** against a stub server |
-| Runtime probe | **TESTED** |
-| Intent -> TaskGraph handoff | **TESTED** |
-| **A genuine N-ATLAS invocation** | **BLOCKED_NATLAS_ACCESS** until the model is served |
-| Approved-write execution | **PROPOSED** — requires the concrete patch/test command |
+| Stage                                                 | State                                                   |
+| ----------------------------------------------------- | ------------------------------------------------------- |
+| Configuration, boundary, parsing, evidence, redaction | **TESTED**                                              |
+| Local transport (real HTTP, OpenAI-compatible)        | **TESTED** against a stub server                        |
+| Runtime probe                                         | **TESTED**                                              |
+| Intent -> TaskGraph handoff                           | **TESTED**                                              |
+| **A genuine N-ATLAS invocation**                      | **BLOCKED_NATLAS_ACCESS** until the model is served     |
+| Approved-write execution                              | **PROPOSED** — requires the concrete patch/test command |
 
 Read that table before claiming the workflow "works". It does not, yet, until a real model answers.

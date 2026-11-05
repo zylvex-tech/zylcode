@@ -23,15 +23,15 @@
 
 ## 4. Competition Commits Proposed for Publication
 
-| SHA | Subject | Files |
-|---|---|---|
-| `bece9e9` | docs(natlas): add evidence index and submission readiness matrix | docs/competition/natlas/NATLAS_EVIDENCE_INDEX.md, NATLAS_SUBMISSION_READINESS_2026-10-07.md |
+| SHA       | Subject                                                                                        | Files                                                                                                                                                                                                                                                                                                                              |
+| --------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bece9e9` | docs(natlas): add evidence index and submission readiness matrix                               | docs/competition/natlas/NATLAS_EVIDENCE_INDEX.md, NATLAS_SUBMISSION_READINESS_2026-10-07.md                                                                                                                                                                                                                                        |
 | `9f76915` | docs(natlas): complete B1 controlled endpoint + C3 multilingual evidence and submission assets | docs/competition/natlas/ARCHITECTURE_BRIDGE.md, B1_STATUS_2026-10-07.md, FLAGSHIP_ENGINEERING_JOURNEY_REPORT.md, MULTILINGUAL_VALIDATION_MATRIX.md, NATLAS_CHALLENGE_RUBRIC_2026-10-07.md, SUBMISSION_CHECKLIST_2026-10-07.md, VIDEO_SCRIPT_2026-10-07.md, developer/BETA_TEST_EVIDENCE_TEMPLATE.md, developer/BETA_TEST_INVITE.md |
-| `246a136` | docs(natlas): record EV-016 Pidgin comprehension + fix multilingual matrix honesty | docs/competition/natlas/MULTILINGUAL_VALIDATION_MATRIX.md |
-| `591d35a` | feat(natlas): engineering-bridge journey — real intent→factory execution with approval gate | crates/zylcode-core/src/competition/natlas/intent.rs, types.rs; crates/zylcode-core/tests/natlas_bridge.rs, natlas_live.rs |
-| `dadb5d9` | feat(natlas): C3 live runtime verification — genuine Yoruba→N-ATLAS→mutation→test | crates/zylcode-core/src/competition/natlas/intent.rs; crates/zylcode-core/tests/natlas_bridge.rs, natlas_live.rs; docs/competition/natlas/C3_LIVE_RUNTIME_VERIFICATION_REPORT.md |
-| `c8e473d` | docs(natlas): challenge-specific README + C3 verification report | README.md, docs/competition/natlas/C3_LIVE_RUNTIME_VERIFICATION_REPORT.md |
-| `f0fcd01` | docs(natlas): beta tester quickstart + architecture guide + README corrections | README.md, docs/competition/natlas/ARCHITECTURE_BRIDGE.md, docs/competition/natlas/BETA_TESTER_QUICKSTART.md |
+| `246a136` | docs(natlas): record EV-016 Pidgin comprehension + fix multilingual matrix honesty             | docs/competition/natlas/MULTILINGUAL_VALIDATION_MATRIX.md                                                                                                                                                                                                                                                                          |
+| `591d35a` | feat(natlas): engineering-bridge journey — real intent→factory execution with approval gate    | crates/zylcode-core/src/competition/natlas/intent.rs, types.rs; crates/zylcode-core/tests/natlas_bridge.rs, natlas_live.rs                                                                                                                                                                                                         |
+| `dadb5d9` | feat(natlas): C3 live runtime verification — genuine Yoruba→N-ATLAS→mutation→test              | crates/zylcode-core/src/competition/natlas/intent.rs; crates/zylcode-core/tests/natlas_bridge.rs, natlas_live.rs; docs/competition/natlas/C3_LIVE_RUNTIME_VERIFICATION_REPORT.md                                                                                                                                                   |
+| `c8e473d` | docs(natlas): challenge-specific README + C3 verification report                               | README.md, docs/competition/natlas/C3_LIVE_RUNTIME_VERIFICATION_REPORT.md                                                                                                                                                                                                                                                          |
+| `f0fcd01` | docs(natlas): beta tester quickstart + architecture guide + README corrections                 | README.md, docs/competition/natlas/ARCHITECTURE_BRIDGE.md, docs/competition/natlas/BETA_TESTER_QUICKSTART.md                                                                                                                                                                                                                       |
 
 **Total: 7 commits. Diverges from `main` at `b4d13ab`.**
 
@@ -41,15 +41,16 @@
 
 ## 6. README Corrections Made
 
-| Correction | Reason |
-|---|---|
-| Tagline: "Nigerian Pidgin" clarified as comprehension-only bonus | Owner directive: do not represent Pidgin as having equivalent end-to-end validation |
-| Removed "carries 5 competition-specific commits" | Volatile statement — becomes stale immediately after next commit |
-| Replaced `ARCHITECTURE_BRIDGE.md` blocker with `BETA_TESTER_QUICKSTART.md` | ARCHITECTURE_BRIDGE.md is present and complete; quickstart is the new deliverable |
+| Correction                                                                 | Reason                                                                              |
+| -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Tagline: "Nigerian Pidgin" clarified as comprehension-only bonus           | Owner directive: do not represent Pidgin as having equivalent end-to-end validation |
+| Removed "carries 5 competition-specific commits"                           | Volatile statement — becomes stale immediately after next commit                    |
+| Replaced `ARCHITECTURE_BRIDGE.md` blocker with `BETA_TESTER_QUICKSTART.md` | ARCHITECTURE_BRIDGE.md is present and complete; quickstart is the new deliverable   |
 
 ## 7. Architecture Guide Status
 
 ✅ **Complete and updated.** `docs/competition/natlas/ARCHITECTURE_BRIDGE.md` documents:
+
 - Full verified pipeline (instruction → SYSTEM contract → NatlasTransport → endpoint → N-ATLAS → bounded repair → TaskGraph → approval → FactoryRunner → evidence)
 - Why N-ATLAS cannot silently degrade (dedicated boundary trait, no fallback state)
 - C3 live acceptance journey (EV-024, 12-step chain)
@@ -59,6 +60,7 @@
 ## 8. Beta Tester Quickstart Status
 
 ✅ **Created.** `docs/competition/natlas/BETA_TESTER_QUICKSTART.md` contains:
+
 - What the tester is validating (real engineering bridge, not chat)
 - Prerequisites (Rust, Git, Python, internet; no API key for hermetic tests)
 - Setup (clone, verify branch, health check)
@@ -100,13 +102,13 @@ cargo test -p zylcode-core --test natlas_bridge
 
 Measured from clean worktree `C:/Temp/zylcode-cleanroom` (first compilation from scratch):
 
-| Suite | Count | Result | Duration |
-|---|---|---|---|
-| `cargo test -p zylcode-core --lib competition::natlas::intent` | **18** | ✅ pass | 0.01s |
-| `cargo test -p zylcode-core --test natlas_boundary` | **17** | ✅ pass | 0.66s |
-| `cargo test -p zylcode-core --test natlas_runtime` | **12** | ✅ pass | 4.06s |
-| `cargo test -p zylcode-core --test natlas_bridge` | **14** | ✅ pass | 4.14s |
-| **Total** | **61 / 61** | ✅ **all green** | ~9s (after 3m 10s initial compilation) |
+| Suite                                                          | Count       | Result           | Duration                               |
+| -------------------------------------------------------------- | ----------- | ---------------- | -------------------------------------- |
+| `cargo test -p zylcode-core --lib competition::natlas::intent` | **18**      | ✅ pass          | 0.01s                                  |
+| `cargo test -p zylcode-core --test natlas_boundary`            | **17**      | ✅ pass          | 0.66s                                  |
+| `cargo test -p zylcode-core --test natlas_runtime`             | **12**      | ✅ pass          | 4.06s                                  |
+| `cargo test -p zylcode-core --test natlas_bridge`              | **14**      | ✅ pass          | 4.14s                                  |
+| **Total**                                                      | **61 / 61** | ✅ **all green** | ~9s (after 3m 10s initial compilation) |
 
 > The only difference between the clean-worktree commit (`c8e473d`) and final HEAD (`f0fcd01`) is documentation files (README.md, ARCHITECTURE_BRIDGE.md, BETA_TESTER_QUICKSTART.md). No Rust source files changed. Test counts are definitive for final HEAD.
 
@@ -142,6 +144,7 @@ Previous genuine inference gates (EV-014, EV-015, EV-016, EV-024) all exercised 
 **Prerequisites:** Rust toolchain, Git, Python 3, internet access. **No API key required** for the hermetic tests or health check.
 
 **What testers prove:**
+
 - The bridge mechanics work deterministically without a live endpoint
 - Path traversal is rejected, secrets are redacted, approval gates work
 - JSON repair handles model serialization defects
@@ -153,15 +156,15 @@ Previous genuine inference gates (EV-014, EV-015, EV-016, EV-024) all exercised 
 
 ## 15. Licence Verification Table
 
-| Claim | Primary Source | Exact Supported Meaning | README Wording | Verdict |
-|---|---|---|---|---|
-| N-ATLaS model licence name | `NATLAS_SETUP.md` §2; `NATLAS_RUNTIME_FEASIBILITY_2026-10-06.md` §3.5; `PHASE_C1_OWNER_REPORT_2026-10-06.md` §13 | "Open-Source Research and Innovation License" (N-ATLaS Terms of Use v1.0, September 2025), governed by Nigerian law | "N-ATLaS Open-Source Research and Innovation License (September 2025)" | ✅ PASS |
-| Attribution obligations | Same sources | Required: Awarri Technologies AND Federal Ministry of Communications, Innovation and Digital Economy | "Attribution to Awarri + FMCIDE preserved" | ✅ PASS |
-| Active-user limitation | Same sources | ≤ 1,000 active end-users per organisation/project (rolling 30 days) | "endpoint enforces the N-ATLaS ≤1000-active-user limit" / "Usage of the controlled endpoint is limited to ≤1000 active end-users" | ✅ PASS |
-| Derivative naming requirement | Same sources | Renamed derivative must carry suffix "Powered by Awarri" | "'Powered by Awarri' if renamed" | ✅ PASS |
-| Engine repository licence | `B1_STATUS_2026-10-07.md` §1; `NATLAS_CONTRACT_VERIFICATION_2026-10-07.md` | `samuelolubukun/NATLaS-Sovereign-Engine` is Apache-2.0 | "Apache-2.0 fork of the sovereign engine" | ✅ PASS |
-| Space fork statement | `B1_STATUS_2026-10-07.md` §1, §2 | `zylvex/natlas-zylcode-bridge` is an Apache-2.0 fork deployed via Hugging Face Space | "The controlled endpoint is an Apache-2.0 fork of the sovereign engine" | ✅ PASS |
-| Weight redistribution | `NATLAS_SETUP.md` §8; `PHASE_C1_OWNER_REPORT_2026-10-06.md` §13 | Weights are gated; never committed to Git; endpoint downloads from HF at runtime | "gated weights never redistributed" / "No model weights are committed to this repository" / "The endpoint downloads weights from Hugging Face gated storage at runtime" | ✅ PASS |
+| Claim                         | Primary Source                                                                                                   | Exact Supported Meaning                                                                                             | README Wording                                                                                                                                                          | Verdict |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| N-ATLaS model licence name    | `NATLAS_SETUP.md` §2; `NATLAS_RUNTIME_FEASIBILITY_2026-10-06.md` §3.5; `PHASE_C1_OWNER_REPORT_2026-10-06.md` §13 | "Open-Source Research and Innovation License" (N-ATLaS Terms of Use v1.0, September 2025), governed by Nigerian law | "N-ATLaS Open-Source Research and Innovation License (September 2025)"                                                                                                  | ✅ PASS |
+| Attribution obligations       | Same sources                                                                                                     | Required: Awarri Technologies AND Federal Ministry of Communications, Innovation and Digital Economy                | "Attribution to Awarri + FMCIDE preserved"                                                                                                                              | ✅ PASS |
+| Active-user limitation        | Same sources                                                                                                     | ≤ 1,000 active end-users per organisation/project (rolling 30 days)                                                 | "endpoint enforces the N-ATLaS ≤1000-active-user limit" / "Usage of the controlled endpoint is limited to ≤1000 active end-users"                                       | ✅ PASS |
+| Derivative naming requirement | Same sources                                                                                                     | Renamed derivative must carry suffix "Powered by Awarri"                                                            | "'Powered by Awarri' if renamed"                                                                                                                                        | ✅ PASS |
+| Engine repository licence     | `B1_STATUS_2026-10-07.md` §1; `NATLAS_CONTRACT_VERIFICATION_2026-10-07.md`                                       | `samuelolubukun/NATLaS-Sovereign-Engine` is Apache-2.0                                                              | "Apache-2.0 fork of the sovereign engine"                                                                                                                               | ✅ PASS |
+| Space fork statement          | `B1_STATUS_2026-10-07.md` §1, §2                                                                                 | `zylvex/natlas-zylcode-bridge` is an Apache-2.0 fork deployed via Hugging Face Space                                | "The controlled endpoint is an Apache-2.0 fork of the sovereign engine"                                                                                                 | ✅ PASS |
+| Weight redistribution         | `NATLAS_SETUP.md` §8; `PHASE_C1_OWNER_REPORT_2026-10-06.md` §13                                                  | Weights are gated; never committed to Git; endpoint downloads from HF at runtime                                    | "gated weights never redistributed" / "No model weights are committed to this repository" / "The endpoint downloads weights from Hugging Face gated storage at runtime" | ✅ PASS |
 
 ## 16. Current-Tree Secret Scan
 
@@ -213,6 +216,7 @@ Previous genuine inference gates (EV-014, EV-015, EV-016, EV-024) all exercised 
 ## 19. Files Included in Proposed Publication
 
 All files in the 7-commit range above:
+
 - `README.md` (challenge-specific, rewritten)
 - `crates/zylcode-core/src/competition/natlas/intent.rs`
 - `crates/zylcode-core/src/competition/natlas/types.rs`
@@ -237,6 +241,7 @@ Plus pre-existing tracked files on the branch (workspace files, `LICENSE`, `.git
 ## 20. Files Explicitly Excluded
 
 All 14 foreign dirty-tree entries (see §18). Notably:
+
 - `.github/workflows/*.yml` (owner CI work)
 - `crates/zylcode-core/src/{agent,cli,lib,router,terminal}.rs` (owner modifications)
 - `crates/zylcode-core/src/project/filesystem.rs.backup` (backup file)
@@ -246,23 +251,23 @@ All 14 foreign dirty-tree entries (see §18). Notably:
 
 ## 21. Remaining Known Limitations
 
-| Limitation | Impact | Mitigation |
-|---|---|---|
-| ZeroGPU quota | Endpoint may return 503 after sustained use | Hermetic tests require no endpoint; retry health check later |
-| Native-speaker prompts not yet used | Hausa/Igbo prompts team-authored; quality bar not final | Recruit native speakers for final submission |
-| Pidgin generation untested | Model comprehends Pidgin but replies in English | Documented as bonus only, not competition target |
-| Model still emits triple-quoted strings despite strengthened preamble | Repair layer required | Documented honestly; repair is deterministic and tested |
-| `HTTP_PROXY`/`HTTPS_PROXY` may block Rust live tests | `LocalNatlasTransport` uses `.no_proxy()` | Live journey verified via Python; hermetic tests unaffected |
-| First compilation ~3 minutes | New testers wait for dependency build | Documented in quickstart; subsequent runs are fast |
+| Limitation                                                            | Impact                                                  | Mitigation                                                   |
+| --------------------------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------ |
+| ZeroGPU quota                                                         | Endpoint may return 503 after sustained use             | Hermetic tests require no endpoint; retry health check later |
+| Native-speaker prompts not yet used                                   | Hausa/Igbo prompts team-authored; quality bar not final | Recruit native speakers for final submission                 |
+| Pidgin generation untested                                            | Model comprehends Pidgin but replies in English         | Documented as bonus only, not competition target             |
+| Model still emits triple-quoted strings despite strengthened preamble | Repair layer required                                   | Documented honestly; repair is deterministic and tested      |
+| `HTTP_PROXY`/`HTTPS_PROXY` may block Rust live tests                  | `LocalNatlasTransport` uses `.no_proxy()`               | Live journey verified via Python; hermetic tests unaffected  |
+| First compilation ~3 minutes                                          | New testers wait for dependency build                   | Documented in quickstart; subsequent runs are fast           |
 
 ## 22. Remaining Submission Blockers
 
-| Blocker | Owner Action | Hard Deadline |
-|---|---|---|
-| ≥2 external beta testers | Recruit + collect feedback | 12 Oct 2026 |
-| Team profile | Names, affiliations, roles | 12 Oct 2026 |
-| CAC certificate (Track B) | Upload | 12 Oct 2026 |
-| Final video screen-capture | 3–5 min end-to-end demo recording | 12 Oct 2026 |
+| Blocker                    | Owner Action                      | Hard Deadline |
+| -------------------------- | --------------------------------- | ------------- |
+| ≥2 external beta testers   | Recruit + collect feedback        | 12 Oct 2026   |
+| Team profile               | Names, affiliations, roles        | 12 Oct 2026   |
+| CAC certificate (Track B)  | Upload                            | 12 Oct 2026   |
+| Final video screen-capture | 3–5 min end-to-end demo recording | 12 Oct 2026   |
 
 ## 23. Proposed GitHub Push Command
 
@@ -280,17 +285,17 @@ GIT_TERMINAL_PROMPT=0 GIT_ASKPASS=echo git push origin competition/natlas-2026
 
 ## Gate Classifications
 
-| Gate | Verdict |
-|---|---|
-| PUBLIC_BUILD_REPRODUCIBLE | ✅ PASS |
-| PUBLIC_TESTS | ✅ PASS (61/61) |
-| LIVE_ENDPOINT | ✅ PASS (HTTP 200, model NCAIR1/N-ATLaS) |
-| GENUINE_NATLAS_INFERENCE | ✅ PASS (healthz + prior EV-014/015/016/024) |
-| TESTER_QUICKSTART | ✅ PASS (self-contained, no secrets, bounded, safe) |
-| SECRET_SCAN_CURRENT | ✅ PASS |
-| SECRET_SCAN_HISTORY | ✅ PASS |
-| LICENCE_ATTRIBUTION | ✅ PASS (all 7 claims verified against primary sources) |
-| FOREIGN_WORK_EXCLUDED | ✅ PASS (14 foreign entries untouched, not in commit range) |
+| Gate                      | Verdict                                                     |
+| ------------------------- | ----------------------------------------------------------- |
+| PUBLIC_BUILD_REPRODUCIBLE | ✅ PASS                                                     |
+| PUBLIC_TESTS              | ✅ PASS (61/61)                                             |
+| LIVE_ENDPOINT             | ✅ PASS (HTTP 200, model NCAIR1/N-ATLaS)                    |
+| GENUINE_NATLAS_INFERENCE  | ✅ PASS (healthz + prior EV-014/015/016/024)                |
+| TESTER_QUICKSTART         | ✅ PASS (self-contained, no secrets, bounded, safe)         |
+| SECRET_SCAN_CURRENT       | ✅ PASS                                                     |
+| SECRET_SCAN_HISTORY       | ✅ PASS                                                     |
+| LICENCE_ATTRIBUTION       | ✅ PASS (all 7 claims verified against primary sources)     |
+| FOREIGN_WORK_EXCLUDED     | ✅ PASS (14 foreign entries untouched, not in commit range) |
 
 ---
 

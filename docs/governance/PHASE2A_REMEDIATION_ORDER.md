@@ -88,7 +88,7 @@ The `.gitignore` fallback does not rescue it: the real `.gitignore` contains `/t
 
 **The specific trap to avoid.** `scanner.rs::scan_excludes_target` passes today because its
 fixture writes a `.gitignore` containing `target/` — a bare directory pattern the naive matcher
-*does* handle. The real repository uses `/target` and `**/target`. **The fixture differed from
+_does_ handle. The real repository uses `/target` and `**/target`. **The fixture differed from
 reality, so a green suite certified a broken scanner.** Add a test that reads the actual
 `.gitignore` from the repository root.
 
@@ -146,7 +146,7 @@ numbers are asserted, so none are protected against regression. Results also var
 ### P0.5 — Produce a real acceptance demonstration
 
 **Defect.** The completion report's "Acceptance Demonstration" is headed **"Expected Output"** and
-contains a hand-written narrative of what the system *would* answer. There is no command, no
+contains a hand-written narrative of what the system _would_ answer. There is no command, no
 captured stdout, no artifact. That is a specification of intended behaviour in the position where
 evidence belongs.
 
@@ -263,16 +263,16 @@ The audit could not determine whether this predated `0ecea8e`, because the worki
 > volume, whitespace-churn quantification (≈670 lines, 16% of insertions, caused by
 > `core.autocrlf=true` with **no `.gitattributes`**), and a per-group disposition table (§15.7).
 >
-> **Verified this pass:** `cargo check --workspace --all-targets` → **PASS** (1m 23s, *including* the
+> **Verified this pass:** `cargo check --workspace --all-targets` → **PASS** (1m 23s, _including_ the
 > untracked modules); `cargo clippy --workspace --all-targets -- -D warnings` → **PASS**, zero
-> warnings. So the tree is *coherent* — it is simply unreviewed and co-mingled with foreign work.
+> warnings. So the tree is _coherent_ — it is simply unreviewed and co-mingled with foreign work.
 >
 > **Two latent defects surfaced** (both new): **Finding F** — the retracted `156 tools` claim has
 > re-entered 8 files including tracked `FINAL_SUMMARY.md` (measured: 112 tools); **Finding G** —
 > `DEEPSEEK_MASTER_PROMPT_V21.md` is clobbered with a stale 156-line v1.0 commercial-model draft.
 >
 > **Resolution is an owner decision.** Recommended grouping: commit Classes A+B (implementation +
-> tests) under a *named track*, commit-or-revert Class C (17 `impl Default`), **revert** Class D
+> tests) under a _named track_, commit-or-revert Class C (17 `impl Default`), **revert** Class D
 > (formatting churn) and add `.gitattributes`, **do not commit** the 16 untracked completion reports
 > (they carry retracted claims and phase-number collisions per Protocol §4.7). Nothing was committed
 > by this pass. None of this is Phase 2A remediation and **must not be reported as ladder progress**.
@@ -311,16 +311,16 @@ From this point on, every completion report carries a reproduction block
 
 ## 6. Constraints — what NOT to do
 
-| # | Constraint |
-|---|---|
-| 1 | **Do not begin Phase 2B.** It is blocked until Phase 2A is re-accepted. |
-| 2 | **Do not modify the governance documents** in `docs/governance/` to make your work correct. If you believe a governance document is wrong, **report the discrepancy** (Constitution §9.2). |
-| 3 | **Do not delete or rewrite the audit.** It is a record. Corrections go in new documents. |
-| 4 | **Do not silently edit published numbers.** Corrections are visible. |
-| 5 | **Do not rewrite the intelligence module from scratch.** The design is sound; the audit preserves it. |
-| 6 | **Do not weaken or delete a failing test to make the suite green.** |
-| 7 | **Do not report COMPLETE / ACCEPTED / DONE.** That is the auditor's word. |
-| 8 | **Do not commit an "Expected Output" section** where evidence belongs. |
+| #   | Constraint                                                                                                                                                                                 |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | **Do not begin Phase 2B.** It is blocked until Phase 2A is re-accepted.                                                                                                                    |
+| 2   | **Do not modify the governance documents** in `docs/governance/` to make your work correct. If you believe a governance document is wrong, **report the discrepancy** (Constitution §9.2). |
+| 3   | **Do not delete or rewrite the audit.** It is a record. Corrections go in new documents.                                                                                                   |
+| 4   | **Do not silently edit published numbers.** Corrections are visible.                                                                                                                       |
+| 5   | **Do not rewrite the intelligence module from scratch.** The design is sound; the audit preserves it.                                                                                      |
+| 6   | **Do not weaken or delete a failing test to make the suite green.**                                                                                                                        |
+| 7   | **Do not report COMPLETE / ACCEPTED / DONE.** That is the auditor's word.                                                                                                                  |
+| 8   | **Do not commit an "Expected Output" section** where evidence belongs.                                                                                                                     |
 
 ---
 
@@ -333,54 +333,77 @@ in git history).
 # Phase 2A Completion Report (Re-submission) — Repository Intelligence Foundation
 
 ## 1. Status
+
 READY FOR AUDIT
 (Not "COMPLETE". Not "ACCEPTED".)
 
 ## 2. What changed since the rejected report
+
 Point-by-point against P0.1–P0.6, P1.7–P1.11.
 
 ## 3. Corrections to previously published figures
+
 | figure | previously published | corrected | why it was wrong |
 
 ## 4. Reproduction block
+
 ### Environment
+
 <OS, cargo/rustc versions, commit SHA>
+
 ### Commands
+
 <exact, copy-pasteable>
+
 ### Raw output
+
 <verbatim captured output — not a summary, not an expectation>
 
 ## 5. Index scope evidence
+
 ### Indexed file count: <N>
+
 ### Proof of scope
+
 <output showing no indexed path contains target/, node_modules/, or .git/>
 
 ## 6. Test results
+
 <verbatim output including the summary line>
 <the previously failing test's status, and whether it was pre-existing>
 
 ## 7. Benchmark results
+
 ### Retrieval quality
+
 <Precision@K, Recall@K, per-question, with the assertion thresholds shown>
+
 ### Performance
+
 <files/second, with the machine-independence rationale>
 
 ## 8. Integration
+
 <either: the entry points added + a transcript; or: the downgrade applied to the registry>
 
 ## 9. Capability registry changes
+
 <per-capability status and rung, with the evidence for each>
 
 ## 10. Discrepancies found
+
 <anywhere implementation and documentation disagreed, and what you did about it>
 
 ## 11. Limitations
+
 <mandatory, non-empty>
 
 ## 12. Known failures
+
 <including anything pre-existing. Do not omit.>
 
 ## 13. Requested audit
+
 Specifically: try to falsify the index scope, the benchmark thresholds, and the entry points.
 ```
 

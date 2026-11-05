@@ -1,113 +1,398 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8" />
-<title>ZylCode — Evidence ladder</title>
-<style>
-  :root{--bg:#0B0F14;--panel:#111A2B;--line:#1E2A3D;--blue:#007BFF;--blue-soft:#3D9BFF;
-    --amber:#FF9F1C;--red:#FF5C5C;--green:#2DD4A7;--text:#E6EDF7;--muted:#7E8DA5}
-  *{box-sizing:border-box;margin:0;padding:0}
-  html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);
-    font-family:"Segoe UI",Inter,system-ui,sans-serif;color:var(--text)}
-  #stage{position:relative;width:1920px;height:1080px;overflow:hidden;
-    background:radial-gradient(1100px 700px at 85% -10%,#13233C 0%,rgba(19,35,60,0) 60%),
-               radial-gradient(900px 700px at 0% 110%,#10203A 0%,rgba(16,32,58,0) 60%),var(--bg)}
-  #stage::before{content:"";position:absolute;inset:0;
-    background-image:linear-gradient(rgba(70,110,170,.07) 1px,transparent 1px),
-                     linear-gradient(90deg,rgba(70,110,170,.07) 1px,transparent 1px);
-    background-size:64px 64px;
-    mask-image:radial-gradient(1400px 900px at 50% 50%,#000 40%,transparent 100%)}
-  .label{position:absolute;top:56px;left:80px;font-size:20px;letter-spacing:.42em;
-    color:var(--blue-soft);text-transform:uppercase;font-weight:600}
-  h1{position:absolute;top:104px;left:80px;font-size:66px;font-weight:700}
-  h1 span{color:var(--blue)}
-  .sub{position:absolute;top:200px;left:82px;font-size:25px;color:var(--muted);max-width:1350px}
-  .ladder{position:absolute;left:80px;top:300px;width:1120px;display:flex;flex-direction:column;gap:18px}
-  .rung{display:flex;align-items:center;gap:26px;opacity:.28;transform:translateX(-24px);
-    transition:opacity .55s ease,transform .55s ease}
-  .rung.on{opacity:1;transform:translateX(0)}
-  .bar{height:96px;border-radius:14px;border:1px solid var(--line);
-    background:linear-gradient(90deg,rgba(0,123,255,.22),rgba(0,123,255,.06));
-    display:flex;align-items:center;padding:0 30px;gap:22px;position:relative;overflow:hidden}
-  .rung.on .bar{border-color:rgba(0,123,255,.6);box-shadow:0 0 34px rgba(0,123,255,.22) inset}
-  .rung:nth-child(1) .bar{width:34%}
-  .rung:nth-child(2) .bar{width:48%}
-  .rung:nth-child(3) .bar{width:62%}
-  .rung:nth-child(4) .bar{width:76%}
-  .rung:nth-child(5) .bar{width:92%}
-  .rung .idx{font-size:22px;color:var(--muted);width:44px;font-variant-numeric:tabular-nums}
-  .rung h3{font-size:30px;letter-spacing:.04em;white-space:nowrap}
-  .rung p{font-size:19px;color:#A9B7CC;white-space:nowrap}
-  .pill{margin-left:auto;font-size:16px;letter-spacing:.16em;text-transform:uppercase;
-    padding:9px 18px;border-radius:999px;border:1px solid var(--line);color:var(--blue-soft);
-    background:rgba(0,123,255,.12)}
-  .rung.amber .bar{background:linear-gradient(90deg,rgba(255,159,28,.2),rgba(255,159,28,.05))}
-  .rung.amber .pill{color:var(--amber);background:rgba(255,159,28,.12);border-color:rgba(255,159,28,.4)}
-  .rung.red .bar{background:linear-gradient(90deg,rgba(255,92,92,.2),rgba(255,92,92,.05))}
-  .rung.red .pill{color:var(--red);background:rgba(255,92,92,.12);border-color:rgba(255,92,92,.4)}
-  .rung.green .pill{color:var(--green);background:rgba(45,212,167,.12);border-color:rgba(45,212,167,.4)}
-  .legend{position:absolute;right:80px;top:300px;width:520px;background:rgba(14,22,38,.85);
-    border:1px solid var(--line);border-radius:16px;padding:32px 34px}
-  .legend h4{font-size:20px;letter-spacing:.24em;text-transform:uppercase;color:var(--muted);margin-bottom:22px}
-  .legend div{display:flex;align-items:flex-start;gap:16px;margin-bottom:20px}
-  .legend .k{font-size:16px;letter-spacing:.14em;text-transform:uppercase;padding:7px 14px;border-radius:8px;
-    background:rgba(0,123,255,.14);color:var(--blue-soft);white-space:nowrap}
-  .legend .k.h{background:rgba(255,159,28,.14);color:var(--amber)}
-  .legend .k.u{background:rgba(126,141,165,.16);color:#9AA9BF}
-  .legend .k.f{background:rgba(255,92,92,.14);color:var(--red)}
-  .legend p{font-size:18px;color:#A9B7CC;line-height:1.5}
-  .caption{position:absolute;left:80px;bottom:74px;font-size:29px;color:#C8D4E6;
-    border-left:4px solid var(--blue);padding-left:24px;max-width:1320px;opacity:0;transition:opacity .6s}
-  .caption.show{opacity:1}
-  .caption b{color:var(--blue-soft);font-weight:600}
-  .brand{position:absolute;right:80px;bottom:70px;text-align:right;color:var(--muted);font-size:18px;
-    letter-spacing:.24em;text-transform:uppercase}
-  .brand strong{display:block;color:var(--text);font-size:22px;letter-spacing:.1em;margin-bottom:6px}
-</style>
-</head>
-<body>
-<div id="stage">
-  <div class="label">ZylCode · how claims are graded</div>
-  <h1>The evidence <span>ladder</span></h1>
-  <div class="sub">Not every number deserves the same trust. ZylCode labels each result by how it was obtained — and keeps the failures.</div>
+  <head>
+    <meta charset="utf-8" />
+    <title>ZylCode — Evidence ladder</title>
+    <style>
+      :root {
+        --bg: #0b0f14;
+        --panel: #111a2b;
+        --line: #1e2a3d;
+        --blue: #007bff;
+        --blue-soft: #3d9bff;
+        --amber: #ff9f1c;
+        --red: #ff5c5c;
+        --green: #2dd4a7;
+        --text: #e6edf7;
+        --muted: #7e8da5;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: var(--bg);
+        font-family: "Segoe UI", Inter, system-ui, sans-serif;
+        color: var(--text);
+      }
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background:
+          radial-gradient(
+            1100px 700px at 85% -10%,
+            #13233c 0%,
+            rgba(19, 35, 60, 0) 60%
+          ),
+          radial-gradient(
+            900px 700px at 0% 110%,
+            #10203a 0%,
+            rgba(16, 32, 58, 0) 60%
+          ),
+          var(--bg);
+      }
+      #stage::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(70, 110, 170, 0.07) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(70, 110, 170, 0.07) 1px, transparent 1px);
+        background-size: 64px 64px;
+        mask-image: radial-gradient(
+          1400px 900px at 50% 50%,
+          #000 40%,
+          transparent 100%
+        );
+      }
+      .label {
+        position: absolute;
+        top: 56px;
+        left: 80px;
+        font-size: 20px;
+        letter-spacing: 0.42em;
+        color: var(--blue-soft);
+        text-transform: uppercase;
+        font-weight: 600;
+      }
+      h1 {
+        position: absolute;
+        top: 104px;
+        left: 80px;
+        font-size: 66px;
+        font-weight: 700;
+      }
+      h1 span {
+        color: var(--blue);
+      }
+      .sub {
+        position: absolute;
+        top: 200px;
+        left: 82px;
+        font-size: 25px;
+        color: var(--muted);
+        max-width: 1350px;
+      }
+      .ladder {
+        position: absolute;
+        left: 80px;
+        top: 300px;
+        width: 1120px;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+      .rung {
+        display: flex;
+        align-items: center;
+        gap: 26px;
+        opacity: 0.28;
+        transform: translateX(-24px);
+        transition:
+          opacity 0.55s ease,
+          transform 0.55s ease;
+      }
+      .rung.on {
+        opacity: 1;
+        transform: translateX(0);
+      }
+      .bar {
+        height: 96px;
+        border-radius: 14px;
+        border: 1px solid var(--line);
+        background: linear-gradient(
+          90deg,
+          rgba(0, 123, 255, 0.22),
+          rgba(0, 123, 255, 0.06)
+        );
+        display: flex;
+        align-items: center;
+        padding: 0 30px;
+        gap: 22px;
+        position: relative;
+        overflow: hidden;
+      }
+      .rung.on .bar {
+        border-color: rgba(0, 123, 255, 0.6);
+        box-shadow: 0 0 34px rgba(0, 123, 255, 0.22) inset;
+      }
+      .rung:nth-child(1) .bar {
+        width: 34%;
+      }
+      .rung:nth-child(2) .bar {
+        width: 48%;
+      }
+      .rung:nth-child(3) .bar {
+        width: 62%;
+      }
+      .rung:nth-child(4) .bar {
+        width: 76%;
+      }
+      .rung:nth-child(5) .bar {
+        width: 92%;
+      }
+      .rung .idx {
+        font-size: 22px;
+        color: var(--muted);
+        width: 44px;
+        font-variant-numeric: tabular-nums;
+      }
+      .rung h3 {
+        font-size: 30px;
+        letter-spacing: 0.04em;
+        white-space: nowrap;
+      }
+      .rung p {
+        font-size: 19px;
+        color: #a9b7cc;
+        white-space: nowrap;
+      }
+      .pill {
+        margin-left: auto;
+        font-size: 16px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        padding: 9px 18px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        color: var(--blue-soft);
+        background: rgba(0, 123, 255, 0.12);
+      }
+      .rung.amber .bar {
+        background: linear-gradient(
+          90deg,
+          rgba(255, 159, 28, 0.2),
+          rgba(255, 159, 28, 0.05)
+        );
+      }
+      .rung.amber .pill {
+        color: var(--amber);
+        background: rgba(255, 159, 28, 0.12);
+        border-color: rgba(255, 159, 28, 0.4);
+      }
+      .rung.red .bar {
+        background: linear-gradient(
+          90deg,
+          rgba(255, 92, 92, 0.2),
+          rgba(255, 92, 92, 0.05)
+        );
+      }
+      .rung.red .pill {
+        color: var(--red);
+        background: rgba(255, 92, 92, 0.12);
+        border-color: rgba(255, 92, 92, 0.4);
+      }
+      .rung.green .pill {
+        color: var(--green);
+        background: rgba(45, 212, 167, 0.12);
+        border-color: rgba(45, 212, 167, 0.4);
+      }
+      .legend {
+        position: absolute;
+        right: 80px;
+        top: 300px;
+        width: 520px;
+        background: rgba(14, 22, 38, 0.85);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 32px 34px;
+      }
+      .legend h4 {
+        font-size: 20px;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 22px;
+      }
+      .legend div {
+        display: flex;
+        align-items: flex-start;
+        gap: 16px;
+        margin-bottom: 20px;
+      }
+      .legend .k {
+        font-size: 16px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        padding: 7px 14px;
+        border-radius: 8px;
+        background: rgba(0, 123, 255, 0.14);
+        color: var(--blue-soft);
+        white-space: nowrap;
+      }
+      .legend .k.h {
+        background: rgba(255, 159, 28, 0.14);
+        color: var(--amber);
+      }
+      .legend .k.u {
+        background: rgba(126, 141, 165, 0.16);
+        color: #9aa9bf;
+      }
+      .legend .k.f {
+        background: rgba(255, 92, 92, 0.14);
+        color: var(--red);
+      }
+      .legend p {
+        font-size: 18px;
+        color: #a9b7cc;
+        line-height: 1.5;
+      }
+      .caption {
+        position: absolute;
+        left: 80px;
+        bottom: 74px;
+        font-size: 29px;
+        color: #c8d4e6;
+        border-left: 4px solid var(--blue);
+        padding-left: 24px;
+        max-width: 1320px;
+        opacity: 0;
+        transition: opacity 0.6s;
+      }
+      .caption.show {
+        opacity: 1;
+      }
+      .caption b {
+        color: var(--blue-soft);
+        font-weight: 600;
+      }
+      .brand {
+        position: absolute;
+        right: 80px;
+        bottom: 70px;
+        text-align: right;
+        color: var(--muted);
+        font-size: 18px;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+      }
+      .brand strong {
+        display: block;
+        color: var(--text);
+        font-size: 22px;
+        letter-spacing: 0.1em;
+        margin-bottom: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="stage">
+      <div class="label">ZylCode · how claims are graded</div>
+      <h1>The evidence <span>ladder</span></h1>
+      <div class="sub">
+        Not every number deserves the same trust. ZylCode labels each result by
+        how it was obtained — and keeps the failures.
+      </div>
 
-  <div class="ladder" id="ladder">
-    <div class="rung"><span class="idx">01</span>
-      <div class="bar"><h3>Recorded observation</h3><p>tool ran, output captured</p><span class="pill">Deterministic</span></div></div>
-    <div class="rung"><span class="idx">02</span>
-      <div class="bar"><h3>Derived result</h3><p>computed from recorded facts</p><span class="pill">Deterministic</span></div></div>
-    <div class="rung amber"><span class="idx">03</span>
-      <div class="bar"><h3>Hypothesis</h3><p>plausible, not yet proven</p><span class="pill">Heuristic</span></div></div>
-    <div class="rung"><span class="idx">04</span>
-      <div class="bar"><h3>Unknown</h3><p>stated as unknown, never guessed</p><span class="pill">Unsupported</span></div></div>
-    <div class="rung red"><span class="idx">05</span>
-      <div class="bar"><h3>Failure, recovered</h3><p>kept in the record with evidence</p><span class="pill">Failed → proven</span></div></div>
-  </div>
+      <div class="ladder" id="ladder">
+        <div class="rung">
+          <span class="idx">01</span>
+          <div class="bar">
+            <h3>Recorded observation</h3>
+            <p>tool ran, output captured</p>
+            <span class="pill">Deterministic</span>
+          </div>
+        </div>
+        <div class="rung">
+          <span class="idx">02</span>
+          <div class="bar">
+            <h3>Derived result</h3>
+            <p>computed from recorded facts</p>
+            <span class="pill">Deterministic</span>
+          </div>
+        </div>
+        <div class="rung amber">
+          <span class="idx">03</span>
+          <div class="bar">
+            <h3>Hypothesis</h3>
+            <p>plausible, not yet proven</p>
+            <span class="pill">Heuristic</span>
+          </div>
+        </div>
+        <div class="rung">
+          <span class="idx">04</span>
+          <div class="bar">
+            <h3>Unknown</h3>
+            <p>stated as unknown, never guessed</p>
+            <span class="pill">Unsupported</span>
+          </div>
+        </div>
+        <div class="rung red">
+          <span class="idx">05</span>
+          <div class="bar">
+            <h3>Failure, recovered</h3>
+            <p>kept in the record with evidence</p>
+            <span class="pill">Failed → proven</span>
+          </div>
+        </div>
+      </div>
 
-  <div class="legend">
-    <h4>Evidence labels</h4>
-    <div><span class="k">Deterministic</span><p>Resolved by the parser or a real command. Repeatable.</p></div>
-    <div><span class="k h">Heuristic</span><p>Inferred. Useful signal, clearly marked as inference.</p></div>
-    <div><span class="k u">Unsupported</span><p>No trustworthy path — reported as unknown instead of invented.</p></div>
-    <div><span class="k f">Failed</span><p>Attempt that failed, retained with its cause and recovery.</p></div>
-  </div>
+      <div class="legend">
+        <h4>Evidence labels</h4>
+        <div>
+          <span class="k">Deterministic</span>
+          <p>Resolved by the parser or a real command. Repeatable.</p>
+        </div>
+        <div>
+          <span class="k h">Heuristic</span>
+          <p>Inferred. Useful signal, clearly marked as inference.</p>
+        </div>
+        <div>
+          <span class="k u">Unsupported</span>
+          <p>No trustworthy path — reported as unknown instead of invented.</p>
+        </div>
+        <div>
+          <span class="k f">Failed</span>
+          <p>Attempt that failed, retained with its cause and recovery.</p>
+        </div>
+      </div>
 
-  <div class="caption" id="caption">Every mission reports <b>proven, derived, hypothesised and unknown</b> — separately.</div>
-  <div class="brand"><strong>ZYLCODE</strong>The Engineering OS that shows its work.</div>
-</div>
-<script>
-  const rungs=[...document.querySelectorAll('.rung')];
-  const caption=document.getElementById('caption');
-  const still=new URLSearchParams(location.search).get('still');
-  if(still==='final'){ rungs.forEach(r=>r.classList.add('on')); caption.classList.add('show'); }
-  else{
-    let i=0;
-    setInterval(()=>{
-      if(i<rungs.length){ rungs[i].classList.add('on'); i++; }
-      else{ rungs.forEach(r=>r.classList.remove('on')); i=0; caption.classList.remove('show'); }
-      if(i>0) caption.classList.add('show');
-    },2000);
-  }
-</script>
-</body>
+      <div class="caption" id="caption">
+        Every mission reports <b>proven, derived, hypothesised and unknown</b> —
+        separately.
+      </div>
+      <div class="brand">
+        <strong>ZYLCODE</strong>The Engineering OS that shows its work.
+      </div>
+    </div>
+    <script>
+      const rungs = [...document.querySelectorAll(".rung")];
+      const caption = document.getElementById("caption");
+      const still = new URLSearchParams(location.search).get("still");
+      if (still === "final") {
+        rungs.forEach((r) => r.classList.add("on"));
+        caption.classList.add("show");
+      } else {
+        let i = 0;
+        setInterval(() => {
+          if (i < rungs.length) {
+            rungs[i].classList.add("on");
+            i++;
+          } else {
+            rungs.forEach((r) => r.classList.remove("on"));
+            i = 0;
+            caption.classList.remove("show");
+          }
+          if (i > 0) caption.classList.add("show");
+        }, 2000);
+      }
+    </script>
+  </body>
 </html>

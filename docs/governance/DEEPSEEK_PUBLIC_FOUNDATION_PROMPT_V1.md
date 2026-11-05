@@ -99,12 +99,12 @@ Repo: `https://github.com/zylvex-tech/zylcode`. First inspect current settings a
 assume this prompt's description of current state.
 
 1. **About description.** Target:
-   *"Evidence-first autonomous software creation environment. Plan, build, run, inspect, repair,
-   verify, and ship software from one project."*
+   _"Evidence-first autonomous software creation environment. Plan, build, run, inspect, repair,
+   verify, and ship software from one project."_
    Remove unsupported language (formally verified / zero token waste / best / fastest / superior /
    production-grade) unless independently supported at the appropriate rung.
 2. **Topics.** Add/reconcile: `ai coding-agent developer-tools rust tauri autonomous-agents mcp ide
-   llm software-engineering local-first open-source`. Do not remove useful existing topics without
+llm software-engineering local-first open-source`. Do not remove useful existing topics without
    justification.
 3. **Website field.** Do not point at a placeholder/broken ZylCode page. Set it to the canonical URL
    only when that page is live and verified.
@@ -129,10 +129,11 @@ Do not publish a false security email; verify the address or use a verified orga
 ## C. DEVELOPMENT LOG — `PUBLIC-FOUNDATION-03` — **NOW**
 
 Create `docs/devlog/`. Suggested subjects (not marketing):
+
 1. Why coding agents shouldn't certify their own work · 2. We caught our own false benchmark ·
-3. How ZylCode survives an agent crash · 4. R2 is a library; R3 is a capability ·
-5. Why ZylCode uses an Evidence Ledger · 6. Building repository intelligence without lying to
-ourselves · 7. Why a model dropdown is not Model Democracy · 8. Building ZylCode in public.
+2. How ZylCode survives an agent crash · 4. R2 is a library; R3 is a capability ·
+3. Why ZylCode uses an Evidence Ledger · 6. Building repository intelligence without lying to
+   ourselves · 7. Why a model dropdown is not Model Democracy · 8. Building ZylCode in public.
 
 Each post: `PROBLEM / WHAT WE ATTEMPTED / WHAT FAILED / WHAT WE LEARNED / WHAT CHANGED /
 CURRENT LIMITATIONS / EVIDENCE / NEXT STEP`. `WHAT FAILED` and `CURRENT LIMITATIONS` are mandatory.
@@ -178,7 +179,7 @@ PROPOSED capability as shipping.
 
 **IA (PF-07):** three co-equal pillars — `ZylForge Engineering`, `ZylCode`, `Services` — under
 `zylforge.com`, plus a `PLATFORM` area (MCP / Models / Extensions / Community). Homepage gives
-Engineering and ZylCode equal weight. Positioning: *"Build software. Engineer the physical world."*
+Engineering and ZylCode equal weight. Positioning: _"Build software. Engineer the physical world."_
 ZylCode = software creation+verification; ZylForge Engineering = physical engineering
 creation+verification; shared DNA = evidence, verification, local-first, human authority.
 
@@ -251,11 +252,12 @@ Local product stays local-first. **No expensive AWS provisioning for hypothetica
 # EXECUTION SEPARATION
 
 Independent bounded changes. Suggested sequence:
+
 1. GitHub metadata/community (PF-01, PF-02) · 2. community/governance files · 3. devlog infra
-(PF-03) · 4. website truth audit (PF-04) → Claim Matrix · 5. IA (PF-07) · 6. shared tokens
-(PF-05, DESIGN-SYSTEM-02) · 7. Penpot commissioning (PF-06, DESIGN-SYSTEM-04) · 8. website designs
-(PF-08) · 9. website implementation (PF-09) · 10. ZylCode concepts (DESIGN-SYSTEM-06) · 11. ZylForge
-Engineering concepts (DESIGN-SYSTEM-07).
+   (PF-03) · 4. website truth audit (PF-04) → Claim Matrix · 5. IA (PF-07) · 6. shared tokens
+   (PF-05, DESIGN-SYSTEM-02) · 7. Penpot commissioning (PF-06, DESIGN-SYSTEM-04) · 8. website designs
+   (PF-08) · 9. website implementation (PF-09) · 10. ZylCode concepts (DESIGN-SYSTEM-06) · 11. ZylForge
+   Engineering concepts (DESIGN-SYSTEM-07).
 
 Each unit: `IMPLEMENT → LOCAL VERIFY → REVIEW DIFF → DOCUMENT → COMMIT → PUSH → VERIFY REMOTE SHA`.
 CI blocked externally → `REMOTE_CI = BLOCKED_EXTERNAL`; never convert to PASS.

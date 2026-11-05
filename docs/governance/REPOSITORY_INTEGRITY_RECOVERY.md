@@ -14,16 +14,16 @@ A clean checkout of `origin/main` (`1338d0b`) could not compile. Investigation f
 independent integrity defects, not the two the order anticipated. Each is the same failure mode:
 **a commit that landed the caller but withheld the callee.**
 
-| ID | Defect | Root commit | Repair applied |
-|---|---|---|---|
-| FIX-1 | `pub mod performance;` / `pub mod system_integration;` declared, files never in git | `5f5a99e` | Removed 2 declarations + 2 re-exports |
-| FIX-2 | 8 × `get_more_*_tools()` called, never defined | `29cc936` | Removed 8 call sites |
-| **FIX-3** | `zylcode-core` imports `RiskLevel`/`ToolSchema`, calls `list_schemas()` — absent from `zylcode-mcp` | `158370f` | Added 2 types (22 lines) + 1 method (31 lines) |
-| **FIX-4** | `agent_loop_e2e.rs` calls `AgentLoop::new` with 5 args; fn takes 6 | (same lineage) | Added the missing `ledger` argument |
+| ID        | Defect                                                                                              | Root commit    | Repair applied                                 |
+| --------- | --------------------------------------------------------------------------------------------------- | -------------- | ---------------------------------------------- |
+| FIX-1     | `pub mod performance;` / `pub mod system_integration;` declared, files never in git                 | `5f5a99e`      | Removed 2 declarations + 2 re-exports          |
+| FIX-2     | 8 × `get_more_*_tools()` called, never defined                                                      | `29cc936`      | Removed 8 call sites                           |
+| **FIX-3** | `zylcode-core` imports `RiskLevel`/`ToolSchema`, calls `list_schemas()` — absent from `zylcode-mcp` | `158370f`      | Added 2 types (22 lines) + 1 method (31 lines) |
+| **FIX-4** | `agent_loop_e2e.rs` calls `AgentLoop::new` with 5 args; fn takes 6                                  | (same lineage) | Added the missing `ledger` argument            |
 
 **FIX-3 and FIX-4 were not in the order.** They exist, they block the stated acceptance criterion
-(*"a clean-checkout buildable repository"*), and the order authorizes repairing *"performance module
-… system_integration module … eight `get_more_*_tools()` methods"* — it does not forbid repairing
+(_"a clean-checkout buildable repository"_), and the order authorizes repairing _"performance module
+… system_integration module … eight `get_more_*_tools()` methods"_ — it does not forbid repairing
 what a clean-checkout build additionally requires. They are recorded here separately so the owner
 can accept or reject them on their own merits.
 
@@ -60,13 +60,13 @@ $ git show 29cc936 -- crates/zylcode-mcp/src/enhanced_bridge.rs | grep -c "^+.*s
 8
 ```
 
-- `5f5a99e` — *"feat(runtime): replace mocked tools with real execution"* (2026-09-15). Declared
+- `5f5a99e` — _"feat(runtime): replace mocked tools with real execution"_ (2026-09-15). Declared
   three modules; added only `real_tools.rs`. `performance` and `system_integration` were declared
   but withheld.
-- `29cc936` — *"Add AI input, computer-use, and plugin marketplace modules"* (2026-09-14). Added all
+- `29cc936` — _"Add AI input, computer-use, and plugin marketplace modules"_ (2026-09-14). Added all
   eight `self.get_more_*_tools()` **call sites**; the implementations stayed uncommitted.
 
-`158370f` — *"feat(agent): complete Phase 1C commissioning"* — added `use zylcode_mcp::real_tools::RiskLevel;`
+`158370f` — _"feat(agent): complete Phase 1C commissioning"_ — added `use zylcode_mcp::real_tools::RiskLevel;`
 and `use zylcode_mcp::real_tools::{ToolSchema, RiskLevel};` to `zylcode-core`, against
 `real_tools` symbols that were not committed until FIX-3.
 
@@ -74,15 +74,15 @@ and `use zylcode_mcp::real_tools::{ToolSchema, RiskLevel};` to `zylcode-core`, a
 
 ## 2. Content audit (mandated step 3)
 
-| Check | `performance.rs` | `system_integration.rs` | `get_more_*` block |
-|---|---|---|---|
-| Mocks | none | none | none |
-| Fabricated success | none | none | **no** (definitions only) |
-| Simulated execution | none | none | routed to a simulator — see §3 |
-| Dead code | **yes — never referenced** | **yes — never referenced** | **yes** |
-| Unsupported capability claims | none | none | **yes — see §3** |
-| Unrelated refactors | none | none | none |
-| Secrets | **none** | **none** | **none** |
+| Check                         | `performance.rs`           | `system_integration.rs`    | `get_more_*` block             |
+| ----------------------------- | -------------------------- | -------------------------- | ------------------------------ |
+| Mocks                         | none                       | none                       | none                           |
+| Fabricated success            | none                       | none                       | **no** (definitions only)      |
+| Simulated execution           | none                       | none                       | routed to a simulator — see §3 |
+| Dead code                     | **yes — never referenced** | **yes — never referenced** | **yes**                        |
+| Unsupported capability claims | none                       | none                       | **yes — see §3**               |
+| Unrelated refactors           | none                       | none                       | none                           |
+| Secrets                       | **none**                   | **none**                   | **none**                       |
 
 Secret scan (all three sources): `api[_-]?key|secret|token|password|bearer|private[_-]?key|ghp_|sk-` → **0 hits.**
 
@@ -94,8 +94,8 @@ real behaviour. It is competent, non-fabricated, and **completely unused**.
 modules (`enhanced_plugin_marketplace`, `enhanced_skills`, `hot_reload`), uses the committed
 `ToolDefinition` shape verbatim (6 fields, exact match), and `uuid` with the `v4` feature is declared
 in `Cargo.toml`. Its only weakness is an honest in-code admission at line 76:
-*"Note: This would require adding a method to register tools dynamically / For now, we'll just cache
-the tool definition"* — i.e. `register_skills_as_tools` does **not** register anything. It caches.
+_"Note: This would require adding a method to register tools dynamically / For now, we'll just cache
+the tool definition"_ — i.e. `register_skills_as_tools` does **not** register anything. It caches.
 
 ---
 
@@ -143,11 +143,11 @@ required by the real contract", has no real contract to satisfy: this surface is
 `crates/zylcode-mcp/tests/integration_test.rs` is **committed** and **CI runs it**
 (`cargo test --workspace --all-targets`). It asserts:
 
-| Assertion | Committed implementation | Result |
-|---|---|---|
-| `assert!(tool_count >= 100)` | **28** | **FAILS** |
-| `assert!(dev_tools.len() >= 25)` | **11** | **FAILS** |
-| `assert!(categories.len() >= 8)` | **8** | passes |
+| Assertion                        | Committed implementation | Result    |
+| -------------------------------- | ------------------------ | --------- |
+| `assert!(tool_count >= 100)`     | **28**                   | **FAILS** |
+| `assert!(dev_tools.len() >= 25)` | **11**                   | **FAILS** |
+| `assert!(categories.len() >= 8)` | **8**                    | passes    |
 
 Measured committed category sizes: `development` 11, `ai_ml` 3, `database` 3, `cloud` 2, `devops` 2,
 `communication` 2, `productivity` 2, `security` 2 = **28**.
@@ -179,7 +179,7 @@ catalogue, or an honest re-scoping of the claim — is a **product decision**, r
 ```
 
 - **`lib.rs`** — removed `pub mod performance;`, `pub mod system_integration;` and their two `pub use`
-  re-export lines. (Note: the dirty tree's `lib.rs` is *rustfmt only*; the declaration lines are
+  re-export lines. (Note: the dirty tree's `lib.rs` is _rustfmt only_; the declaration lines are
   clean at `HEAD`.)
 - **`enhanced_bridge.rs`** — removed the eight `self.get_more_*_tools(),` call sites.
 - **`real_tools.rs`** — added `RiskLevel` (7 variants) and `ToolSchema` (5 fields), taken verbatim
@@ -210,24 +210,24 @@ $ git status --porcelain
 (empty — pristine, no dirty carryover)
 ```
 
-| Command | Result |
-|---|---|
-| `cargo check --workspace --all-targets` | **EXIT 0 — 0 errors** |
-| `git diff --check` | **EXIT 0** |
-| `git status --porcelain` | **empty** — no untracked required source |
+| Command                                 | Result                                   |
+| --------------------------------------- | ---------------------------------------- |
+| `cargo check --workspace --all-targets` | **EXIT 0 — 0 errors**                    |
+| `git diff --check`                      | **EXIT 0**                               |
+| `git status --porcelain`                | **empty** — no untracked required source |
 
-This was run a second time, from scratch, in a directory created *after* the commit — so it could
+This was run a second time, from scratch, in a directory created _after_ the commit — so it could
 not have inherited any artifact from the patch-under-development worktree.
 
 ### 6.1 Pre-commit verification (`.wt/fix1`)
 
-| Command | Result |
-|---|---|
-| `cargo check --workspace --all-targets` | **EXIT 0 — 0 errors** |
-| `git diff --check` | **EXIT 0** (no whitespace errors, no conflict markers) |
-| `git status --porcelain \| grep '^??'` | **empty** — no required source exists only as untracked content |
-| `cargo clippy --workspace --all-targets -- -D warnings` | **EXIT 1 — 31 errors, all pre-existing warnings** |
-| `cargo test --workspace --lib` | **EXIT 101 — 215 passed, 11 failed** |
+| Command                                                 | Result                                                          |
+| ------------------------------------------------------- | --------------------------------------------------------------- |
+| `cargo check --workspace --all-targets`                 | **EXIT 0 — 0 errors**                                           |
+| `git diff --check`                                      | **EXIT 0** (no whitespace errors, no conflict markers)          |
+| `git status --porcelain \| grep '^??'`                  | **empty** — no required source exists only as untracked content |
+| `cargo clippy --workspace --all-targets -- -D warnings` | **EXIT 1 — 31 errors, all pre-existing warnings**               |
+| `cargo test --workspace --lib`                          | **EXIT 101 — 215 passed, 11 failed**                            |
 
 ### 6.1 Clippy — reported honestly as NOT GREEN
 
@@ -245,7 +245,7 @@ They cannot pass under the mandated command regardless of this patch.
 `1 × router::tests::synthetic_offline_dispatch_returns_parseable_payload` —
 `called Result::unwrap() on an Err value: all providers failed — provider openrouter returned 401
 Unauthorized … fallback (ollama): HTTP request failed`. This test's own comment claims
-*"Hermetic: no persistent vector cache."* **It nonetheless makes a live network call and fails on a
+_"Hermetic: no persistent vector cache."_ **It nonetheless makes a live network call and fails on a
 missing credential.** The claim of hermeticity is falsified by its own failure. `router.rs` is not
 in this patch.
 
@@ -289,12 +289,12 @@ or written into any file. **The repair is COMMITTED locally and STOPPED at COMMI
 
 ## 9. State at time of writing
 
-| State | Value |
-|---|---|
-| IMPLEMENTED | **YES** — 5-file patch |
-| CLEAN CHECKOUT BUILDS | **YES** — `cargo check --workspace --all-targets` exit 0 |
-| TESTED | **PARTIAL** — 215 pass / 11 fail, all pre-existing; isolation structural (§6.2) |
-| COMMITTED | **PENDING OWNER REVIEW** |
-| PUSHED | **NO** |
-| REMOTE SHA VERIFIED | **NO** — remote still `1338d0b` |
-| CI VERIFIED | **NOT OBSERVABLE** — `gh` 401 |
+| State                 | Value                                                                           |
+| --------------------- | ------------------------------------------------------------------------------- |
+| IMPLEMENTED           | **YES** — 5-file patch                                                          |
+| CLEAN CHECKOUT BUILDS | **YES** — `cargo check --workspace --all-targets` exit 0                        |
+| TESTED                | **PARTIAL** — 215 pass / 11 fail, all pre-existing; isolation structural (§6.2) |
+| COMMITTED             | **PENDING OWNER REVIEW**                                                        |
+| PUSHED                | **NO**                                                                          |
+| REMOTE SHA VERIFIED   | **NO** — remote still `1338d0b`                                                 |
+| CI VERIFIED           | **NOT OBSERVABLE** — `gh` 401                                                   |

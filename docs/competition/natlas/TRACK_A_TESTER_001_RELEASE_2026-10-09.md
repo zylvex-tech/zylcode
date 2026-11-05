@@ -25,14 +25,14 @@ described as working because the code exists.
 
 ## 2. Tester 001 — profile and reported outcome
 
-| Field | Value |
-|---|---|
-| Tester id | 001 |
-| Name | Abdul |
-| Browser | Brave |
+| Field               | Value                  |
+| ------------------- | ---------------------- |
+| Tester id           | 001                    |
+| Name                | Abdul                  |
+| Browser             | Brave                  |
 | Languages exercised | English, Hausa, Yoruba |
-| Self-reported score | 7 / 10 |
-| Date | 2026-10-09 |
+| Self-reported score | 7 / 10                 |
+| Date                | 2026-10-09             |
 
 ### What tester 001 reported as working (tester-reported, not independently re-run by us)
 
@@ -41,18 +41,18 @@ described as working because the code exists.
 - The structured-intent shape was recognisable in the replies.
 
 > These are the tester's observations. We have **not** re-executed the tester's
-> exact session, so they remain *tester-reported* rather than *verified by us*.
+> exact session, so they remain _tester-reported_ rather than _verified by us_.
 > Where our own tests independently confirm adjacent behaviour, that is stated
 > separately in §5.
 
 ### What tester 001 reported as defective
 
-| Id | Severity | Reported symptom |
-|---|---|---|
-| NAT-A-001 | P0 | ZeroGPU quota exhaustion — the endpoint became unusable and the cause was not clear |
-| NAT-A-002 | P1 | A processing state that gave no clear signal of what was happening |
-| NAT-A-003 | P1 | Error messages were not human-readable |
-| NAT-A-004 | P1 | Multilingual regression coverage was missing (Igbo in particular) |
+| Id        | Severity | Reported symptom                                                                    |
+| --------- | -------- | ----------------------------------------------------------------------------------- |
+| NAT-A-001 | P0       | ZeroGPU quota exhaustion — the endpoint became unusable and the cause was not clear |
+| NAT-A-002 | P1       | A processing state that gave no clear signal of what was happening                  |
+| NAT-A-003 | P1       | Error messages were not human-readable                                              |
+| NAT-A-004 | P1       | Multilingual regression coverage was missing (Igbo in particular)                   |
 
 ---
 
@@ -60,11 +60,11 @@ described as working because the code exists.
 
 Each defect was checked against the actual source **before** any change was made.
 
-| Id | Confirmed? | Evidence |
-|---|---|---|
-| NAT-A-001 | ✅ Confirmed | `NatlasResilienceState::from_http` mapped a `503` by checking load/cold-start words only; a ZeroGPU quota `503` ("You have exceeded your GPU quota") contained none of them and was therefore misclassified `Warming`. |
-| NAT-A-002 | ✅ Confirmed | The playground showed a bare `RUNNING…` badge with no elapsed time and no ceiling; the Rust client had no retry policy and no attempt counter. A slow cold start was indistinguishable from a hang. |
-| NAT-A-003 | ✅ Confirmed | `NatlasError` had a `Display` impl but no human-facing guidance; the playground surfaced raw codes (`FAILED — HTTP_STATUS`). |
+| Id        | Confirmed?   | Evidence                                                                                                                                                                                                                      |
+| --------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| NAT-A-001 | ✅ Confirmed | `NatlasResilienceState::from_http` mapped a `503` by checking load/cold-start words only; a ZeroGPU quota `503` ("You have exceeded your GPU quota") contained none of them and was therefore misclassified `Warming`.        |
+| NAT-A-002 | ✅ Confirmed | The playground showed a bare `RUNNING…` badge with no elapsed time and no ceiling; the Rust client had no retry policy and no attempt counter. A slow cold start was indistinguishable from a hang.                           |
+| NAT-A-003 | ✅ Confirmed | `NatlasError` had a `Display` impl but no human-facing guidance; the playground surfaced raw codes (`FAILED — HTTP_STATUS`).                                                                                                  |
 | NAT-A-004 | ✅ Confirmed | `NatlasEvidence` (Rust) had **no `language` field**; the SDK's `NatlasEvidence` interface had none either; Igbo appeared nowhere in the Rust tree. The multilingual matrix nonetheless claimed the harness recorded language. |
 
 ---
@@ -216,13 +216,13 @@ OK: no NEW retracted claims (11 pre-existing baselined occurrence(s), 11 baselin
 
 ## 6. What was NOT run (stated plainly)
 
-| Item | State |
-|---|---|
-| A live call to `zylvex-natlas-zylcode-bridge.hf.space` after the fix | **NOT RUN** — the live Space was not exercised during this remediation; no network call to the live endpoint was made. |
-| The `LOCAL_RUNTIME_FALLBACK.md` procedure end-to-end | **NOT RUN** — documented from the transports' configuration surface, not executed. |
-| Tester 001's exact session replayed | **NOT RUN** — their observations remain tester-reported. |
-| The playground exercised in a real Brave browser after the fix | **NOT RUN** — its logic mirrors the SDK, which *is* tested; the browser itself was not driven. |
-| A real N-ATLAS model call proving Igbo output quality | **NOT RUN** — language *quality* is evidenced separately (EV-015); this remediation covers only the ZylCode-side plumbing. |
+| Item                                                                 | State                                                                                                                      |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| A live call to `zylvex-natlas-zylcode-bridge.hf.space` after the fix | **NOT RUN** — the live Space was not exercised during this remediation; no network call to the live endpoint was made.     |
+| The `LOCAL_RUNTIME_FALLBACK.md` procedure end-to-end                 | **NOT RUN** — documented from the transports' configuration surface, not executed.                                         |
+| Tester 001's exact session replayed                                  | **NOT RUN** — their observations remain tester-reported.                                                                   |
+| The playground exercised in a real Brave browser after the fix       | **NOT RUN** — its logic mirrors the SDK, which _is_ tested; the browser itself was not driven.                             |
+| A real N-ATLAS model call proving Igbo output quality                | **NOT RUN** — language _quality_ is evidenced separately (EV-015); this remediation covers only the ZylCode-side plumbing. |
 
 No item in this table is claimed as passed.
 

@@ -4,7 +4,7 @@
 knows about and has consciously decided not to act on. It is not a suppression
 list — there is no `[patch.crates-io]` override, no `pnpm audit` `--ignore` flag,
 and no `# allow` anywhere in the dependency configuration. The gates in
-`.github/workflows/ci.yml` run unmodified and would still fail on a *new*
+`.github/workflows/ci.yml` run unmodified and would still fail on a _new_
 advisory of the same class.
 
 **Current count: 2 advisories** (1 unmaintained, 1 unsound), 0 vulnerable.
@@ -37,29 +37,29 @@ two.
 `cargo audit` distinguishes two classes, and the distinction is the whole reason
 this file exists rather than a config override:
 
-| Class | Exit status of plain `cargo audit` | Meaning |
-|---|---|---|
-| **vulnerable** | non-zero | an exploitable weakness in a version in the locked graph |
-| **unmaintained / unsound** | zero | the crate is no longer maintained, or contains `unsafe` that the maintainers consider sound only under assumptions you may be violating |
+| Class                      | Exit status of plain `cargo audit` | Meaning                                                                                                                                 |
+| -------------------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| **vulnerable**             | non-zero                           | an exploitable weakness in a version in the locked graph                                                                                |
+| **unmaintained / unsound** | zero                               | the crate is no longer maintained, or contains `unsafe` that the maintainers consider sound only under assumptions you may be violating |
 
 The workspace currently has **zero `vulnerable` advisories** and **two
 `unmaintained`/`unsound` advisories**. That is why CI runs `cargo audit` and not
 `cargo audit --deny warnings`: the latter would fail on advisories that are not
 exploitable, and a gate that fails for a non-reason is a gate that gets disabled.
 
-| ID | Crate | Version | Class | Why it is accepted |
-|---|---|---|---|---|
-| RUSTSEC-2024-0370 | `proc-macro-error` | 1.0.4 | unmaintained | Transitive via `glib-macros` ← `glib` ← `tauri` 2.12.4. A **build-time proc-macro**: it runs only while compiling `glib-macros`, is never linked into the shipped binary, and never executes at runtime. No replacement exists upstream. |
-| RUSTSEC-2024-0429 | `glib` | 0.18.5 | unsound | `Iterator`/`DoubleEndedIterator` impls for `glib::VariantStrIter` violate stacked borrows. Pulled in by Tauri's GLib binding on **Linux only**. **This codebase does not use `VariantStrIter`** — the unsafe path is not reachable from ZylCode's own source. Patched in `glib >= 0.20`, but `gtk` 0.18.2 pins `glib` 0.18.x, so the only lever is a `tauri` bump. |
+| ID                | Crate              | Version | Class        | Why it is accepted                                                                                                                                                                                                                                                                                                                                                 |
+| ----------------- | ------------------ | ------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| RUSTSEC-2024-0370 | `proc-macro-error` | 1.0.4   | unmaintained | Transitive via `glib-macros` ← `glib` ← `tauri` 2.12.4. A **build-time proc-macro**: it runs only while compiling `glib-macros`, is never linked into the shipped binary, and never executes at runtime. No replacement exists upstream.                                                                                                                           |
+| RUSTSEC-2024-0429 | `glib`             | 0.18.5  | unsound      | `Iterator`/`DoubleEndedIterator` impls for `glib::VariantStrIter` violate stacked borrows. Pulled in by Tauri's GLib binding on **Linux only**. **This codebase does not use `VariantStrIter`** — the unsafe path is not reachable from ZylCode's own source. Patched in `glib >= 0.20`, but `gtk` 0.18.2 pins `glib` 0.18.x, so the only lever is a `tauri` bump. |
 
 ### Why these are not "suppressed"
 
-Every row above is a *decision recorded in a document*, not a *rule added to a
-config*. Concretely, none of the following exists in the tree:
+Every row above is a _decision recorded in a document_, not a _rule added to a
+config_. Concretely, none of the following exists in the tree:
 
 - no `[patch.crates-io]` section in `Cargo.toml`
 - no `cargo-audit` config file (`audit.toml` / `.cargo-audit.toml`)
-- no `pnpm` `overrides` entry that pins a *vulnerable* version down
+- no `pnpm` `overrides` entry that pins a _vulnerable_ version down
 - no `--ignore` / `--deny` flags in `.github/workflows/ci.yml`
 
 If any of the two above were ever upgraded to `vulnerable`, `cargo audit` in CI
@@ -125,13 +125,13 @@ Before this branch, `pnpm audit --prod` reported **5 vulnerabilities (3 low,
 2 moderate)**, all in `dompurify` reached transitively through
 `apps/zylcode-desktop > @monaco-editor/react@4.7.0 > monaco-editor@0.56.0`:
 
-| GHSA | Severity | Vulnerable | Patched |
-|---|---|---|---|
+| GHSA                | Severity | Vulnerable | Patched    |
+| ------------------- | -------- | ---------- | ---------- |
 | GHSA-cmwh-pvxp-8882 | moderate | `<=3.4.10` | `>=3.4.11` |
 | GHSA-55q2-fjhq-7xh7 | moderate | `<=3.4.12` | `>=3.4.13` |
-| GHSA-vxr8-fq34-vvx9 | low | `<3.4.9` | `>=3.4.9` |
-| GHSA-c2j3-45gr-mqc4 | low | `<=3.4.11` | `>=3.4.12` |
-| GHSA-6688-9rhm-gjv2 | low | `<=3.4.15` | `>=3.4.16` |
+| GHSA-vxr8-fq34-vvx9 | low      | `<3.4.9`   | `>=3.4.9`  |
+| GHSA-c2j3-45gr-mqc4 | low      | `<=3.4.11` | `>=3.4.12` |
+| GHSA-6688-9rhm-gjv2 | low      | `<=3.4.15` | `>=3.4.16` |
 
 **Disposition: fixed, not accepted.** The remediation was a targeted
 `pnpm.overrides` entry in the root `package.json` forcing `dompurify` to
@@ -154,11 +154,11 @@ pnpm audit --prod   # -> No known vulnerabilities found (exit 0)
 
 ## 3. Tooling provenance
 
-| Tool | Version | Where it comes from in CI |
-|---|---|---|
-| `cargo audit` | 0.22.2 | `taiki-e/install-action`, pinned to commit SHA `8cca0918f8471c33515202b73f56ab27f2bed283` (tag `v2.87.29`) |
-| `pnpm audit` | bundled with pnpm 9.12.0 | already present — no extra install |
-| RustSec advisory database | fetched by `cargo audit` at run time | upstream `RustSec/advisory-db` |
+| Tool                      | Version                              | Where it comes from in CI                                                                                  |
+| ------------------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| `cargo audit`             | 0.22.2                               | `taiki-e/install-action`, pinned to commit SHA `8cca0918f8471c33515202b73f56ab27f2bed283` (tag `v2.87.29`) |
+| `pnpm audit`              | bundled with pnpm 9.12.0             | already present — no extra install                                                                         |
+| RustSec advisory database | fetched by `cargo audit` at run time | upstream `RustSec/advisory-db`                                                                             |
 
 The action is pinned to a SHA rather than a tag because a tag is mutable: a
 secret-scanning tool that a tag owner can repoint is not a security control.

@@ -9,11 +9,11 @@ upscaled from 720p content.
 
 ## What already exists (1280×720)
 
-| Scene | File | Subject |
-|---|---|---|
-| Mission lifecycle | `04-graphics/scene-01-mission-lifecycle.webm` | Intent → Plan → Tool calls → Approval → Verify → Evidence |
-| Architecture | `04-graphics/scene-02-architecture.webm` | Surface / Service / Evidence columns + flowing packets |
-| Evidence ladder | `04-graphics/scene-03-evidence-ladder.webm` | Recorded → Derived → Hypothesis → Unknown → Failure recovered |
+| Scene             | File                                          | Subject                                                       |
+| ----------------- | --------------------------------------------- | ------------------------------------------------------------- |
+| Mission lifecycle | `04-graphics/scene-01-mission-lifecycle.webm` | Intent → Plan → Tool calls → Approval → Verify → Evidence     |
+| Architecture      | `04-graphics/scene-02-architecture.webm`      | Surface / Service / Evidence columns + flowing packets        |
+| Evidence ladder   | `04-graphics/scene-03-evidence-ladder.webm`   | Recorded → Derived → Hypothesis → Unknown → Failure recovered |
 
 ## Why re-capture
 

@@ -29,11 +29,11 @@ This document defines:
 
 This definition has three parts, all required:
 
-| Part | Meaning | Failure mode if absent |
-|---|---|---|
-| **Actor** | A user or agent | A library nobody calls |
-| **Entry point** | Named, committed, reachable | An unreachable module |
-| **Evidence** | Reproducible artifact | An unverifiable claim |
+| Part            | Meaning                     | Failure mode if absent |
+| --------------- | --------------------------- | ---------------------- |
+| **Actor**       | A user or agent             | A library nobody calls |
+| **Entry point** | Named, committed, reachable | An unreachable module  |
+| **Evidence**    | Reproducible artifact       | An unverifiable claim  |
 
 **A module is not a capability.** `crates/zylcode-core/src/intelligence/` is a module. "An agent
 can ask which files must change to alter crash recovery, and get a ranked answer with reasons"
@@ -45,11 +45,11 @@ is a capability — and it does not currently exist, because nothing invokes the
 
 ### 3.1 Names describe an outcome, not an implementation
 
-| ❌ Bad | ✅ Good |
-|---|---|
-| `repository_scanner` | `repository_indexing` |
-| `rust_symbol_index` | `symbol_lookup` |
-| `context_retrieval` | `task_context_assembly` |
+| ❌ Bad               | ✅ Good                 |
+| -------------------- | ----------------------- |
+| `repository_scanner` | `repository_indexing`   |
+| `rust_symbol_index`  | `symbol_lookup`         |
+| `context_retrieval`  | `task_context_assembly` |
 
 The name should survive a rewrite of the implementation.
 
@@ -73,18 +73,18 @@ zero surfaces is not a capability.
 
 ## 4. Status Vocabulary
 
-Status and rung are **independent axes**. Status describes *how complete*; rung describes *how
-proven*. Both are required.
+Status and rung are **independent axes**. Status describes _how complete_; rung describes _how
+proven_. Both are required.
 
 ### 4.1 Status (completeness)
 
-| Status | Meaning |
-|---|---|
-| **ABSENT** | Not implemented. |
-| **STUB** | Surface exists; behaviour is mocked or returns a placeholder. |
-| **PARTIAL** | Some real behaviour; significant scope missing or unreachable. |
-| **FUNCTIONAL** | Works for its stated scope; may be unproven. |
-| **GREEN** | Complete for its stated scope **and** at rung **R3 or above**. |
+| Status               | Meaning                                                            |
+| -------------------- | ------------------------------------------------------------------ |
+| **ABSENT**           | Not implemented.                                                   |
+| **STUB**             | Surface exists; behaviour is mocked or returns a placeholder.      |
+| **PARTIAL**          | Some real behaviour; significant scope missing or unreachable.     |
+| **FUNCTIONAL**       | Works for its stated scope; may be unproven.                       |
+| **GREEN**            | Complete for its stated scope **and** at rung **R3 or above**.     |
 | **EXTERNAL_BLOCKER** | Complete locally; blocked by an external system (e.g. CI billing). |
 
 ### 4.2 The GREEN rule
@@ -107,7 +107,7 @@ This rule alone would have prevented the Phase 2A mis-classification.
 mean "unverified but assumed fine".
 
 When CI is unavailable, **local reproduction becomes the only evidence** — so the R3/R4 bar
-applies with *more* force, not less. Phase 2A used `REMOTE_CI = BLOCKED_EXTERNAL` in a report
+applies with _more_ force, not less. Phase 2A used `REMOTE_CI = BLOCKED_EXTERNAL` in a report
 that also contained a non-reproducing benchmark. That combination is exactly what this rule
 prohibits.
 
@@ -122,7 +122,10 @@ Each entry:
   "<capability_id>": {
     "status": "GREEN | FUNCTIONAL | PARTIAL | STUB | ABSENT | EXTERNAL_BLOCKER",
     "rung": "R0 | R1 | R2 | R3 | R4 | R5",
-    "entry_points": ["zylcode repo context <task>", "AgentLoop::assemble_context"],
+    "entry_points": [
+      "zylcode repo context <task>",
+      "AgentLoop::assemble_context"
+    ],
     "scope": "what this does and explicitly does not do",
     "evidence": "what was measured, with the command that measured it",
     "evidence_commit": "<sha>",
@@ -135,14 +138,14 @@ Each entry:
 
 ### 5.1 Required fields and why
 
-| Field | Why it exists |
-|---|---|
-| `rung` | Makes the proof claim explicit and auditable |
-| `entry_points` | Enforces the reachability test (R3) |
-| `scope` | Prevents a narrow capability being read as a broad one |
-| `evidence_commit` | A claim is about a specific revision, not "the project" |
-| `verified_at` | Proofs go stale; this makes staleness detectable |
-| `limitations` | Honest boundary. An entry with no limitations is suspicious. |
+| Field             | Why it exists                                                |
+| ----------------- | ------------------------------------------------------------ |
+| `rung`            | Makes the proof claim explicit and auditable                 |
+| `entry_points`    | Enforces the reachability test (R3)                          |
+| `scope`           | Prevents a narrow capability being read as a broad one       |
+| `evidence_commit` | A claim is about a specific revision, not "the project"      |
+| `verified_at`     | Proofs go stale; this makes staleness detectable             |
+| `limitations`     | Honest boundary. An entry with no limitations is suspicious. |
 
 ### 5.2 Deprecations
 
@@ -170,18 +173,18 @@ The registry has history.
 
 Capabilities are grouped by the eight core systems plus the trust foundation.
 
-| Domain | Examples |
-|---|---|
-| **Trust foundation** | evidence ledger, permission enforcement, crash recovery, audit |
-| **Agent Kernel** | tool runtime, reasoning loop, approval, bounded execution, memory |
-| **Intelligence Graph** | indexing, symbol lookup, dependency graph, change graph, task context |
-| **Project System** | project identity, persistence, migration, project knowledge graph |
-| **Vision Studio** | design model, canvas, design↔code, visual diff |
-| **Execution Engine** | shell, browser, desktop, container, android, ios-worker |
-| **Proof Engine** | build/test/runtime/visual/security verification, proof graph |
-| **Delivery Engine** | git, CI, packaging, deployment, store publishing |
-| **Model Platform** | provider config, capability routing, measured performance |
-| **Extension Platform** | package ABI, permissions, contribution points |
+| Domain                  | Examples                                                                                   |
+| ----------------------- | ------------------------------------------------------------------------------------------ |
+| **Trust foundation**    | evidence ledger, permission enforcement, crash recovery, audit                             |
+| **Agent Kernel**        | tool runtime, reasoning loop, approval, bounded execution, memory                          |
+| **Intelligence Graph**  | indexing, symbol lookup, dependency graph, change graph, task context                      |
+| **Project System**      | project identity, persistence, migration, project knowledge graph                          |
+| **Vision Studio**       | design model, canvas, design↔code, visual diff                                             |
+| **Execution Engine**    | shell, browser, desktop, container, android, ios-worker                                    |
+| **Proof Engine**        | build/test/runtime/visual/security verification, proof graph                               |
+| **Delivery Engine**     | git, CI, packaging, deployment, store publishing                                           |
+| **Model Platform**      | provider config, capability routing, measured performance                                  |
+| **Extension Platform**  | package ABI, permissions, contribution points                                              |
 | **Computer-Use Engine** | screen/window perception, element grounding, input synthesis, risk levels, flight recorder |
 
 ---
@@ -242,13 +245,13 @@ rather than asserted.
 
 ## 11. Summary
 
-| Concept | Rule |
-|---|---|
-| Capability | actor + entry point + evidence |
-| Module | not a capability |
-| GREEN | requires R3+ |
-| Rung | computed, never asserted |
-| Metric | names and scopes what it counts |
+| Concept          | Rule                                    |
+| ---------------- | --------------------------------------- |
+| Capability       | actor + entry point + evidence          |
+| Module           | not a capability                        |
+| GREEN            | requires R3+                            |
+| Rung             | computed, never asserted                |
+| Metric           | names and scopes what it counts         |
 | EXTERNAL_BLOCKER | raises the local bar, does not lower it |
-| Audit | falsify first, confirm second |
-| Correction | visible, never silent |
+| Audit            | falsify first, confirm second           |
+| Correction       | visible, never silent                   |

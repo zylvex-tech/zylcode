@@ -18,23 +18,23 @@ repository, the project, or the proof — it consults the systems that do.
 
 ## 2. What Exists Today (honest inventory)
 
-| Component | Status | Rung | Evidence |
-|---|---|---|---|
-| Real tool runtime (`FileSystemTool`, `ShellTool`, `GitTool`, `SearchTool`) | FUNCTIONAL | R3 | `crates/zylcode-mcp/src/real_tools.rs` |
-| Iterative reasoning loop with tool execution | FUNCTIONAL | R3 | `crates/zylcode-core/src/agent.rs` |
-| Observation feedback (tool results → next decision) | FUNCTIONAL | R3 | `test_observation_loop` |
-| Repair loop on failure | FUNCTIONAL | R3 | `test_repair_loop` |
-| `AgentDecision` protocol | FUNCTIONAL | R3 | `crates/zylcode-core/src/agent_protocol.rs` |
-| Approval enforcement on risk | FUNCTIONAL | R3 | `requires_approval()`, `AwaitingApproval` |
-| Completion verification requiring evidence | FUNCTIONAL | R3 | `verify_completion_evidence()` |
-| Bounded execution (steps, timeouts, cancellation) | FUNCTIONAL | R3 | step limits |
-| Durable memory + checkpoint recovery | FUNCTIONAL | R3 | `SessionCheckpoint`, crash-window tests |
-| Evidence ledger | FUNCTIONAL | R3 | `crates/zylcode-core/src/ledger.rs` |
-| Model client abstraction (`RealModelClient`, `TestModelClient`) | FUNCTIONAL | R3 | `router.rs` |
-| **Live multi-provider commissioning** | **PARTIAL** | R2 | providers configured; end-to-end live run outstanding |
-| **Generic verification execution** | **PARTIAL** | R2 | Phase 1D condition |
-| **Repository-graph context assembly** | **ABSENT** | R0 | still uses pre-existing `ContextBuilder` |
-| **Shared world state** | **ABSENT** | R0 | requires Phase 3A |
+| Component                                                                  | Status      | Rung | Evidence                                              |
+| -------------------------------------------------------------------------- | ----------- | ---- | ----------------------------------------------------- |
+| Real tool runtime (`FileSystemTool`, `ShellTool`, `GitTool`, `SearchTool`) | FUNCTIONAL  | R3   | `crates/zylcode-mcp/src/real_tools.rs`                |
+| Iterative reasoning loop with tool execution                               | FUNCTIONAL  | R3   | `crates/zylcode-core/src/agent.rs`                    |
+| Observation feedback (tool results → next decision)                        | FUNCTIONAL  | R3   | `test_observation_loop`                               |
+| Repair loop on failure                                                     | FUNCTIONAL  | R3   | `test_repair_loop`                                    |
+| `AgentDecision` protocol                                                   | FUNCTIONAL  | R3   | `crates/zylcode-core/src/agent_protocol.rs`           |
+| Approval enforcement on risk                                               | FUNCTIONAL  | R3   | `requires_approval()`, `AwaitingApproval`             |
+| Completion verification requiring evidence                                 | FUNCTIONAL  | R3   | `verify_completion_evidence()`                        |
+| Bounded execution (steps, timeouts, cancellation)                          | FUNCTIONAL  | R3   | step limits                                           |
+| Durable memory + checkpoint recovery                                       | FUNCTIONAL  | R3   | `SessionCheckpoint`, crash-window tests               |
+| Evidence ledger                                                            | FUNCTIONAL  | R3   | `crates/zylcode-core/src/ledger.rs`                   |
+| Model client abstraction (`RealModelClient`, `TestModelClient`)            | FUNCTIONAL  | R3   | `router.rs`                                           |
+| **Live multi-provider commissioning**                                      | **PARTIAL** | R2   | providers configured; end-to-end live run outstanding |
+| **Generic verification execution**                                         | **PARTIAL** | R2   | Phase 1D condition                                    |
+| **Repository-graph context assembly**                                      | **ABSENT**  | R0   | still uses pre-existing `ContextBuilder`              |
+| **Shared world state**                                                     | **ABSENT**  | R0   | requires Phase 3A                                     |
 
 > **Note the last two rows.** They are the reason Phase 2B and Phase 3A matter: today the Agent
 > Kernel assembles context from a file-tree walker rather than from the repository graph, and it
@@ -121,17 +121,17 @@ AgentLoop::assemble_context()
 
 ### 4.3 Why this is not cosmetic
 
-| Current | Required |
-|---|---|
-| Returns files | Returns **ranked** files with **reasons** |
-| No dependency awareness | Transitive dependency awareness |
-| No symbol awareness | Symbol-level targeting |
-| No test relationships | Test↔code relationships |
-| Recomputes every time | Incremental, cached, hash-validated |
+| Current                 | Required                                  |
+| ----------------------- | ----------------------------------------- |
+| Returns files           | Returns **ranked** files with **reasons** |
+| No dependency awareness | Transitive dependency awareness           |
+| No symbol awareness     | Symbol-level targeting                    |
+| No test relationships   | Test↔code relationships                   |
+| Recomputes every time   | Incremental, cached, hash-validated       |
 
 **This is the Phase 2B deliverable, and it is why Phase 2A had to be correct.**
 
-Until this is done, the Agent Kernel's context is *plausible* rather than *informed*. A
+Until this is done, the Agent Kernel's context is _plausible_ rather than _informed_. A
 plausible context produces plausible code. An informed context produces correct code.
 
 ---
@@ -161,11 +161,11 @@ trait RealTool {
 
 Three layers, deliberately distinct:
 
-| Layer | Scope | Lifetime | Owner |
-|---|---|---|---|
-| **Working context** | current step | request | Agent Kernel |
-| **Session memory** | current mission | mission | Project System (Phase 3A) |
-| **Engineering memory** | project | project | Project System + Ledger |
+| Layer                  | Scope           | Lifetime | Owner                     |
+| ---------------------- | --------------- | -------- | ------------------------- |
+| **Working context**    | current step    | request  | Agent Kernel              |
+| **Session memory**     | current mission | mission  | Project System (Phase 3A) |
+| **Engineering memory** | project         | project  | Project System + Ledger   |
 
 > Memory is not a chat log. Memory is structured state that outlives the conversation that
 > produced it. This is the difference between an assistant and a system.
@@ -210,15 +210,15 @@ Plus the UI agent surface (run, observe, approve, cancel).
 
 ## 10. Remaining Work
 
-| # | Item | Phase | Blocks |
-|---|---|---|---|
-| 1 | Live multi-provider commissioning | 1C closure | Model Platform claims |
-| 2 | Generic verification execution | 1D closure | Proof Engine |
-| 3 | Repository-graph context assembly | 2B | informed context |
-| 4 | Shared world state | 3A | multi-agent |
-| 5 | Mission-scoped execution | 3B | resumable autonomy |
-| 6 | Capability-based model routing | 4 | Model Democracy |
-| 7 | Multi-agent roles on shared state | 14 | ecosystem |
+| #   | Item                              | Phase      | Blocks                |
+| --- | --------------------------------- | ---------- | --------------------- |
+| 1   | Live multi-provider commissioning | 1C closure | Model Platform claims |
+| 2   | Generic verification execution    | 1D closure | Proof Engine          |
+| 3   | Repository-graph context assembly | 2B         | informed context      |
+| 4   | Shared world state                | 3A         | multi-agent           |
+| 5   | Mission-scoped execution          | 3B         | resumable autonomy    |
+| 6   | Capability-based model routing    | 4          | Model Democracy       |
+| 7   | Multi-agent roles on shared state | 14         | ecosystem             |
 
 ---
 

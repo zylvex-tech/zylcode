@@ -5,7 +5,7 @@
 - **Component:** "Real-World Validation" + "N-ATLAS Integration" showables (rubric §mandatory)
 
 > Runtime truth > test truth > documentation claims. The model outputs below are verbatim from a
-> genuine invocation of the real `NCAIR1/N-ATLaS` weights through *our own* authenticated endpoint.
+> genuine invocation of the real `NCAIR1/N-ATLaS` weights through _our own_ authenticated endpoint.
 > No mock, no test-double.
 
 ---
@@ -50,12 +50,13 @@ N-ATLAS is a **first-class competition provider** through `NatlasTransport` /
 `router.rs` `ModelProvider` enum, which contains three silent synthetic-degradation paths — the
 exact mechanism that would let a claim "upgrade" from a non-answer to a fake success.
 
-**Why this matters for the challenge:** The rubric's disqualification rule states *"Submissions
-that wrap general-purpose models instead of N-ATLAS will be disqualified."* The dedicated boundary
+**Why this matters for the challenge:** The rubric's disqualification rule states _"Submissions
+that wrap general-purpose models instead of N-ATLAS will be disqualified."_ The dedicated boundary
 prevents any accidental substitution. Even if the endpoint is unreachable, `NatlasResilienceState`
 returns an honest error — never a synthetic completion from another provider.
 
 Unit-tested for honest failure:
+
 - `an_unreachable_runtime_is_a_transport_error_not_a_synthetic_answer`
 - `endpoint_unavailable_is_blocked_with_no_synthetic_response`
 - `auth_failure_is_stated_not_substituted`
@@ -88,13 +89,13 @@ serialization defects — triple-quoted strings (`"""..."""`), raw newlines insi
 and trailing commas. Rather than silently accepting broken JSON or giving up, ZylCode uses a
 **bounded, deterministic repair layer**:
 
-| Defect | Repair | Scope |
-|---|---|---|
-| Triple-quoted strings | Escape inner content (`"""..."""` → `"..."`) | In scope |
-| Raw newlines in strings | Escape to `\n` | In scope |
-| Trailing commas | Remove `,]` / `,}` | In scope |
-| Unescaped quotes mid-string | **Out of scope** — fail closed | Not repaired |
-| Missing fields | **Out of scope** — fail closed | Not invented |
+| Defect                      | Repair                                       | Scope        |
+| --------------------------- | -------------------------------------------- | ------------ |
+| Triple-quoted strings       | Escape inner content (`"""..."""` → `"..."`) | In scope     |
+| Raw newlines in strings     | Escape to `\n`                               | In scope     |
+| Trailing commas             | Remove `,]` / `,}`                           | In scope     |
+| Unescaped quotes mid-string | **Out of scope** — fail closed               | Not repaired |
+| Missing fields              | **Out of scope** — fail closed               | Not invented |
 
 `parse_with_repair()` returns `(NatlasEngineeringIntent, was_repaired: bool)`. The caller always
 knows whether normalization occurred. This is tested in `intent.rs` (18 tests) and the bridge
@@ -163,20 +164,20 @@ hidden.
 On 2026-10-07, the full uninterrupted chain was executed from a Yoruba instruction through real
 N-ATLAS to a verified file mutation and passing test:
 
-| Step | What Happened | Evidence |
-|---|---|---|
-| 1. User Instruction | Yoruba: *"Jọwọ, ṣẹda faili Python kékeré…"* | EV-024 |
-| 2. Endpoint Health | `GET /healthz` → 200, model `NCAIR1/N-ATLaS` | EV-024 |
-| 3. Real Inference | `POST /v1/chat/completions` → 200, real model output | EV-024 |
-| 4. Bounded Repair | Triple-quoted string with raw newlines → escaped JSON | EV-023, EV-024 |
-| 5. Strict Parse | `parse_with_repair` → valid intent, `was_repaired=true` | EV-024 |
-| 6. TaskGraph | `to_task_graph()` → approval-gated DAG | Hermetic tests |
-| 7. Pre-Approval | File does NOT exist; runner `AwaitingApproval` | EV-025 |
-| 8. Human Approval | `runner.approve("step-01", "owner")` → gate opens | EV-024 |
-| 9. File Mutation | `helloworld.py` written with `print('Hello ZylCode')` | EV-024 |
-| 10. Test Execution | `python helloworld.py` → exit 0, stdout `Hello ZylCode` | EV-024 |
-| 11. Verified Claim | Claim status `Verified` recorded | EV-024 |
-| 12. Provenance | 8-node chain: INTENT → approval → mutation → test → claim | EV-026 |
+| Step                | What Happened                                             | Evidence       |
+| ------------------- | --------------------------------------------------------- | -------------- |
+| 1. User Instruction | Yoruba: _"Jọwọ, ṣẹda faili Python kékeré…"_               | EV-024         |
+| 2. Endpoint Health  | `GET /healthz` → 200, model `NCAIR1/N-ATLaS`              | EV-024         |
+| 3. Real Inference   | `POST /v1/chat/completions` → 200, real model output      | EV-024         |
+| 4. Bounded Repair   | Triple-quoted string with raw newlines → escaped JSON     | EV-023, EV-024 |
+| 5. Strict Parse     | `parse_with_repair` → valid intent, `was_repaired=true`   | EV-024         |
+| 6. TaskGraph        | `to_task_graph()` → approval-gated DAG                    | Hermetic tests |
+| 7. Pre-Approval     | File does NOT exist; runner `AwaitingApproval`            | EV-025         |
+| 8. Human Approval   | `runner.approve("step-01", "owner")` → gate opens         | EV-024         |
+| 9. File Mutation    | `helloworld.py` written with `print('Hello ZylCode')`     | EV-024         |
+| 10. Test Execution  | `python helloworld.py` → exit 0, stdout `Hello ZylCode`   | EV-024         |
+| 11. Verified Claim  | Claim status `Verified` recorded                          | EV-024         |
+| 12. Provenance      | 8-node chain: INTENT → approval → mutation → test → claim | EV-026         |
 
 **No simulated model response. No synthetic fallback. No fabricated data.**
 
@@ -187,12 +188,12 @@ N-ATLAS to a verified file mutation and passing test:
 Four programming-concept prompts — one per competition target language — were sent to the controlled
 endpoint. All returned HTTP 200 with coherent, **language-correct** model output.
 
-| Lang | Prompt (translated intent) | Model output (verbatim, truncated) |
-|---|---|---|
-| EN | "Explain what a Rust trait is in one short sentence." | "A Rust trait is an abstract set of methods that can be implemented by different types, allowing for generic functionality across various data structures without requiring inheritance." |
-| YO | "Explain what a 'function' is in computing." | "Nínú ìmò ṣiṣe kọ̀mpútà, iṣẹ́ (function) ni apá kan ti kóòdù tó ní àkójọpọ̀ àwọn òfin tí a pinnu láti ṣe iṣiro sí iye kan pato…" |
-| HA | "Please explain 'variable' in computer science." | "A kimiyyar kwamfuta, ana amfani da kalmar 'variable' don wakiltar wani darajar da na iya canzawa… Misali, idan kana rubuta shirin Python: `x = 10; y = 20; sum = x + y`" |
-| IG | "Explain what 'loop' means in computer programming." | "N'ezie! Loop bụ usoro nhazi dị mkpa na mmemme kọmputa nke na-enye ohere ka koodu rụọ ọrụ na-emegharị…" |
+| Lang | Prompt (translated intent)                            | Model output (verbatim, truncated)                                                                                                                                                        |
+| ---- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| EN   | "Explain what a Rust trait is in one short sentence." | "A Rust trait is an abstract set of methods that can be implemented by different types, allowing for generic functionality across various data structures without requiring inheritance." |
+| YO   | "Explain what a 'function' is in computing."          | "Nínú ìmò ṣiṣe kọ̀mpútà, iṣẹ́ (function) ni apá kan ti kóòdù tó ní àkójọpọ̀ àwọn òfin tí a pinnu láti ṣe iṣiro sí iye kan pato…"                                                             |
+| HA   | "Please explain 'variable' in computer science."      | "A kimiyyar kwamfuta, ana amfani da kalmar 'variable' don wakiltar wani darajar da na iya canzawa… Misali, idan kana rubuta shirin Python: `x = 10; y = 20; sum = x + y`"                 |
+| IG   | "Explain what 'loop' means in computer programming."  | "N'ezie! Loop bụ usoro nhazi dị mkpa na mmemme kọmputa nke na-enye ohere ka koodu rụọ ọrụ na-emegharị…"                                                                                   |
 
 (Outputs truncated only by `max_tokens`; each is a genuine model completion, not curated.)
 
@@ -203,7 +204,7 @@ The responses are correct, but native-speaker sign-off is recommended for final 
 
 ## 8. B1 Inference Gate (EV-014, L3)
 
-The canonical challenge — prompt *"Return exactly: NATLAS_ZYLCODE_OK"* — returned
+The canonical challenge — prompt _"Return exactly: NATLAS_ZYLCODE_OK"_ — returned
 `choices[0].message.content == "NATLAS_ZYLCODE_OK"` over `HTTP 200`. This proves the controlled
 endpoint serves the real model and honors our own auth (`NATLAS_API_KEY` secret; 503 if unset, 401
 on mismatch).
@@ -213,6 +214,7 @@ on mismatch).
 ## 9. What is proven vs pending
 
 **Proven (L3, genuine):**
+
 - Controlled, Zylvex-owned N-ATLAS endpoint is live and serves real `NCAIR1/N-ATLaS` weights.
 - Endpoint auth + gated-model download work (secrets applied).
 - English + Yoruba + Hausa + Igbo developer-assistance round-trip returns real, language-correct output.
@@ -221,6 +223,7 @@ on mismatch).
 - Bridge mechanics proven hermetically: 61 tests green, no live endpoint required.
 
 **Pending (human / owner action):**
+
 - ≥2 external beta testers (PS1 hard requirement) — owner recruitment.
 - Final video screen-capture, team profile, CAC certificate (owner-supplied).
 - Native-speaker-authored prompts for Hausa and Igbo (quality bar, not capability gap).
@@ -293,4 +296,4 @@ correct answer to the challenge's disqualification rule.
 
 ---
 
-*Last updated: 2026-10-08. Verified against branch `competition/natlas-2026`.*
+_Last updated: 2026-10-08. Verified against branch `competition/natlas-2026`._

@@ -3,6 +3,7 @@
 ## Core Architecture
 
 ### 1. Layered Architecture
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Presentation Layer                        │
@@ -34,6 +35,7 @@
 ## Key Components
 
 ### 1. MCP Bridge (100+ Tools)
+
 - **Protocol**: Model Context Protocol (MCP) standard
 - **Transport**: stdio, SSE, HTTP
 - **Tool Discovery**: Automatic tool registration and discovery
@@ -41,6 +43,7 @@
 - **Extensibility**: Plugin-based tool providers
 
 ### 2. Skills System
+
 - **Definition**: YAML/JSON skill definitions
 - **Execution**: Isolated execution environments
 - **Sharing**: Community skill marketplace
@@ -48,6 +51,7 @@
 - **Dependencies**: Skill dependency management
 
 ### 3. Plugin Marketplace
+
 - **Pre-shipped Plugins**: 50+ essential plugins included
 - **Categories**: Themes, Tools, Integrations, AI Models
 - **Rating System**: Community ratings and reviews
@@ -55,6 +59,7 @@
 - **Monetization**: Premium plugin support
 
 ### 4. Advanced Computer Use
+
 - **Screen Capture**: Real-time screen analysis
 - **GUI Automation**: Mouse/keyboard control
 - **Vision AI**: Screenshot understanding
@@ -62,6 +67,7 @@
 - **Cross-platform**: Windows, macOS, Linux support
 
 ### 5. AI Input System
+
 - **Text Input**: Natural language processing
 - **Voice Input**: Speech-to-text with multiple languages
 - **Vision Input**: Image and screenshot analysis
@@ -69,6 +75,7 @@
 - **Multi-modal**: Combined input processing
 
 ### 6. File Upload System
+
 - **Drag & Drop**: Intuitive file upload interface
 - **Bulk Upload**: Multiple file processing
 - **Preview**: File content preview
@@ -78,6 +85,7 @@
 ## Tech Stack
 
 ### Frontend
+
 - **Framework**: React 18 + TypeScript
 - **State Management**: Zustand + React Query
 - **UI Components**: Custom component library with 8 themes
@@ -86,6 +94,7 @@
 - **Icons**: Lucide React
 
 ### Backend
+
 - **Runtime**: Node.js + TypeScript
 - **Framework**: Fastify (high performance)
 - **Database**: SQLite (better-sqlite3)
@@ -94,6 +103,7 @@
 - **API**: REST + WebSocket
 
 ### AI Integration
+
 - **Models**: Multi-model support (OpenAI, DeepSeek, local models)
 - **MCP**: Full MCP protocol implementation
 - **Computer Use**: Playwright + Puppeteer + Custom vision
@@ -101,6 +111,7 @@
 - **Vision**: Custom vision models + cloud APIs
 
 ### DevOps
+
 - **CI/CD**: GitHub Actions
 - **Testing**: Jest + Playwright + Cypress
 - **Monitoring**: Sentry + custom analytics
@@ -109,11 +120,12 @@
 ## Data Models
 
 ### Core Entities
+
 ```typescript
 interface User {
   id: string;
   email: string;
-  subscription: 'free' | 'pro' | 'enterprise';
+  subscription: "free" | "pro" | "enterprise";
   preferences: UserPreferences;
 }
 
@@ -143,7 +155,7 @@ interface Plugin {
   version: string;
   description: string;
   author: string;
-  category: 'theme' | 'tool' | 'integration' | 'ai-model';
+  category: "theme" | "tool" | "integration" | "ai-model";
   price: number;
   rating: number;
   downloads: number;
@@ -153,18 +165,21 @@ interface Plugin {
 ## Security Architecture
 
 ### Authentication & Authorization
+
 - JWT tokens with refresh tokens
 - Role-based access control (RBAC)
 - OAuth2 integration (GitHub, Google, etc.)
 - API key management for plugins
 
 ### Data Security
+
 - End-to-end encryption for sensitive data
 - Secure file storage with access controls
 - Audit logging for all actions
 - Regular security audits
 
 ### Computer Use Security
+
 - Sandboxed execution environment
 - Permission-based screen access
 - User confirmation for sensitive actions
@@ -173,18 +188,21 @@ interface Plugin {
 ## Performance Optimization
 
 ### Frontend
+
 - Code splitting and lazy loading
 - Virtual scrolling for large lists
 - Memoization of expensive computations
 - Optimistic UI updates
 
 ### Backend
+
 - Connection pooling
 - Caching strategies (Redis-compatible)
 - Async processing for heavy tasks
 - Load balancing ready
 
 ### Database
+
 - Indexed queries
 - Query optimization
 - Connection pooling
@@ -193,12 +211,14 @@ interface Plugin {
 ## Scalability Considerations
 
 ### Horizontal Scaling
+
 - Stateless services
 - Load balancer ready
 - Database sharding support
 - CDN for static assets
 
 ### Vertical Scaling
+
 - Resource monitoring
 - Auto-scaling configuration
 - Performance profiling
@@ -207,18 +227,21 @@ interface Plugin {
 ## Monitoring & Observability
 
 ### Metrics
+
 - Application performance metrics
 - Business metrics (user engagement, conversions)
 - Infrastructure metrics
 - Custom metrics for AI features
 
 ### Logging
+
 - Structured logging
 - Log aggregation
 - Error tracking
 - Audit trails
 
 ### Alerting
+
 - Performance alerts
 - Error rate alerts
 - Security alerts
@@ -227,18 +250,21 @@ interface Plugin {
 ## Deployment Architecture
 
 ### Development
+
 - Local development environment
 - Hot reloading
 - Debug tools
 - Mock services
 
 ### Staging
+
 - Production-like environment
 - Integration testing
 - Performance testing
 - Security testing
 
 ### Production
+
 - High availability setup
 - Disaster recovery
 - Backup strategies
@@ -247,18 +273,21 @@ interface Plugin {
 ## Future Considerations
 
 ### AI Model Evolution
+
 - Support for new AI models
 - Model switching capabilities
 - Custom model training
 - Model performance optimization
 
 ### Plugin Ecosystem
+
 - Plugin SDK development
 - Plugin certification program
 - Revenue sharing model
 - Community contribution tools
 
 ### Enterprise Features
+
 - Team collaboration
 - Advanced security
 - Custom deployments

@@ -15,8 +15,8 @@
 
 > **Design must be machine-readable and agent-addressable.**
 
-The AI must manipulate **design primitives**, not screenshots. Screenshots are *observation*.
-Primitives are the *medium*.
+The AI must manipulate **design primitives**, not screenshots. Screenshots are _observation_.
+Primitives are the _medium_.
 
 If the agent edits a screenshot, every operation is a lossy guess. If it edits primitives, every
 operation is exact, undoable, and explainable.
@@ -77,16 +77,16 @@ Node (one of)
 
 ### 2.1 Requirements
 
-| # | Requirement |
-|---|---|
-| A1 | Every node has a **stable id**, independent of position in the tree |
-| A2 | Every node is **addressable** — an agent can reference it by id and path |
-| A3 | Every mutation is **undoable** |
-| A4 | The model is **serialisable** and diffable |
-| A5 | Tokens are **first-class**, not hard-coded values |
-| A6 | Components have **variants** as explicit axes |
-| A7 | Instances record **overrides** explicitly |
-| A8 | Constraints and auto-layout are **explicit**, not inferred at render time |
+| #   | Requirement                                                               |
+| --- | ------------------------------------------------------------------------- |
+| A1  | Every node has a **stable id**, independent of position in the tree       |
+| A2  | Every node is **addressable** — an agent can reference it by id and path  |
+| A3  | Every mutation is **undoable**                                            |
+| A4  | The model is **serialisable** and diffable                                |
+| A5  | Tokens are **first-class**, not hard-coded values                         |
+| A6  | Components have **variants** as explicit axes                             |
+| A7  | Instances record **overrides** explicitly                                 |
+| A8  | Constraints and auto-layout are **explicit**, not inferred at render time |
 
 **A2 is the one that makes the AI useful.** If a node cannot be addressed, an agent cannot say
 "set the padding on the primary button in the signup frame" — it can only say "change this
@@ -119,12 +119,12 @@ The measure is workflow friction, not feature count.
 
 ### 4.1 The UI-IR must be genuinely intermediate
 
-| Property | Requirement |
-|---|---|
-| Target-neutral | no React concepts, no Compose concepts |
+| Property          | Requirement                                       |
+| ----------------- | ------------------------------------------------- |
+| Target-neutral    | no React concepts, no Compose concepts            |
 | Expressive enough | can represent every design primitive without loss |
-| Diffable | a design change produces a readable code diff |
-| Reversible | code → UI-IR → design must not lose intent |
+| Diffable          | a design change produces a readable code diff     |
+| Reversible        | code → UI-IR → design must not lose intent        |
 
 ### 4.2 Fidelity is measured, not asserted
 
@@ -179,11 +179,12 @@ A pixel diff says "3% of pixels differ". A difference model says:
 ```
 
 **Only the second can produce a repair plan.** This is why the design model must be
-machine-readable: the difference model is expressed in the *design model's* terms.
+machine-readable: the difference model is expressed in the _design model's_ terms.
 
 ### 5.2 Benchmark
 
 A seeded visual defect (spacing, colour, or layout) is:
+
 1. **detected** automatically,
 2. **localised** to a design primitive,
 3. **repaired** without human intervention,
@@ -210,13 +211,13 @@ Plus agent design tools: `design.create_node`, `design.set_property`, `design.ad
 
 ## 7. Benchmark / Acceptance
 
-| Phase | Criterion | Rung |
-|---|---|---|
-| 8A | An agent constructs and mutates a design through primitives only, with no image manipulation | R3 |
-| 8B | A designer completes a realistic multi-screen layout without fighting the tool | R3 |
-| 8C | Round-trip fidelity **measured** for two structurally different targets | R3 |
-| 8C | An inexpressible primitive is **reported**, not approximated | R3 (negative test) |
-| 9 | A seeded visual defect is detected, localised, repaired and re-verified automatically | R3 |
+| Phase | Criterion                                                                                    | Rung               |
+| ----- | -------------------------------------------------------------------------------------------- | ------------------ |
+| 8A    | An agent constructs and mutates a design through primitives only, with no image manipulation | R3                 |
+| 8B    | A designer completes a realistic multi-screen layout without fighting the tool               | R3                 |
+| 8C    | Round-trip fidelity **measured** for two structurally different targets                      | R3                 |
+| 8C    | An inexpressible primitive is **reported**, not approximated                                 | R3 (negative test) |
+| 9     | A seeded visual defect is detected, localised, repaired and re-verified automatically        | R3                 |
 
 ---
 

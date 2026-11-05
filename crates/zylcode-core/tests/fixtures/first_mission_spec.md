@@ -29,7 +29,17 @@ Prompt §36 (phase T3 of `docs/governance/ZYLCODE_TRANSFORMATION_PLAN.md`).
     "statslib/core.py is repaired so mean() divides by len(values)",
     "The same suite command passes after the repair"
   ],
-  "verify_command": ["python", "-m", "unittest", "discover", "-v", "-s", ".", "-p", "test_*.py"],
+  "verify_command": [
+    "python",
+    "-m",
+    "unittest",
+    "discover",
+    "-v",
+    "-s",
+    ".",
+    "-p",
+    "test_*.py"
+  ],
   "operations": [
     {
       "op": "write",

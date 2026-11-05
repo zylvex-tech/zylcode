@@ -8,23 +8,23 @@ All invoked via `@tauri-apps/api/core` `invoke`:
 import { invoke } from "@tauri-apps/api/core";
 ```
 
-| Command | Args | Returns | Notes |
-|---------|------|---------|-------|
-| `process_intent` | `{prompt: string, model?: string\|null}` | `IntentResult` | Non-streaming pipeline run |
-| `process_intent_stream` | `{prompt: string, model?: string\|null}` | `IntentResult` | Emits `intent:chunk` stream + `telemetry:provider_failover` + `intent:done` |
-| `preview_execution_plan` | `{prompt: string}` | `ExecutionPlan` | Dry-run planner |
-| `token_metrics` | — | `TokenSnapshot {input_tokens, output_tokens, verification_saved_tokens, fallback_count}` | Atomic snapshot |
-| `verify_logic` | — | `VerificationReport` | `workspace_root_present` + `workspace_root_exists` |
-| `register_mcp_bridge` | `{id, endpoint, transport?}` | `()` | `transport ∈ {stdio,sse,websocket}` |
-| `list_mcp_bridges` | — | `McpBridgeDescriptor[]` | |
-| `list_tools` | — | `ToolDescriptor[]` | registry snapshot |
-| `execute_tool` | `{id, params: Json}` | `Json` | with recovery (timeout 30s, 2 retries) |
-| `marketplace_search` | `{query: string}` | `MarketplaceExtension[]` | |
-| `get_provider_configs` | — | `ProviderConfig[]` | sorted by `fallback_order` (track: MULTIPROVIDER-2) |
-| `set_provider_config` | `{kind: ProviderKind, endpoint?: string\|null, timeoutMs?: number\|null, enabled?: boolean\|null, model?: string\|null}` | `ProviderConfig[]` | validates timeout 1000..300000 |
-| `reorder_provider_chain` | `{order: ProviderKind[]}` | `ProviderConfig[]` | authoritative prefix, rest appended |
-| `clear_vector_cache` | — | `number` (deleted count) | track: VECTOR-CACHE — clears `vector_cache` table |
-| `get_cache_stats` | — | `CacheStats {entry_count, estimated_size, db_path}` | VECTOR-CACHE — vector cache stats |
+| Command                  | Args                                                                                                                     | Returns                                                                                  | Notes                                                                       |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `process_intent`         | `{prompt: string, model?: string\|null}`                                                                                 | `IntentResult`                                                                           | Non-streaming pipeline run                                                  |
+| `process_intent_stream`  | `{prompt: string, model?: string\|null}`                                                                                 | `IntentResult`                                                                           | Emits `intent:chunk` stream + `telemetry:provider_failover` + `intent:done` |
+| `preview_execution_plan` | `{prompt: string}`                                                                                                       | `ExecutionPlan`                                                                          | Dry-run planner                                                             |
+| `token_metrics`          | —                                                                                                                        | `TokenSnapshot {input_tokens, output_tokens, verification_saved_tokens, fallback_count}` | Atomic snapshot                                                             |
+| `verify_logic`           | —                                                                                                                        | `VerificationReport`                                                                     | `workspace_root_present` + `workspace_root_exists`                          |
+| `register_mcp_bridge`    | `{id, endpoint, transport?}`                                                                                             | `()`                                                                                     | `transport ∈ {stdio,sse,websocket}`                                         |
+| `list_mcp_bridges`       | —                                                                                                                        | `McpBridgeDescriptor[]`                                                                  |                                                                             |
+| `list_tools`             | —                                                                                                                        | `ToolDescriptor[]`                                                                       | registry snapshot                                                           |
+| `execute_tool`           | `{id, params: Json}`                                                                                                     | `Json`                                                                                   | with recovery (timeout 30s, 2 retries)                                      |
+| `marketplace_search`     | `{query: string}`                                                                                                        | `MarketplaceExtension[]`                                                                 |                                                                             |
+| `get_provider_configs`   | —                                                                                                                        | `ProviderConfig[]`                                                                       | sorted by `fallback_order` (track: MULTIPROVIDER-2)                         |
+| `set_provider_config`    | `{kind: ProviderKind, endpoint?: string\|null, timeoutMs?: number\|null, enabled?: boolean\|null, model?: string\|null}` | `ProviderConfig[]`                                                                       | validates timeout 1000..300000                                              |
+| `reorder_provider_chain` | `{order: ProviderKind[]}`                                                                                                | `ProviderConfig[]`                                                                       | authoritative prefix, rest appended                                         |
+| `clear_vector_cache`     | —                                                                                                                        | `number` (deleted count)                                                                 | track: VECTOR-CACHE — clears `vector_cache` table                           |
+| `get_cache_stats`        | —                                                                                                                        | `CacheStats {entry_count, estimated_size, db_path}`                                      | VECTOR-CACHE — vector cache stats                                           |
 
 ## Events (listen via `@tauri-apps/api/event`)
 
@@ -34,16 +34,16 @@ const unlisten = await listen<StreamDelta>("intent:chunk", (ev) => …);
 const unlisten2 = await listen<Failover>("telemetry:provider_failover", (ev) => …);
 ```
 
-| Event | Payload | Source |
-|-------|---------|--------|
-| `intent:chunk` | `StreamDelta {index, delta, done, phase?}` | `process_intent_stream` background + terminal chunk |
-| `intent:done` | `IntentResult {summary, artifacts[], success}` | pipeline result |
-| `telemetry:provider_failover` | `ProviderFailoverPayload {timestamp, from_provider, to_provider, reason, attempt_number}` | fallback delta detection after pipeline |
-| `telemetry:fallback` | (tracing) `event, provider, error` | `router.rs` dispatch |
-| `telemetry:provider_failover` | (tracing) `event, from, to` | `router.rs` fallback hop |
-| `telemetry:compression` | (tracing) `original_tokens, compressed_tokens, compression_ratio` | `compression.rs` ContextCompressor |
-| `telemetry:cache_hit` | (tracing) `event, prompt_hash, threshold` | `cache.rs` VectorCacheStore find_similar |
-| `telemetry:cache_miss` | (tracing) `event` | vector cache miss branch |
+| Event                         | Payload                                                                                   | Source                                              |
+| ----------------------------- | ----------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| `intent:chunk`                | `StreamDelta {index, delta, done, phase?}`                                                | `process_intent_stream` background + terminal chunk |
+| `intent:done`                 | `IntentResult {summary, artifacts[], success}`                                            | pipeline result                                     |
+| `telemetry:provider_failover` | `ProviderFailoverPayload {timestamp, from_provider, to_provider, reason, attempt_number}` | fallback delta detection after pipeline             |
+| `telemetry:fallback`          | (tracing) `event, provider, error`                                                        | `router.rs` dispatch                                |
+| `telemetry:provider_failover` | (tracing) `event, from, to`                                                               | `router.rs` fallback hop                            |
+| `telemetry:compression`       | (tracing) `original_tokens, compressed_tokens, compression_ratio`                         | `compression.rs` ContextCompressor                  |
+| `telemetry:cache_hit`         | (tracing) `event, prompt_hash, threshold`                                                 | `cache.rs` VectorCacheStore find_similar            |
+| `telemetry:cache_miss`        | (tracing) `event`                                                                         | vector cache miss branch                            |
 
 ## Core Rust API (`crates/zylcode-core`)
 

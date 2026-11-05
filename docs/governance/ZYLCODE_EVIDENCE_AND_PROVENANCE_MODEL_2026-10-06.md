@@ -23,11 +23,11 @@ Everything below is machinery for making that sentence true in code rather than 
 This repository has accumulated three distinct "R" concepts. Conflating them is a documented defect
 (`ENGINEERING_TRUTH.md` §2.4.5). Every artifact must name its ladder.
 
-| Ladder | Range | Answers | Where |
-|---|---|---|---|
-| **Capability rung** | `R0–R5` | "How mature is this *capability*?" | `ZYLCODE_PROOF_GRAPH.md` |
-| **Claim ladder** | `R0–R7` | "How strongly is this *statement* established?" | `claim::VerificationLevel` |
-| **Evidence rung** (tool catalogue) | `R0–R5` | "How far has this *tool* been exercised?" | `tool_catalogue::EvidenceRung` |
+| Ladder                             | Range   | Answers                                         | Where                          |
+| ---------------------------------- | ------- | ----------------------------------------------- | ------------------------------ |
+| **Capability rung**                | `R0–R5` | "How mature is this _capability_?"              | `ZYLCODE_PROOF_GRAPH.md`       |
+| **Claim ladder**                   | `R0–R7` | "How strongly is this _statement_ established?" | `claim::VerificationLevel`     |
+| **Evidence rung** (tool catalogue) | `R0–R5` | "How far has this _tool_ been exercised?"       | `tool_catalogue::EvidenceRung` |
 
 The claim ladder, in the order the fail-closed gate enforces:
 
@@ -46,15 +46,15 @@ promoted on its own.
 
 ### 2.1 Epistemic status
 
-| Status | Requires | Meaning |
-|---|---|---|
-| `OBSERVED` | ≥1 evidence ref | A deterministic component saw it happen. |
-| `DERIVED` | ≥1 evidence ref **and** a stated note | Follows from cited premises. |
-| `VERIFIED` | ≥1 evidence ref **and** level ≥ R2 | Established, fail-closed. |
-| `HYPOTHESIS` | — | A reasoned prediction with no confirming evidence. |
-| `UNVERIFIED` | — | Asserted with no evidence either way. **The default.** |
-| `CONTRADICTED` | ≥1 evidence ref | Cited evidence conflicts with the statement. |
-| `UNKNOWN` | — | Nothing has been established. |
+| Status         | Requires                              | Meaning                                                |
+| -------------- | ------------------------------------- | ------------------------------------------------------ |
+| `OBSERVED`     | ≥1 evidence ref                       | A deterministic component saw it happen.               |
+| `DERIVED`      | ≥1 evidence ref **and** a stated note | Follows from cited premises.                           |
+| `VERIFIED`     | ≥1 evidence ref **and** level ≥ R2    | Established, fail-closed.                              |
+| `HYPOTHESIS`   | —                                     | A reasoned prediction with no confirming evidence.     |
+| `UNVERIFIED`   | —                                     | Asserted with no evidence either way. **The default.** |
+| `CONTRADICTED` | ≥1 evidence ref                       | Cited evidence conflicts with the statement.           |
+| `UNKNOWN`      | —                                     | Nothing has been established.                          |
 
 ### 2.2 The fail-closed rules, in code
 
@@ -66,7 +66,7 @@ promote_verified()  if CONTRADICTED  → REFUSED
 validate()          before persist   → refuses a hand-built VERIFIED without evidence
 ```
 
-**Why `Claim::new` cannot start at `VERIFIED`:** the ordering of the *word* and the *evidence* is the
+**Why `Claim::new` cannot start at `VERIFIED`:** the ordering of the _word_ and the _evidence_ is the
 entire product thesis. A constructor that could mint a verified claim would make the gate advisory.
 
 **Confidence is never evidence.** `set_confidence` clamps to `0.0..=1.0` and cannot unlock
@@ -102,23 +102,23 @@ about what is not. Recording ignorance is part of the model, not a courtesy.
 
 `evidence_refs` point into the stores that already own the data:
 
-| `EvidenceKind` | Points at |
-|---|---|
-| `LedgerEntry` | a hash-chained execution-ledger entry |
-| `ProofRecord` | a deterministic proof record |
+| `EvidenceKind` | Points at                                  |
+| -------------- | ------------------------------------------ |
+| `LedgerEntry`  | a hash-chained execution-ledger entry      |
+| `ProofRecord`  | a deterministic proof record               |
 | `ToolEvidence` | a line in the MCP tool-evidence JSONL sink |
-| `Artifact` | an Artifact Bus object |
-| `Claim` | another claim (a derivation parent) |
+| `Artifact`     | an Artifact Bus object                     |
+| `Claim`        | another claim (a derivation parent)        |
 
-This is deliberate: one fact, one home. The graph is the *traversal*, not a second copy that can
+This is deliberate: one fact, one home. The graph is the _traversal_, not a second copy that can
 drift.
 
 ### 3.4 Integrity and traversal
 
-* `add_node` refuses an empty summary or actor — "who initiated this?" is mandatory provenance.
-* `add_edge` refuses unknown endpoints, self-loops and duplicates. **No dangling claims.**
-* `verify_integrity()` recomputes the node hash chain and confirms every edge endpoint resolves.
-* `ancestry(id)` walks back to the originating `INTENT`, with cycle detection.
+- `add_node` refuses an empty summary or actor — "who initiated this?" is mandatory provenance.
+- `add_edge` refuses unknown endpoints, self-loops and duplicates. **No dangling claims.**
+- `verify_integrity()` recomputes the node hash chain and confirms every edge endpoint resolves.
+- `ancestry(id)` walks back to the originating `INTENT`, with cycle detection.
 
 **Provenance is only worth something if it is traversable.** An unlinked pile of records answers
 "what happened?" but not "why, and on whose authority?".
@@ -136,19 +136,19 @@ project-level roll-up is **DESIGNED, not implemented** — and the census says s
 
 Evidence that only records success cannot answer "what was attempted?".
 
-| Field | Purpose |
-|---|---|
-| `operation` | what failed |
-| `status` | `FAILED · BLOCKED · TIMED_OUT · CANCELLED · UNKNOWN · PARTIALLY_COMPLETED · RECOVERED` |
-| `cause` | parsed from real output, or the stated refusal reason |
-| `evidence_refs` | backing records |
-| `affected_artifacts` | what was touched |
-| `diagnosis` | root cause, recorded **before** recovery |
-| `recovery_strategy` / `retry_count` | what was attempted, how many times |
-| `resolution` | required for `RECOVERED` and `BLOCKED` |
+| Field                               | Purpose                                                                                |
+| ----------------------------------- | -------------------------------------------------------------------------------------- |
+| `operation`                         | what failed                                                                            |
+| `status`                            | `FAILED · BLOCKED · TIMED_OUT · CANCELLED · UNKNOWN · PARTIALLY_COMPLETED · RECOVERED` |
+| `cause`                             | parsed from real output, or the stated refusal reason                                  |
+| `evidence_refs`                     | backing records                                                                        |
+| `affected_artifacts`                | what was touched                                                                       |
+| `diagnosis`                         | root cause, recorded **before** recovery                                               |
+| `recovery_strategy` / `retry_count` | what was attempted, how many times                                                     |
+| `resolution`                        | required for `RECOVERED` and `BLOCKED`                                                 |
 
 **`RECOVERED` is fail-closed** and requires a diagnosis **and** ≥1 recovery attempt **and** cited
-evidence **and** a resolution. A failure cannot even be *constructed* as `RECOVERED`.
+evidence **and** a resolution. A failure cannot even be _constructed_ as `RECOVERED`.
 
 ---
 
@@ -156,14 +156,14 @@ evidence **and** a resolution. A failure cannot even be *constructed* as `RECOVE
 
 ### 5.1 The six scopes the directive requires
 
-| Scope | What it holds | Status |
-|---|---|---|
-| SESSION | execution ledger, checkpoints | **IMPLEMENTED** (`ledger.rs`, `sqlite_ledger.rs`) |
-| PROJECT | project identity and history | **PARTIAL** (`project_store.rs`) |
-| REPOSITORY | index, symbols, git graph | **IMPLEMENTED** (`intelligence/*`) |
-| DECISION | ADRs an agent must consult | **NOT_IMPLEMENTED** |
-| RESEARCH | research workspace state | **NOT_IMPLEMENTED** |
-| ORG POLICY | allowed providers/tools, residency | **NOT_IMPLEMENTED** |
+| Scope      | What it holds                      | Status                                            |
+| ---------- | ---------------------------------- | ------------------------------------------------- |
+| SESSION    | execution ledger, checkpoints      | **IMPLEMENTED** (`ledger.rs`, `sqlite_ledger.rs`) |
+| PROJECT    | project identity and history       | **PARTIAL** (`project_store.rs`)                  |
+| REPOSITORY | index, symbols, git graph          | **IMPLEMENTED** (`intelligence/*`)                |
+| DECISION   | ADRs an agent must consult         | **NOT_IMPLEMENTED**                               |
+| RESEARCH   | research workspace state           | **NOT_IMPLEMENTED**                               |
+| ORG POLICY | allowed providers/tools, residency | **NOT_IMPLEMENTED**                               |
 
 ### 5.2 Decision memory — the designed model
 
@@ -173,13 +173,13 @@ The directive's example, made concrete:
 {
   "id": "ADR-0042",
   "decision": "Use SQLite for local project state.",
-  "status": "accepted",              // proposed | accepted | superseded | rejected
+  "status": "accepted", // proposed | accepted | superseded | rejected
   "reason": "…",
   "evidence": [{ "kind": "proof_record", "id": "…" }],
   "approved_by": "…",
   "supersedes": null,
   "created_at": "…",
-  "scope": { "project_id": "…" }
+  "scope": { "project_id": "…" },
 }
 ```
 
@@ -187,7 +187,7 @@ The directive's example, made concrete:
 
 1. A decision is **attributable** — an unattributed ADR is an opinion.
 2. An agent proposing architecture that contradicts an `accepted` ADR must **cite the ADR and
-   justify the contradiction**, or the proposal is incomplete. This is a *review* rule; enforcing it
+   justify the contradiction**, or the proposal is incomplete. This is a _review_ rule; enforcing it
    mechanically is **DESIGNED**.
 
 **Not implemented.** Stated plainly so no reader infers otherwise.
@@ -203,7 +203,7 @@ A memory store that silently upgrades a remembered statement into a fact. Memory
 
 Every tool invocation is attributed (`ToolEvidence::actor`) or explicitly unidentified, and
 **unidentified is treated as least-privilege**. A refusal is recorded as evidence whether or not the
-tool ran — "a trail that only keeps successes cannot answer *what was attempted?*".
+tool ran — "a trail that only keeps successes cannot answer _what was attempted?_".
 
 ---
 
@@ -220,15 +220,15 @@ exists; the surface is **DESIGNED**.
 
 ## 8. What this wave added to the evidence model
 
-**Nothing new was invented.** The wave *used* the existing model from the factory runner:
+**Nothing new was invented.** The wave _used_ the existing model from the factory runner:
 
-| Existing primitive | How the factory uses it |
-|---|---|
-| `EvidenceGraph::add_node` | one node per dispatched tool call, verification and result |
+| Existing primitive        | How the factory uses it                                          |
+| ------------------------- | ---------------------------------------------------------------- |
+| `EvidenceGraph::add_node` | one node per dispatched tool call, verification and result       |
 | `EvidenceGraph::add_edge` | links each node to the spine; the spine resumes across a restart |
-| `Claim::promote_verified` | promotes a test claim **only** when a real exit code matched |
-| `Claim::contradict` | records a failed expectation instead of dropping it |
-| `Failure::new` | records every tool failure with a real cause |
+| `Claim::promote_verified` | promotes a test claim **only** when a real exit code matched     |
+| `Claim::contradict`       | records a failed expectation instead of dropping it              |
+| `Failure::new`            | records every tool failure with a real cause                     |
 
 The value added is **integration**: before this wave, a tool dispatched by the factory path wrote to
 the JSONL sink but produced no traversable graph node and no claim. It now does both.
@@ -239,11 +239,11 @@ the JSONL sink but produced no traversable graph node and no claim. It now does 
 
 Restating the directive's list, because each is easy to violate under delivery pressure:
 
-* Do **not** silently use Ollama to declare `AGENT-01` passed.
-* Do **not** fabricate model responses.
-* Do **not** simulate agent success.
-* Do **not** silently fall back between providers.
-* Do **not** weaken provider acceptance criteria.
-* Do **not** claim cloud commissioning without real evidence.
-* Do **not** let an AI-generated statement become a research result by default (see
+- Do **not** silently use Ollama to declare `AGENT-01` passed.
+- Do **not** fabricate model responses.
+- Do **not** simulate agent success.
+- Do **not** silently fall back between providers.
+- Do **not** weaken provider acceptance criteria.
+- Do **not** claim cloud commissioning without real evidence.
+- Do **not** let an AI-generated statement become a research result by default (see
   `RESEARCH_MODE_ARCHITECTURE` §3).

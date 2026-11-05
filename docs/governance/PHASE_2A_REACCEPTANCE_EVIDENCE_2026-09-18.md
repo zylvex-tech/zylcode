@@ -33,7 +33,7 @@ the commit SHAs of this unit are listed in §16.
 ## 3. Determinism root cause (reproduced, then pinned with code evidence)
 
 P1.1 observed Recall@10 variance (0.58 builder vs 0.43 fresh clone). This unit
-first **reproduced** variance on an *unchanged* tree: 10 consecutive runs on
+first **reproduced** variance on an _unchanged_ tree: 10 consecutive runs on
 the same corpus (286 files, 1545 symbols every run) produced Precision@10
 varying 0.21–0.26 and Recall@10 varying 0.53–0.63 — falsifying
 corpus-composition as the within-tree cause. Per-query comparison across 3
@@ -80,11 +80,11 @@ sha256 of concatenated stable output lines (query dumps + metrics):
 (Exact per-run hash list reproduced by the procedure in §16; committed raw dump
 of run 1: `docs/governance/evidence/benchmark_run_dump.txt`.)
 
-| Metric | Before P1.2 (fresh-clone, P1.1) | After P1.2 (final tree) |
-|---|---|---|
-| Determinism | NOT deterministic (0.53–0.63 R@10 spread on unchanged tree) | 10/10 byte-identical (1 unique SHA-256) |
-| Precision@10 | ~0.23 | **0.48** |
-| Recall@10 | ~0.43 | **1.00** |
+| Metric       | Before P1.2 (fresh-clone, P1.1)                             | After P1.2 (final tree)                 |
+| ------------ | ----------------------------------------------------------- | --------------------------------------- |
+| Determinism  | NOT deterministic (0.53–0.63 R@10 spread on unchanged tree) | 10/10 byte-identical (1 unique SHA-256) |
+| Precision@10 | ~0.23                                                       | **0.48**                                |
+| Recall@10    | ~0.43                                                       | **1.00**                                |
 
 Determinism contract (for the record): identical inputs at a given HEAD
 produce byte-identical benchmark output across processes. Git-history-derived
@@ -97,31 +97,31 @@ verified cross-process, not cross-HEAD identity.
 20 known-answer queries (§7). Full raw dumps per query are in
 `docs/governance/evidence/benchmark_run_dump.txt`. Summary:
 
-| # | Query (abbreviated) | Expected | P@10 | R@10 |
-|---|---|---|---|---|
-| Q1 | Which crate contains AgentLoop? | agent.rs, AgentLoop | 1.00 | 1.00 |
-| Q2 | Where is LedgerStore defined? | ledger::LedgerStore | 0.30 | 1.00 |
-| Q3 | Which implementations of LedgerStore exist? | LedgerStore, Sqlite/Memory impls | 0.60 | 1.00 |
-| Q4 | Which code persists SessionCheckpoint? | SessionCheckpoint, save_checkpoint | 0.40 | 1.00 |
-| Q5 | Which tests exercise crash recovery? | crash_recovery | 0.70 | 1.00 |
-| Q6 | What depends on zylcode-core? | zylcode-cli, zylcode-desktop | 1.00 | 1.00 |
-| Q7 | Desktop frontend entry point? | index.html, App | 0.20 | 1.00 |
-| Q8 | Files to inspect to modify crash recovery? | agent, crash_recovery, ledger | 1.00 | 1.00 |
-| Q9 | Which manifest defines rusqlite for zylcode-core? | zylcode-core | 0.80 | 1.00 |
-| Q10 | What commands build and test the relevant components? | cargo | 0.50 | 1.00 |
-| Q11 | Where is the scanner configured? (max depth/size) | ScannerConfig | 0.30 | 1.00 |
-| Q12 | Where are symbols extracted from Rust source files? | symbols.rs | 0.10 | 1.00 |
-| Q13 | How does the agent loop persist its ledger? | LedgerStore | 0.20 | 1.00 |
-| Q14 | What implements the tool executor for MCP tool calls? | executor.rs | 0.10 | 1.00 |
-| Q15 | CLI entry point / main? | main.rs | 0.30 | 1.00 |
-| Q16 | Tests for the intelligence capability? | repo_intelligence tests | 0.70 | 1.00 |
-| Q17 | Where is the architecture fingerprint built? | architecture.rs | 0.30 | 1.00 |
-| Q18 | Which package depends on zylcode-mcp? | (forward dep) | 0.50 | 1.00 |
-| Q19 | What does zylcode-desktop depend on? | zylcode-core, mcp | 0.40 | 1.00 |
-| Q20 | Frontend/backend integration surface? | App.tsx | 0.20 | 1.00 |
-| | **Average** | | **0.48** | **1.00** |
+| #   | Query (abbreviated)                                   | Expected                           | P@10     | R@10     |
+| --- | ----------------------------------------------------- | ---------------------------------- | -------- | -------- |
+| Q1  | Which crate contains AgentLoop?                       | agent.rs, AgentLoop                | 1.00     | 1.00     |
+| Q2  | Where is LedgerStore defined?                         | ledger::LedgerStore                | 0.30     | 1.00     |
+| Q3  | Which implementations of LedgerStore exist?           | LedgerStore, Sqlite/Memory impls   | 0.60     | 1.00     |
+| Q4  | Which code persists SessionCheckpoint?                | SessionCheckpoint, save_checkpoint | 0.40     | 1.00     |
+| Q5  | Which tests exercise crash recovery?                  | crash_recovery                     | 0.70     | 1.00     |
+| Q6  | What depends on zylcode-core?                         | zylcode-cli, zylcode-desktop       | 1.00     | 1.00     |
+| Q7  | Desktop frontend entry point?                         | index.html, App                    | 0.20     | 1.00     |
+| Q8  | Files to inspect to modify crash recovery?            | agent, crash_recovery, ledger      | 1.00     | 1.00     |
+| Q9  | Which manifest defines rusqlite for zylcode-core?     | zylcode-core                       | 0.80     | 1.00     |
+| Q10 | What commands build and test the relevant components? | cargo                              | 0.50     | 1.00     |
+| Q11 | Where is the scanner configured? (max depth/size)     | ScannerConfig                      | 0.30     | 1.00     |
+| Q12 | Where are symbols extracted from Rust source files?   | symbols.rs                         | 0.10     | 1.00     |
+| Q13 | How does the agent loop persist its ledger?           | LedgerStore                        | 0.20     | 1.00     |
+| Q14 | What implements the tool executor for MCP tool calls? | executor.rs                        | 0.10     | 1.00     |
+| Q15 | CLI entry point / main?                               | main.rs                            | 0.30     | 1.00     |
+| Q16 | Tests for the intelligence capability?                | repo_intelligence tests            | 0.70     | 1.00     |
+| Q17 | Where is the architecture fingerprint built?          | architecture.rs                    | 0.30     | 1.00     |
+| Q18 | Which package depends on zylcode-mcp?                 | (forward dep)                      | 0.50     | 1.00     |
+| Q19 | What does zylcode-desktop depend on?                  | zylcode-core, mcp                  | 0.40     | 1.00     |
+| Q20 | Frontend/backend integration surface?                 | App.tsx                            | 0.20     | 1.00     |
+|     | **Average**                                           |                                    | **0.48** | **1.00** |
 
-Weak-query audit trail (each fixed with a *retrieval* fix, never by editing
+Weak-query audit trail (each fixed with a _retrieval_ fix, never by editing
 expectations to inflate scores — the one expectation change, Q13's
 `ledger_store` → `LedgerStore`, was a factual correction: no `ledger_store`
 symbol exists; the real symbol is `LedgerStore` in `ledger.rs`, verified by
@@ -249,15 +249,15 @@ note) to the 11 affected entries and three new entries, and recomputes the
 summary. The top-level DISPUTED statuses are left standing — the auditor's
 dispute is only resolved by the auditor. Builder-claimed state after P1.2:
 
-| Capability | Audit state | P1.2 builder state (p12_rebaseline) | Basis |
-|---|---|---|---|
-| repository_scanner / manifest / rust+ts symbols / dep graph / git graph / fingerprint / incremental | DISPUTED R2 | **still R2, DISPUTED top-level**; defect-specific fixes recorded (exclusion, Package.root, dedup) | committed benchmark + code |
-| repository_query_api | DISPUTED R2 ("no product entry point") | **R3, builder-claimed GREEN** | `zylcode repo-context` surface + committed transcript |
-| context_retrieval | DISPUTED R2 | **R3, builder-claimed GREEN** | 20-query benchmark 0.48/1.00, 10× deterministic |
-| repository_benchmark | DISPUTED R2 | **still R2**; expanded to 20 queries, thresholds strengthened | committed harness |
-| agent_context_gathering | (absent) | **new, R3, builder-claimed GREEN** | ContextBuilder seam integration + discriminating test |
-| tool_system_executable | (absent) | **new, R2 PARTIAL** | 27 defs / 12 executors; commissioning slice outstanding |
-| benchmark_determinism | (absent) | **new, R3, builder-claimed GREEN** | 10× hash proof |
+| Capability                                                                                          | Audit state                            | P1.2 builder state (p12_rebaseline)                                                               | Basis                                                   |
+| --------------------------------------------------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| repository_scanner / manifest / rust+ts symbols / dep graph / git graph / fingerprint / incremental | DISPUTED R2                            | **still R2, DISPUTED top-level**; defect-specific fixes recorded (exclusion, Package.root, dedup) | committed benchmark + code                              |
+| repository_query_api                                                                                | DISPUTED R2 ("no product entry point") | **R3, builder-claimed GREEN**                                                                     | `zylcode repo-context` surface + committed transcript   |
+| context_retrieval                                                                                   | DISPUTED R2                            | **R3, builder-claimed GREEN**                                                                     | 20-query benchmark 0.48/1.00, 10× deterministic         |
+| repository_benchmark                                                                                | DISPUTED R2                            | **still R2**; expanded to 20 queries, thresholds strengthened                                     | committed harness                                       |
+| agent_context_gathering                                                                             | (absent)                               | **new, R3, builder-claimed GREEN**                                                                | ContextBuilder seam integration + discriminating test   |
+| tool_system_executable                                                                              | (absent)                               | **new, R2 PARTIAL**                                                                               | 27 defs / 12 executors; commissioning slice outstanding |
+| benchmark_determinism                                                                               | (absent)                               | **new, R3, builder-claimed GREEN**                                                                | 10× hash proof                                          |
 
 R4 is claimed **nowhere** — R4 requires independent reproduction and is the
 auditor's decision.
@@ -278,14 +278,14 @@ auditor's decision.
 
 ## 13. Test commands and results (this unit, final tree)
 
-| Command | Result |
-|---|---|
-| `cargo check --workspace --all-targets` | PASS |
-| `cargo clippy --workspace --all-targets -- -D warnings` | PASS (0 warnings) |
-| `cargo test --workspace --all-targets --no-fail-fast` | **418 passed / 0 failed** (417 baseline + 1 new integration test) |
-| `python scripts/check_retracted_claims.py` | OK — 11 baselined, 0 new |
-| `pnpm install --frozen-lockfile && pnpm --filter zylcode-desktop build` | PASS (tsc + vite build green) |
-| Benchmark ×10 (determinism gate) | 10/10 identical, 1 unique SHA-256 |
+| Command                                                                 | Result                                                            |
+| ----------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `cargo check --workspace --all-targets`                                 | PASS                                                              |
+| `cargo clippy --workspace --all-targets -- -D warnings`                 | PASS (0 warnings)                                                 |
+| `cargo test --workspace --all-targets --no-fail-fast`                   | **418 passed / 0 failed** (417 baseline + 1 new integration test) |
+| `python scripts/check_retracted_claims.py`                              | OK — 11 baselined, 0 new                                          |
+| `pnpm install --frozen-lockfile && pnpm --filter zylcode-desktop build` | PASS (tsc + vite build green)                                     |
+| Benchmark ×10 (determinism gate)                                        | 10/10 identical, 1 unique SHA-256                                 |
 
 ## 14. Frontend regression result
 
@@ -319,17 +319,17 @@ push time; the authoritative current SHA is read from the remote, not
 hard-coded here):
 
 1. `fix(intelligence): deterministic retrieval — sorted iteration, total-order
-   tie-breaking, repo-relative model paths` (context.rs, manifest.rs,
+tie-breaking, repo-relative model paths` (context.rs, manifest.rs,
    entry_points.rs)
 2. `feat(intelligence): structural retrieval signals — dep graph, package
-   join, entry points, build commands, git co-change mining`
+join, entry points, build commands, git co-change mining`
 3. `test(benchmark): 20-query known-answer set + determinism probe + per-query
-   evidence dumps`
+evidence dumps`
 4. `feat(cli): repo-context product surface via shared build_repo_query`
 5. `feat(agent): ContextBuilder gathers intelligence-ranked context (fallback
-   heuristic retained) + discriminating integration test`
+heuristic retained) + discriminating integration test`
 6. `docs(governance): P1.2 evidence package + capability registry; relocate
-   P1.1 report to docs/governance; ci.yml canonical tool-count comment (27)`
+P1.1 report to docs/governance; ci.yml canonical tool-count comment (27)`
 7. `chore(evidence): committed raw benchmark dump + product transcript`
 
 (D2 note: the ci.yml change is comment-only — no CI behaviour modified; the

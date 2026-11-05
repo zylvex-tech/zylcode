@@ -18,14 +18,14 @@ UI.
 
 ## 2. What we will paste, and what it proves
 
-| # | Artefact | Intended URL | What it proves | Status |
-|---|---|---|---|---|
-| 1 | **Public GitHub repository** | `https://github.com/zylvex-tech/zylcode` (branch `competition/natlas-2026`) | the source is real, open-source (Apache-2.0), and reviewable | ⛔ not published |
-| 2 | **Tagged release** | `…/releases/tag/natlas-c1` | a fixed, reproducible snapshot | ⛔ not created |
-| 3 | **Developer documentation** | `…/blob/…/docs/competition/natlas/developer/QUICKSTART.md` | a first-time developer can onboard | ✅ written, not published |
-| 4 | **Evidence bundle** | `…/blob/…/docs/competition/natlas/evidence/` | genuine invocation records | ⛔ blocked — no genuine invocation yet |
-| 5 | **Hosted playground** (optional) | TBD | interactive evaluation | 🚫 not deployed; needs owner authorisation |
-| 6 | **Demonstration video** | TBD | the workflow, demonstrated | ⛔ not recorded — see `VIDEO_DEMO_PLAN.md` |
+| #   | Artefact                         | Intended URL                                                                | What it proves                                               | Status                                     |
+| --- | -------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------ |
+| 1   | **Public GitHub repository**     | `https://github.com/zylvex-tech/zylcode` (branch `competition/natlas-2026`) | the source is real, open-source (Apache-2.0), and reviewable | ⛔ not published                           |
+| 2   | **Tagged release**               | `…/releases/tag/natlas-c1`                                                  | a fixed, reproducible snapshot                               | ⛔ not created                             |
+| 3   | **Developer documentation**      | `…/blob/…/docs/competition/natlas/developer/QUICKSTART.md`                  | a first-time developer can onboard                           | ✅ written, not published                  |
+| 4   | **Evidence bundle**              | `…/blob/…/docs/competition/natlas/evidence/`                                | genuine invocation records                                   | ⛔ blocked — no genuine invocation yet     |
+| 5   | **Hosted playground** (optional) | TBD                                                                         | interactive evaluation                                       | 🚫 not deployed; needs owner authorisation |
+| 6   | **Demonstration video**          | TBD                                                                         | the workflow, demonstrated                                   | ⛔ not recorded — see `VIDEO_DEMO_PLAN.md` |
 
 ---
 
@@ -41,13 +41,13 @@ whole submission.**
 
 ## 4. What each artefact must NOT be
 
-| Anti-pattern | Why it is forbidden |
-|---|---|
-| A screenshot of the playground with the TEST DOUBLE badge | proves nothing about N-ATLAS |
-| A "demo" driven by `MockNatlasTransport` | a test double is not integration |
-| A video that narrates without showing a real response | the directive requires demonstration, not narration |
-| A hosted UI pointed at a different provider, labelled N-ATLAS | relabelling is fabrication |
-| Fabricated benchmark numbers | forbidden outright |
+| Anti-pattern                                                  | Why it is forbidden                                 |
+| ------------------------------------------------------------- | --------------------------------------------------- |
+| A screenshot of the playground with the TEST DOUBLE badge     | proves nothing about N-ATLAS                        |
+| A "demo" driven by `MockNatlasTransport`                      | a test double is not integration                    |
+| A video that narrates without showing a real response         | the directive requires demonstration, not narration |
+| A hosted UI pointed at a different provider, labelled N-ATLAS | relabelling is fabrication                          |
+| Fabricated benchmark numbers                                  | forbidden outright                                  |
 
 ---
 
@@ -65,14 +65,14 @@ None of the following has been done. Each needs explicit authorisation:
 
 ## 6. Readiness summary
 
-| Component | Ready to publish? |
-|---|---|
-| Source code | ✅ yes (after the owner reviews the pre-existing untracked files — see `PUBLIC_REPO_READINESS_2026-10-06.md` §5) |
-| Developer docs | ✅ yes |
-| SDK + playground | ✅ yes |
-| Tests | ✅ yes |
-| **Genuine invocation evidence** | ⛔ **no — does not exist yet** |
-| Video | ⛔ no |
+| Component                       | Ready to publish?                                                                                                |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Source code                     | ✅ yes (after the owner reviews the pre-existing untracked files — see `PUBLIC_REPO_READINESS_2026-10-06.md` §5) |
+| Developer docs                  | ✅ yes                                                                                                           |
+| SDK + playground                | ✅ yes                                                                                                           |
+| Tests                           | ✅ yes                                                                                                           |
+| **Genuine invocation evidence** | ⛔ **no — does not exist yet**                                                                                   |
+| Video                           | ⛔ no                                                                                                            |
 
 **Bottom line:** everything except the evidence of a genuine N-ATLAS call is ready. That call is
 blocked on the model access gate.

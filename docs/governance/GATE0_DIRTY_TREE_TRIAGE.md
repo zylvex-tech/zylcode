@@ -1,15 +1,15 @@
 # GATE-0 DIRTY-TREE TRIAGE
 
 **Question this document answers:** Gate-0 acceptance criterion 8 —
-*"no required source in dirty/untracked."*
+_"no required source in dirty/untracked."_
 
 **Verdict: the criterion FAILS.** One required product asset is untracked, and the dirty
 tree is not a superset of the candidate — it is a divergent, earlier state that would
 revert two accepted repairs if committed.
 
 **No action was taken.** This document characterises; it does not clean, commit, discard,
-or move anything. The owner's Decision 4 stands: *the dirty tree needs preservation, not
-cleanup.*
+or move anything. The owner's Decision 4 stands: _the dirty tree needs preservation, not
+cleanup._
 
 ---
 
@@ -17,15 +17,15 @@ cleanup.*
 
 At `639dbbb` (primary working tree, `main`):
 
-| Class | Count |
-|---|---|
-| Modified tracked files | **56** |
-| Untracked entries (`git status`, directory-collapsed) | **35** |
-| Untracked files (individually) | **37** |
+| Class                                                       | Count                      |
+| ----------------------------------------------------------- | -------------------------- |
+| Modified tracked files                                      | **56**                     |
+| Untracked entries (`git status`, directory-collapsed)       | **35**                     |
+| Untracked files (individually)                              | **37**                     |
 | Files modified by **both** the dirty tree and the candidate | **25** — and all 25 differ |
 
 The 25-file overlap is the important number. It is not coincidence: the dirty tree
-contains an *earlier, parallel* version of the same clippy remediation, produced by a
+contains an _earlier, parallel_ version of the same clippy remediation, produced by a
 different session before Gate-0 was authorised.
 
 ---
@@ -36,12 +36,12 @@ This is the finding that fails the criterion.
 
 **The file is the product's tool surface.** It is loaded by default at runtime:
 
-| Site | Code |
-|---|---|
-| `crates/zylcode-mcp/src/lib.rs:73` | `std::env::var("ZYLCODE_MCP_CONFIG").unwrap_or_else(\|_\| "mcp.tools.yaml".to_string())` |
-| `apps/zylcode-desktop/src-tauri/src/main.rs:425` | `// Auto-load tools from mcp.tools.yaml` |
-| `apps/zylcode-desktop/src-tauri/src/main.rs:741` | `// Auto-load tools from mcp.tools.yaml if present (non-fatal).` |
-| `apps/zylcode-desktop/src/components/McpInspector.tsx:87` | UI: *"No tools registered. Add `mcp.tools.yaml` → hot-reload."* |
+| Site                                                      | Code                                                                                     |
+| --------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `crates/zylcode-mcp/src/lib.rs:73`                        | `std::env::var("ZYLCODE_MCP_CONFIG").unwrap_or_else(\|_\| "mcp.tools.yaml".to_string())` |
+| `apps/zylcode-desktop/src-tauri/src/main.rs:425`          | `// Auto-load tools from mcp.tools.yaml`                                                 |
+| `apps/zylcode-desktop/src-tauri/src/main.rs:741`          | `// Auto-load tools from mcp.tools.yaml if present (non-fatal).`                         |
+| `apps/zylcode-desktop/src/components/McpInspector.tsx:87` | UI: _"No tools registered. Add `mcp.tools.yaml` → hot-reload."_                          |
 
 Without it the desktop application registers **zero** tools and says so.
 
@@ -68,9 +68,9 @@ Commands are real executables: `cargo check`, `cargo audit`, `cargo bench`, `car
 
 **Two are not functional:**
 
-| id | command | problem |
-|---|---|---|
-| `ai.train` | `python train.py --model {{model}}` | `train.py` **does not exist** in the repository |
+| id            | command                                | problem                                            |
+| ------------- | -------------------------------------- | -------------------------------------------------- |
+| `ai.train`    | `python train.py --model {{model}}`    | `train.py` **does not exist** in the repository    |
 | `ai.evaluate` | `python evaluate.py --model {{model}}` | `evaluate.py` **does not exist** in the repository |
 
 These are the same class of defect as the bridge simulator: a tool that appears in the
@@ -89,20 +89,20 @@ so the shipped tool set is currently empty" — is confirmed and now explained.
 
 Measured on `crates/zylcode-mcp/src/enhanced_bridge.rs` and across the workspace:
 
-| Axis | Dirty tree (`639dbbb` + WIP) | Candidate (`c3dedad`) |
-|---|---|---|
-| `ToolDefinition {` sites in the bridge | **113** | **28** |
-| `fn get_more_*_tools` implementations | **8** | **0** |
-| `pub mod performance;` / `pub mod system_integration;` | **present** (`lib.rs:10,15`) | **removed** (FIX-1) |
-| `run_benchmark_binary` (subprocess CLI test) | **11 references** | **0** (Track 2) |
-| `generate_benchmark_report` (library API) | **0** | present (Track 2) |
-| `NETWORK_EGRESS_COUNT` (router spy) | **0** | present (Track 3) |
-| `synthetic_config` (bench hermeticity) | **0** | present (Track 3b) |
-| claim guard scans `git ls-files` | **0** | present (Track 5) |
-| rustfmt applied | **yes** | no |
-| `cargo clippy --workspace --all-targets -D warnings` | **passes** | **passes** |
-| `cargo test -p zylcode-mcp --lib` | **35 passed / 0 failed** | 29 passed / **2 failed** |
-| `cargo test --workspace --all-targets` | **FAILED** | **FAILED** |
+| Axis                                                   | Dirty tree (`639dbbb` + WIP) | Candidate (`c3dedad`)    |
+| ------------------------------------------------------ | ---------------------------- | ------------------------ |
+| `ToolDefinition {` sites in the bridge                 | **113**                      | **28**                   |
+| `fn get_more_*_tools` implementations                  | **8**                        | **0**                    |
+| `pub mod performance;` / `pub mod system_integration;` | **present** (`lib.rs:10,15`) | **removed** (FIX-1)      |
+| `run_benchmark_binary` (subprocess CLI test)           | **11 references**            | **0** (Track 2)          |
+| `generate_benchmark_report` (library API)              | **0**                        | present (Track 2)        |
+| `NETWORK_EGRESS_COUNT` (router spy)                    | **0**                        | present (Track 3)        |
+| `synthetic_config` (bench hermeticity)                 | **0**                        | present (Track 3b)       |
+| claim guard scans `git ls-files`                       | **0**                        | present (Track 5)        |
+| rustfmt applied                                        | **yes**                      | no                       |
+| `cargo clippy --workspace --all-targets -D warnings`   | **passes**                   | **passes**               |
+| `cargo test -p zylcode-mcp --lib`                      | **35 passed / 0 failed**     | 29 passed / **2 failed** |
+| `cargo test --workspace --all-targets`                 | **FAILED**                   | **FAILED**               |
 
 The dirty tree is **ahead on exactly one axis**: it carries the 113-tool surface that
 FIX-1 and FIX-2 deliberately removed. On every remediation axis it is **behind**.
@@ -139,20 +139,20 @@ have never been satisfiable from the repository.
 
 ## 4. Disposition — recommendation only, no action taken
 
-| Group | Contents | Recommended disposition |
-|---|---|---|
-| **A. Required product asset** | `mcp.tools.yaml` (30 tools) | **Owner decision.** Either commit it (after fixing `ai.train` / `ai.evaluate`) or add it to `.gitignore` and commit a `mcp.tools.example.yaml`. Leaving it untracked means the product ships with no tools. |
-| **B. Superseded remediation** | the 25 files modified by both trees | **Do not commit on top of the candidate.** The candidate reproduces this work. Committing the dirty versions would revert Tracks 2, 3, 3b and the guard fix. |
-| **C. FIX-1/FIX-2 reversals** | `performance.rs`, `system_integration.rs`, the 8 `get_more_*` blocks | **Owner decision.** These are the 113 simulated tools. Re-instating them re-creates fabricated execution; see `TOOL_CATALOGUE_TRUTH_TABLE.md` §5. |
-| **D. Legacy status reports** | `PHASE3_*`, `PHASE4_*`, `INSTALLATION_*`, `USER_GUIDE`, `DEVELOPER_GUIDE`, `*_SUMMARY.md` | Archive or delete. Already quarantined by `docs/README_INDEX.md`. Not published, not cited. |
-| **E. This session's governance docs** | `STATUS_SWEEP`, `REPOSITORY_INTEGRITY_RECOVERY`, `GATE0_REMEDIATION_FORENSIC`, `PARALLEL_EXECUTION_MANIFEST`, `recovery-f1b2b36.patch` | **Commit.** They are the evidence trail for Gate-0 and are currently untracked. |
-| **F. Scratch / local tooling** | `.dsh-vision-toolkit/`, `*.ps1`, `*.bat`, `diagnose*`, `test-*.ps1` | Local developer tooling. Add to `.gitignore` or delete. Not product source. |
+| Group                                 | Contents                                                                                                                               | Recommended disposition                                                                                                                                                                                     |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **A. Required product asset**         | `mcp.tools.yaml` (30 tools)                                                                                                            | **Owner decision.** Either commit it (after fixing `ai.train` / `ai.evaluate`) or add it to `.gitignore` and commit a `mcp.tools.example.yaml`. Leaving it untracked means the product ships with no tools. |
+| **B. Superseded remediation**         | the 25 files modified by both trees                                                                                                    | **Do not commit on top of the candidate.** The candidate reproduces this work. Committing the dirty versions would revert Tracks 2, 3, 3b and the guard fix.                                                |
+| **C. FIX-1/FIX-2 reversals**          | `performance.rs`, `system_integration.rs`, the 8 `get_more_*` blocks                                                                   | **Owner decision.** These are the 113 simulated tools. Re-instating them re-creates fabricated execution; see `TOOL_CATALOGUE_TRUTH_TABLE.md` §5.                                                           |
+| **D. Legacy status reports**          | `PHASE3_*`, `PHASE4_*`, `INSTALLATION_*`, `USER_GUIDE`, `DEVELOPER_GUIDE`, `*_SUMMARY.md`                                              | Archive or delete. Already quarantined by `docs/README_INDEX.md`. Not published, not cited.                                                                                                                 |
+| **E. This session's governance docs** | `STATUS_SWEEP`, `REPOSITORY_INTEGRITY_RECOVERY`, `GATE0_REMEDIATION_FORENSIC`, `PARALLEL_EXECUTION_MANIFEST`, `recovery-f1b2b36.patch` | **Commit.** They are the evidence trail for Gate-0 and are currently untracked.                                                                                                                             |
+| **F. Scratch / local tooling**        | `.dsh-vision-toolkit/`, `*.ps1`, `*.bat`, `diagnose*`, `test-*.ps1`                                                                    | Local developer tooling. Add to `.gitignore` or delete. Not product source.                                                                                                                                 |
 
 ---
 
 ## 5. Answer to the Gate-0 criterion, stated plainly
 
-> *"no required source in dirty/untracked"*
+> _"no required source in dirty/untracked"_
 
 **FAILS.** `mcp.tools.yaml` is required by the shipped product, is loaded by default at
 runtime, and is untracked and unignored. It is the only required product asset in the
@@ -201,8 +201,8 @@ grep -A2 'id: "ai.train"' mcp.tools.yaml ; ls train.py   # No such file
 ## 7. UPDATE — collisions introduced by the tool consolidation
 
 Added after the Option C consolidation (owner decision). Per the owner's
-instruction: *"Separately update `docs/governance/GATE0_DIRTY_TREE_TRIAGE.md`
-with any new collision discovered."*
+instruction: _"Separately update `docs/governance/GATE0_DIRTY_TREE_TRIAGE.md`
+with any new collision discovered."_
 
 ### 7.1 Nine further modified-file collisions
 
@@ -240,12 +240,12 @@ therefore easy to miss, and worth stating explicitly.
 
 **The two files are not equivalent:**
 
-| | primary working tree (untracked) | committed (regenerated) |
-|---|---|---|
-| entries | 30 | **12** under `tools:`, 21 under `proposed:` |
-| entries with a real executor | 9 | **12** (all of them) |
-| broken script references | 2 (`ai.train`, `ai.evaluate`) | 0 (recorded under `proposed:`) |
-| effect if used as-is | 21 entries fail closed at call time | every entry executes |
+|                              | primary working tree (untracked)    | committed (regenerated)                     |
+| ---------------------------- | ----------------------------------- | ------------------------------------------- |
+| entries                      | 30                                  | **12** under `tools:`, 21 under `proposed:` |
+| entries with a real executor | 9                                   | **12** (all of them)                        |
+| broken script references     | 2 (`ai.train`, `ai.evaluate`)       | 0 (recorded under `proposed:`)              |
+| effect if used as-is         | 21 entries fail closed at call time | every entry executes                        |
 
 Resolution is an owner decision. The recommendation is to adopt the regenerated
 file and move the 21 unsupported entries to `proposed:` — but the dirty tree is
@@ -264,9 +264,9 @@ by tree.**
 
 ### 7.4 Current totals
 
-| Measure | Count |
-|---|---|
-| Files modified in the primary working tree | 56 |
-| Untracked entries in the primary working tree | 35 (37 files) |
-| Files modified by **both** the dirty tree and the candidate | **34** |
-| Untracked-in-main / tracked-in-candidate path collisions | **1** (`mcp.tools.yaml`) |
+| Measure                                                     | Count                    |
+| ----------------------------------------------------------- | ------------------------ |
+| Files modified in the primary working tree                  | 56                       |
+| Untracked entries in the primary working tree               | 35 (37 files)            |
+| Files modified by **both** the dirty tree and the candidate | **34**                   |
+| Untracked-in-main / tracked-in-candidate path collisions    | **1** (`mcp.tools.yaml`) |

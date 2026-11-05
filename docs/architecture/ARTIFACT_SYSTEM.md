@@ -85,12 +85,12 @@ after the artifact changes.
 
 ## 5. Four Actors
 
-| Actor | May |
-|---|---|
-| **Agent** | create artifacts |
-| **Runtime** | update artifacts (e.g. a preview refreshing) |
-| **User** | inspect artifacts |
-| **Proof Engine** | cite artifacts |
+| Actor            | May                                          |
+| ---------------- | -------------------------------------------- |
+| **Agent**        | create artifacts                             |
+| **Runtime**      | update artifacts (e.g. a preview refreshing) |
+| **User**         | inspect artifacts                            |
+| **Proof Engine** | cite artifacts                               |
 
 All four are first-class. A design that only lets agents create artifacts and only lets humans
 read them will not support live previews.
@@ -99,12 +99,12 @@ read them will not support live previews.
 
 ## 6. Lifetime Policies
 
-| Lifetime | Retained until | Examples |
-|---|---|---|
-| `ephemeral` | session end | transient DOM dumps |
-| `mission` | mission archived | test reports, intermediate screenshots |
-| `project` | project deleted | design documents, key diagrams |
-| `release` | forever | release evidence bundles |
+| Lifetime    | Retained until   | Examples                               |
+| ----------- | ---------------- | -------------------------------------- |
+| `ephemeral` | session end      | transient DOM dumps                    |
+| `mission`   | mission archived | test reports, intermediate screenshots |
+| `project`   | project deleted  | design documents, key diagrams         |
+| `release`   | forever          | release evidence bundles               |
 
 **Release artifacts are never garbage-collected.** A release whose evidence can disappear is not
 auditable.
@@ -167,14 +167,14 @@ prevents a completion report from asserting a result it never produced.
 
 ## 10. Benchmark / Acceptance
 
-| # | Criterion | Method |
-|---|---|---|
-| 1 | An agent creates an artifact | transcript |
-| 2 | A runtime updates it; a new revision exists and the old one is intact | transcript + revision list |
-| 3 | The Proof Engine cites it; the citation resolves to a ledger entry | transcript |
-| 4 | A citation of a non-existent artifact is rejected | negative test |
-| 5 | Project export includes artifact metadata; bytes travel or are reported unavailable | export transcript |
-| 6 | Release artifacts are never collected | GC test with output |
+| #   | Criterion                                                                           | Method                     |
+| --- | ----------------------------------------------------------------------------------- | -------------------------- |
+| 1   | An agent creates an artifact                                                        | transcript                 |
+| 2   | A runtime updates it; a new revision exists and the old one is intact               | transcript + revision list |
+| 3   | The Proof Engine cites it; the citation resolves to a ledger entry                  | transcript                 |
+| 4   | A citation of a non-existent artifact is rejected                                   | negative test              |
+| 5   | Project export includes artifact metadata; bytes travel or are reported unavailable | export transcript          |
+| 6   | Release artifacts are never collected                                               | GC test with output        |
 
 **Rung target: R3.**
 

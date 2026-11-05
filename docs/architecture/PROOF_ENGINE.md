@@ -21,13 +21,13 @@ visual tests · accessibility · Android runtime · iOS runtime · security · p
 
 ## 2. The Core Distinction
 
-| | Verification (exists today) | Proof Engine (Phase 12) |
-|---|---|---|
-| Scope | one artifact, one rung | every capability, every claim |
-| Output | a pass/fail | a **Proof node** in a graph |
-| Citation | none | mandatory, resolves to the ledger |
-| Status | asserted by a human | **computed** from evidence |
-| Invalidations | not tracked | tracked; proofs go STALE |
+|               | Verification (exists today) | Proof Engine (Phase 12)           |
+| ------------- | --------------------------- | --------------------------------- |
+| Scope         | one artifact, one rung      | every capability, every claim     |
+| Output        | a pass/fail                 | a **Proof node** in a graph       |
+| Citation      | none                        | mandatory, resolves to the ledger |
+| Status        | asserted by a human         | **computed** from evidence        |
+| Invalidations | not tracked                 | tracked; proofs go STALE          |
 
 > **A verification rung is a verdict. A proof is a verdict with a citation, a dependency set, and
 > a lifetime.**
@@ -47,14 +47,14 @@ Mission
 
 ### 3.1 Node definitions
 
-| Node | Definition |
-|---|---|
-| **Claim** | something asserted to be true |
-| **Criterion** | an acceptance condition attached to a Mission |
-| **Proof** | an evaluated claim with a rung and ≥ 1 citation |
-| **Artifact** | a citable, inspectable output |
-| **Evidence** | an immutable ledger entry recording what happened |
-| **Decision** | a recorded choice (routing, permission, approval) |
+| Node          | Definition                                        |
+| ------------- | ------------------------------------------------- |
+| **Claim**     | something asserted to be true                     |
+| **Criterion** | an acceptance condition attached to a Mission     |
+| **Proof**     | an evaluated claim with a rung and ≥ 1 citation   |
+| **Artifact**  | a citable, inspectable output                     |
+| **Evidence**  | an immutable ledger entry recording what happened |
+| **Decision**  | a recorded choice (routing, permission, approval) |
 
 ### 3.2 The ladder
 
@@ -68,15 +68,15 @@ Full definitions in `ZYLCODE_PROOF_GRAPH.md`.
 
 ## 4. Rules (enforced, not advisory)
 
-| # | Rule | Enforcement |
-|---|---|---|
-| 1 | Every Proof cites ≥ 1 Artifact | a proof without a citation is downgraded to Claim |
-| 2 | Every Artifact resolves to a Ledger entry | citation resolution is validated |
-| 3 | A Criterion is satisfied only by a Proof at **R3+** | Mission cannot reach COMPLETE otherwise |
-| 4 | A Mission cannot complete with an unsatisfied Criterion | fail closed |
-| 5 | Downgrades are recorded, not deleted | supersession entries |
-| 6 | An index is not a ledger | separate stores |
-| 7 | A proof whose inputs changed becomes **STALE** | invalidation tracking |
+| #   | Rule                                                    | Enforcement                                       |
+| --- | ------------------------------------------------------- | ------------------------------------------------- |
+| 1   | Every Proof cites ≥ 1 Artifact                          | a proof without a citation is downgraded to Claim |
+| 2   | Every Artifact resolves to a Ledger entry               | citation resolution is validated                  |
+| 3   | A Criterion is satisfied only by a Proof at **R3+**     | Mission cannot reach COMPLETE otherwise           |
+| 4   | A Mission cannot complete with an unsatisfied Criterion | fail closed                                       |
+| 5   | Downgrades are recorded, not deleted                    | supersession entries                              |
+| 6   | An index is not a ledger                                | separate stores                                   |
+| 7   | A proof whose inputs changed becomes **STALE**          | invalidation tracking                             |
 
 ### 4.1 Rule 3 is the load-bearing one
 
@@ -168,14 +168,14 @@ ProofEngine::rung_of(capability) -> Rung
 
 ## 9. Benchmark / Acceptance
 
-| # | Criterion | Method |
-|---|---|---|
-| 1 | Every registry capability carries a **computed** rung | registry dump |
-| 2 | A capability claiming a rung above its evidence is **flagged as a defect** | seeded violation test |
-| 3 | A Mission with one unsatisfied criterion **cannot** reach COMPLETE | negative test |
-| 4 | A proof citing an unresolvable artifact is **rejected** | negative test |
-| 5 | A changed artifact marks dependent proofs STALE | mutation test |
-| 6 | A verification provider is added **without core modification** | out-of-tree package |
+| #   | Criterion                                                                  | Method                |
+| --- | -------------------------------------------------------------------------- | --------------------- |
+| 1   | Every registry capability carries a **computed** rung                      | registry dump         |
+| 2   | A capability claiming a rung above its evidence is **flagged as a defect** | seeded violation test |
+| 3   | A Mission with one unsatisfied criterion **cannot** reach COMPLETE         | negative test         |
+| 4   | A proof citing an unresolvable artifact is **rejected**                    | negative test         |
+| 5   | A changed artifact marks dependent proofs STALE                            | mutation test         |
+| 6   | A verification provider is added **without core modification**             | out-of-tree package   |
 
 **Rung target: R3.**
 

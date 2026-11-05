@@ -44,12 +44,12 @@ in `README.md` and is restated here because the root files outnumber the governa
 
 ## 3. Root-level document classes
 
-| Class | Count | May be used as evidence? | Action |
-|---|---|---|---|
-| `README.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, `SUPPORT.md`, `LICENSE` | 6 | Yes — these are maintained | Keep |
-| **Legacy status reports** (`*_COMPLETE.md`, `*_SUMMARY.md`, `PHASE*_*.md`, `PROJECT_COMPLETE.md`, `IMPLEMENTATION_STATUS.md`, `FINAL_*`, `INSTALLATION_*`) | ~20 | **No** — historical | Quarantined by §4 below |
-| **Legacy design/research notes** (`*-spec.md`, `*-implementation.md`, `*-plan.md`, `research-*.md`, `findings*.md`, `blueprint.md`, `architecture.md`) | ~30 | **No** — provenance only | Quarantined by §4 below |
-| **Shell/batch installers** (`*.bat`, `*.ps1`) | ~8 | Not documentation | Owner to decide (see §6) |
+| Class                                                                                                                                                      | Count | May be used as evidence?   | Action                   |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- | -------------------------- | ------------------------ |
+| `README.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, `SUPPORT.md`, `LICENSE`                                                               | 6     | Yes — these are maintained | Keep                     |
+| **Legacy status reports** (`*_COMPLETE.md`, `*_SUMMARY.md`, `PHASE*_*.md`, `PROJECT_COMPLETE.md`, `IMPLEMENTATION_STATUS.md`, `FINAL_*`, `INSTALLATION_*`) | ~20   | **No** — historical        | Quarantined by §4 below  |
+| **Legacy design/research notes** (`*-spec.md`, `*-implementation.md`, `*-plan.md`, `research-*.md`, `findings*.md`, `blueprint.md`, `architecture.md`)     | ~30   | **No** — provenance only   | Quarantined by §4 below  |
+| **Shell/batch installers** (`*.bat`, `*.ps1`)                                                                                                              | ~8    | Not documentation          | Owner to decide (see §6) |
 
 **Counts are approximate by class (they overlap) but exact where it matters:** 63 root `.md` files
 total; 15 with `*_COMPLETE*`/`*_SUMMARY*` names; 23 asserting a completion claim in their body;
@@ -116,11 +116,11 @@ banner and makes market-leadership claims. Both are historical; the governance s
 
 Three schemes existed. Two are retired.
 
-| Scheme | Where it appears | Status |
-|---|---|---|
-| **A — governing** | `docs/governance/`, `docs/roadmap/`, `README.md` | **AUTHORITATIVE** — 16 phases / 6 epochs |
-| **B — root legacy reports** | `PHASE1_*.md` … `PHASE4_*.md`, `IMPLEMENTATION_STATUS.md` | **RETIRED** — do not use |
-| **C — older source comments** | relabelled in a prior pass | **RETIRED** — do not use |
+| Scheme                        | Where it appears                                          | Status                                   |
+| ----------------------------- | --------------------------------------------------------- | ---------------------------------------- |
+| **A — governing**             | `docs/governance/`, `docs/roadmap/`, `README.md`          | **AUTHORITATIVE** — 16 phases / 6 epochs |
+| **B — root legacy reports**   | `PHASE1_*.md` … `PHASE4_*.md`, `IMPLEMENTATION_STATUS.md` | **RETIRED** — do not use                 |
+| **C — older source comments** | relabelled in a prior pass                                | **RETIRED** — do not use                 |
 
 `PHASE_NUMBERING_RECONCILIATION.md` records the collision analysis. **A phase number belongs to the
 governing roadmap and to nothing else** (Protocol §4.7). When a root file says "Phase 3", it means
@@ -161,7 +161,7 @@ categories** (`crates/zylcode-mcp/src/enhanced_bridge.rs`).
 > remember the retraction assume it stuck.
 
 **This is now enforced, not advised.** `scripts/check_retracted_claims.py` runs in CI
-(`.github/workflows/ci.yml`, step *Retracted-claim guard*). It fails the build on any **new**
+(`.github/workflows/ci.yml`, step _Retracted-claim guard_). It fails the build on any **new**
 occurrence. Run it locally:
 
 ```bash
@@ -176,17 +176,17 @@ this index already quarantines by name. The baseline **may only shrink**: an ent
 reproducing is reported `STALE` and fails the run, so the backlog can neither grow back nor be
 quietly abandoned.
 
-**Adding a rule** requires both a retraction reference *and* the measurement that replaced the
+**Adding a rule** requires both a retraction reference _and_ the measurement that replaced the
 claim. A rule with only one is not admissible.
 
 ### 7.1 Known retracted / unsupported claims
 
-| Claim | Retracted | Measured reality | Baselined (2026-09-17) |
-|---|---|---|---|
-| `156 tools` | Phase 1C | **112** tool IDs, 16 categories | **26** hits / 8 files |
-| `SOC 2` | Phase 1C | No certification held | **16** hits / 7 files (incl. competitor profiles) |
-| `ISO 27001` | Phase 1C | No certification held | **8** hits / 6 files (incl. competitor profiles) |
-| `<100ms` latency | Phase 1C | Not benchmarked under a stated budget | 0 |
+| Claim            | Retracted | Measured reality                      | Baselined (2026-09-17)                            |
+| ---------------- | --------- | ------------------------------------- | ------------------------------------------------- |
+| `156 tools`      | Phase 1C  | **112** tool IDs, 16 categories       | **26** hits / 8 files                             |
+| `SOC 2`          | Phase 1C  | No certification held                 | **16** hits / 7 files (incl. competitor profiles) |
+| `ISO 27001`      | Phase 1C  | No certification held                 | **8** hits / 6 files (incl. competitor profiles)  |
+| `<100ms` latency | Phase 1C  | Not benchmarked under a stated budget | 0                                                 |
 
 Verified with:
 
@@ -194,7 +194,7 @@ Verified with:
 grep -v '^#' scripts/retracted_claims_baseline.txt | cut -d'|' -f1 | sort | uniq -c
 ```
 
-**Note on `competitive-analysis.md` and `research-findings.md`:** their hits are *competitor*
+**Note on `competitive-analysis.md` and `research-findings.md`:** their hits are _competitor_
 certifications (Tabnine, JetBrains) and forward-looking roadmap items ("obtain SOC 2"). That content
 is legitimate; the heuristics cannot fully separate it from a self-claim. Prefer a rule allowlist
 over baselining these, and delete the corresponding baseline lines when you do.

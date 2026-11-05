@@ -17,12 +17,14 @@ ZylCode is a high-performance, modular Rust workspace with a Tauri desktop shell
 ## 1. Project Overview & Purpose
 
 ### Core Identity
+
 - **Tagline:** "AI software synthesis engine & intent workspace featuring real-time artifact previews, dynamic MCP bridges, and zero token waste"
 - **Architecture:** Modular Rust workspace with Tauri v2 desktop shell
 - **Current Version:** v0.2.0
 - **License:** Apache 2.0 (README) / MIT (Cargo.toml) - **INCONSISTENCY DETECTED**
 
 ### Key Differentiators
+
 1. **Verification Ladder (Rungs 1-4)**: Structured approach to proving AI agent behavior
 2. **Zero Token Waste**: Context compression, vector caching, and speculative routing
 3. **Offline-First**: Synthetic responses when no API keys present
@@ -34,6 +36,7 @@ ZylCode is a high-performance, modular Rust workspace with a Tauri desktop shell
 ## 2. Tech Stack & Dependencies
 
 ### Core Technologies
+
 - **Backend:** Rust 1.77+ (Workspace with 4 crates)
 - **Frontend:** React 18.3 + TypeScript 5.5 + Vite 5.4
 - **Desktop:** Tauri v2 (IPC-based architecture)
@@ -42,6 +45,7 @@ ZylCode is a high-performance, modular Rust workspace with a Tauri desktop shell
 - **Build System:** Cargo (Rust) + Vite (Frontend)
 
 ### Key Rust Dependencies
+
 - **Async Runtime:** Tokio 1.38 (full features)
 - **Serialization:** Serde 1.0 + Serde_JSON 1.0
 - **HTTP Client:** Reqwest 0.12 (rustls-tls)
@@ -51,11 +55,13 @@ ZylCode is a high-performance, modular Rust workspace with a Tauri desktop shell
 - **Crypto:** sha2, uuid
 
 ### Frontend Dependencies
+
 - **UI:** React 18.3, Monaco Editor (@monaco-editor/react)
 - **Tauri Integration:** @tauri-apps/api v2.1, @tauri-apps/plugin-shell
 - **Build:** Vite 5.4, TypeScript 5.5, Tailwind CSS 3.4
 
 ### Workspace Structure
+
 ```
 zylcode/
 ├── apps/
@@ -73,6 +79,7 @@ zylcode/
 ## 3. Current Feature Set
 
 ### 3.1 Core Engine Features
+
 1. **Token Router with Failover**
    - Multi-provider support: Anthropic, OpenRouter, Ollama, SyntheticOffline
    - Automatic failover with telemetry logging
@@ -102,6 +109,7 @@ zylcode/
    - No runtime regex allocation overhead
 
 ### 3.2 MCP Bridge System
+
 1. **Dynamic Tool Registration**
    - YAML/JSON configuration (`mcp.tools.yaml`)
    - Runtime filesystem hot-reloading via `notify`
@@ -117,6 +125,7 @@ zylcode/
    - Per-session run-level aggregation
 
 ### 3.3 Desktop Application
+
 1. **Real-time Artifact Viewer**
    - Stream parsing of LLM responses
    - Tabbed interface for multiple artifacts
@@ -142,6 +151,7 @@ zylcode/
    - Input/output/saved token metrics
 
 ### 3.4 CLI Interface
+
 - Interactive mode with commands: `help`, `tools`, `bridges`, `verify`, `tokens`
 - Headless verification mode (`zylcode verify --headless`)
 - Security scan command (`zylcode security-scan`)
@@ -151,6 +161,7 @@ zylcode/
 ## 4. Architecture & Code Organization
 
 ### 4.1 Workspace Graph
+
 ```
 zylcode-desktop (Tauri 2 + React + Vite)
     ↓ IPC
@@ -160,6 +171,7 @@ zylcode-mcp (MCP registry, executor, telemetry)
 ```
 
 ### 4.2 Request Lifecycle
+
 1. React frontend invokes Tauri IPC command
 2. `process_intent_stream` spawns background token router
 3. Context compression applied if estimated tokens > budget
@@ -169,12 +181,14 @@ zylcode-mcp (MCP registry, executor, telemetry)
 7. Verification and result return
 
 ### 4.3 State Management
+
 - `ZylCodeEngine`: Clone via `Arc<RwLock<…>>` for thread safety
 - `EngineState`: Holds engine + provider configurations
 - `TokenMetrics`: AtomicU64 for lock-free counters
 - `SpeculativeCache`: Arc + RwLock<LruCache> with TTL sweep
 
 ### 4.4 Concurrency Model
+
 - Async/await with Tokio runtime
 - Read-write locks for shared state
 - Atomic operations for metrics
@@ -185,6 +199,7 @@ zylcode-mcp (MCP registry, executor, telemetry)
 ## 5. MCP Bridge Capabilities
 
 ### 5.1 Configuration
+
 ```yaml
 tools:
   - id: "filesystem_search"
@@ -197,16 +212,19 @@ tools:
 ```
 
 ### 5.2 Transport Support
+
 - **stdio**: Standard input/output communication
 - **SSE**: Server-Sent Events for streaming
 - **WebSocket**: Full-duplex communication
 
 ### 5.3 Hot-Reload System
+
 - Filesystem watcher via `notify` crate
 - Automatic reconfiguration on YAML changes
 - Debounced reload with validation
 
 ### 5.4 Tool Execution Features
+
 - 30-second timeout with 2 retries
 - Transient error detection (timeout, connection, busy)
 - Structured telemetry and audit logging
@@ -217,6 +235,7 @@ tools:
 ## 6. UI/UX Implementation
 
 ### 6.1 Theme System
+
 - **3 Built-in Themes:**
   - ZylCode Dark (slate-950)
   - OLED Black (pure black)
@@ -226,6 +245,7 @@ tools:
 - Monaco Editor theme integration
 
 ### 6.2 Component Architecture
+
 - **Modular Components:**
   - `ArtifactViewer`: Tabbed artifact display
   - `ProviderSettings`: Provider chain configuration
@@ -238,6 +258,7 @@ tools:
   - `ResourceGraph`: Usage visualization
 
 ### 6.3 Design Patterns
+
 - Tailwind CSS for styling
 - Component composition
 - Custom hooks for state management
@@ -248,21 +269,24 @@ tools:
 ## 7. Existing Monetization
 
 ### 7.1 Pricing Model (Planned)
+
 Based on `docs/STRATEGIC_PLAN.md`:
 
-| Tier | Price | Features | Target |
-|------|-------|----------|--------|
-| **Free** | $0 | Rungs 1-2, BYOK, community support | Individual developers |
-| **Pro** | $9/mo flat | Rung 3, managed API key, priority support | Solo developers, small teams |
-| **Team** | $19/seat | Audit trail, governance controls, SSO | Teams with compliance needs |
-| **Enterprise** | Custom | Self-hosted, contractual verification SLA | Regulated industries |
+| Tier           | Price      | Features                                  | Target                       |
+| -------------- | ---------- | ----------------------------------------- | ---------------------------- |
+| **Free**       | $0         | Rungs 1-2, BYOK, community support        | Individual developers        |
+| **Pro**        | $9/mo flat | Rung 3, managed API key, priority support | Solo developers, small teams |
+| **Team**       | $19/seat   | Audit trail, governance controls, SSO     | Teams with compliance needs  |
+| **Enterprise** | Custom     | Self-hosted, contractual verification SLA | Regulated industries         |
 
 ### 7.2 Key Monetization Principles
+
 - **BYOK at All Tiers**: Users pay providers directly, ZylCode charges for verification infrastructure
 - **Pricing Gate**: No pricing page until Phase 10 ships (Rungs 1-2 verification)
 - **Structural Advantage**: No token markup unlike competitors
 
 ### 7.3 Current Implementation Status
+
 - ✅ Provider-specific pricing calculation in router.rs
 - ✅ Token cost estimation in UI
 - ❌ No payment integration (Stripe, etc.)
@@ -276,6 +300,7 @@ Based on `docs/STRATEGIC_PLAN.md`:
 ### 8.1 CI/CD Workflows
 
 #### `.github/workflows/ci.yml`
+
 - **Triggers:** Push to main/master, Pull requests
 - **Matrix:** Ubuntu 22.04, Windows latest, macOS latest
 - **Steps:**
@@ -286,6 +311,7 @@ Based on `docs/STRATEGIC_PLAN.md`:
 - **Concurrency:** Cancel in-progress runs
 
 #### `.github/workflows/release.yml`
+
 - **Triggers:** Push to main, Tags (v*)
 - **Permissions:** Contents write, Releases write
 - **Platform Matrix:** Ubuntu 22.04, Windows latest, macOS latest
@@ -295,6 +321,7 @@ Based on `docs/STRATEGIC_PLAN.md`:
   3. Automatic GitHub release creation
 
 ### 8.2 Current Status
+
 - **CI Status:** Billing lock mentioned in commits
 - **Commit Convention:** `CI: pending (account billing lock)` footer
 - **Badge:** Shows v0.2.0 but CI status unclear
@@ -403,6 +430,7 @@ Based on `docs/STRATEGIC_PLAN.md`:
 ## 10. Recommendations
 
 ### Immediate (0-30 days)
+
 1. Fix license inconsistency (standardize to MIT or Apache 2.0)
 2. Synchronize version numbers across all manifests
 3. Create CONTRIBUTING.md and CHANGELOG.md
@@ -410,6 +438,7 @@ Based on `docs/STRATEGIC_PLAN.md`:
 5. Document current CI/CD status clearly
 
 ### Short-term (1-3 months)
+
 1. Implement payment integration (Stripe recommended)
 2. Build subscription management system
 3. Create extension marketplace backend
@@ -417,6 +446,7 @@ Based on `docs/STRATEGIC_PLAN.md`:
 5. Expand theme system to 8 themes
 
 ### Medium-term (3-6 months)
+
 1. Implement skills system architecture
 2. Build computer use capabilities
 3. Implement real embedding providers
@@ -424,6 +454,7 @@ Based on `docs/STRATEGIC_PLAN.md`:
 5. Build onboarding and guided setup
 
 ### Long-term (6-12 months)
+
 1. Implement formal verification (Z3/Dafny proofs)
 2. Build enterprise features (SSO, audit trails)
 3. Implement advanced computer use (GUI automation)
@@ -435,12 +466,14 @@ Based on `docs/STRATEGIC_PLAN.md`:
 ## 11. Conclusion
 
 ZylCode demonstrates sophisticated engineering with a strong foundation in:
+
 - **Performance:** Zero-allocation parsing, context compression, vector caching
 - **Extensibility:** MCP bridge system with hot-reload
 - **Verification:** Structured approach to proving AI agent behavior
 - **Architecture:** Clean separation of concerns in Rust workspace
 
 The project is well-positioned for growth but needs:
+
 1. **Business Model Implementation:** Payment and subscription systems
 2. **Feature Completion:** Skills system, marketplace, computer use
 3. **Quality Assurance:** Testing, documentation, accessibility

@@ -3,7 +3,7 @@
 **Version:** 2026-10-10  
 **Branch:** `competition/natlas-2026`  
 **Target tester:** External developer with basic Rust and Git experience  
-**Estimated time:** 15–20 minutes  
+**Estimated time:** 15–20 minutes
 
 ---
 
@@ -12,6 +12,7 @@
 You are validating the **N-ATLAS Developer Bridge**: a pipeline that takes a programming instruction in a Nigerian language (Yoruba, Hausa, Igbo, or English) and routes it through Nigeria's sovereign `NCAIR1/N-ATLaS` AI model to produce a real, human-approved code change with captured evidence.
 
 **What makes this different from a chatbot:**
+
 - The model does not just reply — it emits a **structured engineering intent** (what file to write, what test to run).
 - Every side effect (file write, command execution) requires **human approval** before it happens.
 - Every step is recorded in a **tamper-evident evidence ledger**.
@@ -21,14 +22,14 @@ You are validating the **N-ATLAS Developer Bridge**: a pipeline that takes a pro
 
 ## 2. What You Need
 
-| Requirement | Details |
-|---|---|
-| **Rust toolchain** | `cargo` 1.70+ (`rustup.rs`) |
-| **Git** | Any recent version |
-| **Python 3** | For the live endpoint verification script |
-| **Internet access** | To reach the controlled N-ATLAS endpoint |
-| **No API key needed for hermetic tests** | The competition test suites run offline |
-| **Optional: `NATLAS_API_KEY`** | Only if you want to run the live journey against the real endpoint |
+| Requirement                              | Details                                                            |
+| ---------------------------------------- | ------------------------------------------------------------------ |
+| **Rust toolchain**                       | `cargo` 1.70+ (`rustup.rs`)                                        |
+| **Git**                                  | Any recent version                                                 |
+| **Python 3**                             | For the live endpoint verification script                          |
+| **Internet access**                      | To reach the controlled N-ATLAS endpoint                           |
+| **No API key needed for hermetic tests** | The competition test suites run offline                            |
+| **Optional: `NATLAS_API_KEY`**           | Only if you want to run the live journey against the real endpoint |
 
 ---
 
@@ -94,16 +95,16 @@ cargo test -p zylcode-core --test natlas_multilingual
 
 The 68 tests above prove the **ZylCode-side bridge mechanics** deterministically:
 
-| What is proven | How | Evidence level |
-|---|---|---|
-| Intent parsing + bounded JSON repair | 18 unit tests | Deterministic |
-| Transport contract enforcement | 17 boundary tests | Deterministic |
-| HTTP error/timeout handling | 12 runtime tests | Deterministic |
-| Approval gating + factory execution | 14 bridge tests | Deterministic |
-| Path traversal rejection | `fs.write` containment test | Deterministic |
-| Secret redaction | `redact_secrets` test | Deterministic |
-| Bounded repair records normalization | `parse_with_repair` tests | Deterministic |
-| Provenance chain integrity | Evidence ancestry tests | Deterministic |
+| What is proven                       | How                         | Evidence level |
+| ------------------------------------ | --------------------------- | -------------- |
+| Intent parsing + bounded JSON repair | 18 unit tests               | Deterministic  |
+| Transport contract enforcement       | 17 boundary tests           | Deterministic  |
+| HTTP error/timeout handling          | 12 runtime tests            | Deterministic  |
+| Approval gating + factory execution  | 14 bridge tests             | Deterministic  |
+| Path traversal rejection             | `fs.write` containment test | Deterministic  |
+| Secret redaction                     | `redact_secrets` test       | Deterministic  |
+| Bounded repair records normalization | `parse_with_repair` tests   | Deterministic  |
+| Provenance chain integrity           | Evidence ancestry tests     | Deterministic  |
 
 **These tests do NOT require a live N-ATLAS endpoint.** They prove the bridge is engineered correctly and honestly — but they do not prove the model itself answers.
 
@@ -115,6 +116,7 @@ curl -s https://zylvex-natlas-zylcode-bridge.hf.space/healthz
 ```
 
 **Expected response:**
+
 ```json
 {
   "status": "healthy",
@@ -163,6 +165,7 @@ The bridge is **fail-closed**:
 5. **If approval is denied:** The mutation step stays `Pending` forever. No file is written.
 
 This is tested hermetically in `natlas_bridge.rs`:
+
 - `approval_gate_parks_the_run_and_no_file_is_written_before_approval`
 - `approved_chain_runs_write_then_verify_and_produces_a_verified_claim`
 
@@ -170,14 +173,14 @@ This is tested hermetically in `natlas_bridge.rs`:
 
 ## 7. Failure & Troubleshooting
 
-| Symptom | Likely Cause | Fix |
-|---|---|---|
-| `cargo test` compile errors | Rust version < 1.70 | Run `rustup update` |
-| Tests timeout | Full workspace compilation | First run compiles dependencies; subsequent runs are fast |
-| `curl` to healthz fails | Network / proxy issue | Check internet; the endpoint is public |
-| `natlas_live` tests fail | No `NATLAS_API_KEY` set | These are optional; set env var or skip |
-| Endpoint returns 503 | ZeroGPU quota exhausted | Wait and retry; the endpoint is shared ZeroGPU |
-| Endpoint returns 401 | Wrong `NATLAS_API_KEY` | Key is read from local secret file; contact owner for access |
+| Symptom                     | Likely Cause               | Fix                                                          |
+| --------------------------- | -------------------------- | ------------------------------------------------------------ |
+| `cargo test` compile errors | Rust version < 1.70        | Run `rustup update`                                          |
+| Tests timeout               | Full workspace compilation | First run compiles dependencies; subsequent runs are fast    |
+| `curl` to healthz fails     | Network / proxy issue      | Check internet; the endpoint is public                       |
+| `natlas_live` tests fail    | No `NATLAS_API_KEY` set    | These are optional; set env var or skip                      |
+| Endpoint returns 503        | ZeroGPU quota exhausted    | Wait and retry; the endpoint is shared ZeroGPU               |
+| Endpoint returns 401        | Wrong `NATLAS_API_KEY`     | Key is read from local secret file; contact owner for access |
 
 **ZeroGPU quota note:** The endpoint runs on Hugging Face shared ZeroGPU. Sustained calls may hit quota limits. The hermetic tests do **not** require the live endpoint and will always pass.
 
@@ -193,9 +196,7 @@ Please capture the following and send back:
 4. **Any compilation warnings or errors** you encountered.
 5. **Time taken** for the first `cargo test` run (compilation + test).
 
-Optional but valuable:
-6. **Live test result** — if you have a `NATLAS_API_KEY`, run `cargo test -p zylcode-core --test natlas_live -- --ignored` and share the output.
-7. **A live inference attempt** through the browser playground, naming the language you tested in.
+Optional but valuable: 6. **Live test result** — if you have a `NATLAS_API_KEY`, run `cargo test -p zylcode-core --test natlas_live -- --ignored` and share the output. 7. **A live inference attempt** through the browser playground, naming the language you tested in.
 
 ---
 
@@ -213,6 +214,7 @@ Optional but valuable:
 ## 10. Privacy & Safety Warning
 
 **Do NOT submit:**
+
 - Your `NATLAS_API_KEY` or any other API credential
 - Confidential repository contents or proprietary code
 - Personal data, names, or identifying information of others

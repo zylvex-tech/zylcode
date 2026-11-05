@@ -1,6 +1,7 @@
 # OpenAI Codex: Comprehensive Research Document
 
 ## Table of Contents
+
 1. [Current State of OpenAI Codex](#current-state-of-openai-codex)
 2. [OpenAI Codex CLI - Terminal-Based Coding Agent](#openai-codex-cli---terminal-based-coding-agent)
 3. [Codex Capabilities](#codex-capabilities)
@@ -31,7 +32,7 @@ The Codex brand has been repurposed for a comprehensive AI coding agent platform
 - **February 2026**: Desktop app released for Windows and macOS
 - **July 9, 2026**: Merged with ChatGPT desktop app into "superapp"
 
-**Key Quote**: "By March 2026, Codex had grown to more than 2 million weekly active users." - [Wikipedia](https://en.wikipedia.org/wiki/OpenAI_Codex_(AI_agent))
+**Key Quote**: "By March 2026, Codex had grown to more than 2 million weekly active users." - [Wikipedia](<https://en.wikipedia.org/wiki/OpenAI_Codex_(AI_agent)>)
 
 ---
 
@@ -70,6 +71,7 @@ brew install --cask codex
 ```
 
 **Technical Details**:
+
 - **Language**: Primarily Rust (96.6%), with Python (2.7%), TypeScript (0.2%)
 - **License**: Apache-2.0
 - **Repository Stats**: 124k stars, 617 contributors, 19.1k forks
@@ -179,7 +181,7 @@ As of February 2026, OpenAI described a single architecture powering all client 
 - macOS/Windows desktop apps
 - Third-party IDE integrations
 
-**Key Quote**: "The unified server keeps long-running sessions and approval requests consistent across client interfaces." - [Wikipedia](https://en.wikipedia.org/wiki/OpenAI_Codex_(AI_agent))
+**Key Quote**: "The unified server keeps long-running sessions and approval requests consistent across client interfaces." - [Wikipedia](<https://en.wikipedia.org/wiki/OpenAI_Codex_(AI_agent)>)
 
 ---
 
@@ -197,6 +199,7 @@ Codex is deeply integrated into the ChatGPT ecosystem:
 ### Multi-Platform Support
 
 **Available Platforms**:
+
 - **Web App**: Integrated into ChatGPT's web interface at chatgpt.com/codex
 - **CLI**: Open-source terminal tool (Apache 2.0 license)
 - **Desktop App**: Native applications for Windows and macOS
@@ -213,12 +216,14 @@ Codex is deeply integrated into the ChatGPT ecosystem:
 ### Third-Party Integrations
 
 **Major Integrations**:
+
 1. **GitHub**: Agent HQ system, GitHub Mobile, VS Code for Copilot subscribers
 2. **Figma**: Model Context Protocol (MCP) server for design-to-code workflow
 3. **JetBrains**: IDE integration
 4. **Xcode**: Apple development environment support
 
 **GitHub Integration Details**:
+
 - Developers can assign Codex to issues and pull requests
 - Output can be compared with other agents (Claude, Copilot)
 - Available in public preview for some Copilot subscribers
@@ -240,11 +245,13 @@ Codex Cloud provides isolated cloud environments for parallel task execution:
 ### Environment Configuration
 
 **Custom Environments**:
+
 - Configure dependencies, tools, variables, and setup steps per repository
 - Create reusable environment templates for different projects
 - Manage environment settings at chatgpt.com/codex/settings/environments
 
 **Container Image**:
+
 - **Universal image**: Default container with pre-installed languages, packages, and tools
 - **Custom setup**: Support for setup scripts to install additional dependencies
 - **Caching**: Container state cached for up to 12 hours; invalidates on setup/environment changes
@@ -253,6 +260,7 @@ Codex Cloud provides isolated cloud environments for parallel task execution:
 ### Integration Ecosystem
 
 **Supported Platforms**:
+
 - **GitHub**: Pull requests and issues (tag @Codex for review)
 - **GitLab** (Beta): Merge requests and issues
 - **Linear**: Issues and comments
@@ -275,6 +283,7 @@ Codex Cloud provides isolated cloud environments for parallel task execution:
 ### Nature of the Products
 
 **OpenAI Codex**:
+
 - Developed by OpenAI
 - AI coding agent platform (not just a model)
 - Powers GitHub Copilot and other coding assistants
@@ -283,6 +292,7 @@ Codex Cloud provides isolated cloud environments for parallel task execution:
 - Available as a comprehensive platform (CLI, web, desktop, IDE)
 
 **GitHub Copilot**:
+
 - Developed by GitHub (owned by Microsoft) in partnership with OpenAI
 - AI pair programmer that helps write code faster
 - Uses OpenAI Codex as its foundation
@@ -326,7 +336,7 @@ OpenAI Codex is now integrated with GitHub Copilot:
 
 **Differentiation**: OpenAI's first-party agent spanning cloud, CLI, IDE, and GitHub from a single ChatGPT account.
 
-**Key Quote**: "Coding is one of artificial intelligence's most commercially successful uses and the market for coding agents had become a key battleground among AI companies." - [Wikipedia](https://en.wikipedia.org/wiki/OpenAI_Codex_(AI_agent))
+**Key Quote**: "Coding is one of artificial intelligence's most commercially successful uses and the market for coding agents had become a key battleground among AI companies." - [Wikipedia](<https://en.wikipedia.org/wiki/OpenAI_Codex_(AI_agent)>)
 
 ---
 
@@ -342,7 +352,7 @@ OpenAI has been consolidating its coding products:
 
 ### Enterprise Agent Platform
 
-**Strategic Positioning**: "OpenAI was positioning it as a broader enterprise agent platform that could eventually be used for tasks beyond software development." - [Wikipedia](https://en.wikipedia.org/wiki/OpenAI_Codex_(AI_agent))
+**Strategic Positioning**: "OpenAI was positioning it as a broader enterprise agent platform that could eventually be used for tasks beyond software development." - [Wikipedia](<https://en.wikipedia.org/wiki/OpenAI_Codex_(AI_agent)>)
 
 ### Key Strategy Elements
 
@@ -364,13 +374,14 @@ OpenAI has been consolidating its coding products:
 
 ### System Requirements
 
-| Operating System | Details |
-|------------------|---------|
-| **macOS** | macOS 12+ (Apple Silicon/arm64 and x86_64) |
-| **Linux** | Ubuntu 20.04+/Debian 10+ (x86_64 and arm64 via MUSL) |
-| **Windows** | Windows 11 **via WSL2** (Recommended) or Native x86_64/arm64 |
+| Operating System | Details                                                      |
+| ---------------- | ------------------------------------------------------------ |
+| **macOS**        | macOS 12+ (Apple Silicon/arm64 and x86_64)                   |
+| **Linux**        | Ubuntu 20.04+/Debian 10+ (x86_64 and arm64 via MUSL)         |
+| **Windows**      | Windows 11 **via WSL2** (Recommended) or Native x86_64/arm64 |
 
 **Resource Requirements**:
+
 - **RAM**: 4-GB minimum (8-GB recommended)
 
 ### Development Requirements
@@ -382,20 +393,24 @@ OpenAI has been consolidating its coding products:
 ### Limitations & Considerations
 
 #### Task Constraints
+
 - Tasks run in sandboxed cloud environments
 - Execution time: 1-30 minutes per task
 - Requires user repository to be preloaded
 
 #### Platform Limitations
+
 - **Windows**: Requires WSL2 for full functionality (native Windows support is limited)
 - **Resource Usage**: Minimum 4GB RAM recommended, 8GB for optimal performance
 
 #### Security Considerations
+
 - Runs in isolated environments
 - Windows sandbox uses OS-level controls (restricted tokens, ACLs)
 - Codex Security focuses on vulnerability detection
 
 #### Model Limitations
+
 - **Model Lock-in**: Tied to OpenAI models (not model-agnostic)
 - **Vendor Claims**: Reliability and benchmark figures are vendor-reported
 - **Human Review Required**: Not a hands-off autonomous engineer - requires human approval
@@ -425,35 +440,35 @@ OpenAI has been consolidating its coding products:
 
 **Plan Tiers**:
 
-| Plan | Price | Key Features |
-|------|-------|--------------|
-| **Free** | $0 | Explore Codex capabilities on quick coding tasks |
-| **Go** | Varies | Lightweight coding tasks |
-| **Plus** | Standard ChatGPT Plus | Codex on web/CLI/IDE/iOS, cloud integrations, GPT-5.6 models |
-| **Pro 5x** | $100/month | 5x higher rate limits than Plus, Codex-Spark research preview |
-| **Pro 20x** | $200/month | 20x higher limits, unlimited ChatGPT Voice |
-| **API Key** | Usage-based | Automation in CI/CD, no cloud features |
+| Plan        | Price                 | Key Features                                                  |
+| ----------- | --------------------- | ------------------------------------------------------------- |
+| **Free**    | $0                    | Explore Codex capabilities on quick coding tasks              |
+| **Go**      | Varies                | Lightweight coding tasks                                      |
+| **Plus**    | Standard ChatGPT Plus | Codex on web/CLI/IDE/iOS, cloud integrations, GPT-5.6 models  |
+| **Pro 5x**  | $100/month            | 5x higher rate limits than Plus, Codex-Spark research preview |
+| **Pro 20x** | $200/month            | 20x higher limits, unlimited ChatGPT Voice                    |
+| **API Key** | Usage-based           | Automation in CI/CD, no cloud features                        |
 
 ### Token Pricing (Credits per 1M tokens)
 
-| Model | Input | Cached Input | Output |
-|-------|-------|--------------|--------|
-| **GPT-6 Astra** | 250 | 25 | 1,250 |
-| **GPT-5.6 Sol** | 100 | 10 | 500 |
-| **GPT-5.6 Terra** | 50 | 5 | 300 |
-| **GPT-5.6 Luna** | 5 | 0.5 | 30 |
-| **GPT-5.5** | 125 | 12.50 | 750 |
-| **GPT-5.4** | 62.50 | 6.250 | 375 |
-| **GPT-5.4 mini** | 18.75 | 1.875 | 113 |
+| Model             | Input | Cached Input | Output |
+| ----------------- | ----- | ------------ | ------ |
+| **GPT-6 Astra**   | 250   | 25           | 1,250  |
+| **GPT-5.6 Sol**   | 100   | 10           | 500    |
+| **GPT-5.6 Terra** | 50    | 5            | 300    |
+| **GPT-5.6 Luna**  | 5     | 0.5          | 30     |
+| **GPT-5.5**       | 125   | 12.50        | 750    |
+| **GPT-5.4**       | 62.50 | 6.250        | 375    |
+| **GPT-5.4 mini**  | 18.75 | 1.875        | 113    |
 
 ### Usage Limits (Messages per 5-hour period)
 
-| Model | Plus | Pro 5x | Pro 20x |
-|-------|------|--------|---------|
-| **GPT-6 Astra** | 5-45 | 25-225 | 100-900 |
-| **GPT-5.6 Sol** | 10-100 | 50-500 | 200-2,000 |
-| **GPT-5.6 Terra** | 25-200 | 125-1,000 | 500-4,000 |
-| **GPT-5.6 Luna** | 250-2,000 | 1,250-10,000 | 5,000-40,000 |
+| Model             | Plus      | Pro 5x       | Pro 20x      |
+| ----------------- | --------- | ------------ | ------------ |
+| **GPT-6 Astra**   | 5-45      | 25-225       | 100-900      |
+| **GPT-5.6 Sol**   | 10-100    | 50-500       | 200-2,000    |
+| **GPT-5.6 Terra** | 25-200    | 125-1,000    | 500-4,000    |
+| **GPT-5.6 Luna**  | 250-2,000 | 1,250-10,000 | 5,000-40,000 |
 
 ### GitHub Copilot Integration Pricing
 
@@ -471,7 +486,7 @@ OpenAI has been consolidating its coding products:
 - **Retention and residency controls**
 - **No training on business data by default**
 
-**Key Quote**: "The tool had been in private beta since 2025... it worked by first building a threat model of a repository before looking for vulnerabilities and proposing fixes." - [Wikipedia](https://en.wikipedia.org/wiki/OpenAI_Codex_(AI_agent))
+**Key Quote**: "The tool had been in private beta since 2025... it worked by first building a threat model of a repository before looking for vulnerabilities and proposing fixes." - [Wikipedia](<https://en.wikipedia.org/wiki/OpenAI_Codex_(AI_agent)>)
 
 ---
 
@@ -487,7 +502,7 @@ With over 2 million weekly active users and deep integration into the GitHub and
 
 ## Sources
 
-1. [OpenAI Codex (AI agent) - Wikipedia](https://en.wikipedia.org/wiki/OpenAI_Codex_(AI_agent))
+1. [OpenAI Codex (AI agent) - Wikipedia](<https://en.wikipedia.org/wiki/OpenAI_Codex_(AI_agent)>)
 2. [Architecture Overview | openai/codex | DeepWiki](https://deepwiki.com/openai/codex/1.3-architecture-overview)
 3. [OpenAI Codex: capabilities, pricing & alternatives | AI Agents Wiki](https://aiagents.wiki/agents/openai-codex)
 4. [Codex for (almost) everything - OpenAI](https://openai.com/index/codex-for-almost-everything/)
@@ -505,5 +520,5 @@ With over 2 million weekly active users and deep integration into the GitHub and
 
 ---
 
-*Document created on: October 15, 2026*
-*Based on research conducted using DeepSeek Harness*
+_Document created on: October 15, 2026_
+_Based on research conducted using DeepSeek Harness_

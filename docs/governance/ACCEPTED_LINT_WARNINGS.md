@@ -28,16 +28,16 @@ run's findings were a configuration error, not a code error.**
 
 The rule set is deliberately asymmetric:
 
-| Class | Severity | Rationale |
-|---|---|---|
-| `react-hooks/rules-of-hooks` | **error** | a violation is a runtime crash, not a preference |
-| `@typescript-eslint/no-unused-vars` | **error** | dead code is a maintenance liability and a review cost |
-| `no-empty` | **error** | an empty block hides a swallowed error |
-| `react/no-unescaped-entities` | **error** | a real, if minor, HTML-correctness defect |
-| `@typescript-eslint/ban-ts-comment` | **error** | `@ts-ignore` silently no-ops when the line becomes valid |
-| `no-explicit-any` | warning | see §1 below |
-| `react-hooks/exhaustive-deps` | warning | see §2 below |
-| `react-refresh/only-export-components` | warning | see §3 below |
+| Class                                  | Severity  | Rationale                                                |
+| -------------------------------------- | --------- | -------------------------------------------------------- |
+| `react-hooks/rules-of-hooks`           | **error** | a violation is a runtime crash, not a preference         |
+| `@typescript-eslint/no-unused-vars`    | **error** | dead code is a maintenance liability and a review cost   |
+| `no-empty`                             | **error** | an empty block hides a swallowed error                   |
+| `react/no-unescaped-entities`          | **error** | a real, if minor, HTML-correctness defect                |
+| `@typescript-eslint/ban-ts-comment`    | **error** | `@ts-ignore` silently no-ops when the line becomes valid |
+| `no-explicit-any`                      | warning   | see §1 below                                             |
+| `react-hooks/exhaustive-deps`          | warning   | see §2 below                                             |
+| `react-refresh/only-export-components` | warning   | see §3 below                                             |
 
 An error in this configuration is always either a defect or a lie about the
 code. A warning is a judgement call, and judgement calls are recorded here
@@ -47,13 +47,13 @@ rather than silently tolerated.
 
 ## §1. `@typescript-eslint/no-explicit-any` — 30 warnings
 
-| File | Count |
-|---|---|
-| `src/hooks/useTelemetryStream.ts` | 13 |
-| `src/hooks/useAuditStream.ts` | 5 |
-| `src/components/shell/SurfaceHost.tsx` | 8 |
-| `src/components/shell/AgentDock.tsx` | 2 |
-| `src/components/TerminalPanel.tsx` | 2 |
+| File                                   | Count |
+| -------------------------------------- | ----- |
+| `src/hooks/useTelemetryStream.ts`      | 13    |
+| `src/hooks/useAuditStream.ts`          | 5     |
+| `src/components/shell/SurfaceHost.tsx` | 8     |
+| `src/components/shell/AgentDock.tsx`   | 2     |
+| `src/components/TerminalPanel.tsx`     | 2     |
 
 (13 + 5 + 8 + 2 + 2 = 30.)
 
@@ -77,12 +77,12 @@ touched.
 
 ## §2. `react-hooks/exhaustive-deps` — 2 warnings
 
-| Location | Message |
-|---|---|
-| `src/App.tsx:216` | missing dependency `verification` |
+| Location                               | Message                                               |
+| -------------------------------------- | ----------------------------------------------------- |
+| `src/App.tsx:216`                      | missing dependency `verification`                     |
 | `src/components/ArtifactViewer.tsx:87` | missing dependencies `handleApplyPatch`, `handleSave` |
 
-**Why accepted.** Both are *under*-declaring rather than over-declaring, which
+**Why accepted.** Both are _under_-declaring rather than over-declaring, which
 is the safe direction: the effect runs too rarely rather than too often.
 
 - `App.tsx:216` — the effect reads `verification` but deliberately re-runs only
@@ -102,11 +102,11 @@ contract while you are in there.
 
 ## §3. `react-refresh/only-export-components` — 4 warnings
 
-| Location |
-|---|
-| `src/components/ui/index.tsx:29` |
-| `src/components/ui/index.tsx:166` |
-| `src/components/ui/index.tsx:691` |
+| Location                                     |
+| -------------------------------------------- |
+| `src/components/ui/index.tsx:29`             |
+| `src/components/ui/index.tsx:166`            |
+| `src/components/ui/index.tsx:691`            |
 | `src/components/shell/RightWorkspace.tsx:15` |
 
 **Why accepted.** A Fast Refresh degradation, not a defect: the module still
@@ -132,24 +132,25 @@ the file it lives in is full of them.
 
 The 1,173 findings that disappeared were not suppressed. For the record:
 
-| Count | Finding | Disposition |
-|---|---|---|
-| 1,124 | `react/react-in-jsx-scope` | **Configuration error.** `tsconfig.json` sets `"jsx": "react-jsx"`, so `React` is never in scope. Fixed by adding `react.configs.flat["jsx-runtime"]` to `eslint.config.js`. |
-| 31 | `@typescript-eslint/no-unused-vars` | Removed the dead imports, destructured props, and locals. |
-| 4 | `react-hooks/rules-of-hooks` | **Real defects.** See below. |
-| 7 | `react/no-unescaped-entities` | Escaped to `&apos;`. |
-| 4 | `@typescript-eslint/ban-ts-comment` | `@ts-ignore` → `@ts-expect-error`. |
-| 1 | `no-empty` | Empty `catch {}` in `ProviderSettings.tsx` given an explanatory comment. |
-| — | dead `PackDetail` (93 lines) + its now-dead `TRUST_LABEL_STYLE`/`PERMISSION_LABEL` tables | Deleted. `Forge.tsx` net −124 lines, +9. |
-| — | dead `DesktopRequired` component in `BottomPanel.tsx` | Deleted — unreferenced anywhere in the tree. |
+| Count | Finding                                                                                   | Disposition                                                                                                                                                                  |
+| ----- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1,124 | `react/react-in-jsx-scope`                                                                | **Configuration error.** `tsconfig.json` sets `"jsx": "react-jsx"`, so `React` is never in scope. Fixed by adding `react.configs.flat["jsx-runtime"]` to `eslint.config.js`. |
+| 31    | `@typescript-eslint/no-unused-vars`                                                       | Removed the dead imports, destructured props, and locals.                                                                                                                    |
+| 4     | `react-hooks/rules-of-hooks`                                                              | **Real defects.** See below.                                                                                                                                                 |
+| 7     | `react/no-unescaped-entities`                                                             | Escaped to `&apos;`.                                                                                                                                                         |
+| 4     | `@typescript-eslint/ban-ts-comment`                                                       | `@ts-ignore` → `@ts-expect-error`.                                                                                                                                           |
+| 1     | `no-empty`                                                                                | Empty `catch {}` in `ProviderSettings.tsx` given an explanatory comment.                                                                                                     |
+| —     | dead `PackDetail` (93 lines) + its now-dead `TRUST_LABEL_STYLE`/`PERMISSION_LABEL` tables | Deleted. `Forge.tsx` net −124 lines, +9.                                                                                                                                     |
+| —     | dead `DesktopRequired` component in `BottomPanel.tsx`                                     | Deleted — unreferenced anywhere in the tree.                                                                                                                                 |
+
 ### The two `rules-of-hooks` defects
 
-These were found *by* the new lint config and are worth recording because they
+These were found _by_ the new lint config and are worth recording because they
 were live bugs, not style noise:
 
-1. **`src/hooks/useAuditStream.ts`** — a `useEffect` was called *inside* another
+1. **`src/hooks/useAuditStream.ts`** — a `useEffect` was called _inside_ another
    `useEffect`'s callback. React cannot register a hook during the commit phase.
-2. **`src/components/ArtifactViewer.tsx`** — two `useMemo` calls sat *after* an
+2. **`src/components/ArtifactViewer.tsx`** — two `useMemo` calls sat _after_ an
    early `return`, so the component called a different number of hooks depending
    on whether any artifact tab was open.
 
@@ -176,7 +177,7 @@ A warning may be recorded here when it is a judgement call rather than a defect.
 An entry must state:
 
 1. the rule and the count,
-2. why the rule's suggestion is wrong *or* out of scope **for this codebase**,
+2. why the rule's suggestion is wrong _or_ out of scope **for this codebase**,
 3. what change would make the row stale.
 
 Everything else stays an error. This file is a register of decisions, not a

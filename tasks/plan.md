@@ -23,36 +23,36 @@ and separates external GitHub Actions billing from code-level failures.
 ### Phase 1: Establish the baseline
 
 - [ ] Task 1: Inventory the active handoff and identify each modified or
-  untracked module's intent.
+      untracked module's intent.
 - [ ] Task 2: Run the focused repository-intelligence and workspace test paths;
-  record real failures without suppressing them.
+      record real failures without suppressing them.
 - [ ] Checkpoint: baseline failures, ownership boundaries, and current build
-  status are captured.
+      status are captured.
 
 ### Phase 2: Phase 2A evidence and reachability
 
 - [ ] Task 3: Verify real-repository exclusion, metric scope, and deterministic
-  benchmark assertions.
+      benchmark assertions.
 - [ ] Task 4: Verify the named CLI, HTTP, Tauri, and desktop entry points and
-  correct any missing wiring.
+      correct any missing wiring.
 - [ ] Checkpoint: repository intelligence is testable and reachable at its
-  stated scope, with captured local evidence.
+      stated scope, with captured local evidence.
 
 ### Phase 3: Delivery readiness
 
 - [ ] Task 5: Repair the release workflow so it is valid, tag-triggered, and
-  cannot publish from ordinary pushes.
+      cannot publish from ordinary pushes.
 - [ ] Task 6: Run local quality gates and record GitHub Actions billing as an
-  external blocker if it remains unresolved.
+      external blocker if it remains unresolved.
 - [ ] Checkpoint: local verification passes and remote CI can be rerun once the
-  organization billing lock is removed.
+      organization billing lock is removed.
 
 ## Risks and Mitigations
 
-| Risk | Mitigation |
-| --- | --- |
-| Existing dirty work has unknown ownership | Inspect before editing; keep work isolated and avoid destructive operations. |
-| GitHub billing blocks remote evidence | Run the same quality gates locally; report the remote blocker accurately. |
+| Risk                                           | Mitigation                                                                            |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Existing dirty work has unknown ownership      | Inspect before editing; keep work isolated and avoid destructive operations.          |
+| GitHub billing blocks remote evidence          | Run the same quality gates locally; report the remote blocker accurately.             |
 | Governance conflicts with visible UI ambitions | Implement only the accepted remediation path and record later-phase work as deferred. |
 
 ## Open Questions

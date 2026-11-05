@@ -21,16 +21,16 @@ and state what does not.
 
 ## 2. Timing
 
-| Time | Section | On screen |
-|---|---|---|
-| 0:00–0:25 | **The problem** | A Nigerian developer, a local-language request, the friction of existing tooling. Keep it concrete. |
-| 0:25–0:50 | **The proposition** | ZylCode × N-ATLAS Developer Bridge, one diagram. |
-| 0:50–1:15 | **Setup and runtime identity** | `ollama list`, `curl /api/tags` showing the model, the playground showing **server-reported** model identity. |
-| 1:15–2:45 | **The real workflow** | The bounded slice end to end: instruction → genuine response → structured intent → proposed operation → **approval gate** → execution → verification with the actual exit code. |
-| 2:45–3:20 | **Multilingual** | The same workflow in Yoruba / Hausa / Igbo, showing actual model behaviour — **including any weakness**. |
-| 3:20–3:50 | **Verification and evidence** | The evidence record: timestamp, model identity, latency, request id, redaction count. |
-| 3:50–4:20 | **External beta** | Real tester feedback (only if real testers exist). |
-| 4:20–4:45 | **Impact and scaling** | What this unlocks for Nigerian developer infrastructure. |
+| Time      | Section                        | On screen                                                                                                                                                                       |
+| --------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0:00–0:25 | **The problem**                | A Nigerian developer, a local-language request, the friction of existing tooling. Keep it concrete.                                                                             |
+| 0:25–0:50 | **The proposition**            | ZylCode × N-ATLAS Developer Bridge, one diagram.                                                                                                                                |
+| 0:50–1:15 | **Setup and runtime identity** | `ollama list`, `curl /api/tags` showing the model, the playground showing **server-reported** model identity.                                                                   |
+| 1:15–2:45 | **The real workflow**          | The bounded slice end to end: instruction → genuine response → structured intent → proposed operation → **approval gate** → execution → verification with the actual exit code. |
+| 2:45–3:20 | **Multilingual**               | The same workflow in Yoruba / Hausa / Igbo, showing actual model behaviour — **including any weakness**.                                                                        |
+| 3:20–3:50 | **Verification and evidence**  | The evidence record: timestamp, model identity, latency, request id, redaction count.                                                                                           |
+| 3:50–4:20 | **External beta**              | Real tester feedback (only if real testers exist).                                                                                                                              |
+| 4:20–4:45 | **Impact and scaling**         | What this unlocks for Nigerian developer infrastructure.                                                                                                                        |
 
 Adjust to actual results. **Cut any section for which there is no genuine evidence** rather than
 filling it with narration.
@@ -61,9 +61,9 @@ filling it with narration.
 
 ## 5. What is not ready
 
-| Item | Status |
-|---|---|
+| Item                              | Status                     |
+| --------------------------------- | -------------------------- |
 | Genuine invocation to demonstrate | ⛔ `BLOCKED_NATLAS_ACCESS` |
-| Multilingual results to show | ⛔ none measured |
-| Real tester feedback | ⛔ zero testers |
-| Video recording | ⛔ not started |
+| Multilingual results to show      | ⛔ none measured           |
+| Real tester feedback              | ⛔ zero testers            |
+| Video recording                   | ⛔ not started             |

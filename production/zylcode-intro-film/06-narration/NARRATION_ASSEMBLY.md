@@ -29,6 +29,7 @@ zylcode-intro-film/
 ```
 
 **Step 1 — Render narration** with edge-tts:
+
 ```bash
 python -c "
 import asyncio, edge_tts
@@ -75,11 +76,11 @@ Each line is a standalone clip; the editor places them to the nearest edit point
 
 ## Music cue list (for the sound designer)
 
-| Cue | Place | Palette |
-|---|---|---|
-| cue-1-open-swell | Title / 00:00–00:15 | Low graphite & navy pulse under a single rising bell |
-| cue-2-documentary-tone | 00:15–07:20 | Warm documentary bed, steady, unobtrusive, no hook or drop |
-| cue-3-resolve | 08:00–08:30 | Warmer, resolving bed under the closing brand line |
+| Cue                    | Place               | Palette                                                    |
+| ---------------------- | ------------------- | ---------------------------------------------------------- |
+| cue-1-open-swell       | Title / 00:00–00:15 | Low graphite & navy pulse under a single rising bell       |
+| cue-2-documentary-tone | 00:15–07:20         | Warm documentary bed, steady, unobtrusive, no hook or drop |
+| cue-3-resolve          | 08:00–08:30         | Warmer, resolving bed under the closing brand line         |
 
 ## Short-form / social cuts (optional, if the film is trimmed)
 

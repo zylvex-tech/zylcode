@@ -49,10 +49,10 @@ Zylvex Technologies Ltd          (parent — corporate/research site: zylvex.tec
 
 **Domain split — non-negotiable:**
 
-| Domain | Owns | Does not own |
-|---|---|---|
-| `zylforge.com` | Products, capabilities, services, platform, community | Corporate history, research, investor/legal |
-| `zylvex.tech` | Corporate identity, research notes, the "why Zylvex exists" narrative | Product capability claims |
+| Domain         | Owns                                                                  | Does not own                                |
+| -------------- | --------------------------------------------------------------------- | ------------------------------------------- |
+| `zylforge.com` | Products, capabilities, services, platform, community                 | Corporate history, research, investor/legal |
+| `zylvex.tech`  | Corporate identity, research notes, the "why Zylvex exists" narrative | Product capability claims                   |
 
 Rationale: a capability claim on a corporate site is harder to keep synced to the matrix than one on
 the product site, and drift is the failure mode this whole program exists to prevent. **`zylvex.tech`
@@ -82,8 +82,8 @@ zylforge.com
 └── /about/                 Company, contact, legal
 ```
 
-**Why the three pillars are siblings and not a hierarchy.** Plan §6: *"Services monetizes real
-engineering expertise while software matures."* If ZylCode is presented as the parent and Engineering
+**Why the three pillars are siblings and not a hierarchy.** Plan §6: _"Services monetizes real
+engineering expertise while software matures."_ If ZylCode is presented as the parent and Engineering
 as a feature, then when ZylCode is IN DEVELOPMENT the whole site reads as a vaporware site. If they
 are siblings, a reader who needs a fabricated assembly today can buy it from a pillar that is
 `SERVICE_DELIVERED`, while a reader who wants to follow the software sees an honest maturity label.
@@ -120,14 +120,14 @@ N projects for M clients" claim is not (Policy §6 — a fabricated statistic is
 
 **Pages:**
 
-| Path | Purpose | Claim source |
-|---|---|---|
-| `/engineering/` | Pillar landing | `engineering_job_packs` |
-| `/engineering/job-packs/` | What a job pack contains, scoped per request | `engineering_job_packs` |
-| `/engineering/documentation/` | Drawings / BOM / cut list / weld notes | `fabrication_documentation` |
-| `/engineering/capabilities/` | Per-discipline detail | service catalogue (owner-supplied) |
+| Path                          | Purpose                                      | Claim source                       |
+| ----------------------------- | -------------------------------------------- | ---------------------------------- |
+| `/engineering/`               | Pillar landing                               | `engineering_job_packs`            |
+| `/engineering/job-packs/`     | What a job pack contains, scoped per request | `engineering_job_packs`            |
+| `/engineering/documentation/` | Drawings / BOM / cut list / weld notes       | `fabrication_documentation`        |
+| `/engineering/capabilities/`  | Per-discipline detail                        | service catalogue (owner-supplied) |
 
-**Prohibited on this pillar:** *"generated automatically by software without engineer review"*
+**Prohibited on this pillar:** _"generated automatically by software without engineer review"_
 (matrix, `prohibited_claim`). The pillar must read as a service, not as a product. The distinction
 matters legally and editorially.
 
@@ -137,18 +137,18 @@ matters legally and editorially.
 entries, spanning `AVAILABLE` through `PROPOSED`.
 
 This is the pillar most at risk of over-claiming, because the majority of its capabilities are not
-available. The structure below is designed so that the not-yet-available majority is *present on the
-site* rather than omitted — omitting them would itself be a misrepresentation, and would make the
+available. The structure below is designed so that the not-yet-available majority is _present on the
+site_ rather than omitted — omitting them would itself be a misrepresentation, and would make the
 `AVAILABLE` capabilities look like the whole story.
 
-| Path | Purpose | Claim source |
-|---|---|---|
-| `/zylcode/` | Pillar landing + status strip | all `product: zylcode` entries |
-| `/zylcode/capabilities/` | **Index of every capability card** — generated | matrix, all entries |
-| `/zylcode/capabilities/<slug>/` | Capability detail page | single matrix entry |
-| `/zylcode/download/` | Install / availability route | `crash_recovery`, `execution_engine_shell` |
-| `/zylcode/quickstart/` | First run | `AVAILABLE` entries only |
-| `/zylcode/architecture/` | Eight-system map, with per-system rung | `ZYLCODE_ARCHITECTURE_V2.md` §9 |
+| Path                            | Purpose                                        | Claim source                               |
+| ------------------------------- | ---------------------------------------------- | ------------------------------------------ |
+| `/zylcode/`                     | Pillar landing + status strip                  | all `product: zylcode` entries             |
+| `/zylcode/capabilities/`        | **Index of every capability card** — generated | matrix, all entries                        |
+| `/zylcode/capabilities/<slug>/` | Capability detail page                         | single matrix entry                        |
+| `/zylcode/download/`            | Install / availability route                   | `crash_recovery`, `execution_engine_shell` |
+| `/zylcode/quickstart/`          | First run                                      | `AVAILABLE` entries only                   |
+| `/zylcode/architecture/`        | Eight-system map, with per-system rung         | `ZYLCODE_ARCHITECTURE_V2.md` §9            |
 
 **The capability index is the site's centre of gravity.** It is generated from the matrix, sorted
 `AVAILABLE` → `DEVELOPER PREVIEW` → `IN DEVELOPMENT` → `PROPOSED`. No entry is hidden and no entry is
@@ -195,7 +195,7 @@ a page missing any of them is incomplete and must not ship.
 ```
 
 **Block 3 is the design's load-bearing element.** Every other software site omits it. It exists
-because the matrix's `prohibited_claim` field is *as binding as* `allowed_claim` (Policy §4 rule 3),
+because the matrix's `prohibited_claim` field is _as binding as_ `allowed_claim` (Policy §4 rule 3),
 and because a reader who wanted "can it operate my computer?" deserves an explicit no rather than an
 inference from a green/grey dot. It is rendered at full text size, not as fine print.
 
@@ -210,16 +210,16 @@ It exists because plan §6 assigns Services the job of monetizing expertise whil
 matures — meaning this pillar may make a commercial offer at Commercial Level 0 that the software
 pillar may not.
 
-| Path | Purpose |
-|---|---|
-| `/services/` | Services landing — what we do, how to engage |
-| `/services/engagements/` | Engagement shapes (scoped per request) |
-| `/services/contact/` | Enquiry route |
+| Path                     | Purpose                                      |
+| ------------------------ | -------------------------------------------- |
+| `/services/`             | Services landing — what we do, how to engage |
+| `/services/engagements/` | Engagement shapes (scoped per request)       |
+| `/services/contact/`     | Enquiry route                                |
 
 **Hard constraint:** Services may accept enquiries and describe scope. It may **not** display a price,
 an availability guarantee, or a delivery statistic until the corresponding
 `owner_verify_required: true` entries are verified. Commercial Model Level 0 permits selling
-*existing* capability; it does not permit inventing a delivery record.
+_existing_ capability; it does not permit inventing a delivery record.
 
 **Why Services is a full pillar rather than a Contact page.** If the only revenue-now surface is a
 contact form, the site's commercial credibility rests entirely on the not-yet-available software. A
@@ -233,16 +233,16 @@ answer to "what can I actually buy from you right now?"
 Normative source: `ZYLCODE_PUBLIC_COMMUNICATION_POLICY.md` §3. The IA does not invent terms and does
 not render a term above the matrix evidence. Matrix `public_label` → site rendering:
 
-| `capability_state` | `public_label` | Rendered label | Visual register |
-|---|---|---|---|
-| `AVAILABLE` | Available | `AVAILABLE` | solid, full-contrast |
-| `VERIFIED` | *(verification record)* | `VERIFIED` | solid + proof citation |
-| `DEVELOPER_PREVIEW` | Developer preview | `DEVELOPER PREVIEW` | outline, pre-release tag |
-| `IN_DEVELOPMENT` | In development | `IN DEVELOPMENT` | outline, low-contrast |
-| `PROPOSED` | Planned | `PROPOSED` | dashed, lowest contrast |
-| `CONCEPT` | *(exploration)* | `CONCEPT` | dashed + diagonal watermark on visuals |
-| `HISTORICAL` | *(older build)* | `HISTORICAL` | muted, carries version/commit |
-| `SERVICE_DELIVERED` | Service | `SERVICE-DELIVERED` | service register, not product |
+| `capability_state`  | `public_label`          | Rendered label      | Visual register                        |
+| ------------------- | ----------------------- | ------------------- | -------------------------------------- |
+| `AVAILABLE`         | Available               | `AVAILABLE`         | solid, full-contrast                   |
+| `VERIFIED`          | _(verification record)_ | `VERIFIED`          | solid + proof citation                 |
+| `DEVELOPER_PREVIEW` | Developer preview       | `DEVELOPER PREVIEW` | outline, pre-release tag               |
+| `IN_DEVELOPMENT`    | In development          | `IN DEVELOPMENT`    | outline, low-contrast                  |
+| `PROPOSED`          | Planned                 | `PROPOSED`          | dashed, lowest contrast                |
+| `CONCEPT`           | _(exploration)_         | `CONCEPT`           | dashed + diagonal watermark on visuals |
+| `HISTORICAL`        | _(older build)_         | `HISTORICAL`        | muted, carries version/commit          |
+| `SERVICE_DELIVERED` | Service                 | `SERVICE-DELIVERED` | service register, not product          |
 
 Separately, `lifecycle` (`ACTIVE` / `EXPERIMENTAL` / `DEPRECATED` / `RETIRED`) is rendered as a
 small secondary badge. **The two axes are never merged into one visual.** A capability can be
@@ -281,18 +281,18 @@ component exists and is mandatory — the component may not be optional, and it 
 Shared substrate, not a fourth product. Its purpose is to explain what the three pillars have in
 common — which is the strongest argument the company has for being one company rather than three.
 
-| Path | Purpose | Matrix link |
-|---|---|---|
-| `/platform/mcp/` | Model Context Protocol surface | `extension_platform` (`PROPOSED`) |
-| `/platform/models/` | Provider strategy, BYOK | `model_platform` (`IN DEVELOPMENT`) |
-| `/platform/extensions/` | Extension model | `extension_platform` (`PROPOSED`) |
-| `/platform/community/` | Devlog, discussions, contribution routes | n/a — community |
+| Path                    | Purpose                                  | Matrix link                         |
+| ----------------------- | ---------------------------------------- | ----------------------------------- |
+| `/platform/mcp/`        | Model Context Protocol surface           | `extension_platform` (`PROPOSED`)   |
+| `/platform/models/`     | Provider strategy, BYOK                  | `model_platform` (`IN DEVELOPMENT`) |
+| `/platform/extensions/` | Extension model                          | `extension_platform` (`PROPOSED`)   |
+| `/platform/community/`  | Devlog, discussions, contribution routes | n/a — community                     |
 
 **`/platform/models/` carries a specific obligation.** `ZYLCODE_COMMERCIAL_MODEL.md` §3.1 prohibits
 the phrase "managed key" and requires **secure BYOK credential management** — model access is never
 bundled and never marked up. This page is the only place on the site where that policy becomes
-user-visible, so it must state it plainly: *you bring your own model credentials; we do not resell
-model access.* A pricing page that quietly implies bundled inference would be a prohibited claim.
+user-visible, so it must state it plainly: _you bring your own model credentials; we do not resell
+model access._ A pricing page that quietly implies bundled inference would be a prohibited claim.
 
 **`/platform/extensions/` must not imply a stable ABI.** The matrix entry is `PROPOSED`, and
 `EXTENSION_CONTRIBUTION_GUIDE.md` is itself marked PROPOSED. The page may describe the intended
@@ -314,12 +314,12 @@ Website               Product → Capability → Demonstration → Evidence
 Evidence is the site's organising metaphor **and** its most concrete artifact, and the IA makes it a
 destination rather than a footer link:
 
-| Element | Behaviour |
-|---|---|
-| Every capability card | links to its Evidence entry |
-| Every capability detail page | has an `[Evidence]` action in block 1 and block 5 |
-| `/evidence/` | index of captured transcripts by capability, newest first |
-| Evidence entry | names capability, rung, date, environment, reproduction, raw output |
+| Element                      | Behaviour                                                           |
+| ---------------------------- | ------------------------------------------------------------------- |
+| Every capability card        | links to its Evidence entry                                         |
+| Every capability detail page | has an `[Evidence]` action in block 1 and block 5                   |
+| `/evidence/`                 | index of captured transcripts by capability, newest first           |
+| Evidence entry               | names capability, rung, date, environment, reproduction, raw output |
 
 A capability whose evidence is not captured has **no Evidence link** — the link is omitted, not
 pointed at a placeholder. A dead Evidence link would be worse than none: it would assert a
@@ -385,15 +385,15 @@ whether it renders correctly on the day it ships.
 From `ZYLCODE_COMMERCIAL_MODEL.md` §4 and Policy §10. The IA must be buildable at Level 0 and must
 not require a rebuild to move up a level.
 
-| Site surface | L0 Public Development | L1 Developer Preview | L2 Paid Early Access | L3 GA |
-|---|---|---|---|---|
-| `/` status strip | ✓ | ✓ | ✓ | ✓ |
-| `/zylcode/capabilities/` | ✓ | ✓ | ✓ | ✓ |
-| `/evidence/`, `/devlog/`, `/roadmap/` | ✓ | ✓ | ✓ | ✓ |
-| `/engineering/`, `/services/` (enquiry only) | ✓ | ✓ | ✓ | ✓ |
-| `/zylcode/download/` | labelled pre-release | ✓ | ✓ | ✓ |
-| `/zylcode/pricing/` | **absent** | preview offer | prices for accepted capabilities only | ✓ |
-| SLA / compliance representations | **absent** | **absent** | **absent** | ✓ |
+| Site surface                                 | L0 Public Development | L1 Developer Preview | L2 Paid Early Access                  | L3 GA |
+| -------------------------------------------- | --------------------- | -------------------- | ------------------------------------- | ----- |
+| `/` status strip                             | ✓                     | ✓                    | ✓                                     | ✓     |
+| `/zylcode/capabilities/`                     | ✓                     | ✓                    | ✓                                     | ✓     |
+| `/evidence/`, `/devlog/`, `/roadmap/`        | ✓                     | ✓                    | ✓                                     | ✓     |
+| `/engineering/`, `/services/` (enquiry only) | ✓                     | ✓                    | ✓                                     | ✓     |
+| `/zylcode/download/`                         | labelled pre-release  | ✓                    | ✓                                     | ✓     |
+| `/zylcode/pricing/`                          | **absent**            | preview offer        | prices for accepted capabilities only | ✓     |
+| SLA / compliance representations             | **absent**            | **absent**           | **absent**                            | ✓     |
 
 **Two hard rules:**
 
@@ -437,7 +437,7 @@ This document is complete when a reviewer can confirm:
 - [x] Three pillars are siblings at top level, with equal weight on the homepage (plan §6).
 - [x] A `PLATFORM` area exists at top level with MCP / Models / Extensions / Community (§6).
 - [x] Every capability page reads its state from `PUBLIC_CLAIM_MATRIX.yaml`; none asserts it (§9).
-- [x] Every capability page carries a mandatory *What this does not do (yet)* block (§3.2).
+- [x] Every capability page carries a mandatory _What this does not do (yet)_ block (§3.2).
 - [x] Every capability card carries an Evidence link, omitted where evidence is absent (§7).
 - [x] Status vocabulary matches Policy §3 exactly; `BETA` and other unapproved terms are excluded (§4).
 - [x] Screenshot labelling is specified with placement, not merely required (§5).

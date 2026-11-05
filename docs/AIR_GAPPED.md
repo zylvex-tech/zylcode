@@ -58,12 +58,12 @@ The offline provider:
 
 ### Pricing
 
-| Provider | Input Cost | Output Cost |
-|---|---|---|
-| Anthropic | $3.00 / 1M tokens | $15.00 / 1M tokens |
-| OpenRouter | $0.15 / 1M tokens | $0.60 / 1M tokens |
-| Ollama | Free | Free |
-| SyntheticOffline | Free | Free |
+| Provider         | Input Cost        | Output Cost        |
+| ---------------- | ----------------- | ------------------ |
+| Anthropic        | $3.00 / 1M tokens | $15.00 / 1M tokens |
+| OpenRouter       | $0.15 / 1M tokens | $0.60 / 1M tokens  |
+| Ollama           | Free              | Free               |
+| SyntheticOffline | Free              | Free               |
 
 **Note:** Ollama remains free but requires a running local Ollama instance. SyntheticOffline requires no external services.
 
@@ -150,14 +150,17 @@ zylcode-core-cli verify --offline --verbose 2>&1 | tee verification.log
 ### Common Issues
 
 **"No provider available" error:**
+
 - Ensure `--offline` flag is set
 - Check that `synthetic_offline` is configured as primary provider
 
 **Verification tools not found:**
+
 - Install required toolchains (rustup, npm, python)
 - Verify tools are in PATH
 
 **Audit logs not writing:**
+
 - Check write permissions to `~/.zylcode/audit/`
 - Ensure disk space is available
 

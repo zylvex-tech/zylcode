@@ -57,7 +57,7 @@ jobs:
           # below would fail for a missing-flag reason rather than a real one.
           # `engines.node` is ">=18.0.0", so 22 satisfies the workspace floor.
           node-version: 22
-          cache: 'pnpm'
+          cache: "pnpm"
 
       - name: Setup Rust (stable)
         uses: dtolnay/rust-toolchain@stable

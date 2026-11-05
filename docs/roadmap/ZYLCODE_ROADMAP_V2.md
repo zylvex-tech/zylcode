@@ -13,16 +13,16 @@
 
 Every phase has:
 
-| Field | Meaning |
-|---|---|
-| **Objective** | What the phase achieves |
-| **Input** | What must exist before it begins |
-| **Deliverables** | What must ship |
+| Field            | Meaning                                                    |
+| ---------------- | ---------------------------------------------------------- |
+| **Objective**    | What the phase achieves                                    |
+| **Input**        | What must exist before it begins                           |
+| **Deliverables** | What must ship                                             |
 | **Entry points** | Named surfaces a user or agent can invoke (R3 requirement) |
-| **Gates** | Verification criteria |
-| **Benchmark** | Measurable acceptance criteria |
-| **Blocks** | What cannot begin until this is ACCEPTED |
-| **Rung target** | The proof rung required at acceptance |
+| **Gates**        | Verification criteria                                      |
+| **Benchmark**    | Measurable acceptance criteria                             |
+| **Blocks**       | What cannot begin until this is ACCEPTED                   |
+| **Rung target**  | The proof rung required at acceptance                      |
 
 **Sequencing rule:** no phase begins before its dependencies are **ACCEPTED** — not merely
 reported complete.
@@ -92,35 +92,35 @@ reported complete.
 
 ## 2. Program Status Board
 
-| Phase | Title | Status | Rung | Blocks |
-|---|---|---|---|---|
-| 1A | Real Tool Runtime | ✅ ACCEPTED | R3 | 1B |
-| 1B | Agent Execution Loop | ✅ ACCEPTED | R3 | 1C |
-| 1C | Model-Driven Autonomous Agent | ✅ ACCEPTED WITH CONDITIONS | R3 | 1D |
-| 1D | Durable Memory, Evidence & Recovery | ✅ ACCEPTED WITH CONDITIONS | R3 | 2A |
-| **2A** | **Repository Intelligence Foundation** | ❌ **NOT ACCEPTED — RE-OPENED** | R2 | **2B** |
-| **2B** | **Repository Reasoning & Impact Analysis** | 🚫 **BLOCKED on 2A** | — | 3A |
-| 3A | ZylCode Project System | ⏸ NOT STARTED | — | 3B, 4, 5, 6A, 8A |
-| 3B | Mission Engine | ⏸ NOT STARTED | — | 4, 14 |
-| 4 | Model Platform / Model Democracy | ⏸ NOT STARTED | — | 14 |
-| 5 | Extension Platform | ⏸ NOT STARTED | — | 6A, 7A, 10, 11, 13, 15 |
-| 6A | Artifact System | ⏸ NOT STARTED | — | 6B, 7A, 9 |
-| 6B | Live Preview Runtime | ⏸ NOT STARTED | — | 7A |
-| 7A | Browser Runtime | ⏸ NOT STARTED | — | 7B, 9, 12 |
-| 7B | Computer Use Foundation | ⏸ NOT STARTED | — | 7C, 7D |
-| 7C | Computer Use Reliability | ⏸ NOT STARTED | — | 7D |
-| 7D | Application Adapters | ⏸ NOT STARTED | — | 9, 12 |
-| 8A | Design Foundation | ⏸ NOT STARTED | — | 8B, 8C |
-| 8B | Professional Design Canvas | ⏸ NOT STARTED | — | 9 |
-| 8C | Design ↔ Code | ⏸ NOT STARTED | — | 9 |
-| 9 | Visual Intelligence & Self-Repair | ⏸ NOT STARTED | — | 12, 16 |
-| 10 | Android Device Lab | ⏸ NOT STARTED | — | 12, 13, 16 |
-| 11 | macOS/iOS Worker | ⏸ NOT STARTED | — | 12, 13 |
-| 12 | Proof Engine v2 | ⏸ NOT STARTED | — | 13, 16 |
-| 13 | Delivery Engine | ⏸ NOT STARTED | — | 16 |
-| 14 | Multi-Agent Engineering | ⏸ NOT STARTED | — | 15, 16 |
-| 15 | Marketplace and Ecosystem | ⏸ NOT STARTED | — | 16 |
-| 16 | Public Commissioning | ⏸ NOT STARTED | — | — |
+| Phase  | Title                                      | Status                          | Rung | Blocks                 |
+| ------ | ------------------------------------------ | ------------------------------- | ---- | ---------------------- |
+| 1A     | Real Tool Runtime                          | ✅ ACCEPTED                     | R3   | 1B                     |
+| 1B     | Agent Execution Loop                       | ✅ ACCEPTED                     | R3   | 1C                     |
+| 1C     | Model-Driven Autonomous Agent              | ✅ ACCEPTED WITH CONDITIONS     | R3   | 1D                     |
+| 1D     | Durable Memory, Evidence & Recovery        | ✅ ACCEPTED WITH CONDITIONS     | R3   | 2A                     |
+| **2A** | **Repository Intelligence Foundation**     | ❌ **NOT ACCEPTED — RE-OPENED** | R2   | **2B**                 |
+| **2B** | **Repository Reasoning & Impact Analysis** | 🚫 **BLOCKED on 2A**            | —    | 3A                     |
+| 3A     | ZylCode Project System                     | ⏸ NOT STARTED                   | —    | 3B, 4, 5, 6A, 8A       |
+| 3B     | Mission Engine                             | ⏸ NOT STARTED                   | —    | 4, 14                  |
+| 4      | Model Platform / Model Democracy           | ⏸ NOT STARTED                   | —    | 14                     |
+| 5      | Extension Platform                         | ⏸ NOT STARTED                   | —    | 6A, 7A, 10, 11, 13, 15 |
+| 6A     | Artifact System                            | ⏸ NOT STARTED                   | —    | 6B, 7A, 9              |
+| 6B     | Live Preview Runtime                       | ⏸ NOT STARTED                   | —    | 7A                     |
+| 7A     | Browser Runtime                            | ⏸ NOT STARTED                   | —    | 7B, 9, 12              |
+| 7B     | Computer Use Foundation                    | ⏸ NOT STARTED                   | —    | 7C, 7D                 |
+| 7C     | Computer Use Reliability                   | ⏸ NOT STARTED                   | —    | 7D                     |
+| 7D     | Application Adapters                       | ⏸ NOT STARTED                   | —    | 9, 12                  |
+| 8A     | Design Foundation                          | ⏸ NOT STARTED                   | —    | 8B, 8C                 |
+| 8B     | Professional Design Canvas                 | ⏸ NOT STARTED                   | —    | 9                      |
+| 8C     | Design ↔ Code                              | ⏸ NOT STARTED                   | —    | 9                      |
+| 9      | Visual Intelligence & Self-Repair          | ⏸ NOT STARTED                   | —    | 12, 16                 |
+| 10     | Android Device Lab                         | ⏸ NOT STARTED                   | —    | 12, 13, 16             |
+| 11     | macOS/iOS Worker                           | ⏸ NOT STARTED                   | —    | 12, 13                 |
+| 12     | Proof Engine v2                            | ⏸ NOT STARTED                   | —    | 13, 16                 |
+| 13     | Delivery Engine                            | ⏸ NOT STARTED                   | —    | 16                     |
+| 14     | Multi-Agent Engineering                    | ⏸ NOT STARTED                   | —    | 15, 16                 |
+| 15     | Marketplace and Ecosystem                  | ⏸ NOT STARTED                   | —    | 16                     |
+| 16     | Public Commissioning                       | ⏸ NOT STARTED                   | —    | —                      |
 
 ---
 
@@ -169,18 +169,19 @@ reconciled against git.
 
 ### Why it was rejected
 
-| Finding | Evidence |
-|---|---|
-| Headline metric measured build output | 14,900 of 15,064 indexed files under `target/`; repository is 254 files |
-| Benchmark fails on re-execution | `Scan should complete in < 120s, took 276.1s` |
-| Zero product integration | `grep intelligence::` outside the module → no output |
-| "Acceptance Demonstration" is an expectation | Section headed "Expected Output" |
-| Workspace tests not green | `225 passed; 1 failed` |
-| Report self-inconsistent | committed with `Commit SHA: (Pending)` |
+| Finding                                      | Evidence                                                                |
+| -------------------------------------------- | ----------------------------------------------------------------------- |
+| Headline metric measured build output        | 14,900 of 15,064 indexed files under `target/`; repository is 254 files |
+| Benchmark fails on re-execution              | `Scan should complete in < 120s, took 276.1s`                           |
+| Zero product integration                     | `grep intelligence::` outside the module → no output                    |
+| "Acceptance Demonstration" is an expectation | Section headed "Expected Output"                                        |
+| Workspace tests not green                    | `225 passed; 1 failed`                                                  |
+| Report self-inconsistent                     | committed with `Commit SHA: (Pending)`                                  |
 
 ### Required remediation
 
 **P0**
+
 1. Path exclusion fixed — separator-agnostic, and verified against the **real** `.gitignore`.
 2. All metrics re-baselined; corrections **visible as corrections**.
 3. Benchmark deterministic, self-enforcing, split into performance vs. quality.
@@ -188,25 +189,20 @@ reconciled against git.
 5. Committed reproduction transcript — command, environment, raw output, SHA.
 6. Registry corrected (`repository_scanner` evidence string, 12 capabilities downgraded).
 
-**P1**
-7. Integrate into `AgentLoop` context assembly + one CLI entry point — **or** downgrade the 11
-   GREEN capabilities to PARTIAL/R2.
-8. Raise quality thresholds to a bar a keyword search would fail: `Precision@10 ≥ 0.60`, and
-   Q5/Q6/Q10 non-zero.
-9. Resolve the failing `router::tests::synthetic_offline_dispatch_returns_parseable_payload`.
-10. Commit or discard the 53 modified files.
+**P1** 7. Integrate into `AgentLoop` context assembly + one CLI entry point — **or** downgrade the 11
+GREEN capabilities to PARTIAL/R2. 8. Raise quality thresholds to a bar a keyword search would fail: `Precision@10 ≥ 0.60`, and
+Q5/Q6/Q10 non-zero. 9. Resolve the failing `router::tests::synthetic_offline_dispatch_returns_parseable_payload`. 10. Commit or discard the 53 modified files.
 
-**P2**
-11. Every future report carries a reproduction block.
+**P2** 11. Every future report carries a reproduction block.
 
 ### Exit gates
 
-| Gate | Criterion |
-|---|---|
-| G1 | Code committed, all P0/P1 items addressed |
-| G2 | Reproduction block present with raw output |
-| G3 | Auditor reproduces benchmark green **and** verifies index scope **and** invokes an entry point |
-| G4 | ACCEPTED |
+| Gate | Criterion                                                                                      |
+| ---- | ---------------------------------------------------------------------------------------------- |
+| G1   | Code committed, all P0/P1 items addressed                                                      |
+| G2   | Reproduction block present with raw output                                                     |
+| G3   | Auditor reproduces benchmark green **and** verifies index scope **and** invokes an entry point |
+| G4   | ACCEPTED                                                                                       |
 
 **Rung target at acceptance** — **R3.** **Blocks** — 2B.
 
@@ -221,18 +217,18 @@ answers, which is worse than no answers.
 
 **Deliverables**
 
-| Deliverable | Acceptance |
-|---|---|
-| Impact analysis | given a symbol/file, affected set returned transitively, ranked, with reasons |
-| Definition/reference traversal | go-to-definition and find-references across the graph |
-| Test-to-code relationships | which tests exercise which code, both directions |
-| Change risk | a risk signal per change, with the factors that produced it, not just a number |
-| Architectural boundary detection | intended module/layer boundaries identified and violations flagged |
-| Task→context retrieval | minimum sufficient working set for a task, token-aware |
-| Incremental context assembly | context updated as a task evolves, without full re-scan |
-| Repository diagnostics | index health: coverage, staleness, unsupported files |
-| Benchmark suite | thresholds that a keyword baseline fails |
-| **Agent integration** | reachable from `AgentLoop` **and** the CLI |
+| Deliverable                      | Acceptance                                                                     |
+| -------------------------------- | ------------------------------------------------------------------------------ |
+| Impact analysis                  | given a symbol/file, affected set returned transitively, ranked, with reasons  |
+| Definition/reference traversal   | go-to-definition and find-references across the graph                          |
+| Test-to-code relationships       | which tests exercise which code, both directions                               |
+| Change risk                      | a risk signal per change, with the factors that produced it, not just a number |
+| Architectural boundary detection | intended module/layer boundaries identified and violations flagged             |
+| Task→context retrieval           | minimum sufficient working set for a task, token-aware                         |
+| Incremental context assembly     | context updated as a task evolves, without full re-scan                        |
+| Repository diagnostics           | index health: coverage, staleness, unsupported files                           |
+| Benchmark suite                  | thresholds that a keyword baseline fails                                       |
+| **Agent integration**            | reachable from `AgentLoop` **and** the CLI                                     |
 
 **Entry points** — `zylcode repo context <task>` · `zylcode repo impact <symbol>` ·
 `AgentLoop::assemble_context`.
@@ -266,7 +262,7 @@ Q5/Q6/Q10 non-zero; index scoped to repository source with the scope asserted in
 **Benchmark** — create a project; restart the app; project is intact; export on machine A,
 import on machine B, graph is intact.
 
-**Critical principle** — *A Project is not a directory.*
+**Critical principle** — _A Project is not a directory._
 
 **Rung target** — R3. **Blocks** — 3B, 4, 5, 6A, 8A.
 
@@ -281,7 +277,7 @@ import on machine B, graph is intact.
 
 - Mission with objective + explicit acceptance criteria.
 - States: `CREATED · UNDERSTANDING · PLANNING · AWAITING_APPROVAL · EXECUTING · VERIFYING ·
-  REPAIRING · BLOCKED · COMPLETE · FAILED · CANCELLED`.
+REPAIRING · BLOCKED · COMPLETE · FAILED · CANCELLED`.
 - Resumable, inspectable, evidence-backed.
 - `COMPLETE` requires every criterion satisfied by a **cited** proof.
 
@@ -330,7 +326,7 @@ providers; permission enforcement; version compatibility checks.
 **Benchmark** — a **reference package in a separate repository** contributes a tool, an agent and
 a UI panel with **zero** core modification.
 
-**Hard rule** — *Extension ABI first. Marketplace second.*
+**Hard rule** — _Extension ABI first. Marketplace second._
 
 **Rung target** — R3. **Blocks** — 6A, 7, 10, 11, 13, 15.
 
@@ -374,6 +370,7 @@ reload state, connected to the **real** dev server.
 ---
 
 ## Phase 7 — Eyes and Hands
+
 > **Phase 7 carries four subphases, 7A–7D.** This is a **decomposition in place**, not a
 > renumbering: phases 8–16 are untouched, and the program remains **16 numbered phases**.
 > Rationale: browser automation and arbitrary-GUI automation share a goal but not a trust
@@ -405,12 +402,13 @@ gate, with every step recorded.
 **Input** — 7A ACCEPTED; **Permissions and Evidence Ledger at R3** (hard prerequisite — see note).
 
 **Deliverables** —
+
 - **Perception** — screen and window capture, window enumeration, accessibility-tree reads.
   Every percept is an artifact with provenance and a timestamp. **No fabricated confidence**
   (Architecture §1.1).
 - **Grounding** — mapping percepts to actionable targets with **measured** confidence. A score
   not derived from a measurement is a defect, not a placeholder.
-- **Action** — mouse, keyboard, clipboard, window management. Every action is recorded *before*
+- **Action** — mouse, keyboard, clipboard, window management. Every action is recorded _before_
   it is performed.
 - **The canonical loop** — `Observe → Ground → Decide → Permission → Act → Observe → Verify`,
   in that order. No action executes without the Permission step; no action is reported
@@ -483,7 +481,7 @@ replayable session artifact and a verification observation for every state-chang
 **Deliverables** — `DesignDocument · Page · Frame · Component · Instance · Variant · Text ·
 Vector · Image · Layout · Constraint · Interaction · Token · Variable · Style`; the **UI-IR**.
 
-**Key decision** — *Design must be machine-readable and agent-addressable.* The AI manipulates
+**Key decision** — _Design must be machine-readable and agent-addressable._ The AI manipulates
 primitives, not screenshots.
 
 **Entry points** — design model API; agent design tools.
@@ -521,7 +519,7 @@ DESIGN MODEL ↔ UI INTERMEDIATE REPRESENTATION ↔ FRAMEWORK ADAPTER
 
 **Adapters** — React · Next.js · HTML/CSS · Flutter · Jetpack Compose · SwiftUI · React Native.
 
-**Hard rule** — *Do not make React DOM the design model.*
+**Hard rule** — _Do not make React DOM the design model._
 
 **Benchmark** — round-trip fidelity measured for **two structurally different targets** (e.g.
 React and Jetpack Compose), with a fidelity number, not a visual impression.
@@ -558,7 +556,7 @@ human intervention, with before/after artifacts and the diff as evidence.
 install APK · launch · tap/type/swipe · inspect crash · Gradle build/test · release artifact.
 
 **Benchmark** — a captured `adb` session: install, launch, interact, screenshot the running app.
-*"Compiles successfully" is R2. Using the application is R3.*
+_"Compiles successfully" is R2. Using the application is R3._
 
 **Rung target** — R3. **Blocks** — 12, 13, 16.
 
@@ -635,7 +633,7 @@ reproducible by a third party.
 **Roles** — Planner · Architect · Developer · Designer · Tester · Reviewer · Debugger · Security ·
 Release.
 
-**Hard rule** — *Agents must not talk to one another by dumping giant chat transcripts.* They
+**Hard rule** — _Agents must not talk to one another by dumping giant chat transcripts._ They
 share:
 
 ```
@@ -686,27 +684,27 @@ obtains comparable numbers.
 
 ## 3. Continuous Maturity Tracks
 
-| Track | Floor raised by |
-|---|---|
-| **Evidence integrity** | every phase (this is the product's core promise) |
-| **Proof Engine** | 1D, 2A, 6B, 7, 9, 10, 11, 12, 13 |
-| **Intelligence Graph** | 2A, 2B, 3A, 8C, 14 |
-| **Model Platform** | 1C, 4, 14, 16 |
-| **Security** | every phase; each extension adds attack surface |
-| **Performance** | 2A (scan), 6B (preview), 10 (device), 16 (benchmark) |
-| **Cross-platform correctness** | every phase; Windows is the primary target |
+| Track                          | Floor raised by                                      |
+| ------------------------------ | ---------------------------------------------------- |
+| **Evidence integrity**         | every phase (this is the product's core promise)     |
+| **Proof Engine**               | 1D, 2A, 6B, 7, 9, 10, 11, 12, 13                     |
+| **Intelligence Graph**         | 2A, 2B, 3A, 8C, 14                                   |
+| **Model Platform**             | 1C, 4, 14, 16                                        |
+| **Security**                   | every phase; each extension adds attack surface      |
+| **Performance**                | 2A (scan), 6B (preview), 10 (device), 16 (benchmark) |
+| **Cross-platform correctness** | every phase; Windows is the primary target           |
 
 ---
 
 ## 4. Gate Definitions
 
-| Gate | Criterion | Decided by |
-|---|---|---|
-| **G0 Design** | Spec exists; PROPOSED/implemented markings accurate | Product owner |
-| **G1 Implementation** | Committed; reachable from a named entry point | Builder |
-| **G2 Self-evidence** | Reproduction block with raw output, scope-annotated metrics | Builder |
-| **G3 Independent audit** | Third party reproduces; entry points invoked; rung falsified | Auditor |
-| **G4 Acceptance** | ACCEPTED / ACCEPTED WITH CONDITIONS / NOT ACCEPTED | Product owner |
+| Gate                     | Criterion                                                    | Decided by    |
+| ------------------------ | ------------------------------------------------------------ | ------------- |
+| **G0 Design**            | Spec exists; PROPOSED/implemented markings accurate          | Product owner |
+| **G1 Implementation**    | Committed; reachable from a named entry point                | Builder       |
+| **G2 Self-evidence**     | Reproduction block with raw output, scope-annotated metrics  | Builder       |
+| **G3 Independent audit** | Third party reproduces; entry points invoked; rung falsified | Auditor       |
+| **G4 Acceptance**        | ACCEPTED / ACCEPTED WITH CONDITIONS / NOT ACCEPTED           | Product owner |
 
 A phase failing G3 is **RE-OPENED** and blocks its dependents.
 
@@ -714,29 +712,29 @@ A phase failing G3 is **RE-OPENED** and blocks its dependents.
 
 ## 5. Immediate Actions
 
-| # | Action | Status |
-|---|---|---|
-| 1 | Audit `0ecea8e` | ✔ DONE — **NOT ACCEPTED** |
-| 2 | Publish governance package | ✔ DONE |
-| 3 | Supersede six-engine / 14-stage drafts | ✔ DONE |
-| 4 | Issue Phase 2A remediation order | ✔ DONE — `PHASE2A_REMEDIATION_ORDER.md` |
-| 5 | Re-audit Phase 2A | blocked on #4 execution — **remediation has NOT started** |
-| 6 | Authorize Phase 2B | blocked on #5 |
-| 7 | Authorize Phase 3A | blocked on #6 |
-| 8 | **Restore a green baseline** | **NEW — required before #5** (see below) |
-| 9 | **Resolve the dirty tree** | **NEW — required before #5** |
+| #   | Action                                 | Status                                                    |
+| --- | -------------------------------------- | --------------------------------------------------------- |
+| 1   | Audit `0ecea8e`                        | ✔ DONE — **NOT ACCEPTED**                                 |
+| 2   | Publish governance package             | ✔ DONE                                                    |
+| 3   | Supersede six-engine / 14-stage drafts | ✔ DONE                                                    |
+| 4   | Issue Phase 2A remediation order       | ✔ DONE — `PHASE2A_REMEDIATION_ORDER.md`                   |
+| 5   | Re-audit Phase 2A                      | blocked on #4 execution — **remediation has NOT started** |
+| 6   | Authorize Phase 2B                     | blocked on #5                                             |
+| 7   | Authorize Phase 3A                     | blocked on #6                                             |
+| 8   | **Restore a green baseline**           | **NEW — required before #5** (see below)                  |
+| 9   | **Resolve the dirty tree**             | **NEW — required before #5**                              |
 
 **Phase 2B does not begin until Phase 2A is re-accepted.**
 
 ### Newly surfaced blockers (sweep `STATUS_SWEEP_2026-09-16.md`)
 
-| Blocker | Detail |
-|---|---|
-| ~~**Suite is red**~~ | ✔ **CLOSED** at `8f751ed`. `router.rs:1030` was asserting a retired XML contract while `synthetic_response()` returns `AgentDecision` JSON — and the test could not have detected either state, because `TokenRouter::new()` read a stale `./vector_cache.db`. Fixed hermetically + falsification-proven. Suite: **261 passed, 0 failed**. See `STATUS_SWEEP_2026-09-16.md` §14. |
-| **Dirty tree** | **88 entries** — characterised 2026-09-17 (`STATUS_SWEEP_2026-09-16.md` §15). 52 modified source files (4157/1545 raw, 3487/875 whitespace-insensitive), 33 untracked. Compiles clean, clippy-clean. It is mostly real work mixed with formatting churn from `core.autocrlf=true` with **no `.gitattributes`**. Includes untracked source `performance.rs` (409 lines) + `system_integration.rs` (391 lines) — declared in `lib.rs`, never reviewed — and `commissioning_test.rs`, a `#[tokio::test]` attempting **real provider inference** that **asserts nothing** and returns `Ok(())` on failure. Committing that as-is puts a no-op, network-dependent test into CI. Per-group disposition in §15.7. **Owner decision.** |
-| **Retracted claim re-entered** | **Finding F.** `PHASE1C_COMPLETION_REPORT.md:59` records `156 tools` as removed-retracted. It is present in **8 files**, including **tracked** `FINAL_SUMMARY.md`. Measured: **112** tool IDs. Corrected in `FINAL_SUMMARY.md`; standing grep check added to `README_INDEX.md` §7. Should become a CI step. |
-| **Master prompt clobbered** | **Finding G.** `docs/governance/DEEPSEEK_MASTER_PROMPT_V21.md` — committed 522 lines → working tree 156 lines of a stale v1.0 `ZYLCODE_COMMERCIAL_MODEL.md`, **missing the v1.1 gate correction**. Recoverable from HEAD. **Not reverted** (another session's in-flight edit). **Owner decision.** |
-| **⛔ MAIN DOES NOT COMPILE** | **Highest priority.** A clean worktree at `1338d0b` fails `cargo check --lib` with **10 errors**: `E0583` ×2 (`lib.rs` declares `pub mod performance;` / `pub mod system_integration;` but **neither file is in git** — they exist only as *untracked* working-tree files) + `E0599` ×8 (`enhanced_bridge.rs` **at HEAD line 87–94 calls** eight `get_more_*_tools()` methods it **does not define**; they exist only in the dirty tree, +775 lines). **Two independent defects, both committed.** The working tree compiles *because* of the uncommitted work — so the defect is invisible to whoever is editing it. `.github/workflows/ci.yml:69` runs `cargo check` on a clean checkout, so CI must be red (CI state itself **NOT OBSERVABLE** — invalid token). See `PARALLEL_EXECUTION_MANIFEST.md` §9. **Repair sequence: FIX-1 commit the 2 modules → FIX-2 commit the 8 methods → verify a clean worktree builds.** Owner decision: this commits another session's unreviewed work. |
-| **Dirty tree is load-bearing** | The 87-entry dirty tree **cannot be discarded** as previously recommended — it holds the only copy of the two missing modules and the 775 lines of `get_more_*` implementations. Discarding it leaves `main` permanently unbuildable. `STATUS_SWEEP §15.7`'s "revert Class D" advice stands, but "delete the untracked completion reports" must now exclude any file the build depends on. |
-| **Build blocker was misdiagnosed** | The sweep recorded `cargo build` as *"blocked by sandbox (build-script execution denied)"*. **Falsified 2026-09-17.** Two real causes, neither a sandbox restriction: (1) `git worktree add /tmp/…` resolves to `C:/tmp/…` — outside the writable tree; use a path **inside** the project. (2) `--offline` against an empty registry fails on `clap_derive`; the first build needs network. **Worktrees are viable** — proven by building one (`.wt/probe`, then removed). Blocker #3 is re-classified: not `BLOCKED BY SANDBOX` but **blocked by broken HEAD**. |
-| **Registry has no rungs** | 23 of 34 entries carry `rung: null`. Remediation P1-6 was half-applied: the GREEN count was corrected, but the honest downgrade was not completed. |
+| Blocker                            | Detail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ~~**Suite is red**~~               | ✔ **CLOSED** at `8f751ed`. `router.rs:1030` was asserting a retired XML contract while `synthetic_response()` returns `AgentDecision` JSON — and the test could not have detected either state, because `TokenRouter::new()` read a stale `./vector_cache.db`. Fixed hermetically + falsification-proven. Suite: **261 passed, 0 failed**. See `STATUS_SWEEP_2026-09-16.md` §14.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| **Dirty tree**                     | **88 entries** — characterised 2026-09-17 (`STATUS_SWEEP_2026-09-16.md` §15). 52 modified source files (4157/1545 raw, 3487/875 whitespace-insensitive), 33 untracked. Compiles clean, clippy-clean. It is mostly real work mixed with formatting churn from `core.autocrlf=true` with **no `.gitattributes`**. Includes untracked source `performance.rs` (409 lines) + `system_integration.rs` (391 lines) — declared in `lib.rs`, never reviewed — and `commissioning_test.rs`, a `#[tokio::test]` attempting **real provider inference** that **asserts nothing** and returns `Ok(())` on failure. Committing that as-is puts a no-op, network-dependent test into CI. Per-group disposition in §15.7. **Owner decision.**                                                                                                                                                                                                                                                              |
+| **Retracted claim re-entered**     | **Finding F.** `PHASE1C_COMPLETION_REPORT.md:59` records `156 tools` as removed-retracted. It is present in **8 files**, including **tracked** `FINAL_SUMMARY.md`. Measured: **112** tool IDs. Corrected in `FINAL_SUMMARY.md`; standing grep check added to `README_INDEX.md` §7. Should become a CI step.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| **Master prompt clobbered**        | **Finding G.** `docs/governance/DEEPSEEK_MASTER_PROMPT_V21.md` — committed 522 lines → working tree 156 lines of a stale v1.0 `ZYLCODE_COMMERCIAL_MODEL.md`, **missing the v1.1 gate correction**. Recoverable from HEAD. **Not reverted** (another session's in-flight edit). **Owner decision.**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| **⛔ MAIN DOES NOT COMPILE**       | **Highest priority.** A clean worktree at `1338d0b` fails `cargo check --lib` with **10 errors**: `E0583` ×2 (`lib.rs` declares `pub mod performance;` / `pub mod system_integration;` but **neither file is in git** — they exist only as _untracked_ working-tree files) + `E0599` ×8 (`enhanced_bridge.rs` **at HEAD line 87–94 calls** eight `get_more_*_tools()` methods it **does not define**; they exist only in the dirty tree, +775 lines). **Two independent defects, both committed.** The working tree compiles _because_ of the uncommitted work — so the defect is invisible to whoever is editing it. `.github/workflows/ci.yml:69` runs `cargo check` on a clean checkout, so CI must be red (CI state itself **NOT OBSERVABLE** — invalid token). See `PARALLEL_EXECUTION_MANIFEST.md` §9. **Repair sequence: FIX-1 commit the 2 modules → FIX-2 commit the 8 methods → verify a clean worktree builds.** Owner decision: this commits another session's unreviewed work. |
+| **Dirty tree is load-bearing**     | The 87-entry dirty tree **cannot be discarded** as previously recommended — it holds the only copy of the two missing modules and the 775 lines of `get_more_*` implementations. Discarding it leaves `main` permanently unbuildable. `STATUS_SWEEP §15.7`'s "revert Class D" advice stands, but "delete the untracked completion reports" must now exclude any file the build depends on.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| **Build blocker was misdiagnosed** | The sweep recorded `cargo build` as _"blocked by sandbox (build-script execution denied)"_. **Falsified 2026-09-17.** Two real causes, neither a sandbox restriction: (1) `git worktree add /tmp/…` resolves to `C:/tmp/…` — outside the writable tree; use a path **inside** the project. (2) `--offline` against an empty registry fails on `clap_derive`; the first build needs network. **Worktrees are viable** — proven by building one (`.wt/probe`, then removed). Blocker #3 is re-classified: not `BLOCKED BY SANDBOX` but **blocked by broken HEAD**.                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| **Registry has no rungs**          | 23 of 34 entries carry `rung: null`. Remediation P1-6 was half-applied: the GREEN count was corrected, but the honest downgrade was not completed.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |

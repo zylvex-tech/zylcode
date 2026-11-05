@@ -18,20 +18,20 @@ ZylCode is a **partial Agent Kernel on a partial Trust Foundation**, with a **no
 Intelligence Graph**, a **non-functional Computer-Use skeleton**, and **nothing above it**. The
 governing program sits at **Phase 2A RE-OPENED**; **Phase 2B is BLOCKED**; **Phases 3A–16 are NOT
 STARTED**. The workspace **compiles**, and **225 of 226 library tests pass** — but the suite is **red**
-on one committed test, and the red test is the *same* finding the Phase 2A audit recorded. No
+on one committed test, and the red test is the _same_ finding the Phase 2A audit recorded. No
 remediation of Phase 2A has begun.
 
 ---
 
 ## 2. What I actually executed
 
-| Check | Command | Result |
-|---|---|---|
-| Build (workspace) | `cargo build --workspace` | ❌ **BLOCKED BY SANDBOX** — not a code failure (see §3) |
-| Type/borrow check | `cargo check --workspace --lib --offline` | ✅ **PASS** — `Finished dev profile in 4.78s` |
-| Library tests | `cargo test --workspace --lib --offline` | ❌ **225 passed; 1 failed** in 8.68s |
-| Repo scope | `git ls-files` | 243 tracked files |
-| Disk scope | `find . -type f` | 24,939 files (18,215 under `target/`, 6,363 under `node_modules/`) |
+| Check             | Command                                   | Result                                                             |
+| ----------------- | ----------------------------------------- | ------------------------------------------------------------------ |
+| Build (workspace) | `cargo build --workspace`                 | ❌ **BLOCKED BY SANDBOX** — not a code failure (see §3)            |
+| Type/borrow check | `cargo check --workspace --lib --offline` | ✅ **PASS** — `Finished dev profile in 4.78s`                      |
+| Library tests     | `cargo test --workspace --lib --offline`  | ❌ **225 passed; 1 failed** in 8.68s                               |
+| Repo scope        | `git ls-files`                            | 243 tracked files                                                  |
+| Disk scope        | `find . -type f`                          | 24,939 files (18,215 under `target/`, 6,363 under `node_modules/`) |
 
 **Reproduction**
 
@@ -62,7 +62,7 @@ Caused by: Access is denied. (os error 5)
 **This is not a code defect.** The sandbox denies **process execution** of build-script binaries
 inside `target/`. I confirmed the diagnosis two ways:
 
-1. `touch target/.sweep_probe` → **succeeded**. Writes are permitted; only *execution* is denied.
+1. `touch target/.sweep_probe` → **succeeded**. Writes are permitted; only _execution_ is denied.
 2. `Get-Process` found **no** `zylcode`, `cargo`, or `rustc` process holding locks, so it is not a
    file-lock contention problem.
 3. `cargo check --workspace --lib --offline` — which needs no build-script execution for
@@ -79,11 +79,13 @@ the sandbox (owner machine or CI). Do not convert this to a pass.
 **Test:** `crates/zylcode-core/src/router.rs:1022` `synthetic_offline_dispatch_returns_parseable_payload`
 
 **Assertion that fails (line 1030):**
+
 ```rust
 assert!(text.contains("<zylcode-response>"));
 ```
 
 **What the code actually returns** (`router.rs:947`, `synthetic_response`):
+
 ```rust
 serde_json::json!({
     "action": "Complete",
@@ -97,17 +99,19 @@ assertion**, not a product regression — the second assertion (`contains("build
 pass, since the prompt is interpolated into the JSON summary.
 
 **Verified this is committed, not a working-tree artifact:**
+
 ```
 $ git show HEAD:crates/zylcode-core/src/router.rs | grep -A12 "fn synthetic_response"
     serde_json::json!({ "action": "Complete", ...
 $ git show HEAD:crates/zylcode-core/src/router.rs | grep -A10 "synthetic_offline_dispatch"
     assert!(text.contains("<zylcode-response>"));
 ```
+
 Both the JSON body and the XML assertion are present **in HEAD**. The committed tree is red.
 
 **Why it matters beyond the one test:** `.github/workflows/ci.yml:77` runs
 `cargo test --workspace --all-targets`. On a runner where CI is enabled, this test fails the build.
-It is the second consecutive pass carrying the *same* failure — the audit recorded it, and it is
+It is the second consecutive pass carrying the _same_ failure — the audit recorded it, and it is
 still unfixed.
 
 **Note:** this test exercises `dispatch_prompt` with `RouterConfig::default()` and no API keys. It
@@ -121,18 +125,18 @@ assertion is simply wrong rather than flaky.
 The audit's required remediation (`PHASE2A_INDEPENDENT_AUDIT.md` §9) is **P0 1–5, P1 6–9, P2 10**.
 Status of each, checked against the code:
 
-| # | Requirement | Status | Evidence |
-|---|---|---|---|
-| **P0-1** | Fix path exclusion; normalise separators or use `Path::components()`; replace hand-rolled matcher with the `ignore` crate; test against the **real** `.gitignore` | ❌ **NOT DONE** | `classifier.rs:220` `should_exclude()` still uses `path.to_string_lossy()` with no normalisation. `scanner.rs:61` still `WalkDir` + hand-rolled `is_gitignored`. **`ignore` crate is not a dependency.** The array *was* partially patched (bare `target/`, `node_modules/`, `.git/` added at lines 237–239), which is why the defect now *partially* self-heals on Windows — a mitigation, not the fix the audit required. |
-| **P0-2** | Re-baseline every number; expected genuine index ≈ **254 files** | ❌ **NOT DONE** | Measured now: **243 tracked** + 35 untracked = **278 non-ignored files**, against **24,939 on disk**. No re-baselined figure is recorded anywhere. |
-| **P0-3** | Make the benchmark deterministic and self-enforcing; assert headline numbers | ❌ **NOT DONE** | Thresholds still assert only `file_count() > 50` per the audit. |
-| **P0-4** | Fix the timing budget (276.1s measured vs 12.7s claimed) | ❌ **NOT DONE** | No files/second budget present. |
-| **P0-5** | Produce a real acceptance demonstration (committed transcript, replayable) | ❌ **NOT DONE** | No such transcript exists. |
-| **P1-6** | Integrate into `AgentLoop` **or** downgrade the 11 GREEN entries | ⚠️ **HALF-APPLIED** | The registry *was* corrected: 12 entries now `DISPUTED`, `summary.green: 20` with an explanatory note. **But the integration still does not exist** — so the honest resolution (downgrade to `PARTIAL`/`R2` with rungs) is incomplete: 23 of 34 entries still carry `rung: null`. |
-| **P1-7** | Strengthen thresholds; `Precision@10 ≥ 0.60`; fix Q5/Q6/Q10 to non-zero | ❌ **NOT DONE** | Unchanged. |
-| **P1-8** | Fill `Commit SHA` / `Push Verification` **before** committing the report | ❌ **NOT DONE** | Historical defect in the 2A report. |
-| **P1-9** | Commit or discard the modified files | ❌ **WORSE** | **94 entries** in `git status` now (53 at audit; 89 earlier in this sweep; **94 by the end** — another session is actively writing). Of these, **56 are under `crates/`+`apps/`** (source the audit did not review) and 8 under `docs/`. The tree has become *more* dirty, and now includes untracked **source** files. |
-| **P2-10** | Reproduction section in the completion report | ❌ **NOT DONE** | — |
+| #         | Requirement                                                                                                                                                       | Status              | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **P0-1**  | Fix path exclusion; normalise separators or use `Path::components()`; replace hand-rolled matcher with the `ignore` crate; test against the **real** `.gitignore` | ❌ **NOT DONE**     | `classifier.rs:220` `should_exclude()` still uses `path.to_string_lossy()` with no normalisation. `scanner.rs:61` still `WalkDir` + hand-rolled `is_gitignored`. **`ignore` crate is not a dependency.** The array _was_ partially patched (bare `target/`, `node_modules/`, `.git/` added at lines 237–239), which is why the defect now _partially_ self-heals on Windows — a mitigation, not the fix the audit required. |
+| **P0-2**  | Re-baseline every number; expected genuine index ≈ **254 files**                                                                                                  | ❌ **NOT DONE**     | Measured now: **243 tracked** + 35 untracked = **278 non-ignored files**, against **24,939 on disk**. No re-baselined figure is recorded anywhere.                                                                                                                                                                                                                                                                          |
+| **P0-3**  | Make the benchmark deterministic and self-enforcing; assert headline numbers                                                                                      | ❌ **NOT DONE**     | Thresholds still assert only `file_count() > 50` per the audit.                                                                                                                                                                                                                                                                                                                                                             |
+| **P0-4**  | Fix the timing budget (276.1s measured vs 12.7s claimed)                                                                                                          | ❌ **NOT DONE**     | No files/second budget present.                                                                                                                                                                                                                                                                                                                                                                                             |
+| **P0-5**  | Produce a real acceptance demonstration (committed transcript, replayable)                                                                                        | ❌ **NOT DONE**     | No such transcript exists.                                                                                                                                                                                                                                                                                                                                                                                                  |
+| **P1-6**  | Integrate into `AgentLoop` **or** downgrade the 11 GREEN entries                                                                                                  | ⚠️ **HALF-APPLIED** | The registry _was_ corrected: 12 entries now `DISPUTED`, `summary.green: 20` with an explanatory note. **But the integration still does not exist** — so the honest resolution (downgrade to `PARTIAL`/`R2` with rungs) is incomplete: 23 of 34 entries still carry `rung: null`.                                                                                                                                           |
+| **P1-7**  | Strengthen thresholds; `Precision@10 ≥ 0.60`; fix Q5/Q6/Q10 to non-zero                                                                                           | ❌ **NOT DONE**     | Unchanged.                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| **P1-8**  | Fill `Commit SHA` / `Push Verification` **before** committing the report                                                                                          | ❌ **NOT DONE**     | Historical defect in the 2A report.                                                                                                                                                                                                                                                                                                                                                                                         |
+| **P1-9**  | Commit or discard the modified files                                                                                                                              | ❌ **WORSE**        | **94 entries** in `git status` now (53 at audit; 89 earlier in this sweep; **94 by the end** — another session is actively writing). Of these, **56 are under `crates/`+`apps/`** (source the audit did not review) and 8 under `docs/`. The tree has become _more_ dirty, and now includes untracked **source** files.                                                                                                     |
+| **P2-10** | Reproduction section in the completion report                                                                                                                     | ❌ **NOT DONE**     | —                                                                                                                                                                                                                                                                                                                                                                                                                           |
 
 **Net: 0 of 10 remediation items complete. 1 half-applied.**
 
@@ -143,37 +147,37 @@ Status of each, checked against the code:
 GREEN is not one switch. Under the Proof Graph (**R0 CLAIMED → R1 OBSERVED → R2 EXECUTED →
 R3 VERIFIED → R4 REPRODUCIBLE → R5 COMMISSIONED**), and the rung-ceiling rule (A7), the minimum path is:
 
-### Gate 1 — get back to a *working* baseline (prerequisite for everything)
+### Gate 1 — get back to a _working_ baseline (prerequisite for everything)
 
-| # | Required | Why |
-|---|---|---|
-| 1 | **Fix the `router.rs:1030` assertion** | The suite must be green before any claim. One-line fix: assert the JSON contract, or restore the XML contract. |
-| 2 | **Establish a reproducible build** | `cargo build --workspace` must be run and captured outside the sandbox. Until then, BUILD is unobserved. |
-| 3 | **Resolve the 94-entry dirty tree** | An unreviewed tree is not a reviewable state (audit P1-9). Now includes untracked source. |
+| #   | Required                               | Why                                                                                                            |
+| --- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| 1   | **Fix the `router.rs:1030` assertion** | The suite must be green before any claim. One-line fix: assert the JSON contract, or restore the XML contract. |
+| 2   | **Establish a reproducible build**     | `cargo build --workspace` must be run and captured outside the sandbox. Until then, BUILD is unobserved.       |
+| 3   | **Resolve the 94-entry dirty tree**    | An unreviewed tree is not a reviewable state (audit P1-9). Now includes untracked source.                      |
 
 ### Gate 2 — Phase 2A remediation (P0 1–5)
 
-| # | Required | Why it blocks GREEN |
-|---|---|---|
-| 4 | **`should_exclude()` normalised; `ignore` crate adopted** | The index currently counts build output on the primary target platform. Any metric from it is mis-scoped. |
-| 5 | **Re-baselined numbers from a correctly-scoped index (~278 files)** | Correcting a false metric is what makes the capability honest. |
-| 6 | **Deterministic, self-enforcing benchmark** | A benchmark that passes on the author's machine and fails on a reviewer's is not evidence. |
-| 7 | **Machine-independent timing budget** | `12.7s` vs `276.1s` is a 21× discrepancy; a wall-clock threshold cannot be the gate. |
-| 8 | **Real acceptance demonstration** | R3 requires a captured transcript a third party can replay. |
+| #   | Required                                                            | Why it blocks GREEN                                                                                       |
+| --- | ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| 4   | **`should_exclude()` normalised; `ignore` crate adopted**           | The index currently counts build output on the primary target platform. Any metric from it is mis-scoped. |
+| 5   | **Re-baselined numbers from a correctly-scoped index (~278 files)** | Correcting a false metric is what makes the capability honest.                                            |
+| 6   | **Deterministic, self-enforcing benchmark**                         | A benchmark that passes on the author's machine and fails on a reviewer's is not evidence.                |
+| 7   | **Machine-independent timing budget**                               | `12.7s` vs `276.1s` is a 21× discrepancy; a wall-clock threshold cannot be the gate.                      |
+| 8   | **Real acceptance demonstration**                                   | R3 requires a captured transcript a third party can replay.                                               |
 
 ### Gate 3 — honesty (P1 6–8)
 
-| # | Required | Why |
-|---|---|---|
-| 9 | **Integrate repository intelligence into `AgentLoop`, or downgrade all 11 entries with rungs** | **This is the specific thing that makes R2 → R3 impossible today.** No named product surface reaches the module. |
-| 10 | **`Precision@10 ≥ 0.60` with non-zero Q5/Q6/Q10** | The current bar is weaker than keyword search. |
-| 11 | **Correct the registry's remaining `rung: null` entries** | 23 of 34 entries have no rung. A registry without rungs cannot support a claim. |
+| #   | Required                                                                                       | Why                                                                                                              |
+| --- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| 9   | **Integrate repository intelligence into `AgentLoop`, or downgrade all 11 entries with rungs** | **This is the specific thing that makes R2 → R3 impossible today.** No named product surface reaches the module. |
+| 10  | **`Precision@10 ≥ 0.60` with non-zero Q5/Q6/Q10**                                              | The current bar is weaker than keyword search.                                                                   |
+| 11  | **Correct the registry's remaining `rung: null` entries**                                      | 23 of 34 entries have no rung. A registry without rungs cannot support a claim.                                  |
 
 ### Gate 4 — independent re-audit (G3)
 
-| # | Required | Why |
-|---|---|---|
-| 12 | **Third-party reproduction of the remediated commit** | Builders do not certify their own work. Phase 2A is re-accepted only by re-audit. |
+| #   | Required                                              | Why                                                                               |
+| --- | ----------------------------------------------------- | --------------------------------------------------------------------------------- |
+| 12  | **Third-party reproduction of the remediated commit** | Builders do not certify their own work. Phase 2A is re-accepted only by re-audit. |
 
 **Only after Gate 4 does Phase 2A reach R3 and Phase 2B unblock.** Everything above is the minimum —
 not the path to a shipped product, which is Phases 3A–16.
@@ -182,19 +186,19 @@ not the path to a shipped product, which is Phases 3A–16.
 
 ## 7. Rung table — current (unchanged from `ARCHITECTURE_V2.md` §9)
 
-| System | Rung | Status |
-|---|---|---|
-| Trust foundation — Evidence Ledger | **R3** | PARTIAL |
-| Agent Kernel | **R3** | PARTIAL — *live multi-provider commissioning outstanding* |
-| Execution Engine — shell/tools | **R3** | PARTIAL |
-| Intelligence Graph | **R2** | PARTIAL — fails benchmark on re-run; zero product integration |
-| Model Platform | **R1** | PARTIAL — no capability-based routing |
-| Delivery Engine | **R1** | PARTIAL — CI blocked externally |
-| Project System · Mission Engine · Extension Platform · Artifact Bus · Live Preview | **R0** | PROPOSED |
-| Execution Engine — browser / Android / macOS-iOS | **R0** | PROPOSED |
-| Vision Studio · Visual Intelligence | **R0** | PROPOSED |
-| **Computer-Use Engine** | **R0** | **PROPOSED — non-functional skeleton present** |
-| Proof Engine v2 · Multi-Agent · Marketplace | **R0** | PROPOSED |
+| System                                                                             | Rung   | Status                                                        |
+| ---------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------- |
+| Trust foundation — Evidence Ledger                                                 | **R3** | PARTIAL                                                       |
+| Agent Kernel                                                                       | **R3** | PARTIAL — _live multi-provider commissioning outstanding_     |
+| Execution Engine — shell/tools                                                     | **R3** | PARTIAL                                                       |
+| Intelligence Graph                                                                 | **R2** | PARTIAL — fails benchmark on re-run; zero product integration |
+| Model Platform                                                                     | **R1** | PARTIAL — no capability-based routing                         |
+| Delivery Engine                                                                    | **R1** | PARTIAL — CI blocked externally                               |
+| Project System · Mission Engine · Extension Platform · Artifact Bus · Live Preview | **R0** | PROPOSED                                                      |
+| Execution Engine — browser / Android / macOS-iOS                                   | **R0** | PROPOSED                                                      |
+| Vision Studio · Visual Intelligence                                                | **R0** | PROPOSED                                                      |
+| **Computer-Use Engine**                                                            | **R0** | **PROPOSED — non-functional skeleton present**                |
+| Proof Engine v2 · Multi-Agent · Marketplace                                        | **R0** | PROPOSED                                                      |
 
 **Highest rung in the repository: R3.** Nothing is at R4 or R5. No public capability claim above
 `AVAILABLE` is permitted — see `PUBLIC_CLAIM_MATRIX.yaml`.
@@ -203,16 +207,16 @@ not the path to a shipped product, which is Phases 3A–16.
 
 ## 8. Program status board (authoritative)
 
-| Phase | Status |
-|---|---|
-| 1A · 1B | ✅ ACCEPTED (R3) |
-| 1C · 1D | ✅ ACCEPTED WITH CONDITIONS (R3) |
-| **2A** | ❌ **NOT ACCEPTED — RE-OPENED** (R2) |
-| **2B** | 🚫 **BLOCKED on 2A** |
-| 3A · 3B · 4 · 5 · 6A · 6B | ⏸ NOT STARTED |
-| 7A · 7B · 7C · 7D | ⏸ NOT STARTED |
-| 8A · 8B · 8C · 9 · 10 · 11 | ⏸ NOT STARTED |
-| 12 · 13 · 14 · 15 · 16 | ⏸ NOT STARTED |
+| Phase                      | Status                               |
+| -------------------------- | ------------------------------------ |
+| 1A · 1B                    | ✅ ACCEPTED (R3)                     |
+| 1C · 1D                    | ✅ ACCEPTED WITH CONDITIONS (R3)     |
+| **2A**                     | ❌ **NOT ACCEPTED — RE-OPENED** (R2) |
+| **2B**                     | 🚫 **BLOCKED on 2A**                 |
+| 3A · 3B · 4 · 5 · 6A · 6B  | ⏸ NOT STARTED                        |
+| 7A · 7B · 7C · 7D          | ⏸ NOT STARTED                        |
+| 8A · 8B · 8C · 9 · 10 · 11 | ⏸ NOT STARTED                        |
+| 12 · 13 · 14 · 15 · 16     | ⏸ NOT STARTED                        |
 
 ---
 
@@ -221,16 +225,17 @@ not the path to a shipped product, which is Phases 3A–16.
 ### 9.1 FIXED — 63 root-level `.md` files; 23 assert completion; none quarantined
 
 **Severity: high.** This is the most dangerous documentation state in the repository, because it is
-the *first thing an agent sees*. **23 root files assert a completion claim**, using a **retired phase
+the _first thing an agent sees_. **23 root files assert a completion claim**, using a **retired phase
 numbering scheme**, while governance says Phase 2A is re-opened and 3A–16 are unstarted. **Zero carry
 a superseded banner.** (15 also carry `*_COMPLETE*`/`*_SUMMARY*` in their filenames.)
 
 Worst offenders, all unlabelled:
+
 - `PROJECT_COMPLETE.md` — "🎉 ZylCode Enhancement Project: COMPLETE"
 - `PHASE4_COMPLETE.md` — "All Phase 4 Requirements Met"
 - `PHASE3_COMPLETE.md` — "Core Systems Implemented"
 - `IMPLEMENTATION_STATUS.md` — "Phase 1: COMPLETE ✅", "Enhanced MCP Bridge (100+ Tools)"
-- `strategic-plan.md` — market-leadership claims (a *different file* from the already-quarantined `docs/STRATEGIC_PLAN.md`)
+- `strategic-plan.md` — market-leadership claims (a _different file_ from the already-quarantined `docs/STRATEGIC_PLAN.md`)
 
 **Fix applied:** created `docs/README_INDEX.md` — a governing map that states the mandatory reading
 order, classifies all 63 root files, enumerates the quarantined set, and restates the phase-numbering
@@ -238,16 +243,16 @@ hazard. The files themselves are **not** rewritten or deleted (Protocol §4.8 �
 
 ### 9.2 FOUND — 8 broken internal documentation references
 
-| Missing path | Referenced from |
-|---|---|
-| `docs/brand/BRAND.md` | brand work order (not yet created — expected) |
-| `docs/brand/README.md` | brand work order (not yet created — expected) |
-| `docs/design/DESIGN_SYSTEM_SPEC.md` | brand work order (not yet created — expected) |
-| `docs/research/PENPOT_TO_VISION_STUDIO_LESSONS.md` | `DEEPSEEK_PUBLIC_FOUNDATION_PROMPT_V1.md:215` — **genuine gap**, no such track item |
-| `docs/architecture/WEB_CLOUD_ARCHITECTURE.md` | `DEEPSEEK_PUBLIC_FOUNDATION_PROMPT_V1.md:237` — **genuine gap**, referenced by `CLOUD-PLATFORM` track but never authored |
-| `docs/ZYLCODE_CONSTITUTION.md` | `PHASE2A_INDEPENDENT_AUDIT.md` — *historical narrative*, correctly absent |
-| `docs/ZYLCODE_ARCHITECTURE_V2.md` | `PHASE2A_INDEPENDENT_AUDIT.md` — *historical narrative*, correctly absent |
-| `docs/ZYLCODE_ROADMAP_V2.md` | `PHASE2A_INDEPENDENT_AUDIT.md` — *historical narrative*, correctly absent |
+| Missing path                                       | Referenced from                                                                                                          |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `docs/brand/BRAND.md`                              | brand work order (not yet created — expected)                                                                            |
+| `docs/brand/README.md`                             | brand work order (not yet created — expected)                                                                            |
+| `docs/design/DESIGN_SYSTEM_SPEC.md`                | brand work order (not yet created — expected)                                                                            |
+| `docs/research/PENPOT_TO_VISION_STUDIO_LESSONS.md` | `DEEPSEEK_PUBLIC_FOUNDATION_PROMPT_V1.md:215` — **genuine gap**, no such track item                                      |
+| `docs/architecture/WEB_CLOUD_ARCHITECTURE.md`      | `DEEPSEEK_PUBLIC_FOUNDATION_PROMPT_V1.md:237` — **genuine gap**, referenced by `CLOUD-PLATFORM` track but never authored |
+| `docs/ZYLCODE_CONSTITUTION.md`                     | `PHASE2A_INDEPENDENT_AUDIT.md` — _historical narrative_, correctly absent                                                |
+| `docs/ZYLCODE_ARCHITECTURE_V2.md`                  | `PHASE2A_INDEPENDENT_AUDIT.md` — _historical narrative_, correctly absent                                                |
+| `docs/ZYLCODE_ROADMAP_V2.md`                       | `PHASE2A_INDEPENDENT_AUDIT.md` — _historical narrative_, correctly absent                                                |
 
 The last three are **not defects**: they are the audit describing files it found stale, which have
 since been superseded and removed. The first two are **real gaps** in the public-foundation prompt.
@@ -271,11 +276,11 @@ claim even though its GREEN count was corrected. Audit P1-6 is half-done.
 The audit recorded 53 modified files. There are now **94** status entries — **56 under `crates/`+
 `apps/`** — including **untracked source** that is not in any prior report:
 
-| File | Lines | Assessment |
-|---|---|---|
-| `crates/zylcode-mcp/src/performance.rs` | 409 | Declared in `lib.rs` — compiles as part of the crate |
-| `crates/zylcode-mcp/src/system_integration.rs` | 391 | Declared in `lib.rs` — compiles as part of the crate |
-| `crates/zylcode-core/tests/commissioning_test.rs` | — | **`#[tokio::test]` attempting REAL provider inference** (Ollama or fail) |
+| File                                              | Lines | Assessment                                                               |
+| ------------------------------------------------- | ----- | ------------------------------------------------------------------------ |
+| `crates/zylcode-mcp/src/performance.rs`           | 409   | Declared in `lib.rs` — compiles as part of the crate                     |
+| `crates/zylcode-mcp/src/system_integration.rs`    | 391   | Declared in `lib.rs` — compiles as part of the crate                     |
+| `crates/zylcode-core/tests/commissioning_test.rs` | —     | **`#[tokio::test]` attempting REAL provider inference** (Ollama or fail) |
 
 **Note on `commissioning_test.rs`:** it is an integration test that tries to reach a real provider.
 `ci.yml:77` runs `--all-targets`, which **includes integration tests**, so if this file were committed
@@ -357,18 +362,18 @@ constructor exists because ambient cache state must not be reachable from a test
 
 **Part 2 — the test now asserts the real contract.** It previously substring-matched
 `"<zylcode-response>"`, an **XML envelope that is no longer the protocol**. The live contract is
-`AgentDecision` JSON — `agent.rs:1447` instructs the model to *"respond with valid JSON matching the
-AgentDecision protocol"*, and `pipeline.rs:159` consumes `dispatch_prompt` output. The test now
+`AgentDecision` JSON — `agent.rs:1447` instructs the model to _"respond with valid JSON matching the
+AgentDecision protocol"_, and `pipeline.rs:159` consumes `dispatch_prompt` output. The test now
 **parses** the payload into `AgentDecision` and asserts the `Complete` variant. A parse is strictly
 stronger than a substring match: a substring match cannot catch a payload the consumer would reject.
 
 ### 14.3 Falsification evidence (A11 — assert effect, not success)
 
-| Step | Condition | Expected | Observed |
-|---|---|---|---|
-| 1 | Clean contract, stale cache present | PASS | ✅ `1 passed` |
-| 2 | **Corrupted** contract, stale cache present | **FAIL** | ✅ `synthetic response is not a valid AgentDecision: trailing characters at line 1 column 222` |
-| 3 | Clean contract, full suite | PASS | ✅ `226 passed; 0 failed` + `35 passed; 0 failed` |
+| Step | Condition                                   | Expected | Observed                                                                                       |
+| ---- | ------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------- |
+| 1    | Clean contract, stale cache present         | PASS     | ✅ `1 passed`                                                                                  |
+| 2    | **Corrupted** contract, stale cache present | **FAIL** | ✅ `synthetic response is not a valid AgentDecision: trailing characters at line 1 column 222` |
+| 3    | Clean contract, full suite                  | PASS     | ✅ `226 passed; 0 failed` + `35 passed; 0 failed`                                              |
 
 Step 2 is the one that matters. Before the fix, the same corruption **passed silently**. After it, the
 test fails as it must.
@@ -387,7 +392,7 @@ test result: ok. 35 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fin
 ### 14.5 What this changes for Phase 2A
 
 **Nothing yet — and it is important not to read this as progress on the phase.** The fix restores a
-*working baseline*, which is a precondition for the re-audit, not a remediation item. The audit's
+_working baseline_, which is a precondition for the re-audit, not a remediation item. The audit's
 findings stand unchanged: **0 of 10 remediation items complete**, P0-1 (`should_exclude()`
 normalisation + the `ignore` crate) still unimplemented, and the Intelligence Graph still has zero
 product integration. Phase 2A remains at **R2**.
@@ -416,7 +421,7 @@ Three specific hazards were found in the same file, all worth a lint or a review
    converting it into either (a) a `#[ignore]`-gated test that asserts real outcomes, or (b) a script
    outside `tests/`.
 3. **Two different "protocols" share one tag name — a genuine trap, but not a defect.** The
-   `<zylcode-response>` envelope is **still live and correct** for *artifact* parsing:
+   `<zylcode-response>` envelope is **still live and correct** for _artifact_ parsing:
    `ArtifactPipeline::parse_artifacts` (pipeline.rs:286) scans `<artifact>` tags inside that envelope
    with a `memchr` scanner, the fallback to bare markdown fences is intentional, and the format is
    covered by a passing test (pipeline.rs:648). The benchmarks in `benches/parse.rs` and
@@ -433,32 +438,32 @@ Three specific hazards were found in the same file, all worth a lint or a review
 ## 15. Dirty-tree audit (2026-09-17) — blocker #2, characterised
 
 HEAD at audit: `8f751edbf89d11ad2d7daa15c558379e23ba8809` (identical to `origin/main`).
-This section answers *what the ~88 dirty entries actually are*, so the owner can decide
+This section answers _what the ~88 dirty entries actually are_, so the owner can decide
 commit / discard / quarantine per group. It does not resolve them.
 
 ### 15.1 Composition
 
-| Measure | Value |
-|---|---|
-| Total dirty entries | **88** (55 `M` under `crates/`+`apps/`, 33 `??`) |
-| Modified tracked source files | **52** |
-| Raw delta (`git diff --shortstat crates/ apps/`) | **4157 insertions(+), 1545 deletions(-)** |
-| Whitespace-insensitive delta (`git diff -w`) | **3487 insertions(+), 875 deletions(-)** |
-| **Reformatting-only inflation** | **≈ 670 lines (16% of insertions) are pure formatting churn** |
-| Untracked source files | 3 (`commissioning_test.rs`, `performance.rs`, `system_integration.rs`) |
+| Measure                                          | Value                                                                  |
+| ------------------------------------------------ | ---------------------------------------------------------------------- |
+| Total dirty entries                              | **88** (55 `M` under `crates/`+`apps/`, 33 `??`)                       |
+| Modified tracked source files                    | **52**                                                                 |
+| Raw delta (`git diff --shortstat crates/ apps/`) | **4157 insertions(+), 1545 deletions(-)**                              |
+| Whitespace-insensitive delta (`git diff -w`)     | **3487 insertions(+), 875 deletions(-)**                               |
+| **Reformatting-only inflation**                  | **≈ 670 lines (16% of insertions) are pure formatting churn**          |
+| Untracked source files                           | 3 (`commissioning_test.rs`, `performance.rs`, `system_integration.rs`) |
 
 Contributing factor: **`core.autocrlf=true` and no `.gitattributes`.** Every touched file emits
 `LF will be replaced by CRLF`, so a one-line edit inflates the diff. The 16% churn figure is a
-*floor* — it counts only lines that vanish entirely under `-w`.
+_floor_ — it counts only lines that vanish entirely under `-w`.
 
 ### 15.2 The 52 modified files fall into four workload classes
 
-| Class | What it is | Evidence | Roughly |
-|---|---|---|---|
-| **A. Substantive new implementation** | New modules & tool catalogs | `enhanced_bridge.rs` +776 (whitespace-insensitive), `hot_reload.rs` +186, `real_tools.rs` +74 (`RiskLevel`, `ToolSchema`), `builtin_skills.rs` +787/−158 | ~8 files |
-| **B. New tests** | `telemetry_audit_tests.rs` +158, `integration_test.rs` +120, plus assertions in `fault_injection.rs` | real `log_tool_invoke` / `log_retry` / `log_tool_result` calls | ~4 files |
-| **C. `impl Default` additions** | **17 added, 0 removed** — clippy `new_without_default` remediation | traced to untracked `fix_clippy_defaults.ps1` | ~15 files |
-| **D. Pure formatting/import-order churn** | `use` reordering, one-statement-per-line expansion | visible in every sampled file | ~25 files |
+| Class                                     | What it is                                                                                           | Evidence                                                                                                                                                 | Roughly   |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| **A. Substantive new implementation**     | New modules & tool catalogs                                                                          | `enhanced_bridge.rs` +776 (whitespace-insensitive), `hot_reload.rs` +186, `real_tools.rs` +74 (`RiskLevel`, `ToolSchema`), `builtin_skills.rs` +787/−158 | ~8 files  |
+| **B. New tests**                          | `telemetry_audit_tests.rs` +158, `integration_test.rs` +120, plus assertions in `fault_injection.rs` | real `log_tool_invoke` / `log_retry` / `log_tool_result` calls                                                                                           | ~4 files  |
+| **C. `impl Default` additions**           | **17 added, 0 removed** — clippy `new_without_default` remediation                                   | traced to untracked `fix_clippy_defaults.ps1`                                                                                                            | ~15 files |
+| **D. Pure formatting/import-order churn** | `use` reordering, one-statement-per-line expansion                                                   | visible in every sampled file                                                                                                                            | ~25 files |
 
 **Class C is now redundant.** `cargo clippy --workspace --all-targets --offline -- -D warnings`
 **passes cleanly on the current tree**. Whatever the script chased, the tree is already
@@ -472,7 +477,7 @@ clippy-clean code, and the new telemetry tests exercise real logger APIs. **The 
 Engine was NOT extended** — `computer_use/` changes are **formatting-only** (`-w` diff shows
 only `use` reordering and `.await` line-wrapping; the 31 simulation markers and the five
 fabricated confidences at `vision_ai.rs:110,123,136,158,170` are **untouched**). That is the
-correct outcome given `docs/architecture/COMPUTER_USE_ENGINE.md` says *replace, do not extend*.
+correct outcome given `docs/architecture/COMPUTER_USE_ENGINE.md` says _replace, do not extend_.
 
 ```
 $ cargo check --workspace --all-targets --offline
@@ -491,16 +496,16 @@ $ cargo clippy --workspace --all-targets --offline -- -D warnings
 
 The claim is **back**, in **eight** files, and it is **still false**:
 
-| File | Tracked? |
-|---|---|
-| `DEVELOPER_GUIDE.md` | untracked |
-| `PHASE3_COMPLETE.md` | untracked |
-| `PHASE3_SUMMARY.md` | untracked |
-| `phase4-implementation-plan.md` | untracked |
-| `PHASE4_SUMMARY.md` | untracked |
-| `USER_GUIDE.md` | untracked |
-| **`FINAL_SUMMARY.md`** | **TRACKED** (commit `29cc936`) |
-| `docs/PHASE1C_COMPLETION_REPORT.md` | tracked — but only as the *removal record* |
+| File                                | Tracked?                                   |
+| ----------------------------------- | ------------------------------------------ |
+| `DEVELOPER_GUIDE.md`                | untracked                                  |
+| `PHASE3_COMPLETE.md`                | untracked                                  |
+| `PHASE3_SUMMARY.md`                 | untracked                                  |
+| `phase4-implementation-plan.md`     | untracked                                  |
+| `PHASE4_SUMMARY.md`                 | untracked                                  |
+| `USER_GUIDE.md`                     | untracked                                  |
+| **`FINAL_SUMMARY.md`**              | **TRACKED** (commit `29cc936`)             |
+| `docs/PHASE1C_COMPLETION_REPORT.md` | tracked — but only as the _removal record_ |
 
 **Ground truth, measured:**
 
@@ -520,15 +525,15 @@ damage — but only for a reader who finds the index first. The untracked carrie
 protection at all: `DEVELOPER_GUIDE.md` and `USER_GUIDE.md` are currently invisible to git,
 undeclared by any index, and contain the exact claim this project spent a phase removing.
 
-> **Rule this finding establishes.** A claim that has been *retracted* is more dangerous on
+> **Rule this finding establishes.** A claim that has been _retracted_ is more dangerous on
 > re-entry than a claim that was merely never made — because reviewers who remember the
 > retraction assume it stuck. Retractions must be enforced by a **grep-based check in CI**, not
 > by a line in a completion report.
 
 **A complication found while correcting it — `FINAL_SUMMARY.md` carries foreign work.** HEAD's
-version of this file is a *"Complete Project Summary & Next Steps"* (research findings, market
+version of this file is a _"Complete Project Summary & Next Steps"_ (research findings, market
 sizing, a 24-week roadmap, pricing tiers). The working tree has replaced it **wholesale** with a
-different document, *"ZylCode Desktop App — Fixed and Running"*. The `156 tools` claim appears in
+different document, _"ZylCode Desktop App — Fixed and Running"_. The `156 tools` claim appears in
 **both** versions. My correction was applied to the working-tree version and **left uncommitted**:
 committing it would have published another session's unreviewed on-disk rewrite under a governance
 commit message. It is flagged here instead. The `156 tools` claim in the file remains uncorrected in
@@ -548,7 +553,7 @@ $ head -1 docs/governance/DEEPSEEK_MASTER_PROMPT_V21.md
 
 The true original is intact at HEAD (`git show HEAD:docs/governance/DEEPSEEK_MASTER_PROMPT_V21.md`
 → 522 lines). **Not reverted** — restoring it would silently destroy another session's in-flight
-edit if that edit is deliberate. **This is an owner decision.** Note the file *also* appears to be
+edit if that edit is deliberate. **This is an owner decision.** Note the file _also_ appears to be
 a mis-named artifact: a commercial-model draft living under the master-prompt filename.
 
 ### 15.6 Finding H — untracked governance-colliding reports
@@ -556,13 +561,13 @@ a mis-named artifact: a commercial-model draft living under the master-prompt fi
 Sixteen untracked root `.md` files assert completion in the vocabulary this program reserved.
 Worst offenders by collision risk:
 
-| File | Lines | Problem |
-|---|---|---|
-| `PHASE3_COMPLETE.md` | 323 | "**Phase 3** Implementation Status: **COMPLETE**" — collides with governance Phase 3A–3B, which are **NOT STARTED** |
-| `PHASE4_COMPLETE.md` | 236 | "**Phase 4** Complete" — collides with governance Phase 4, **NOT STARTED** |
-| `INSTALLATION_SUMMARY.md` | 329 | "All Tests Passed!" — no command, no environment, no raw output |
-| `INSTALLATION_SUCCESS.md` | 321 | **UTF-16 encoded** (`ÿþ#` BOM) — mojibake for most tooling, undiffable |
-| `PHASE4_PROGRESS.md` / `PHASE4_SUMMARY.md` | 224 / 208 | Report "IN PROGRESS" under a conflicting "🎉 …Progress" title |
+| File                                       | Lines     | Problem                                                                                                             |
+| ------------------------------------------ | --------- | ------------------------------------------------------------------------------------------------------------------- |
+| `PHASE3_COMPLETE.md`                       | 323       | "**Phase 3** Implementation Status: **COMPLETE**" — collides with governance Phase 3A–3B, which are **NOT STARTED** |
+| `PHASE4_COMPLETE.md`                       | 236       | "**Phase 4** Complete" — collides with governance Phase 4, **NOT STARTED**                                          |
+| `INSTALLATION_SUMMARY.md`                  | 329       | "All Tests Passed!" — no command, no environment, no raw output                                                     |
+| `INSTALLATION_SUCCESS.md`                  | 321       | **UTF-16 encoded** (`ÿþ#` BOM) — mojibake for most tooling, undiffable                                              |
+| `PHASE4_PROGRESS.md` / `PHASE4_SUMMARY.md` | 224 / 208 | Report "IN PROGRESS" under a conflicting "🎉 …Progress" title                                                       |
 
 Per Protocol §4.7 (phase numbers belong to the roadmap only) and §4.8 (superseded documents are
 provenance, never evidence), **these cannot be committed as-is.** They are a local-session
@@ -575,21 +580,21 @@ the §14 defect**), and 5 PowerShell diagnosis/test scripts (`diagnose.ps1`, `si
 
 ### 15.7 Recommended disposition (owner decision — not executed)
 
-| Group | Entries | Recommendation |
-|---|---|---|
+| Group                                | Entries   | Recommendation                                                                                                                                                          |
+| ------------------------------------ | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Class A + B (implementation + tests) | ~12 files | **Review as a unit, then commit** under a named track — this is real work, but it is **not Phase 2A remediation** and must not be represented as progress on the ladder |
-| Class C (`impl Default` ×17) | ~15 files | Commit with A/B **or** revert; do not leave half-applied |
-| Class D (formatting churn) | ~25 files | Revert. No semantic content; inflates every future diff. Pairs with adding a **`.gitattributes`** |
-| Untracked completion reports | 16 files | **Do not commit.** Move to a local `_archive/` or delete. They carry retracted claims (Finding F) and phase-number collisions (Finding H) |
-| `vector_cache.db.bak` | 1 file | **Delete.** It is a stale artifact of the defect fixed in §14 |
-| `commissioning_test.rs` | 1 file | **Do not commit as a test** — it asserts nothing and returns `Ok(())` on failure (§14.6.2) |
-| `DEEPSEEK_MASTER_PROMPT_V21.md` | 1 file | **Owner decision** — restore from HEAD, or confirm the overwrite is intended |
+| Class C (`impl Default` ×17)         | ~15 files | Commit with A/B **or** revert; do not leave half-applied                                                                                                                |
+| Class D (formatting churn)           | ~25 files | Revert. No semantic content; inflates every future diff. Pairs with adding a **`.gitattributes`**                                                                       |
+| Untracked completion reports         | 16 files  | **Do not commit.** Move to a local `_archive/` or delete. They carry retracted claims (Finding F) and phase-number collisions (Finding H)                               |
+| `vector_cache.db.bak`                | 1 file    | **Delete.** It is a stale artifact of the defect fixed in §14                                                                                                           |
+| `commissioning_test.rs`              | 1 file    | **Do not commit as a test** — it asserts nothing and returns `Ok(())` on failure (§14.6.2)                                                                              |
+| `DEEPSEEK_MASTER_PROMPT_V21.md`      | 1 file    | **Owner decision** — restore from HEAD, or confirm the overwrite is intended                                                                                            |
 
 ### 15.8 Effect on the blocker list
 
 Blocker #1 (`router.rs:1030`) — **closed**. Blocker #3 (clean workspace build outside the sandbox)
-— **still open**; this audit confirms the tree *checks* and *clippies* cleanly, but the sandbox
-still cannot *execute* the Tauri build script, so the build itself remains unobserved here.
+— **still open**; this audit confirms the tree _checks_ and _clippies_ cleanly, but the sandbox
+still cannot _execute_ the Tauri build script, so the build itself remains unobserved here.
 Blocker #2 — **now characterised, still open**, and reduced from "88 opaque entries" to the table
 in §15.7. Two latent defects were surfaced while doing it: **Findings F and G**.
 
@@ -597,16 +602,16 @@ in §15.7. Two latent defects were surfaced while doing it: **Findings F and G**
 
 ## 16. Enforcement — the retracted-claim guard (2026-09-17)
 
-Finding F established the rule: *a retracted claim is more dangerous on re-entry than a claim never
-made.* A line in a completion report does not enforce that. §16 makes it mechanical.
+Finding F established the rule: _a retracted claim is more dangerous on re-entry than a claim never
+made._ A line in a completion report does not enforce that. §16 makes it mechanical.
 
 ### 16.1 What was built
 
-| Artifact | Purpose |
-|---|---|
-| `scripts/check_retracted_claims.py` | The guard. Fails on any **new** occurrence of a retracted claim. |
-| `scripts/retracted_claims_baseline.txt` | The **archived debt**: 50 pre-existing occurrences across 12 files. May only shrink. |
-| `.github/workflows/ci.yml` → *Retracted-claim guard* | Runs the guard on every push and PR. |
+| Artifact                                             | Purpose                                                                              |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `scripts/check_retracted_claims.py`                  | The guard. Fails on any **new** occurrence of a retracted claim.                     |
+| `scripts/retracted_claims_baseline.txt`              | The **archived debt**: 50 pre-existing occurrences across 12 files. May only shrink. |
+| `.github/workflows/ci.yml` → _Retracted-claim guard_ | Runs the guard on every push and PR.                                                 |
 
 Each rule carries three mandatory fields: the **claim**, the **retraction reference**
 (`docs/PHASE1C_COMPLETION_REPORT.md:59`), and the **measurement that replaced it**
@@ -619,7 +624,7 @@ Each rule carries three mandatory fields: the **claim**, the **retraction refere
    silently regrows, and a backlog that is quietly abandoned. Deleting the documents is the only
    way to remove a line.
 2. **Heuristic discrimination, not blanket matching.** Three false-positive classes were found and
-   handled: text that *negates* the claim, text that *discusses* the retraction, and compliance
+   handled: text that _negates_ the claim, text that _discusses_ the retraction, and compliance
    terms describing a **third party** (Tabnine, JetBrains) or a **future objective** ("obtain SOC 2
    certification"). Numeric claims like `156 tools` are never third-party, so they have no excuse
    path — every hit is a defect.
@@ -630,11 +635,11 @@ Each rule carries three mandatory fields: the **claim**, the **retraction refere
 
 A check that cannot fail is not a check. Three tests were run against synthetic repositories:
 
-| Test | Input | Expected | Observed |
-|---|---|---|---|
-| **A** | clean document + correct baseline | exit 0 | ✅ `OK: no NEW retracted claims` — exit 0 |
-| **B** | new file asserting `156 tools` + `SOC 2` + `ISO 27001` | exit 1, all three named | ✅ 3 new occurrences reported — exit 1 |
-| **C** | baseline containing a non-existent entry | exit 1, reported STALE | ✅ `STALE: 156 tools\|NONEXISTENT_FILE.md\|999` — exit 1 |
+| Test  | Input                                                  | Expected                | Observed                                                 |
+| ----- | ------------------------------------------------------ | ----------------------- | -------------------------------------------------------- |
+| **A** | clean document + correct baseline                      | exit 0                  | ✅ `OK: no NEW retracted claims` — exit 0                |
+| **B** | new file asserting `156 tools` + `SOC 2` + `ISO 27001` | exit 1, all three named | ✅ 3 new occurrences reported — exit 1                   |
+| **C** | baseline containing a non-existent entry               | exit 1, reported STALE  | ✅ `STALE: 156 tools\|NONEXISTENT_FILE.md\|999` — exit 1 |
 
 Also verified: `python -m py_compile` (syntax), and the CI workflow parses as valid YAML with the
 guard step present as step 11 of 12.
@@ -722,7 +727,7 @@ belongs beside the §14.6 rule:
 > Only a clean checkout at a recorded SHA can establish that. When reviewing a dirty tree, the dirty
 > part must be removed from the question, not measured alongside it.
 
-This is the same class of error as §14's *"a test that reads persisted local state is not a test"*:
+This is the same class of error as §14's _"a test that reads persisted local state is not a test"_:
 **the ambient state made a real defect invisible.**
 
 ### 17.4 Consequence — the dirty tree is load-bearing
@@ -735,12 +740,12 @@ on**.
 
 ### 17.5 Corrections to earlier sections
 
-| Section | Was | Now |
-|---|---|---|
-| §3 | `cargo build` "BLOCKED BY SANDBOX — not a code failure" | **Partly wrong.** See §17.6. The sandbox does not block worktree builds. |
-| §11 item 2 | "Resolve the dirty tree — review, commit, or discard" | **Discard is now unsafe.** Commit is mandatory for the build-critical subset. |
-| §11 item 3 | "One clean workspace build outside the sandbox" | **Re-scoped.** The build is achievable *inside*; it fails for a code reason, not a sandbox reason. |
-| §15.3 | "The tree is *coherent*" | **True of the tree, false of the repository.** The tree is coherent only because it is dirty. |
+| Section    | Was                                                     | Now                                                                                                |
+| ---------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| §3         | `cargo build` "BLOCKED BY SANDBOX — not a code failure" | **Partly wrong.** See §17.6. The sandbox does not block worktree builds.                           |
+| §11 item 2 | "Resolve the dirty tree — review, commit, or discard"   | **Discard is now unsafe.** Commit is mandatory for the build-critical subset.                      |
+| §11 item 3 | "One clean workspace build outside the sandbox"         | **Re-scoped.** The build is achievable _inside_; it fails for a code reason, not a sandbox reason. |
+| §15.3      | "The tree is _coherent_"                                | **True of the tree, false of the repository.** The tree is coherent only because it is dirty.      |
 
 ### 17.6 Finding J — the worktree blocker was misdiagnosed
 
@@ -750,7 +755,7 @@ neither a sandbox restriction:
 1. **Path translation.** `git worktree add /tmp/wt_probe` created `C:/tmp/wt_probe` — outside the
    project's writable tree. Use a path **inside** the project (`.wt/<name>`).
 2. **`--offline` with an empty registry.** `error: failed to download clap_derive v4.6.7 … --offline
-   was specified`. A worktree has no `target/` and no fetched registry; the first build needs
+was specified`. A worktree has no `target/` and no fetched registry; the first build needs
    network.
 
 Proof:
@@ -775,12 +780,12 @@ so runs cannot be queried. Recorded as `NOT OBSERVABLE`, never as green.
 
 ### 17.8 Required repair — owner decision
 
-| Step | Action |
-|---|---|
+| Step      | Action                                                                                             |
+| --------- | -------------------------------------------------------------------------------------------------- |
 | **FIX-1** | Commit `crates/zylcode-mcp/src/performance.rs` (409 lines) and `system_integration.rs` (391 lines) |
-| **FIX-2** | Commit the eight `get_more_*_tools()` implementations in `enhanced_bridge.rs` (+775 lines) |
-| **FIX-3** | Verify a **fresh worktree** passes `cargo check --workspace --all-targets` |
-| **FIX-4** | Confirm CI green (requires a valid token — §17.7) |
+| **FIX-2** | Commit the eight `get_more_*_tools()` implementations in `enhanced_bridge.rs` (+775 lines)         |
+| **FIX-3** | Verify a **fresh worktree** passes `cargo check --workspace --all-targets`                         |
+| **FIX-4** | Confirm CI green (requires a valid token — §17.7)                                                  |
 
 Both fixes commit **another session's unreviewed work** — the same restraint exercised in `6c19e1f`
 for `FINAL_SUMMARY.md`. **Not performed unilaterally.** Until they land, no parallel agent may be

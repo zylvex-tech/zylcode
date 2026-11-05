@@ -10,20 +10,20 @@ ready; the master cut (`zylcode-intro-master.mp4`) has not been rendered yet.
 
 ### Picture
 
-| Source | Path | Resolution | Length | Use |
-|---|---|---|---|---|
-| Animated diagram scene 1 | `04-graphics/scene-01-mission-lifecycle.webm` | 1280×720 | recorded anim | Opening: mission lifecycle |
-| Animated diagram scene 2 | `04-graphics/scene-02-architecture.webm` | 1280×720 | recorded anim | Architecture workspace graph |
-| Animated diagram scene 3 | `04-graphics/scene-03-evidence-ladder.webm` | 1280×720 | recorded anim | Evidence ladder |
-| FOOTAGE-01 product opening | `01-footage/take-01-workbench.webm` | 1280×720 | recorded app | Title + intro |
-| FOOTAGE-02 workbench surfaces | `01-footage/take-02-agent-execution.webm` | 1280×720 | recorded app | Explorer/terminal/control surfaces |
-| FOOTAGE-03 intel index | `01-footage/take-03-verification-evidence.webm` | 1280×720 | recorded app | Repository understanding |
-| FOOTAGE-04 mission composition | (to be captured) | 1280×720 | — | Mission composer + autonomy selector |
-| FOOTAGE-05 agent execution | (to be captured) | 1280×720 | — | Hero build: plan → failure → repair |
-| FOOTAGE-06 verification + evidence | (to be captured) | 1280×720 | — | Final report: proven/derived/hypotheses/unknown |
-| FOOTAGE-07 real terminal | (to be captured) | 1280×720 | — | `git log --oneline -3` with real exit code |
-| FOOTAGE-08 honest failure | (to be captured) | 1280×720 | — | `POST /api/intent` Windows error |
-| FOOTAGE-09 approvals + CI | (to be captured) | 1280×720 | — | PR #44 approval + 5/5 checks + merge |
+| Source                             | Path                                            | Resolution | Length        | Use                                             |
+| ---------------------------------- | ----------------------------------------------- | ---------- | ------------- | ----------------------------------------------- |
+| Animated diagram scene 1           | `04-graphics/scene-01-mission-lifecycle.webm`   | 1280×720   | recorded anim | Opening: mission lifecycle                      |
+| Animated diagram scene 2           | `04-graphics/scene-02-architecture.webm`        | 1280×720   | recorded anim | Architecture workspace graph                    |
+| Animated diagram scene 3           | `04-graphics/scene-03-evidence-ladder.webm`     | 1280×720   | recorded anim | Evidence ladder                                 |
+| FOOTAGE-01 product opening         | `01-footage/take-01-workbench.webm`             | 1280×720   | recorded app  | Title + intro                                   |
+| FOOTAGE-02 workbench surfaces      | `01-footage/take-02-agent-execution.webm`       | 1280×720   | recorded app  | Explorer/terminal/control surfaces              |
+| FOOTAGE-03 intel index             | `01-footage/take-03-verification-evidence.webm` | 1280×720   | recorded app  | Repository understanding                        |
+| FOOTAGE-04 mission composition     | (to be captured)                                | 1280×720   | —             | Mission composer + autonomy selector            |
+| FOOTAGE-05 agent execution         | (to be captured)                                | 1280×720   | —             | Hero build: plan → failure → repair             |
+| FOOTAGE-06 verification + evidence | (to be captured)                                | 1280×720   | —             | Final report: proven/derived/hypotheses/unknown |
+| FOOTAGE-07 real terminal           | (to be captured)                                | 1280×720   | —             | `git log --oneline -3` with real exit code      |
+| FOOTAGE-08 honest failure          | (to be captured)                                | 1280×720   | —             | `POST /api/intent` Windows error                |
+| FOOTAGE-09 approvals + CI          | (to be captured)                                | 1280×720   | —             | PR #44 approval + 5/5 checks + merge            |
 
 **Note on scene sizes:** `04-graphics/*.webm` were recorded at **1280×720** (VP8/16:9)
 with the browser recorder. The brief asks for **1920×1080**. The assembly upscales every
@@ -34,12 +34,12 @@ neater and the upscale stays out of the critical path.
 
 ### Sound
 
-| Feed | Path | Role |
-|---|---|---|
-| Narration 15 clips | `05-audio/narration/narration-01..15.mp3` | Speaker: en-AU-NatashaNeural |
-| Music cue 1 | `05-audio/music/cue-1-open-swell.mp3` | Title / open swell |
-| Music cue 2 | `05-audio/music/cue-2-documentary-tone.mp3` | Documentary bed (main body) |
-| Music cue 3 | `05-audio/music/cue-3-resolve.mp3` | Resolve under closing brand line |
+| Feed               | Path                                        | Role                             |
+| ------------------ | ------------------------------------------- | -------------------------------- |
+| Narration 15 clips | `05-audio/narration/narration-01..15.mp3`   | Speaker: en-AU-NatashaNeural     |
+| Music cue 1        | `05-audio/music/cue-1-open-swell.mp3`       | Title / open swell               |
+| Music cue 2        | `05-audio/music/cue-2-documentary-tone.mp3` | Documentary bed (main body)      |
+| Music cue 3        | `05-audio/music/cue-3-resolve.mp3`          | Resolve under closing brand line |
 
 ---
 
@@ -158,14 +158,14 @@ When the master exists, verify:
 
 ## Deliverables in the film tree
 
-| Path | Kind |
-|---|---|
-| `06-narration/NARRATION_SCRIPT.md` | narrated lines keyed to the filmed beats |
-| `06-narration/NARRATION_ASSEMBLY.md` | this file |
-| `06-narration/narration-lines.txt` | source line list |
-| `05-audio/narration/narration-01..15.mp3` | rendered narration |
-| `05-audio/narration/_probe.mp3`, `_probe2.mp3` | test clips (ignored at delivery) |
-| `05-audio/music/cue-1-open-swell.mp3` | open swell |
-| `05-audio/music/cue-2-documentary-tone.mp3` | documentary bed |
-| `05-audio/music/cue-3-resolve.mp3` | resolve |
-| `03-deliverables/zylcode-intro-master.mp4` | final master (pending) |
+| Path                                           | Kind                                     |
+| ---------------------------------------------- | ---------------------------------------- |
+| `06-narration/NARRATION_SCRIPT.md`             | narrated lines keyed to the filmed beats |
+| `06-narration/NARRATION_ASSEMBLY.md`           | this file                                |
+| `06-narration/narration-lines.txt`             | source line list                         |
+| `05-audio/narration/narration-01..15.mp3`      | rendered narration                       |
+| `05-audio/narration/_probe.mp3`, `_probe2.mp3` | test clips (ignored at delivery)         |
+| `05-audio/music/cue-1-open-swell.mp3`          | open swell                               |
+| `05-audio/music/cue-2-documentary-tone.mp3`    | documentary bed                          |
+| `05-audio/music/cue-3-resolve.mp3`             | resolve                                  |
+| `03-deliverables/zylcode-intro-master.mp4`     | final master (pending)                   |

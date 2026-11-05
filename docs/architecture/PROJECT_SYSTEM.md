@@ -36,17 +36,17 @@ Everything ZylCode knows about a product hangs off the Project.
 The Project System precedes every other stateful system. If it is built late, these must all be
 rebuilt:
 
-| System | What it would have to redo |
-|---|---|
-| Mission Engine | missions have no stable owner |
-| Model Platform | routing history has no scope |
-| Extension Platform | package state has nowhere to live |
-| Artifact System | artifacts have no home |
-| Vision Studio | design intent has nowhere to persist |
-| Multi-Agent | agents have no shared world state |
+| System             | What it would have to redo           |
+| ------------------ | ------------------------------------ |
+| Mission Engine     | missions have no stable owner        |
+| Model Platform     | routing history has no scope         |
+| Extension Platform | package state has nowhere to live    |
+| Artifact System    | artifacts have no home               |
+| Vision Studio      | design intent has nowhere to persist |
+| Multi-Agent        | agents have no shared world state    |
 
-This is the exact failure the Master Execution Plan exists to prevent: *reaching Stage 10 before
-discovering the Project model was wrong.*
+This is the exact failure the Master Execution Plan exists to prevent: _reaching Stage 10 before
+discovering the Project model was wrong._
 
 ---
 
@@ -74,23 +74,23 @@ storage is delegated to the platform keychain. This is a security invariant, not
 
 ## 4. Persisted State
 
-| Domain | Contents |
-|---|---|
-| **Requirements** | intent, acceptance criteria, constraints |
-| **Repositories** | paths, remotes, roles, index references |
-| **Architecture** | records, decisions (ADRs), diagrams |
-| **Design** | `DesignDocument` references (Phase 8A) |
-| **Conversations** | threads, scoped to project |
-| **Missions** | missions, states, criteria, proofs (Phase 3B) |
-| **Agents** | agent definitions, runs, budgets |
-| **Decisions** | ADRs, routing decisions, permission grants |
-| **Evidence** | references into the Evidence Ledger |
-| **Artifacts** | artifact records (Phase 6A) |
-| **Runtimes** | environments, capability advertisements |
-| **Model config** | providers, policies, measured performance |
-| **Build config** | targets, commands, outputs |
-| **Releases** | release graph, evidence bundles |
-| **Deployment history** | what shipped, where, when, with what proof |
+| Domain                 | Contents                                      |
+| ---------------------- | --------------------------------------------- |
+| **Requirements**       | intent, acceptance criteria, constraints      |
+| **Repositories**       | paths, remotes, roles, index references       |
+| **Architecture**       | records, decisions (ADRs), diagrams           |
+| **Design**             | `DesignDocument` references (Phase 8A)        |
+| **Conversations**      | threads, scoped to project                    |
+| **Missions**           | missions, states, criteria, proofs (Phase 3B) |
+| **Agents**             | agent definitions, runs, budgets              |
+| **Decisions**          | ADRs, routing decisions, permission grants    |
+| **Evidence**           | references into the Evidence Ledger           |
+| **Artifacts**          | artifact records (Phase 6A)                   |
+| **Runtimes**           | environments, capability advertisements       |
+| **Model config**       | providers, policies, measured performance     |
+| **Build config**       | targets, commands, outputs                    |
+| **Releases**           | release graph, evidence bundles               |
+| **Deployment history** | what shipped, where, when, with what proof    |
 
 ---
 
@@ -205,15 +205,15 @@ inspectable.
 
 ## 8. Benchmark / Acceptance
 
-| # | Criterion | Method |
-|---|---|---|
-| 1 | Create a project through the UI | captured transcript |
-| 2 | Restart the application; project intact | transcript before/after |
-| 3 | Export on machine A, import on machine B | two-machine transcript |
-| 4 | Unresolvable references reported explicitly | transcript showing the report |
-| 5 | Two concurrent missions do not corrupt state | concurrency test with output |
-| 6 | Schema version mismatch fails closed | test with a future-versioned store |
-| 7 | Knowledge graph survives migration | graph dump before/after |
+| #   | Criterion                                    | Method                             |
+| --- | -------------------------------------------- | ---------------------------------- |
+| 1   | Create a project through the UI              | captured transcript                |
+| 2   | Restart the application; project intact      | transcript before/after            |
+| 3   | Export on machine A, import on machine B     | two-machine transcript             |
+| 4   | Unresolvable references reported explicitly  | transcript showing the report      |
+| 5   | Two concurrent missions do not corrupt state | concurrency test with output       |
+| 6   | Schema version mismatch fails closed         | test with a future-versioned store |
+| 7   | Knowledge graph survives migration           | graph dump before/after            |
 
 **Rung target: R3.** All seven require captured evidence.
 
@@ -257,7 +257,7 @@ holding the release crate, the installer configuration, the relevant CI logs as 
 packaging tool — without the user assembling that by hand each time.
 
 **Relationship to the Agent Kernel's context assembly:** the Kernel asks for context; the
-Workspace Composer decides what a *working environment* contains. They are not the same request
+Workspace Composer decides what a _working environment_ contains. They are not the same request
 and the Project System owns the latter.
 
 **Not in scope for v2.1:** the composition algorithm, extension resolution, or UI surface.

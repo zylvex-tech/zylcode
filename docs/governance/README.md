@@ -9,12 +9,12 @@
 
 ## Start Here
 
-| If you are… | Read, in order |
-|---|---|
-| **An implementation agent** | `ZYLCODE_AGENT_OPERATING_PROTOCOL.md` → `ZYLCODE_PRODUCT_CONSTITUTION_V2.md` → your phase spec |
-| **New to the project** | `ZYLCODE_PRODUCT_CONSTITUTION_V2.md` → `ZYLCODE_ARCHITECTURE_V2.md` → `ZYLCODE_MASTER_EXECUTION_PLAN.md` |
-| **Auditing a phase** | `PHASE2A_INDEPENDENT_AUDIT.md` (method) → `ZYLCODE_PROOF_GRAPH.md` → `ZYLCODE_CAPABILITY_MODEL.md` |
-| **Planning work** | `ZYLCODE_MASTER_EXECUTION_PLAN.md` → `../roadmap/ZYLCODE_ROADMAP_V2.md` |
+| If you are…                 | Read, in order                                                                                           |
+| --------------------------- | -------------------------------------------------------------------------------------------------------- |
+| **An implementation agent** | `ZYLCODE_AGENT_OPERATING_PROTOCOL.md` → `ZYLCODE_PRODUCT_CONSTITUTION_V2.md` → your phase spec           |
+| **New to the project**      | `ZYLCODE_PRODUCT_CONSTITUTION_V2.md` → `ZYLCODE_ARCHITECTURE_V2.md` → `ZYLCODE_MASTER_EXECUTION_PLAN.md` |
+| **Auditing a phase**        | `PHASE2A_INDEPENDENT_AUDIT.md` (method) → `ZYLCODE_PROOF_GRAPH.md` → `ZYLCODE_CAPABILITY_MODEL.md`       |
+| **Planning work**           | `ZYLCODE_MASTER_EXECUTION_PLAN.md` → `../roadmap/ZYLCODE_ROADMAP_V2.md`                                  |
 
 ---
 
@@ -33,52 +33,52 @@ Every prompt to DeepSeek, Codex, ZCode, or any other implementation agent **must
 
 ### Governance (`docs/governance/`)
 
-| Document | Governs |
-|---|---|
-| **`ZYLCODE_PRODUCT_CONSTITUTION_V2.md`** | The supreme specification. **Eight systems.** Evidence principle. Product definition. |
-| **`ZYLCODE_ARCHITECTURE_V2.md`** | **v2.1.** System topology, contracts, data ownership, **honest implementation status**. |
-| **`ZYLCODE_MASTER_EXECUTION_PLAN.md`** | The 16-phase / 6-epoch program. Gates. Dependency order. Phase 7 splits into 7A–7D. |
-| **`ZYLCODE_CAPABILITY_MODEL.md`** | What a capability is, how status is computed, how the registry is audited. |
-| **`ZYLCODE_PROOF_GRAPH.md`** | **R0–R5.** The definition of "proven". Governs every capability claim. |
-| **`ZYLCODE_AGENT_OPERATING_PROTOCOL.md`** | How agents work here. Pre-flight, rules, report format, anti-patterns. |
-| **`ZYLCODE_COMMERCIAL_MODEL.md`** | **Deferred.** What is sold, the BYOK stance, the graduated activation ladder (Level 0 permitted now). |
-| **`ZYLCODE_PUBLIC_COMMUNICATION_POLICY.md`** | **GOVERNING.** What may be said publicly before Phase 16. Status vocabulary, screenshot rule, Public Claim Matrix. |
-| **`ZYLCODE_PUBLIC_FOUNDATION_PLAN.md`** | The parallel public-foundation program: tracks `PUBLIC-FOUNDATION` / `DESIGN-SYSTEM` / `CLOUD-PLATFORM`. |
-| **`DEEPSEEK_PUBLIC_FOUNDATION_PROMPT_V1.md`** | The gate-driven work order for the public foundation, web and design program. |
-| **`DEEPSEEK_MASTER_PROMPT_V21.md`** | The two-job work order: Phase 2A remediation, then Architecture v2.1 reconciliation. |
-| **`PHASE_NUMBERING_RECONCILIATION.md`** | Three competing phase-numbering schemes, the collision, and the fix. Also the source of rule 4.7. |
-| **`PHASE2A_INDEPENDENT_AUDIT.md`** | The audit that re-opened Phase 2A. Also the worked method for future audits. |
-| **`PHASE2A_REMEDIATION_ORDER.md`** | The operational work order for the Phase 2A fix. |
-| **`STATUS_SWEEP_2026-09-16.md`** | Full-repository observation sweep: what was executed, what the code actually does, and the shortest honest path to GREEN. **Read this for the current state.** |
-| **`CODEX_BRAND_FOUNDATION_WORK_ORDER.md`** | The brand-governance work order (design tokens, Engineering Document Standard, terminology, authority hierarchy). |
+| Document                                      | Governs                                                                                                                                                        |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`ZYLCODE_PRODUCT_CONSTITUTION_V2.md`**      | The supreme specification. **Eight systems.** Evidence principle. Product definition.                                                                          |
+| **`ZYLCODE_ARCHITECTURE_V2.md`**              | **v2.1.** System topology, contracts, data ownership, **honest implementation status**.                                                                        |
+| **`ZYLCODE_MASTER_EXECUTION_PLAN.md`**        | The 16-phase / 6-epoch program. Gates. Dependency order. Phase 7 splits into 7A–7D.                                                                            |
+| **`ZYLCODE_CAPABILITY_MODEL.md`**             | What a capability is, how status is computed, how the registry is audited.                                                                                     |
+| **`ZYLCODE_PROOF_GRAPH.md`**                  | **R0–R5.** The definition of "proven". Governs every capability claim.                                                                                         |
+| **`ZYLCODE_AGENT_OPERATING_PROTOCOL.md`**     | How agents work here. Pre-flight, rules, report format, anti-patterns.                                                                                         |
+| **`ZYLCODE_COMMERCIAL_MODEL.md`**             | **Deferred.** What is sold, the BYOK stance, the graduated activation ladder (Level 0 permitted now).                                                          |
+| **`ZYLCODE_PUBLIC_COMMUNICATION_POLICY.md`**  | **GOVERNING.** What may be said publicly before Phase 16. Status vocabulary, screenshot rule, Public Claim Matrix.                                             |
+| **`ZYLCODE_PUBLIC_FOUNDATION_PLAN.md`**       | The parallel public-foundation program: tracks `PUBLIC-FOUNDATION` / `DESIGN-SYSTEM` / `CLOUD-PLATFORM`.                                                       |
+| **`DEEPSEEK_PUBLIC_FOUNDATION_PROMPT_V1.md`** | The gate-driven work order for the public foundation, web and design program.                                                                                  |
+| **`DEEPSEEK_MASTER_PROMPT_V21.md`**           | The two-job work order: Phase 2A remediation, then Architecture v2.1 reconciliation.                                                                           |
+| **`PHASE_NUMBERING_RECONCILIATION.md`**       | Three competing phase-numbering schemes, the collision, and the fix. Also the source of rule 4.7.                                                              |
+| **`PHASE2A_INDEPENDENT_AUDIT.md`**            | The audit that re-opened Phase 2A. Also the worked method for future audits.                                                                                   |
+| **`PHASE2A_REMEDIATION_ORDER.md`**            | The operational work order for the Phase 2A fix.                                                                                                               |
+| **`STATUS_SWEEP_2026-09-16.md`**              | Full-repository observation sweep: what was executed, what the code actually does, and the shortest honest path to GREEN. **Read this for the current state.** |
+| **`CODEX_BRAND_FOUNDATION_WORK_ORDER.md`**    | The brand-governance work order (design tokens, Engineering Document Standard, terminology, authority hierarchy).                                              |
 
 ### Repository index (`docs/`)
 
-| Document | Governs |
-|---|---|
+| Document                 | Governs                                                                                                                                                                                                                 |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **`../README_INDEX.md`** | The map of **63 root-level `.md` files**. Mandatory reading order, and the quarantine list for 26 legacy files that assert completion under a **retired** phase-numbering scheme. **Read before any root-level `.md`.** |
 
 ### Roadmap (`docs/roadmap/`)
 
-| Document | Governs |
-|---|---|
+| Document                    | Governs                                                             |
+| --------------------------- | ------------------------------------------------------------------- |
 | **`ZYLCODE_ROADMAP_V2.md`** | Per-phase objective, deliverables, entry points, gates, benchmarks. |
 
 ### Architecture (`docs/architecture/`)
 
-| Document | Status | Phase |
-|---|---|---|
-| `PROJECT_SYSTEM.md` | **PROPOSED** | 3A |
-| `PROJECT_KNOWLEDGE_GRAPH.md` | **PROPOSED** | 3A |
-| `AGENT_KERNEL.md` | **PARTIAL** (R3) | 1A–1D done |
-| `INTELLIGENCE_GRAPH.md` | **PARTIAL** (R2) | 2A re-opened |
-| `EXTENSION_PLATFORM.md` | **PROPOSED** | 5 |
-| `ARTIFACT_SYSTEM.md` | **PROPOSED** | 6A |
-| `VISION_STUDIO.md` | **PROPOSED** | 8A–9 |
-| `EXECUTION_ENGINE.md` | **PARTIAL** (R3 shell / R0 devices) | 7A, 10, 11 |
-| `COMPUTER_USE_ENGINE.md` | **PROPOSED — non-functional skeleton present** | 7B–7D |
-| `PROOF_ENGINE.md` | **PROPOSED** | 12 |
-| `DELIVERY_ENGINE.md` | **PARTIAL** (R1) | 13 |
+| Document                     | Status                                         | Phase        |
+| ---------------------------- | ---------------------------------------------- | ------------ |
+| `PROJECT_SYSTEM.md`          | **PROPOSED**                                   | 3A           |
+| `PROJECT_KNOWLEDGE_GRAPH.md` | **PROPOSED**                                   | 3A           |
+| `AGENT_KERNEL.md`            | **PARTIAL** (R3)                               | 1A–1D done   |
+| `INTELLIGENCE_GRAPH.md`      | **PARTIAL** (R2)                               | 2A re-opened |
+| `EXTENSION_PLATFORM.md`      | **PROPOSED**                                   | 5            |
+| `ARTIFACT_SYSTEM.md`         | **PROPOSED**                                   | 6A           |
+| `VISION_STUDIO.md`           | **PROPOSED**                                   | 8A–9         |
+| `EXECUTION_ENGINE.md`        | **PARTIAL** (R3 shell / R0 devices)            | 7A, 10, 11   |
+| `COMPUTER_USE_ENGINE.md`     | **PROPOSED — non-functional skeleton present** | 7B–7D        |
+| `PROOF_ENGINE.md`            | **PROPOSED**                                   | 12           |
+| `DELIVERY_ENGINE.md`         | **PARTIAL** (R1)                               | 13           |
 
 > **PROPOSED means it does not exist.** Per Constitution §9.3, describing a system is not
 > building it. Documentation must never imply otherwise.
@@ -93,7 +93,7 @@ Every prompt to DeepSeek, Codex, ZCode, or any other implementation agent **must
 ## The Five Laws
 
 1. **The loop is the product.** Every capability is justified by an arc of
-   *Imagine → Specify → Design → Build → Run → See → Test → Repair → Verify → Ship*.
+   _Imagine → Specify → Design → Build → Run → See → Test → Repair → Verify → Ship_.
 2. **Evidence or it did not happen.** A claim is not a fact until it is independently reproducible.
 3. **Builders do not certify their own work.**
 4. **A Project is not a directory.** It is the persistent representation of a software product.
@@ -103,17 +103,17 @@ Every prompt to DeepSeek, Codex, ZCode, or any other implementation agent **must
 
 ## Current Status (2026-09-16)
 
-| | |
-|---|---|
-| **Phase 1A–1D** | ✅ Accepted (1C, 1D with conditions) |
-| **Phase 2A** | ❌ **NOT ACCEPTED — RE-OPENED** |
-| **Phase 2B** | 🚫 **BLOCKED** on 2A |
-| **Phases 3A–16** | ⏸ Not started |
-| **Architecture** | v2.1 — eight systems; Phase 7 split into 7A–7D; 8–16 unrenumbered |
-| **Phase numbering** | Reconciled — three schemes found; two relabelled as named tracks |
-| **Commercial model** | Graduated activation ladder (Amendment 1 v1.1). Level 0 (public dev) permitted now. |
-| **Public communication** | Policy ratified — status vocabulary, screenshot rule, Public Claim Matrix. |
-| **Public Foundation** | Plan v1.0 ratified — parallel tracks `PUBLIC-FOUNDATION`/`DESIGN-SYSTEM`/`CLOUD-PLATFORM`. Milestones 01–06, 10, 11 executable now. |
+|                          |                                                                                                                                     |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| **Phase 1A–1D**          | ✅ Accepted (1C, 1D with conditions)                                                                                                |
+| **Phase 2A**             | ❌ **NOT ACCEPTED — RE-OPENED**                                                                                                     |
+| **Phase 2B**             | 🚫 **BLOCKED** on 2A                                                                                                                |
+| **Phases 3A–16**         | ⏸ Not started                                                                                                                       |
+| **Architecture**         | v2.1 — eight systems; Phase 7 split into 7A–7D; 8–16 unrenumbered                                                                   |
+| **Phase numbering**      | Reconciled — three schemes found; two relabelled as named tracks                                                                    |
+| **Commercial model**     | Graduated activation ladder (Amendment 1 v1.1). Level 0 (public dev) permitted now.                                                 |
+| **Public communication** | Policy ratified — status vocabulary, screenshot rule, Public Claim Matrix.                                                          |
+| **Public Foundation**    | Plan v1.0 ratified — parallel tracks `PUBLIC-FOUNDATION`/`DESIGN-SYSTEM`/`CLOUD-PLATFORM`. Milestones 01–06, 10, 11 executable now. |
 
 **Phase 2A was rejected** because: its headline metric counted `target/` build output (14,900 of
 15,064 files; the repository is 254 files); its benchmark **fails** on independent re-execution;
@@ -135,13 +135,13 @@ first, then Job 2 (Architecture v2.1 reconciliation) as a separate commit.
 
 A full observation sweep executed the actual checks rather than reading claims. Current truth:
 
-| Check | Result |
-|---|---|
-| `cargo check --workspace --lib` | ✅ **PASS** (4.78s) |
-| `cargo test --workspace --lib` | ❌ **225 passed; 1 failed** |
-| `cargo build --workspace` | ⚠️ **NOT OBSERVABLE** — sandbox denies build-script execution; not a code defect |
-| Phase 2A remediation (10 items) | ❌ **0 complete; 1 half-applied** |
-| Dirty tree | ❌ **89 entries** (was 53 at audit) — now includes untracked **source** |
+| Check                           | Result                                                                           |
+| ------------------------------- | -------------------------------------------------------------------------------- |
+| `cargo check --workspace --lib` | ✅ **PASS** (4.78s)                                                              |
+| `cargo test --workspace --lib`  | ❌ **225 passed; 1 failed**                                                      |
+| `cargo build --workspace`       | ⚠️ **NOT OBSERVABLE** — sandbox denies build-script execution; not a code defect |
+| Phase 2A remediation (10 items) | ❌ **0 complete; 1 half-applied**                                                |
+| Dirty tree                      | ❌ **89 entries** (was 53 at audit) — now includes untracked **source**          |
 
 **The failing test is `router.rs:1030`**, a stale assertion: `synthetic_response()` returns
 AgentDecision **JSON**, while the test still asserts an **XML** tag. Both are present in HEAD, so the
@@ -159,19 +159,19 @@ blocker list.
 Blocker #1 (`router.rs:1030`) is **closed** as of `8f751ed`; the suite is green (261 passed, 0 failed).
 Blockers #2 and #3 remain. Blocker #2 was **characterised** rather than resolved:
 
-| Measurement | Value |
-|---|---|
-| Dirty entries | **88** — 52 modified source files, 33 untracked |
-| Raw source delta | 4157 inserts / 1545 deletes |
-| Whitespace-insensitive | 3487 / 875 — **≈670 lines are pure formatting churn** (contributed by `core.autocrlf=true` with **no `.gitattributes`**) |
-| `cargo check --workspace --all-targets` | ✅ **PASS** (1m 23s) — **including** the untracked modules |
-| `cargo clippy … -D warnings` | ✅ **PASS** — zero warnings, whole tree |
+| Measurement                             | Value                                                                                                                    |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Dirty entries                           | **88** — 52 modified source files, 33 untracked                                                                          |
+| Raw source delta                        | 4157 inserts / 1545 deletes                                                                                              |
+| Whitespace-insensitive                  | 3487 / 875 — **≈670 lines are pure formatting churn** (contributed by `core.autocrlf=true` with **no `.gitattributes`**) |
+| `cargo check --workspace --all-targets` | ✅ **PASS** (1m 23s) — **including** the untracked modules                                                               |
+| `cargo clippy … -D warnings`            | ✅ **PASS** — zero warnings, whole tree                                                                                  |
 
 **What the dirty tree is:** real, compiling, clippy-clean implementation work (a tool catalog in
 `enhanced_bridge.rs` +776, new telemetry tests, 17 mechanically-added `impl Default` blocks) mixed with
 formatting churn. **Critically, `computer_use/` changes are formatting-only** — the 31 simulation
 markers and the five fabricated confidences in `vision_ai.rs` are untouched, consistent with
-*replace, do not extend*.
+_replace, do not extend_.
 
 **Two latent defects surfaced by the audit:**
 
@@ -191,11 +191,11 @@ tree is an owner decision**; none of it was committed by this pass.
 
 Finding F is now **mechanically enforced** rather than advised:
 
-| Artifact | Purpose |
-|---|---|
-| `scripts/check_retracted_claims.py` | Fails CI on any **new** occurrence of a retracted claim |
+| Artifact                                | Purpose                                                           |
+| --------------------------------------- | ----------------------------------------------------------------- |
+| `scripts/check_retracted_claims.py`     | Fails CI on any **new** occurrence of a retracted claim           |
 | `scripts/retracted_claims_baseline.txt` | The **archived debt**: 50 occurrences / 12 files. May only shrink |
-| `.github/workflows/ci.yml` | Step *Retracted-claim guard*, runs on every push and PR |
+| `.github/workflows/ci.yml`              | Step _Retracted-claim guard_, runs on every push and PR           |
 
 **Baseline discipline.** An entry that stops reproducing is reported `STALE` and **fails the run** —
 so the backlog can neither regrow nor be quietly abandoned. The only way to remove a line is to fix

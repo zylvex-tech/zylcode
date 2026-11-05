@@ -28,14 +28,14 @@ work).
 
 P0 items were completed in commits leading to `main` @ `6469bae`.
 
-| Item | Status | Evidence |
-|---|---|---|
-| 1. Path exclusion fixed | ✅ | `should_exclude()` now normalizes paths; benchmark asserts planted trap files are excluded |
-| 2. Metrics re-baselined | ✅ | 286 files / 1,552 symbols on HEAD; no target/ or node_modules/ counted |
-| 3. Benchmark deterministic | ✅ | 10 consecutive cross-process runs byte-identical (1 unique SHA-256) |
-| 4. Timing budget met | ✅ | Scan completes in < 120s (measured ~64s on this platform) |
-| 5. Reproduction transcript | ✅ | `PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md` §4 |
-| 6. Registry corrected | ✅ | `repository_scanner` evidence string fixed; Windows exclusion asserted |
+| Item                       | Status | Evidence                                                                                   |
+| -------------------------- | ------ | ------------------------------------------------------------------------------------------ |
+| 1. Path exclusion fixed    | ✅     | `should_exclude()` now normalizes paths; benchmark asserts planted trap files are excluded |
+| 2. Metrics re-baselined    | ✅     | 286 files / 1,552 symbols on HEAD; no target/ or node_modules/ counted                     |
+| 3. Benchmark deterministic | ✅     | 10 consecutive cross-process runs byte-identical (1 unique SHA-256)                        |
+| 4. Timing budget met       | ✅     | Scan completes in < 120s (measured ~64s on this platform)                                  |
+| 5. Reproduction transcript | ✅     | `PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md` §4                                          |
+| 6. Registry corrected      | ✅     | `repository_scanner` evidence string fixed; Windows exclusion asserted                     |
 
 ---
 
@@ -111,17 +111,20 @@ let navigation_citations =
 ```
 
 **Test:** `context_builder_uses_intelligence_ranking` (line 210)
+
 - Verifies that for a crash-recovery task, ranked files include
   `crash_recovery` and `agent.rs`
 - This result the legacy keyword heuristic **cannot** produce
 
 **Test:** `agent_context_carries_deterministic_graph_citations` (line 246)
+
 - Verifies every citation line starts with `DETERMINISTIC`
 - No `HEURISTIC` citations allowed
 
 ### 3.5 Dirty-tree cleanup
 
 The 53-file dirty tree from 2026-09-17 has been resolved:
+
 - `performance.rs` and `system_integration.rs`: no longer in working tree
 - `commissioning_test.rs`: was committed; now fixed (see 3.2)
 - No unreviewed modules remain as load-bearing untracked files
@@ -132,20 +135,20 @@ The 53-file dirty tree from 2026-09-17 has been resolved:
 
 The 12 DISPUTED capabilities remain DISPUTED pending this re-audit.
 
-| Capability | Current Status | What would change on acceptance |
-|---|---|---|
-| repository_scanner | DISPUTED (R2) | Could remain R2 or move to R3 if product surface proven |
-| manifest_intelligence | DISPUTED (R2) | Same |
-| rust_symbol_index | DISPUTED (R2) | Same |
-| typescript_symbol_index | DISPUTED (R2) | Same |
-| package_dependency_graph | DISPUTED (R2) | Same |
-| git_change_graph | DISPUTED (R2) | Same |
-| architecture_fingerprint | DISPUTED (R2) | Same |
-| incremental_indexing | DISPUTED (R2/PARTIAL) | Same |
-| repository_query_api | GREEN (R3, builder-claimed) | Needs auditor acceptance |
-| context_retrieval | GREEN (R3, builder-claimed) | Needs auditor acceptance |
-| repository_benchmark | DISPUTED (R2) | Same |
-| documentation_accuracy | DISPUTED | Separate process |
+| Capability               | Current Status              | What would change on acceptance                         |
+| ------------------------ | --------------------------- | ------------------------------------------------------- |
+| repository_scanner       | DISPUTED (R2)               | Could remain R2 or move to R3 if product surface proven |
+| manifest_intelligence    | DISPUTED (R2)               | Same                                                    |
+| rust_symbol_index        | DISPUTED (R2)               | Same                                                    |
+| typescript_symbol_index  | DISPUTED (R2)               | Same                                                    |
+| package_dependency_graph | DISPUTED (R2)               | Same                                                    |
+| git_change_graph         | DISPUTED (R2)               | Same                                                    |
+| architecture_fingerprint | DISPUTED (R2)               | Same                                                    |
+| incremental_indexing     | DISPUTED (R2/PARTIAL)       | Same                                                    |
+| repository_query_api     | GREEN (R3, builder-claimed) | Needs auditor acceptance                                |
+| context_retrieval        | GREEN (R3, builder-claimed) | Needs auditor acceptance                                |
+| repository_benchmark     | DISPUTED (R2)               | Same                                                    |
+| documentation_accuracy   | DISPUTED                    | Separate process                                        |
 
 **Key question for the auditor:** Does the `repo-context` CLI + AgentLoop
 `ContextBuilder` integration constitute an R3 product surface? The builder

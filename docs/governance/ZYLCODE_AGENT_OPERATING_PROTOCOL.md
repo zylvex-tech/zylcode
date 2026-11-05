@@ -86,12 +86,12 @@ If any of these fail, **stop and report** rather than proceeding.
 
 Silently choosing either direction destroys the value of having a governing document.
 
-| Situation | Wrong response | Right response |
-|---|---|---|
-| Code does X, spec says Y | Change one to match the other quietly | Report the discrepancy, propose a resolution, record it |
-| Spec describes an unbuilt system | Assume it exists | Confirm it is marked PROPOSED; implement only if it is your phase |
-| A test contradicts the architecture | Delete the test | Report it; the test may be encoding the old contract |
-| A metric looks wrong | Publish it anyway | Investigate scope before publishing (see Phase 2A) |
+| Situation                           | Wrong response                        | Right response                                                    |
+| ----------------------------------- | ------------------------------------- | ----------------------------------------------------------------- |
+| Code does X, spec says Y            | Change one to match the other quietly | Report the discrepancy, propose a resolution, record it           |
+| Spec describes an unbuilt system    | Assume it exists                      | Confirm it is marked PROPOSED; implement only if it is your phase |
+| A test contradicts the architecture | Delete the test                       | Report it; the test may be encoding the old contract              |
+| A metric looks wrong                | Publish it anyway                     | Investigate scope before publishing (see Phase 2A)                |
 
 ### 4.2 Marking rules
 
@@ -125,7 +125,7 @@ Before publishing any number:
 3. Record the **command** that produced it.
 4. **Assert it in a test** if it is a headline metric. An unasserted metric will regress silently.
 
-> "Files indexed: 14,973" was not wrong arithmetic. It was wrong *scope*. The repository has 254
+> "Files indexed: 14,973" was not wrong arithmetic. It was wrong _scope_. The repository has 254
 > files; the rest was `target/` build output. The number was never asserted by any test, so
 > nothing caught it.
 
@@ -165,13 +165,13 @@ detect it from the instruction alone. See `PHASE_NUMBERING_RECONCILIATION.md`.
 A document carrying a **SUPERSEDED**, **HISTORICAL**, or **DEPRECATED** banner is a record of what
 was believed at the time it was written. It is not a statement about the present.
 
-- **Permitted:** reading it to understand *why* a decision was made, and citing it as rationale.
+- **Permitted:** reading it to understand _why_ a decision was made, and citing it as rationale.
 - **Forbidden:** extracting a sentence from it as evidence that a capability exists, works, ships,
   or is tested.
 
 **The live case.** `docs/STRATEGIC_PLAN.md` is marked SUPERSEDED with its obsolete phase numbering
-flagged. Its body still asserts *"This is real, tested, shippable infrastructure. Not a
-prototype."* (§2, line ~110) and *"It's done. It's in `main`. It's tested. It ships."*
+flagged. Its body still asserts _"This is real, tested, shippable infrastructure. Not a
+prototype."_ (§2, line ~110) and _"It's done. It's in `main`. It's tested. It ships."_
 (Appendix A, line ~334).
 
 Those statements are **deliberately not rewritten** — altering them would falsify history. They are
@@ -196,39 +196,54 @@ them is a **draft**, and must not be submitted for audit.
 # Phase <ID> Completion Report — <title>
 
 ## 1. Status
+
 DRAFT | READY FOR AUDIT
 (You may not write "COMPLETE" or "ACCEPTED". That is the auditor's word.)
 
 ## 2. Scope delivered
+
 What was built, and explicitly what was NOT built.
 
 ## 3. Capabilities added / changed
+
 | capability | status | rung | entry point |
 
 ## 4. Reproduction block
+
 ### Environment
+
 <OS, toolchain versions, commit SHA>
+
 ### Commands
+
 <exact commands, copy-pasteable>
+
 ### Raw output
+
 <verbatim captured output — not a summary, not an expectation>
 
 ## 5. Test results
+
 <verbatim output including the summary line; failures shown, not hidden>
 
 ## 6. Metrics
+
 | metric | scope | value | command that produced it |
 
 ## 7. Discrepancies found
+
 <anything where implementation and documentation disagreed, and what you did about it>
 
 ## 8. Limitations
+
 <mandatory, must be non-empty>
 
 ## 9. Known failures
+
 <anything failing, including pre-existing failures. Do not omit.>
 
 ## 10. Requested audit
+
 What specifically you want the auditor to try to falsify.
 ```
 
@@ -243,8 +258,8 @@ What specifically you want the auditor to try to falsify.
 
 ### 5.2 The lesson that produced these rules
 
-The Phase 2A report contained an **"Acceptance Demonstration"** section headed *"Expected
-Output"* — a hand-written narrative of what the system *would* answer, in the position where
+The Phase 2A report contained an **"Acceptance Demonstration"** section headed _"Expected
+Output"_ — a hand-written narrative of what the system _would_ answer, in the position where
 captured evidence belongs. It also reported a benchmark green that fails on re-execution, and a
 "337 tests all pass" that is contradicted by a failing test.
 
@@ -286,18 +301,18 @@ Escalating is a **correct** outcome. Silently proceeding is not.
 
 ## 8. Anti-Patterns (observed in this project)
 
-| Anti-pattern | Why it is fatal | Correct behaviour |
-|---|---|---|
-| Reporting a benchmark green without re-running it | Produces a false PASS that propagates downstream | Re-run immediately before reporting |
-| Testing against a fixture that differs from reality | Green tests over broken behaviour | Test the real input |
-| Publishing an unasserted headline metric | Regresses silently | Assert it in a test |
-| Building a module with no entry point | Library, not capability | Add the surface, or report PARTIAL/R2 |
-| Writing an "Expected Output" where evidence belongs | Substitutes intention for fact | Capture raw output |
-| Committing a report with `(Pending)` fields | A certificate that predates what it certifies | Fill in before committing |
-| Leaving a large dirty tree | Makes attribution impossible | Commit or discard |
-| Marking unbuilt systems as existing | Agents build the wrong product | Mark PROPOSED |
-| Hand-rolling path/gitignore matching | Breaks on the primary platform | Use maintained crates |
-| Self-certifying | The exact failure this program exists to prevent | Hand off to audit |
+| Anti-pattern                                        | Why it is fatal                                  | Correct behaviour                     |
+| --------------------------------------------------- | ------------------------------------------------ | ------------------------------------- |
+| Reporting a benchmark green without re-running it   | Produces a false PASS that propagates downstream | Re-run immediately before reporting   |
+| Testing against a fixture that differs from reality | Green tests over broken behaviour                | Test the real input                   |
+| Publishing an unasserted headline metric            | Regresses silently                               | Assert it in a test                   |
+| Building a module with no entry point               | Library, not capability                          | Add the surface, or report PARTIAL/R2 |
+| Writing an "Expected Output" where evidence belongs | Substitutes intention for fact                   | Capture raw output                    |
+| Committing a report with `(Pending)` fields         | A certificate that predates what it certifies    | Fill in before committing             |
+| Leaving a large dirty tree                          | Makes attribution impossible                     | Commit or discard                     |
+| Marking unbuilt systems as existing                 | Agents build the wrong product                   | Mark PROPOSED                         |
+| Hand-rolling path/gitignore matching                | Breaks on the primary platform                   | Use maintained crates                 |
+| Self-certifying                                     | The exact failure this program exists to prevent | Hand off to audit                     |
 
 ---
 

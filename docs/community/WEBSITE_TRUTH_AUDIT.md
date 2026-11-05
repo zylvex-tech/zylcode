@@ -59,9 +59,7 @@ For each capability claim found on `zylforge.com` / `zylvex.tech` / the README:
 
 - [ ] Locate the claim's text and the page it appears on.
 - [ ] Find the matching `capability` entry in `PUBLIC_CLAIM_MATRIX.yaml`.
-- [ ] Does the live `capability_state`/`public_label` match or **exceed** the matrix entry?
-      - Exceeds → **prohibited claim**. Record it in the table below and correct before publication.
-      - Matches → acceptable.
+- [ ] Does the live `capability_state`/`public_label` match or **exceed** the matrix entry? - Exceeds → **prohibited claim**. Record it in the table below and correct before publication. - Matches → acceptable.
 - [ ] Does the claim use a word from the canonical vocabulary, or an unapproved term (e.g. `BETA`,
       `best`, `fastest`, `production-grade`, `formally verified`)?
 - [ ] For service claims: is `owner_verify_required` satisfied (real delivery capability confirmed)?
@@ -70,8 +68,8 @@ For each capability claim found on `zylforge.com` / `zylvex.tech` / the README:
 ### Discrepancy log (fill during crawl)
 
 | Site/page | Claim found | Matrix entry | Verdict (match / exceed) | Action |
-|---|---|---|---|---|
-| | | | | |
+| --------- | ----------- | ------------ | ------------------------ | ------ |
+|           |             |              |                          |        |
 
 ---
 

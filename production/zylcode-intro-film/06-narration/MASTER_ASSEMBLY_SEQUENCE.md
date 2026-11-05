@@ -10,29 +10,29 @@
 
 ### Picture
 
-| Feed | Source | Native | Use |
-|---|---|---|---|
-| Scene 1 — mission lifecycle | `04-graphics/scene-01-mission-lifecycle.webm` | 1280×720 | Opening: lifecycle animation |
-| Scene 2 — architecture | `04-graphics/scene-02-architecture.webm` | 1280×720 | Architecture workspace graph |
-| Scene 3 — evidence ladder | `04-graphics/scene-03-evidence-ladder.webm` | 1280×720 | Evidence ladder animation |
-| Footage 01 | `01-footage/take-01-workbench.webm` | check before use | Product opening |
-| Footage 02 | `01-footage/take-02-agent-execution.webm` | check before use | Workbench surfaces |
-| Footage 03 | `01-footage/take-03-verification-evidence.webm` | check before use | Repository understanding |
-| Footage 04 | to be captured | — | Mission composer + autonomy selector |
-| Footage 05 | to be captured | — | Hero build: plan → failure → repair |
-| Footage 06 | to be captured | — | Final report: proven/derived/hypotheses/unknown |
-| Footage 07 | to be captured | — | `git log --oneline -3` with real exit code |
-| Footage 08 | to be captured | — | `POST /api/intent` Windows error |
-| Footage 09 | to be captured | — | PR #44 approval + 5/5 checks + merge |
+| Feed                        | Source                                          | Native           | Use                                             |
+| --------------------------- | ----------------------------------------------- | ---------------- | ----------------------------------------------- |
+| Scene 1 — mission lifecycle | `04-graphics/scene-01-mission-lifecycle.webm`   | 1280×720         | Opening: lifecycle animation                    |
+| Scene 2 — architecture      | `04-graphics/scene-02-architecture.webm`        | 1280×720         | Architecture workspace graph                    |
+| Scene 3 — evidence ladder   | `04-graphics/scene-03-evidence-ladder.webm`     | 1280×720         | Evidence ladder animation                       |
+| Footage 01                  | `01-footage/take-01-workbench.webm`             | check before use | Product opening                                 |
+| Footage 02                  | `01-footage/take-02-agent-execution.webm`       | check before use | Workbench surfaces                              |
+| Footage 03                  | `01-footage/take-03-verification-evidence.webm` | check before use | Repository understanding                        |
+| Footage 04                  | to be captured                                  | —                | Mission composer + autonomy selector            |
+| Footage 05                  | to be captured                                  | —                | Hero build: plan → failure → repair             |
+| Footage 06                  | to be captured                                  | —                | Final report: proven/derived/hypotheses/unknown |
+| Footage 07                  | to be captured                                  | —                | `git log --oneline -3` with real exit code      |
+| Footage 08                  | to be captured                                  | —                | `POST /api/intent` Windows error                |
+| Footage 09                  | to be captured                                  | —                | PR #44 approval + 5/5 checks + merge            |
 
 ### Sound
 
-| Feed | Path | Role |
-|---|---|---|
-| Narration 15 clips | `05-audio/narration/narration-01..15.mp3` | Speaker: en-AU-NatashaNeural |
-| Music cue 1 | `05-audio/music/cue-1-open-swell.mp3` | Title / open swell |
-| Music cue 2 | `05-audio/music/cue-2-documentary-tone.mp3` | Documentary bed (main body) |
-| Music cue 3 | `05-audio/music/cue-3-resolve.mp3` | Resolve under closing brand line |
+| Feed               | Path                                        | Role                             |
+| ------------------ | ------------------------------------------- | -------------------------------- |
+| Narration 15 clips | `05-audio/narration/narration-01..15.mp3`   | Speaker: en-AU-NatashaNeural     |
+| Music cue 1        | `05-audio/music/cue-1-open-swell.mp3`       | Title / open swell               |
+| Music cue 2        | `05-audio/music/cue-2-documentary-tone.mp3` | Documentary bed (main body)      |
+| Music cue 3        | `05-audio/music/cue-3-resolve.mp3`          | Resolve under closing brand line |
 
 ---
 

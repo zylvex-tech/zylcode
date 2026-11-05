@@ -72,7 +72,7 @@ because the real patterns are `/target` and `**/target`, neither of which the ha
 handles.
 
 **Why tests were green:** the scanner's own test writes a fixture `.gitignore` containing
-`target/` — a bare directory pattern the naive matcher *does* handle. **The fixture differed from
+`target/` — a bare directory pattern the naive matcher _does_ handle. **The fixture differed from
 reality, so a green suite certified a broken scanner.**
 
 ### 3.2 The benchmark does not reproduce
@@ -104,7 +104,7 @@ No CLI command. No UI surface. No agent tool. `AgentLoop` still uses the older `
 
 ## 4. What Must Be Preserved
 
-The audit is a rejection of the *evidence*, not the *design*. These are sound:
+The audit is a rejection of the _evidence_, not the _design_. These are sound:
 
 1. **Module decomposition** — clean layering, no circular coupling:
    `types → classifier → scanner → manifest → symbols → dependency → entry_points → architecture → git → store → query → context`
@@ -114,8 +114,8 @@ The audit is a rejection of the *evidence*, not the *design*. These are sound:
    `ContextResult.reason`. **Every retrieval can explain why.** This is the seed of the Project
    Knowledge Graph and should be protected.
 4. **Honest support levels** — `DEFINITION_INDEXED` vs `IMPORT_RESOLVED` vs `REFERENCE_RESOLVED`.
-   `symbols.rs` states outright: *"Architecture MUST NOT pretend regex extraction is semantic
-   indexing."* Keep that discipline.
+   `symbols.rs` states outright: _"Architecture MUST NOT pretend regex extraction is semantic
+   indexing."_ Keep that discipline.
 5. **Security boundaries** — secret-file exclusion, `follow_symlinks: false`, repo-root-relative
    paths, local-first with no egress.
 
@@ -173,6 +173,7 @@ impact(symbol | file) → ranked affected set
 ```
 
 Traversal over the dependency graph with ranking by:
+
 - distance
 - reference strength (definition vs. mention)
 - test relationships
@@ -184,11 +185,11 @@ Traversal over the dependency graph with ranking by:
 
 Requires semantic resolution beyond regex:
 
-| Level | Method | Phase |
-|---|---|---|
-| `DEFINITION_INDEXED` | regex | 2A ✔ |
-| `IMPORT_RESOLVED` | tree-sitter / compiler-assisted | 2B |
-| `REFERENCE_RESOLVED` | tree-sitter / LSP | 2B |
+| Level                | Method                          | Phase |
+| -------------------- | ------------------------------- | ----- |
+| `DEFINITION_INDEXED` | regex                           | 2A ✔  |
+| `IMPORT_RESOLVED`    | tree-sitter / compiler-assisted | 2B    |
+| `REFERENCE_RESOLVED` | tree-sitter / LSP               | 2B    |
 
 **Do not claim semantic resolution before it exists.** The existing honesty in `symbols.rs`
 about this must be preserved.
@@ -230,14 +231,14 @@ reproduces the exact defect the audit identified.
 
 ## 7. Benchmark (Phase 2B)
 
-| Metric | Phase 2A reported | Phase 2B required |
-|---|---|---|
-| Precision@10 | 0.30 | **≥ 0.60** |
-| Recall@10 | 0.53 | **≥ 0.60** |
-| Questions scoring 0.00 | 3 of 10 (Q5, Q6, Q10) | **0 of 20** |
-| Questions | 10 | **≥ 20** |
-| Index scope assertion | none | **asserted** |
-| Reproducibility | not reproducible | **deterministic** |
+| Metric                 | Phase 2A reported     | Phase 2B required |
+| ---------------------- | --------------------- | ----------------- |
+| Precision@10           | 0.30                  | **≥ 0.60**        |
+| Recall@10              | 0.53                  | **≥ 0.60**        |
+| Questions scoring 0.00 | 3 of 10 (Q5, Q6, Q10) | **0 of 20**       |
+| Questions              | 10                    | **≥ 20**          |
+| Index scope assertion  | none                  | **asserted**      |
+| Reproducibility        | not reproducible      | **deterministic** |
 
 **Rationale:** the 2B bar must be one a **keyword search would fail**. Otherwise the graph adds
 nothing over `grep`.
@@ -246,19 +247,19 @@ nothing over `grep`.
 
 ## 8. Relationship to Other Systems
 
-| System | Relationship |
-|---|---|
-| **Agent Kernel** | primary consumer; must assemble context through the graph |
-| **Project System** | scopes the graph; owns project identity |
-| **Project Knowledge Graph** | extends the graph with decisions and runtime evidence |
-| **Vision Studio** | consumes symbols/dependencies to map design↔code |
-| **Proof Engine** | consumes test-to-code relationships to select verification |
+| System                      | Relationship                                               |
+| --------------------------- | ---------------------------------------------------------- |
+| **Agent Kernel**            | primary consumer; must assemble context through the graph  |
+| **Project System**          | scopes the graph; owns project identity                    |
+| **Project Knowledge Graph** | extends the graph with decisions and runtime evidence      |
+| **Vision Studio**           | consumes symbols/dependencies to map design↔code           |
+| **Proof Engine**            | consumes test-to-code relationships to select verification |
 
 ### 8.1 The index is not the ledger
 
 > **An index may be rebuilt. A ledger may not.**
 
-The Intelligence Graph index is a *derived* artifact. Rebuilding it must not appear to rewrite
+The Intelligence Graph index is a _derived_ artifact. Rebuilding it must not appear to rewrite
 history. Index and Ledger are separate stores with separate APIs. This distinction is
 architectural and must not be collapsed for convenience.
 

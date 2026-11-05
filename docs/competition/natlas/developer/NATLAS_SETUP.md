@@ -8,16 +8,16 @@ evidence used to establish them.
 
 ## 1. What N-ATLAS is
 
-| Field | Value |
-|---|---|
-| Name | **N-ATLaS** — the Nigerian Atlas for Languages & AI at Scale |
-| Steward | NCAIR (National Centre for AI and Robotics), NITDA, Federal Republic of Nigeria |
-| Technical partner | Awarri Technologies |
-| Base model | **Llama-3 8B**, supervised fine-tune |
-| Languages | Yoruba · Hausa · Igbo · Nigerian-accented English |
-| Official source | `https://huggingface.co/NCAIR1/N-ATLaS` |
-| Format | safetensors (4 shards, **~15.3 GB** total) |
-| Documented context | 8,092 tokens |
+| Field              | Value                                                                           |
+| ------------------ | ------------------------------------------------------------------------------- |
+| Name               | **N-ATLaS** — the Nigerian Atlas for Languages & AI at Scale                    |
+| Steward            | NCAIR (National Centre for AI and Robotics), NITDA, Federal Republic of Nigeria |
+| Technical partner  | Awarri Technologies                                                             |
+| Base model         | **Llama-3 8B**, supervised fine-tune                                            |
+| Languages          | Yoruba · Hausa · Igbo · Nigerian-accented English                               |
+| Official source    | `https://huggingface.co/NCAIR1/N-ATLaS`                                         |
+| Format             | safetensors (4 shards, **~15.3 GB** total)                                      |
+| Documented context | 8,092 tokens                                                                    |
 
 ---
 
@@ -144,12 +144,12 @@ The reply must include a `model` field naming the model. If it does not, the too
 
 ## 7. Hardware guidance
 
-| VRAM | Recommended |
-|---|---|
+| VRAM         | Recommended                                  |
+| ------------ | -------------------------------------------- |
 | 0 (CPU only) | works; expect slow generation on an 8B model |
-| 4 GB | partial offload; keep most layers on CPU |
-| 8 GB+ | comfortable partial offload |
-| 24 GB | full offload |
+| 4 GB         | partial offload; keep most layers on CPU     |
+| 8 GB+        | comfortable partial offload                  |
+| 24 GB        | full offload                                 |
 
 Keep total RAM usage under your system RAM: an 8B model at Q4 needs roughly 7–8 GB at runtime
 plus context.

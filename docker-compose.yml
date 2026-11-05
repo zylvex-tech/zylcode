@@ -36,8 +36,7 @@ services:
       # `docker compose up` never makes a billed network call.
       ZYLCODE_WORKSPACE: /workspace
     healthcheck:
-      test:
-        ["CMD", "curl", "-fsS", "http://127.0.0.1:17630/healthz"]
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:17630/healthz"]
       interval: 10s
       timeout: 5s
       retries: 12

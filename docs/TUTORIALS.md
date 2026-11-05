@@ -40,7 +40,10 @@ pnpm --filter zylcode-desktop dev
 ### 3) Override at invoke time
 
 ```ts
-await invoke<IntentResult>("process_intent", { prompt: "build a todo app", model: "anthropic/claude-3.5-sonnet" });
+await invoke<IntentResult>("process_intent", {
+  prompt: "build a todo app",
+  model: "anthropic/claude-3.5-sonnet",
+});
 ```
 
 Model override is per-call, ephemeral.
@@ -67,7 +70,9 @@ cargo test -p zylcode-core router::tests::synthetic_offline_dispatch_returns_par
 `apps/zylcode-desktop/src/components/ProviderSettings.tsx` subscribes:
 
 ```ts
-await listen<Failover>("telemetry:provider_failover", (ev) => setFailovers(p => [ev.payload, ...p]));
+await listen<Failover>("telemetry:provider_failover", (ev) =>
+  setFailovers((p) => [ev.payload, ...p]),
+);
 ```
 
 Trigger via `Stream` button; failover list populates with `↻ #1 anthropic → ollama`.
@@ -83,8 +88,12 @@ Fallback skips disabled? Current dispatch uses `primary_provider`/`fallback_prov
 ### 4) Reorder to local-first
 
 ```ts
-await invoke("reorder_provider_chain", { order: ["ollama","anthropic","open_router","synthetic_offline"] });
-await invoke("get_provider_configs").then(cs => console.table(cs.map(c => [c.kind, c.fallback_order])));
+await invoke("reorder_provider_chain", {
+  order: ["ollama", "anthropic", "open_router", "synthetic_offline"],
+});
+await invoke("get_provider_configs").then((cs) =>
+  console.table(cs.map((c) => [c.kind, c.fallback_order])),
+);
 ```
 
 ---
@@ -138,7 +147,7 @@ for budget in [256, 512, 1024, 4096, 8192] {
 ```ts
 import { ExtensionRegistry } from "zylcode-core/marketplace";
 const reg = new ExtensionRegistry();
-reg.register({ id: "my-plugin", /* PluginManifest */ });
+reg.register({ id: "my-plugin" /* PluginManifest */ });
 await invoke("marketplace_search", { query: "my-plugin" });
 ```
 

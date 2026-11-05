@@ -56,31 +56,31 @@ label becomes a false capability claim the moment a reader assumes it is real.
 Every public capability claim carries exactly one of these. They are ordered; a claim must not use
 a term above its evidence.
 
-| Term | Meaning | Evidence required |
-|---|---|---|
-| **AVAILABLE** | Usable now through a named surface | R3+ and independently accepted |
-| **VERIFIED** | The appropriate Proof Graph requirement is satisfied | Citation to the proof record |
-| **DEVELOPER PREVIEW** | Usable but explicitly pre-release | Acceptance gates met; labelled pre-release |
-| **IN DEVELOPMENT** | Real implementation exists; acceptance gate not yet satisfied | Named entry point or merged code |
-| **PROPOSED** | Planned or design work only | Documented in the architecture |
-| **CONCEPT** | UX/product exploration; **not** an implementation claim | Labelled as exploration |
-| **HISTORICAL** | Refers to an older build or release | Named commit/version |
-| **SERVICE-DELIVERED** | Human/company service, not software automation | Distinguishable from product capability |
+| Term                  | Meaning                                                       | Evidence required                          |
+| --------------------- | ------------------------------------------------------------- | ------------------------------------------ |
+| **AVAILABLE**         | Usable now through a named surface                            | R3+ and independently accepted             |
+| **VERIFIED**          | The appropriate Proof Graph requirement is satisfied          | Citation to the proof record               |
+| **DEVELOPER PREVIEW** | Usable but explicitly pre-release                             | Acceptance gates met; labelled pre-release |
+| **IN DEVELOPMENT**    | Real implementation exists; acceptance gate not yet satisfied | Named entry point or merged code           |
+| **PROPOSED**          | Planned or design work only                                   | Documented in the architecture             |
+| **CONCEPT**           | UX/product exploration; **not** an implementation claim       | Labelled as exploration                    |
+| **HISTORICAL**        | Refers to an older build or release                           | Named commit/version                       |
+| **SERVICE-DELIVERED** | Human/company service, not software automation                | Distinguishable from product capability    |
 
 **Mapping from internal status** (`ZYLCODE_CAPABILITY_MODEL.md`):
 
-| Internal rung | Permitted public term |
-|---|---|
-| R3+ (accepted) | AVAILABLE / VERIFIED |
-| R3 (pre-release) | DEVELOPER PREVIEW |
-| R2 | IN DEVELOPMENT |
-| R1 | IN DEVELOPMENT (only if a real entry point exists) |
-| R0 | PROPOSED |
-| — (no implementation) | PROPOSED, or CONCEPT for pure UX exploration |
+| Internal rung         | Permitted public term                              |
+| --------------------- | -------------------------------------------------- |
+| R3+ (accepted)        | AVAILABLE / VERIFIED                               |
+| R3 (pre-release)      | DEVELOPER PREVIEW                                  |
+| R2                    | IN DEVELOPMENT                                     |
+| R1                    | IN DEVELOPMENT (only if a real entry point exists) |
+| R0                    | PROPOSED                                           |
+| — (no implementation) | PROPOSED, or CONCEPT for pure UX exploration       |
 
 **The standing example.** `computer_use` is R0 with a non-functional skeleton present. Its
-permitted claim is *"Computer-use runtime is planned for ZylCode."* Its prohibited claim is
-*"ZylCode can operate your computer."* Anything between those two lines is a violation.
+permitted claim is _"Computer-use runtime is planned for ZylCode."_ Its prohibited claim is
+_"ZylCode can operate your computer."_ Anything between those two lines is a violation.
 
 ---
 
@@ -163,8 +163,8 @@ a definition is an unverifiable claim.
 > never be used as current capability evidence.** (Agent Operating Protocol §4.8)
 
 `docs/STRATEGIC_PLAN.md` is the live case. It is correctly marked **SUPERSEDED** and its obsolete
-phase numbering is flagged — but its body still contains statements such as *"This is real, tested,
-shippable infrastructure. Not a prototype."* and *"It's tested. It ships."*
+phase numbering is flagged — but its body still contains statements such as _"This is real, tested,
+shippable infrastructure. Not a prototype."_ and _"It's tested. It ships."_
 
 **Those sentences are not rewritten** — altering them would falsify the historical record. They are
 instead **quarantined**: they are evidence about what was believed in September 2026, and nothing
@@ -211,12 +211,12 @@ every commit.**
 
 ## 10. Relationship to the Commercial Model
 
-| Commercial level (`ZYLCODE_COMMERCIAL_MODEL.md` §4) | Communication permitted |
-|---|---|
-| **0 — Public Development** | Build-in-public, devlog, roadmap, status-labelled capability pages. **No commercial offer.** |
-| **1 — Developer Preview** | Preview offer, labelled pre-release. |
-| **2 — Paid Early Access / PRO** | Pricing for the accepted capabilities **only**. |
-| **3 — GA / Enterprise** | GA claims, SLAs, compliance representations. |
+| Commercial level (`ZYLCODE_COMMERCIAL_MODEL.md` §4) | Communication permitted                                                                      |
+| --------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| **0 — Public Development**                          | Build-in-public, devlog, roadmap, status-labelled capability pages. **No commercial offer.** |
+| **1 — Developer Preview**                           | Preview offer, labelled pre-release.                                                         |
+| **2 — Paid Early Access / PRO**                     | Pricing for the accepted capabilities **only**.                                              |
+| **3 — GA / Enterprise**                             | GA claims, SLAs, compliance representations.                                                 |
 
 Level 0 is **permitted immediately** — truthful communication about work in progress is not a
 commercial claim, and the commercial model imposes no gate on it.

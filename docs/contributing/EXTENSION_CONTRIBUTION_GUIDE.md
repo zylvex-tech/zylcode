@@ -1,7 +1,7 @@
 # Extension Contribution Guide
 
 > **STATUS: PROPOSED — extension ABI not yet implemented.**
-> This guide describes the *intended* extension contribution flow. Until the Extension Platform ABI
+> This guide describes the _intended_ extension contribution flow. Until the Extension Platform ABI
 > exists (Phase 5, `ZYLCODE_MASTER_EXECUTION_PLAN.md`), contributions are limited to what the current
 > system supports (the MCP bridge and the plugin marketplace module), which are **not** a stable package
 > ABI. Do not build an extension assuming a contract that does not exist.

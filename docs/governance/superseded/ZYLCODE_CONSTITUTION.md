@@ -148,6 +148,7 @@ is not silence — it is a red flag. Ambiguous states are reconciled or
 escalated, never silently passed.
 
 This applies to:
+
 - Agent verification decisions
 - Test results
 - Build outcomes
@@ -175,6 +176,7 @@ Ollama model or an Android device farm.
 **Every agent action is inspectable.**
 
 The user can open a Trajectory view and see:
+
 - What the agent planned
 - What it decided
 - What tools it called
@@ -233,17 +235,17 @@ blocked by Stage 8 being incomplete.
 The workspace is divided into zones, each of which is a first-class
 panel that can be opened, closed, resized, docked, and tabbed.
 
-| Zone | Purpose |
-|------|---------|
-| **Code** | Professional source editor with syntax highlighting, IntelliSense, multi-cursor, refactoring, code lens, minimap |
-| **Canvas** | Visual design surface for UI/UX — frames, components, layout, tokens, responsive preview |
-| **Preview** | Live runtime preview — web, desktop, mobile — with hot reload |
-| **Terminal** | Integrated terminal with multiple sessions, command history, output capture |
-| **Test** | Test explorer, test results, coverage visualization, failure navigation |
-| **Git** | Source control — commits, branches, diffs, merge, history, blame |
-| **Ship** | Release pipeline — build status, CI results, deployment targets, installer generation |
-| **Agent** | Agent conversation, trajectory viewer, evidence inspector, approval queue |
-| **Trajectory** | Full agent action timeline — every decision, tool call, verification, and evidence item |
+| Zone           | Purpose                                                                                                          |
+| -------------- | ---------------------------------------------------------------------------------------------------------------- |
+| **Code**       | Professional source editor with syntax highlighting, IntelliSense, multi-cursor, refactoring, code lens, minimap |
+| **Canvas**     | Visual design surface for UI/UX — frames, components, layout, tokens, responsive preview                         |
+| **Preview**    | Live runtime preview — web, desktop, mobile — with hot reload                                                    |
+| **Terminal**   | Integrated terminal with multiple sessions, command history, output capture                                      |
+| **Test**       | Test explorer, test results, coverage visualization, failure navigation                                          |
+| **Git**        | Source control — commits, branches, diffs, merge, history, blame                                                 |
+| **Ship**       | Release pipeline — build status, CI results, deployment targets, installer generation                            |
+| **Agent**      | Agent conversation, trajectory viewer, evidence inspector, approval queue                                        |
+| **Trajectory** | Full agent action timeline — every decision, tool call, verification, and evidence item                          |
 
 ### 3.2 Agent-Addressable Context
 
@@ -285,22 +287,22 @@ model requests, the execution of tools, and the collection of evidence.
 
 Everything in the Agent Kernel is a composable capability:
 
-| Capability | Description |
-|------------|-------------|
-| **Model** | An LLM provider (OpenAI, Anthropic, DeepSeek, Gemini, Ollama, etc.) |
-| **Agent** | A configured AI entity with persona, tools, and objectives |
-| **Tool** | A discrete action the agent can take (file read, shell command, git operation, etc.) |
-| **MCP Server** | A Model Context Protocol server providing tools and resources |
-| **Skill** | A reusable knowledge package that teaches the agent a domain |
-| **Plugin** | A runtime extension that adds services, events, UI, or tools |
-| **Workflow** | A multi-step, multi-agent orchestration with phases and gates |
-| **Sandbox** | An isolated execution environment with controlled permissions |
-| **Memory** | A persistence provider for agent context, session history, and learned facts |
-| **Context Provider** | A source of structured context (repository intelligence, design system, etc.) |
-| **Design Tool** | A visual creation/manipulation tool (canvas, token editor, component builder) |
-| **Device Tool** | A runtime control tool (browser, emulator, device, screenshot) |
-| **Verification Provider** | A test/inspection/audit tool that produces evidence |
-| **Deployment Provider** | A release/distribution target (app store, cloud, CDN, installer) |
+| Capability                | Description                                                                          |
+| ------------------------- | ------------------------------------------------------------------------------------ |
+| **Model**                 | An LLM provider (OpenAI, Anthropic, DeepSeek, Gemini, Ollama, etc.)                  |
+| **Agent**                 | A configured AI entity with persona, tools, and objectives                           |
+| **Tool**                  | A discrete action the agent can take (file read, shell command, git operation, etc.) |
+| **MCP Server**            | A Model Context Protocol server providing tools and resources                        |
+| **Skill**                 | A reusable knowledge package that teaches the agent a domain                         |
+| **Plugin**                | A runtime extension that adds services, events, UI, or tools                         |
+| **Workflow**              | A multi-step, multi-agent orchestration with phases and gates                        |
+| **Sandbox**               | An isolated execution environment with controlled permissions                        |
+| **Memory**                | A persistence provider for agent context, session history, and learned facts         |
+| **Context Provider**      | A source of structured context (repository intelligence, design system, etc.)        |
+| **Design Tool**           | A visual creation/manipulation tool (canvas, token editor, component builder)        |
+| **Device Tool**           | A runtime control tool (browser, emulator, device, screenshot)                       |
+| **Verification Provider** | A test/inspection/audit tool that produces evidence                                  |
+| **Deployment Provider**   | A release/distribution target (app store, cloud, CDN, installer)                     |
 
 ### 4.3 Evidence Ledger
 
@@ -308,6 +310,7 @@ Every consequential action in the Agent Kernel is recorded in the
 Evidence Ledger.
 
 The ledger is:
+
 - Append-first
 - Hash-chained (SHA-256)
 - Idempotent
@@ -331,15 +334,15 @@ Every agent interaction is a Session. Sessions are:
 
 Actions are classified by risk:
 
-| Risk Level | Policy |
-|------------|--------|
-| Read | Auto-approve |
-| Write | Auto-approve with evidence |
-| Execute | Auto-approve with timeout and evidence |
-| Network | Approve on first use per session |
-| GitWrite | Approve per action |
-| Destructive | Always require explicit approval |
-| Release | Always require explicit approval |
+| Risk Level  | Policy                                 |
+| ----------- | -------------------------------------- |
+| Read        | Auto-approve                           |
+| Write       | Auto-approve with evidence             |
+| Execute     | Auto-approve with timeout and evidence |
+| Network     | Approve on first use per session       |
+| GitWrite    | Approve per action                     |
+| Destructive | Always require explicit approval       |
+| Release     | Always require explicit approval       |
 
 ---
 
@@ -377,13 +380,13 @@ preference or marketing.
 
 Models are selected based on:
 
-| Criterion | Weight | Source |
-|-----------|--------|--------|
-| Task performance | High | Benchmark results per task type |
-| Privacy | High | Local vs. cloud, data retention policy |
-| Cost | Medium | Token pricing, rate limits |
-| Latency | Medium | Measured response times |
-| Availability | Medium | API uptime, fallback chains |
+| Criterion        | Weight | Source                                 |
+| ---------------- | ------ | -------------------------------------- |
+| Task performance | High   | Benchmark results per task type        |
+| Privacy          | High   | Local vs. cloud, data retention policy |
+| Cost             | Medium | Token pricing, rate limits             |
+| Latency          | Medium | Measured response times                |
+| Availability     | Medium | API uptime, fallback chains            |
 
 ### 5.4 Learning
 
@@ -401,13 +404,13 @@ The router uses these profiles, not hardcoded rules.
 When no cloud model is available, ZylCode falls back to local models
 through Ollama. The system degrades gracefully:
 
-| Capability | Cloud | Local |
-|------------|-------|-------|
-| Code generation | Full | Reduced quality, fully functional |
-| Visual reasoning | Full | Basic (no vision models) |
-| Repository intelligence | Full | Full (local index) |
-| Verification | Full | Full (local execution) |
-| Design system | Full | Reduced (simpler suggestions) |
+| Capability              | Cloud | Local                             |
+| ----------------------- | ----- | --------------------------------- |
+| Code generation         | Full  | Reduced quality, fully functional |
+| Visual reasoning        | Full  | Basic (no vision models)          |
+| Repository intelligence | Full  | Full (local index)                |
+| Verification            | Full  | Full (local execution)            |
+| Design system           | Full  | Reduced (simpler suggestions)     |
 
 ---
 
@@ -421,18 +424,18 @@ depends on what, what changed, and what is relevant.
 
 ### 6.2 Layers
 
-| Layer | Content | Status |
-|-------|---------|--------|
-| File Inventory | Files, languages, roles, content hashes | Phase 2A ✅ |
-| Manifest Intelligence | Workspaces, packages, dependencies, scripts | Phase 2A ✅ |
-| Symbol Graph | Definitions, types, visibility, parent relationships | Phase 2A ✅ (DEFINITION_INDEXED) |
-| Dependency Graph | Package, module, and external dependencies | Phase 2A ✅ |
-| Change Graph | Git history, commits, changed files | Phase 2A ✅ |
-| Architectural Fingerprint | Frameworks, tools, patterns with evidence | Phase 2A ✅ |
-| Import Graph | File-to-file import relationships | Future |
-| Reference Graph | Symbol-to-symbol references and calls | Future |
-| Semantic Index | Vector embeddings for semantic retrieval | Future |
-| Impact Graph | Change impact analysis with confidence | Future |
+| Layer                     | Content                                              | Status                           |
+| ------------------------- | ---------------------------------------------------- | -------------------------------- |
+| File Inventory            | Files, languages, roles, content hashes              | Phase 2A ✅                      |
+| Manifest Intelligence     | Workspaces, packages, dependencies, scripts          | Phase 2A ✅                      |
+| Symbol Graph              | Definitions, types, visibility, parent relationships | Phase 2A ✅ (DEFINITION_INDEXED) |
+| Dependency Graph          | Package, module, and external dependencies           | Phase 2A ✅                      |
+| Change Graph              | Git history, commits, changed files                  | Phase 2A ✅                      |
+| Architectural Fingerprint | Frameworks, tools, patterns with evidence            | Phase 2A ✅                      |
+| Import Graph              | File-to-file import relationships                    | Future                           |
+| Reference Graph           | Symbol-to-symbol references and calls                | Future                           |
+| Semantic Index            | Vector embeddings for semantic retrieval             | Future                           |
+| Impact Graph              | Change impact analysis with confidence               | Future                           |
 
 ### 6.3 Query Interface
 
@@ -463,12 +466,12 @@ When files change, affected intelligence is invalidated and reindexed.
 
 Every fact in the Intelligence Graph has provenance:
 
-| Level | Meaning |
-|-------|---------|
-| Observed | Directly from the filesystem |
-| Parsed | Extracted by parsing structured content |
-| Derived | Computed from other facts |
-| Inferred | Heuristic guess — lower authority |
+| Level    | Meaning                                 |
+| -------- | --------------------------------------- |
+| Observed | Directly from the filesystem            |
+| Parsed   | Extracted by parsing structured content |
+| Derived  | Computed from other facts               |
+| Inferred | Heuristic guess — lower authority       |
 
 ---
 
@@ -494,16 +497,16 @@ one truth.
 
 ### 7.3 Canvas Capabilities
 
-| Category | Capabilities |
-|----------|-------------|
-| Layout | Frames, Auto-layout, Flex, Grid, Constraints, Responsive breakpoints |
-| Content | Text, Shapes, Images, SVG, Icons |
-| Components | Component definition, Variants, Instances, Overrides |
+| Category      | Capabilities                                                                   |
+| ------------- | ------------------------------------------------------------------------------ |
+| Layout        | Frames, Auto-layout, Flex, Grid, Constraints, Responsive breakpoints           |
+| Content       | Text, Shapes, Images, SVG, Icons                                               |
+| Components    | Component definition, Variants, Instances, Overrides                           |
 | Design System | Tokens (color, typography, spacing, radius, shadow, motion), Variables, Themes |
-| Interaction | Prototype links, Transitions, Animations |
-| Collaboration | Comments, Annotations, Cursors |
-| Accessibility | Contrast checking, Screen reader preview, ARIA inspection |
-| Export | Code export, Asset export, Design spec export |
+| Interaction   | Prototype links, Transitions, Animations                                       |
+| Collaboration | Comments, Annotations, Cursors                                                 |
+| Accessibility | Contrast checking, Screen reader preview, ARIA inspection                      |
+| Export        | Code export, Asset export, Design spec export                                  |
 
 ### 7.4 Design System Intelligence
 
@@ -541,6 +544,7 @@ than inventing random colors and spacing.
 ### 7.5 Technology Approach
 
 Vision Studio is built on:
+
 - **Canvas rendering**: WebGL/WebGPU for high-performance canvas
 - **Layout engine**: Flexbox/Grid model matching CSS specification
 - **Component model**: React component tree as the source of truth
@@ -565,6 +569,7 @@ rather than a code generator.
 **The agent must look at what it builds.**
 
 The agent does not say "I implemented the page." It:
+
 1. Builds the code
 2. Launches the runtime
 3. Renders the result
@@ -576,19 +581,19 @@ The agent does not say "I implemented the page." It:
 
 ### 8.3 Runtime Targets
 
-| Target | Status | Control Method |
-|--------|--------|---------------|
-| Web (Chrome) | Stage 5 | Chrome DevTools Protocol |
-| Web (Firefox) | Stage 5 | Marionette |
-| Web (Edge) | Stage 5 | Chrome DevTools Protocol |
+| Target            | Status  | Control Method                 |
+| ----------------- | ------- | ------------------------------ |
+| Web (Chrome)      | Stage 5 | Chrome DevTools Protocol       |
+| Web (Firefox)     | Stage 5 | Marionette                     |
+| Web (Edge)        | Stage 5 | Chrome DevTools Protocol       |
 | Desktop (Windows) | Stage 5 | Tauri runtime + window control |
-| Desktop (Linux) | Stage 5 | Tauri runtime + window control |
-| Desktop (macOS) | Stage 5 | Tauri runtime + window control |
-| Android Emulator | Stage 8 | ADB + UI Automator |
-| Android Device | Stage 8 | ADB + UI Automator |
-| iOS Simulator | Stage 9 | xcrun simctl + XCUITest |
-| iOS Device | Stage 9 | libimobiledevice + XCUITest |
-| Remote macOS | Stage 9 | SSH + remote worker |
+| Desktop (Linux)   | Stage 5 | Tauri runtime + window control |
+| Desktop (macOS)   | Stage 5 | Tauri runtime + window control |
+| Android Emulator  | Stage 8 | ADB + UI Automator             |
+| Android Device    | Stage 8 | ADB + UI Automator             |
+| iOS Simulator     | Stage 9 | xcrun simctl + XCUITest        |
+| iOS Device        | Stage 9 | libimobiledevice + XCUITest    |
+| Remote macOS      | Stage 9 | SSH + remote worker            |
 
 ### 8.4 Inspection Pipeline
 
@@ -603,13 +608,13 @@ Evidence Ledger.
 
 All execution happens in sandboxes with controlled permissions:
 
-| Sandbox | Purpose | Isolation |
-|---------|---------|-----------|
-| File Sandbox | File read/write | Path allowlist |
-| Shell Sandbox | Command execution | Command allowlist |
-| Network Sandbox | HTTP requests | Domain allowlist |
-| Browser Sandbox | Web page control | Origin isolation |
-| Device Sandbox | Device interaction | ADB/simulator isolation |
+| Sandbox         | Purpose            | Isolation               |
+| --------------- | ------------------ | ----------------------- |
+| File Sandbox    | File read/write    | Path allowlist          |
+| Shell Sandbox   | Command execution  | Command allowlist       |
+| Network Sandbox | HTTP requests      | Domain allowlist        |
+| Browser Sandbox | Web page control   | Origin isolation        |
+| Device Sandbox  | Device interaction | ADB/simulator isolation |
 
 ---
 
@@ -623,17 +628,17 @@ performs adequately, and is secure.
 
 ### 9.2 Verification Layers
 
-| Layer | What It Verifies | Evidence |
-|-------|-----------------|----------|
-| **Build** | Code compiles, bundles, and produces artifacts | Build log, exit code, artifact hashes |
-| **Unit Test** | Individual functions and modules work correctly | Test results, coverage report |
-| **Integration Test** | Components work together | Test results, API responses |
-| **Visual QA** | UI renders correctly against design | Screenshot comparison, diff image |
-| **Runtime QA** | Application behaves correctly in runtime | Interaction traces, console logs, network traces |
-| **Security** | No known vulnerabilities, secrets, or injection vectors | Audit results, dependency scan |
-| **Performance** | Adequate response times and resource usage | Profiling results, benchmarks |
-| **Accessibility** | WCAG compliance, screen reader compatibility | Automated a11y audit results |
-| **Evidence** | All above have verifiable evidence | Ledger entries, hash chain |
+| Layer                | What It Verifies                                        | Evidence                                         |
+| -------------------- | ------------------------------------------------------- | ------------------------------------------------ |
+| **Build**            | Code compiles, bundles, and produces artifacts          | Build log, exit code, artifact hashes            |
+| **Unit Test**        | Individual functions and modules work correctly         | Test results, coverage report                    |
+| **Integration Test** | Components work together                                | Test results, API responses                      |
+| **Visual QA**        | UI renders correctly against design                     | Screenshot comparison, diff image                |
+| **Runtime QA**       | Application behaves correctly in runtime                | Interaction traces, console logs, network traces |
+| **Security**         | No known vulnerabilities, secrets, or injection vectors | Audit results, dependency scan                   |
+| **Performance**      | Adequate response times and resource usage              | Profiling results, benchmarks                    |
+| **Accessibility**    | WCAG compliance, screen reader compatibility            | Automated a11y audit results                     |
+| **Evidence**         | All above have verifiable evidence                      | Ledger entries, hash chain                       |
 
 ### 9.3 Fail-Closed Enforcement
 
@@ -660,17 +665,17 @@ cloud deployments.
 
 ### 10.2 Delivery Targets
 
-| Target | Status | Method |
-|--------|--------|--------|
-| Git commit/push | Stage 1 ✅ | Git CLI |
-| GitHub CI | Stage 1 (BLOCKED_EXTERNAL) | GitHub Actions |
-| Windows installer | Stage 11 | NSIS via Tauri |
-| macOS installer | Stage 11 | DMG via Tauri |
-| Linux packages | Stage 11 | DEB/RPM via Tauri |
-| Web deployment | Stage 11 | Static hosting, Docker |
-| Android APK/AAB | Stage 11 | Gradle + signing |
-| iOS IPA | Stage 11 | Xcode + signing |
-| App stores | Stage 12 | Store-specific workflows |
+| Target            | Status                     | Method                   |
+| ----------------- | -------------------------- | ------------------------ |
+| Git commit/push   | Stage 1 ✅                 | Git CLI                  |
+| GitHub CI         | Stage 1 (BLOCKED_EXTERNAL) | GitHub Actions           |
+| Windows installer | Stage 11                   | NSIS via Tauri           |
+| macOS installer   | Stage 11                   | DMG via Tauri            |
+| Linux packages    | Stage 11                   | DEB/RPM via Tauri        |
+| Web deployment    | Stage 11                   | Static hosting, Docker   |
+| Android APK/AAB   | Stage 11                   | Gradle + signing         |
+| iOS IPA           | Stage 11                   | Xcode + signing          |
+| App stores        | Stage 12                   | Store-specific workflows |
 
 ### 10.3 Release Pipeline
 
@@ -690,6 +695,7 @@ Everything in ZylCode is a plugin. This is not an afterthought — it is
 the architecture.
 
 The core engine provides:
+
 - A composition runtime
 - A service registry
 - An event bus
@@ -703,31 +709,31 @@ deployment targets — is a plugin that registers with the runtime.
 
 Every plugin declares:
 
-| Field | Purpose |
-|-------|---------|
-| `id` | Unique identifier |
-| `version` | Semantic version |
-| `capabilities` | What the plugin provides (services, tools, events, UI) |
-| `dependencies` | What the plugin requires (other plugins, services) |
-| `permissions` | What the plugin needs access to (filesystem, network, devices) |
-| `sandbox` | Isolation requirements |
+| Field          | Purpose                                                        |
+| -------------- | -------------------------------------------------------------- |
+| `id`           | Unique identifier                                              |
+| `version`      | Semantic version                                               |
+| `capabilities` | What the plugin provides (services, tools, events, UI)         |
+| `dependencies` | What the plugin requires (other plugins, services)             |
+| `permissions`  | What the plugin needs access to (filesystem, network, devices) |
+| `sandbox`      | Isolation requirements                                         |
 
 ### 11.3 Plugin Types
 
-| Type | Provides | Examples |
-|------|----------|---------|
-| Model Provider | LLM inference | OpenAI, Anthropic, Ollama |
-| Tool Provider | Discrete actions | Filesystem, Shell, Git, Browser |
-| MCP Server | Tools + resources via MCP protocol | Any MCP-compliant server |
-| Skill | Domain knowledge + behavior patterns | Rust engineering, React UI, Android development |
-| Agent | Configured AI entity with persona and objectives | Code reviewer, Test writer, Security auditor |
-| Workflow | Multi-step orchestration | Build pipeline, Release process, Migration |
-| Context Provider | Structured context for agents | Repository Intelligence, Design System |
-| Design Tool | Visual creation/manipulation | Canvas, Token editor, Component builder |
-| Device Tool | Runtime control | Browser controller, ADB controller, Simulator |
-| Verification Provider | Evidence-producing verification | Test runner, Screenshot comparator, Security scanner |
-| Deployment Provider | Release target | App store, Cloud, CDN, Installer |
-| UI Plugin | Workspace UI extension | Panel, View, Status bar item, Command |
+| Type                  | Provides                                         | Examples                                             |
+| --------------------- | ------------------------------------------------ | ---------------------------------------------------- |
+| Model Provider        | LLM inference                                    | OpenAI, Anthropic, Ollama                            |
+| Tool Provider         | Discrete actions                                 | Filesystem, Shell, Git, Browser                      |
+| MCP Server            | Tools + resources via MCP protocol               | Any MCP-compliant server                             |
+| Skill                 | Domain knowledge + behavior patterns             | Rust engineering, React UI, Android development      |
+| Agent                 | Configured AI entity with persona and objectives | Code reviewer, Test writer, Security auditor         |
+| Workflow              | Multi-step orchestration                         | Build pipeline, Release process, Migration           |
+| Context Provider      | Structured context for agents                    | Repository Intelligence, Design System               |
+| Design Tool           | Visual creation/manipulation                     | Canvas, Token editor, Component builder              |
+| Device Tool           | Runtime control                                  | Browser controller, ADB controller, Simulator        |
+| Verification Provider | Evidence-producing verification                  | Test runner, Screenshot comparator, Security scanner |
+| Deployment Provider   | Release target                                   | App store, Cloud, CDN, Installer                     |
+| UI Plugin             | Workspace UI extension                           | Panel, View, Status bar item, Command                |
 
 ### 11.4 Creator Studio
 
@@ -800,6 +806,7 @@ Mechanical Engineering UI Kit
 ### 12.3 Trust Model
 
 Every marketplace item has:
+
 - Publisher identity
 - Version history
 - Permission declarations
@@ -847,6 +854,7 @@ Agents cannot all blindly edit files. Coordination is achieved through:
 ### 13.3 Quality Gate
 
 No agent's work merges to main until:
+
 - All tests pass
 - Visual QA passes
 - Security scan passes
@@ -859,26 +867,27 @@ No agent's work merges to main until:
 
 ### 14.1 Stage Overview
 
-| Stage | Name | Objective | Status |
-|-------|------|-----------|--------|
-| 1 | Truth | Tool runtime, agent loop, evidence, memory, crash recovery | ✅ COMPLETE |
-| 2 | Understanding | Repository Intelligence Graph | ✅ COMPLETE (Phase 2A) |
-| 3 | Intelligence | Model routing, context optimization, model benchmarking | NEXT |
-| 4 | Extensibility | Plugin/skill/MCP/agent/workflow runtime | Future |
-| 5 | Execution | Browser + desktop runtime inspection | Future |
-| 6 | Vision | Integrated Figma/Penpot-class Vision Studio | Future |
-| 7 | Visual Intelligence | Design↔code sync + screenshot inspection + repair | Future |
-| 8 | Mobile | Android Device Lab | Future |
-| 9 | Apple | Remote macOS/iOS Device Lab | Future |
-| 10 | Teams | Multi-agent engineering organization | Future |
-| 11 | Delivery | CI/CD, installers, cloud deployment, stores | Future |
-| 12 | Ecosystem | Marketplace + Creator Studio | Future |
-| 13 | Benchmark | Public reproducible autonomous-engineering benchmark | Future |
-| 14 | Launch | Developer preview → Alpha → Beta → Stable | Future |
+| Stage | Name                | Objective                                                  | Status                 |
+| ----- | ------------------- | ---------------------------------------------------------- | ---------------------- |
+| 1     | Truth               | Tool runtime, agent loop, evidence, memory, crash recovery | ✅ COMPLETE            |
+| 2     | Understanding       | Repository Intelligence Graph                              | ✅ COMPLETE (Phase 2A) |
+| 3     | Intelligence        | Model routing, context optimization, model benchmarking    | NEXT                   |
+| 4     | Extensibility       | Plugin/skill/MCP/agent/workflow runtime                    | Future                 |
+| 5     | Execution           | Browser + desktop runtime inspection                       | Future                 |
+| 6     | Vision              | Integrated Figma/Penpot-class Vision Studio                | Future                 |
+| 7     | Visual Intelligence | Design↔code sync + screenshot inspection + repair          | Future                 |
+| 8     | Mobile              | Android Device Lab                                         | Future                 |
+| 9     | Apple               | Remote macOS/iOS Device Lab                                | Future                 |
+| 10    | Teams               | Multi-agent engineering organization                       | Future                 |
+| 11    | Delivery            | CI/CD, installers, cloud deployment, stores                | Future                 |
+| 12    | Ecosystem           | Marketplace + Creator Studio                               | Future                 |
+| 13    | Benchmark           | Public reproducible autonomous-engineering benchmark       | Future                 |
+| 14    | Launch              | Developer preview → Alpha → Beta → Stable                  | Future                 |
 
 ### 14.2 Stage Boundaries
 
 Each stage has:
+
 - **Input**: What must exist before the stage begins
 - **Output**: What must be delivered when the stage completes
 - **Gates**: Verification criteria that must pass
@@ -959,6 +968,7 @@ This Constitution is the highest authority for ZylCode development.
 ### 16.2 Amendment Process
 
 Amendments to this Constitution require:
+
 1. Proposed change with rationale
 2. Impact analysis on existing stages
 3. Explicit recording of: what changed, why, when, and who approved
@@ -967,6 +977,7 @@ Amendments to this Constitution require:
 ### 16.3 Audit
 
 Every implementation phase must be auditable against:
+
 - The principles in Section 2
 - The architecture in this document
 - The stage boundaries in Section 14
@@ -992,7 +1003,7 @@ trustworthy.
 
 ---
 
-*ZylCode Product Constitution v2.0*
-*Author: Zylvex Tech*
-*Date: 2026-09-15*
-*Status: DRAFT — pending review*
+_ZylCode Product Constitution v2.0_
+_Author: Zylvex Tech_
+_Date: 2026-09-15_
+_Status: DRAFT — pending review_

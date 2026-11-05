@@ -5,12 +5,15 @@
 ---
 
 ## UNIT
+
 RECOVERY-01 — Current-State Reconnaissance and Preservation
 
 ## BASE SHA
+
 `639dbbb397d9052d9aa0376b3ef6a734f176c52c` (HEAD, branch `main`)
 
 ## FINAL SHA
+
 `639dbbb397d9052d9aa0376b3ef6a734f176c52c` — **no change**. This is reconnaissance only. No files were modified, no commits were created, no branches were pushed.
 
 ## OBJECTIVE
@@ -33,47 +36,48 @@ Establish the ground truth of the repository as it exists right now, without tru
 
 ### Finding 1: Fabricated tool-count assertions — **FIXED in candidate, LIVE in HEAD**
 
-| Assertion | HEAD (live code) | Candidate (removed) |
-|---|---|---|
-| `assert!(count > 100)` | `enhanced_bridge.rs:1495` | Comment at `:820`: "Replaces `assert!(count > 100)`" |
-| `assert!(count >= 150)` | `hot_reload.rs:739` | Comment at `:594`: "Replaces `assert!(count >= 150)`" |
+| Assertion               | HEAD (live code)          | Candidate (removed)                                   |
+| ----------------------- | ------------------------- | ----------------------------------------------------- |
+| `assert!(count > 100)`  | `enhanced_bridge.rs:1495` | Comment at `:820`: "Replaces `assert!(count > 100)`"  |
+| `assert!(count >= 150)` | `hot_reload.rs:739`       | Comment at `:594`: "Replaces `assert!(count >= 150)`" |
 
 These assertions fire against an actual **27** bridge definitions / **11** development tools. They block `cargo test --workspace --lib` / `--all-targets` on HEAD. The candidate replaced them with semantic invariants.
 
 ### Finding 2: Simulated-success tool paths — **FIXED in candidate, LIVE in HEAD**
 
 Three paths fabricated success instead of executing real work:
+
 - `BuiltinTool::call` — `tokio::time::sleep` + `{"success": true}` → **REMOVED** in candidate
 - `DynamicTool::call` — `Ok({"status": "unsupported_mock"})` → **REMOVED** in candidate
 - `initialize_with_enhanced_tools` — `count + 50` (made `count >= 150` pass) → **REMOVED** in candidate
 
 ### Finding 3: `mcp.tools.yaml` — the product's ACTUAL tool surface — **TRACKED in candidate, UNTRACKED in HEAD**
 
-| State | HEAD | Candidate (`34d29a9`) |
-|---|---|---|
-| `git ls-files mcp.tools.yaml` | (empty — untracked) | `mcp.tools.yaml` (tracked) |
-| Status | Untracked, unignored | Tracked, regenerated from canonical catalogue |
+| State                         | HEAD                 | Candidate (`34d29a9`)                         |
+| ----------------------------- | -------------------- | --------------------------------------------- |
+| `git ls-files mcp.tools.yaml` | (empty — untracked)  | `mcp.tools.yaml` (tracked)                    |
+| Status                        | Untracked, unignored | Tracked, regenerated from canonical catalogue |
 
 Without this file, the shipped desktop app registers **zero** tools. It contains 30 tools with real commands (`cargo check`, `kubectl get`, `sqlite3`, `docker`, `git`, `npm`). Two tools (`ai.train`, `ai.evaluate`) invoke scripts that do not exist.
 
 ### Finding 4: Tool catalogue modules — **PRESENT in candidate, ABSENT in HEAD**
 
-| Module | Candidate lines | HEAD |
-|---|---|---|
-| `tool_catalogue.rs` | 881 | Does not exist |
-| `permission.rs` | 371 | Does not exist |
-| `evidence.rs` | 366 | Does not exist |
-| `actor.rs` | 106 | Does not exist |
+| Module              | Candidate lines | HEAD           |
+| ------------------- | --------------- | -------------- |
+| `tool_catalogue.rs` | 881             | Does not exist |
+| `permission.rs`     | 371             | Does not exist |
+| `evidence.rs`       | 366             | Does not exist |
+| `actor.rs`          | 106             | Does not exist |
 
 The candidate consolidated tool definitions into one canonical catalogue. HEAD has none of these modules.
 
 ### Finding 5: Retracted-claim guard — **PASSES in candidate, FAILS in HEAD**
 
-| Guard result | HEAD working tree | Candidate worktree |
-|---|---|---|
-| Exit code | 1 (FAIL) | 0 (PASS) |
-| New occurrences | 135 | 0 |
-| Baseline occurrences | — | 11 (11 baseline lines) |
+| Guard result         | HEAD working tree | Candidate worktree     |
+| -------------------- | ----------------- | ---------------------- |
+| Exit code            | 1 (FAIL)          | 0 (PASS)               |
+| New occurrences      | 135               | 0                      |
+| Baseline occurrences | —                 | 11 (11 baseline lines) |
 
 HEAD's guard fails because `.wt/` worktree directories (`.wt/audit-34d29a9/`, `.wt/remediation/`, `.wt/verify/`, `.wt/fix1/`) are being scanned by the filesystem-based guard. The candidate's guard was fixed in commit `d1c0a15` ("scan tracked files only") to only scan git-tracked files.
 
@@ -85,11 +89,11 @@ Fabricated confidences (`0.85`, `0.9`, `0.95`), `vec![0; 1920 * 1080 * 4]` scree
 
 ### Finding 7: Legacy root .md file chaos — **NOT FIXED in candidate**
 
-| Root .md files | HEAD | Candidate |
-|---|---|---|
-| Tracked | 48 | 47 |
-| Untracked | 16 | 0 (clean tree) |
-| Total | 64 | 47 |
+| Root .md files | HEAD | Candidate      |
+| -------------- | ---- | -------------- |
+| Tracked        | 48   | 47             |
+| Untracked      | 16   | 0 (clean tree) |
+| Total          | 64   | 47             |
 
 The candidate has fewer root .md files because untracked legacy files do not exist in its clean tree. However, the tracked legacy completion docs (`FINAL_SUMMARY.md`, `PHASE3_COMPLETE.md`, etc.) are **still present** in the candidate. The quarantine called for in `docs/README_INDEX.md` has **not been done**.
 
@@ -105,51 +109,51 @@ The candidate has fewer root .md files because untracked legacy files do not exi
 
 ### Candidate worktree (`.wt/remediation`, commit `34d29a9`)
 
-| Command | Result | Detail |
-|---|---|---|
-| `cargo check --workspace --lib --offline` | ✅ PASS | 1m53s, zero errors |
-| `cargo test -p zylcode-mcp --lib --offline` | ✅ PASS | 100 passed, 0 failed |
-| `cargo test -p zylcode-core --lib --offline` | ✅ PASS | 229 passed, 0 failed |
+| Command                                                        | Result  | Detail               |
+| -------------------------------------------------------------- | ------- | -------------------- |
+| `cargo check --workspace --lib --offline`                      | ✅ PASS | 1m53s, zero errors   |
+| `cargo test -p zylcode-mcp --lib --offline`                    | ✅ PASS | 100 passed, 0 failed |
+| `cargo test -p zylcode-core --lib --offline`                   | ✅ PASS | 229 passed, 0 failed |
 | `cargo clippy --workspace --all-targets -D warnings --offline` | ✅ PASS | 5m08s, zero warnings |
 
 **Total: 329 tests passed, 0 failed. Clippy clean.**
 
 ### HEAD working tree (commit `639dbbb`)
 
-| Command | Result | Detail |
-|---|---|---|
-| `cargo check --workspace --lib` | ✅ PASS | Compiles (with dirty-tree modifications) |
-| `cargo test --workspace --lib` | ❌ BLOCKED | `enhanced_bridge.rs:1495` fires `assert!(count > 100)` against actual 27; `hot_reload.rs:739` fires `assert!(count >= 150)` |
+| Command                         | Result     | Detail                                                                                                                      |
+| ------------------------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `cargo check --workspace --lib` | ✅ PASS    | Compiles (with dirty-tree modifications)                                                                                    |
+| `cargo test --workspace --lib`  | ❌ BLOCKED | `enhanced_bridge.rs:1495` fires `assert!(count > 100)` against actual 27; `hot_reload.rs:739` fires `assert!(count >= 150)` |
 
 ### Retracted-claim guard
 
-| Tree | Result | Detail |
-|---|---|---|
-| HEAD working tree | ❌ FAIL | Exit 1, 135 new occurrences (all from `.wt/` worktree scanning) |
-| Candidate worktree | ✅ PASS | Exit 0, 11 baselined occurrences |
+| Tree               | Result  | Detail                                                          |
+| ------------------ | ------- | --------------------------------------------------------------- |
+| HEAD working tree  | ❌ FAIL | Exit 1, 135 new occurrences (all from `.wt/` worktree scanning) |
+| Candidate worktree | ✅ PASS | Exit 0, 11 baselined occurrences                                |
 
 ## CAPABILITY CHANGES
 
 **None.** No capabilities were added, removed, or changed. The capability registry is identical in both HEAD and candidate:
 
-| Status | Count |
-|---|---|
-| GREEN | 20 |
-| DISPUTED | 12 |
-| PARTIAL | 1 |
+| Status      | Count |
+| ----------- | ----- |
+| GREEN       | 20    |
+| DISPUTED    | 12    |
+| PARTIAL     | 1     |
 | r3_verified | **0** |
 
 **Reconciliation note:** The prior brutal audit labeled parts of the Agent Kernel as "R3 (real)." The Gate-0 consolidation report says `r3_verified_count = 0`. The reconciliation: the audit's "R3" referred to code that compiles, has tests, and dispatches real commands — but it never verified R3 per the governance definition ("reachable through a named product surface with captured evidence"). **R3 requires product-surface reachability with captured evidence, which has never been demonstrated.** The consolidation report's `r3_verified = 0` is correct per the governance definition. The audit's "R3 (real)" was loose language for "R2 with real execution paths, not simulation." The governance definition governs.
 
 **Tool metrics (candidate, no aggregate "tool count"):**
 
-| Metric | Value |
-|---|---|
-| definition | 38 |
-| executable | 12 |
-| tested | 2 |
-| product_reachable | 11 |
-| r3_verified | **0** |
+| Metric            | Value |
+| ----------------- | ----- |
+| definition        | 38    |
+| executable        | 12    |
+| tested            | 2     |
+| product_reachable | 11    |
+| r3_verified       | **0** |
 
 ## CLAIMS CORRECTED
 
@@ -180,6 +184,7 @@ origin/main (1338d0b) ── common ancestor
 **32 files** are modified in BOTH the dirty working tree AND the candidate (changed between HEAD and `34d29a9`).
 
 Of those 32:
+
 - **31 files** differ in content between the dirty tree and the candidate (divergent edits)
 - **1 file** matches: `crates/zylcode-core/tests/agent_loop_e2e.rs` (both trees have the same version)
 
@@ -222,19 +227,19 @@ crates/zylcode-mcp/tests/telemetry_audit_tests.rs
 
 ### Dirty tree summary (HEAD working tree)
 
-| Category | Count |
-|---|---|
-| Modified tracked files | 56 |
-| Untracked entries | 36 |
+| Category                | Count  |
+| ----------------------- | ------ |
+| Modified tracked files  | 56     |
+| Untracked entries       | 36     |
 | **Total dirty entries** | **92** |
 
 ### Candidate summary
 
-| Category | Count |
-|---|---|
-| Tracked files | 258 |
-| Dirty entries | 0 |
-| Untracked entries | 0 |
+| Category          | Count |
+| ----------------- | ----- |
+| Tracked files     | 258   |
+| Dirty entries     | 0     |
+| Untracked entries | 0     |
 
 ## LOCAL VERIFICATION
 

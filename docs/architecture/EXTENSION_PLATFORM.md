@@ -24,11 +24,11 @@ redesign would touch half the product.
 
 ## 2. Why This Is Phase 5, Not Phase 9
 
-| Deferred to Phase 9 | Consequence |
-|---|---|
-| Android integration (Phase 10) | built into core, must be extracted later |
-| Mac worker (Phase 11) | built into core, must be extracted later |
-| Deployment providers (Phase 13) | built into core, must be extracted later |
+| Deferred to Phase 9               | Consequence                              |
+| --------------------------------- | ---------------------------------------- |
+| Android integration (Phase 10)    | built into core, must be extracted later |
+| Mac worker (Phase 11)             | built into core, must be extracted later |
+| Deployment providers (Phase 13)   | built into core, must be extracted later |
 | Verification providers (Phase 12) | built into core, must be extracted later |
 
 Four systems, each of which would need extraction. Defining the ABI first costs far less.
@@ -67,11 +67,11 @@ zylcode-package/
   "publisher": { "id": "...", "name": "...", "signature": "..." },
   "permissions": ["filesystem:read", "process:spawn", "network:outbound"],
   "contributes": {
-    "runtimes":    ["android-emulator"],
-    "tools":       ["android.install_apk", "android.launch", "android.logcat"],
-    "commands":    ["android build", "android test"],
-    "panels":      ["android-device-lab"],
-    "verification":["android-runtime"]
+    "runtimes": ["android-emulator"],
+    "tools": ["android.install_apk", "android.launch", "android.logcat"],
+    "commands": ["android build", "android test"],
+    "panels": ["android-device-lab"],
+    "verification": ["android-runtime"]
   },
   "entry": { "kind": "native|wasm|process", "path": "..." }
 }
@@ -79,32 +79,32 @@ zylcode-package/
 
 ### 4.1 Manifest requirements
 
-| Field | Why |
-|---|---|
-| `engine` range | Prevents a package loading against an ABI it was not built for |
-| `permissions` | Undeclared capability is **denied** |
-| `publisher.signature` | Identity, required for the marketplace (Phase 15) |
-| `contributes` | The complete list of capability points; anything not listed is not available |
-| `entry.kind` | Determines the isolation model |
+| Field                 | Why                                                                          |
+| --------------------- | ---------------------------------------------------------------------------- |
+| `engine` range        | Prevents a package loading against an ABI it was not built for               |
+| `permissions`         | Undeclared capability is **denied**                                          |
+| `publisher.signature` | Identity, required for the marketplace (Phase 15)                            |
+| `contributes`         | The complete list of capability points; anything not listed is not available |
+| `entry.kind`          | Determines the isolation model                                               |
 
 ---
 
 ## 5. Contribution Points
 
-| Point | What it provides | Consumed by |
-|---|---|---|
-| `tools` | Agent-callable actions with risk levels | Agent Kernel |
-| `mcp` | MCP servers | MCP bridge |
-| `skills` | Skill definitions | Agent Kernel |
-| `agents` | Agent definitions | Agent Kernel |
-| `commands` | User commands | CLI / UI |
-| `hooks` | Lifecycle hooks | Core |
-| `providers` | Model providers | Model Platform |
-| `panels` | UI surfaces | Shell |
-| `runtimes` | Execution backends | Execution Engine |
-| `templates` | Project scaffolds | Project System |
-| `design_libraries` | Design systems | Vision Studio |
-| `verification` | Verification providers | Proof Engine |
+| Point              | What it provides                        | Consumed by      |
+| ------------------ | --------------------------------------- | ---------------- |
+| `tools`            | Agent-callable actions with risk levels | Agent Kernel     |
+| `mcp`              | MCP servers                             | MCP bridge       |
+| `skills`           | Skill definitions                       | Agent Kernel     |
+| `agents`           | Agent definitions                       | Agent Kernel     |
+| `commands`         | User commands                           | CLI / UI         |
+| `hooks`            | Lifecycle hooks                         | Core             |
+| `providers`        | Model providers                         | Model Platform   |
+| `panels`           | UI surfaces                             | Shell            |
+| `runtimes`         | Execution backends                      | Execution Engine |
+| `templates`        | Project scaffolds                       | Project System   |
+| `design_libraries` | Design systems                          | Vision Studio    |
+| `verification`     | Verification providers                  | Proof Engine     |
 
 **Each contribution point is a versioned contract.** Changing one is an ABI break and requires a
 major version bump.
@@ -115,14 +115,14 @@ major version bump.
 
 Fail-closed. Undeclared capability is denied.
 
-| Permission | Grants |
-|---|---|
-| `filesystem:read` / `filesystem:write` | scoped to declared paths |
-| `process:spawn` | execute external processes |
-| `network:outbound` | egress (off by default — local-first) |
-| `project:read` / `project:write` | Project state access |
-| `ledger:append` | write evidence |
-| `artifact:create` | publish artifacts |
+| Permission                             | Grants                                |
+| -------------------------------------- | ------------------------------------- |
+| `filesystem:read` / `filesystem:write` | scoped to declared paths              |
+| `process:spawn`                        | execute external processes            |
+| `network:outbound`                     | egress (off by default — local-first) |
+| `project:read` / `project:write`       | Project state access                  |
+| `ledger:append`                        | write evidence                        |
+| `artifact:create`                      | publish artifacts                     |
 
 **Rules**
 
@@ -137,11 +137,11 @@ Fail-closed. Undeclared capability is denied.
 
 ## 7. Isolation
 
-| Entry kind | Isolation | Use |
-|---|---|---|
-| `wasm` | strongest | pure computation, portable |
-| `process` | strong | language-agnostic, OS-level sandbox |
-| `native` | weakest | trusted first-party only |
+| Entry kind | Isolation | Use                                 |
+| ---------- | --------- | ----------------------------------- |
+| `wasm`     | strongest | pure computation, portable          |
+| `process`  | strong    | language-agnostic, OS-level sandbox |
+| `native`   | weakest   | trusted first-party only            |
 
 **Default recommendation: `process`.** Native loading is reserved for first-party packages
 because it shares the address space and cannot be sandboxed meaningfully.
@@ -183,14 +183,14 @@ Plus the UI Extensions surface.
 
 ## 10. Benchmark / Acceptance
 
-| # | Criterion | Method |
-|---|---|---|
-| 1 | Reference package in a **separate repository** contributes a tool, an agent and a UI panel | zero core modification, demonstrated |
-| 2 | Undeclared permission is denied | negative test with output |
-| 3 | Widened permissions on update force re-approval | test with output |
-| 4 | Failed update leaves the old version active | fault-injection test |
-| 5 | Engine version mismatch is rejected with a clear message | test with output |
-| 6 | Package removal purges contributions | state dump before/after |
+| #   | Criterion                                                                                  | Method                               |
+| --- | ------------------------------------------------------------------------------------------ | ------------------------------------ |
+| 1   | Reference package in a **separate repository** contributes a tool, an agent and a UI panel | zero core modification, demonstrated |
+| 2   | Undeclared permission is denied                                                            | negative test with output            |
+| 3   | Widened permissions on update force re-approval                                            | test with output                     |
+| 4   | Failed update leaves the old version active                                                | fault-injection test                 |
+| 5   | Engine version mismatch is rejected with a clear message                                   | test with output                     |
+| 6   | Package removal purges contributions                                                       | state dump before/after              |
 
 **Rung target: R3.** Criterion 1 must be demonstrated from an **out-of-tree** repository — a
 package living inside the core repo proves nothing.

@@ -43,9 +43,9 @@ const { invocation, intent } = await bridge.submitIntent({
   context: [{ path: "src/routes.rs", excerpt: "pub fn router() {}" }],
 });
 
-console.log(invocation.status);            // "succeeded" | "failed"
-console.log(invocation.response?.model);   // the SERVER's identity
-console.log(invocation.evidence);          // secret-free record
+console.log(invocation.status); // "succeeded" | "failed"
+console.log(invocation.response?.model); // the SERVER's identity
+console.log(invocation.evidence); // secret-free record
 console.log(intent?.summary);
 ```
 
@@ -78,7 +78,10 @@ export RESPAN_BASE_URL=           # optional; Respan Enterprise endpoint
 
 ```ts
 const bridge = NatlasBridge.fromEnv(); // gateway when RESPAN_API_KEY is set
-const inv = await bridge.invoke({ intent: "add a health endpoint", system: INTENT_SYSTEM_PREAMBLE });
+const inv = await bridge.invoke({
+  intent: "add a health endpoint",
+  system: INTENT_SYSTEM_PREAMBLE,
+});
 console.log(inv.evidence.provider); // "respan" — not "natlas"
 ```
 
@@ -91,13 +94,13 @@ the key and the `NATLAS_*` variables above are read exactly as before.
 
 ## What the SDK guarantees
 
-| Guarantee | How |
-|---|---|
-| **No fallback** | an unreachable runtime throws / returns a `TRANSPORT` failure — never a synthesised answer |
-| **Identity is not borrowed** | a reply that does not report a `model` is rejected |
-| **Strict contract** | a reply that does not satisfy the intent schema is rejected, not partially accepted |
-| **Secrets stay out of evidence** | redaction is applied and **counted** |
-| **No invented defaults** | required config has no defaults; missing values are listed |
+| Guarantee                        | How                                                                                        |
+| -------------------------------- | ------------------------------------------------------------------------------------------ |
+| **No fallback**                  | an unreachable runtime throws / returns a `TRANSPORT` failure — never a synthesised answer |
+| **Identity is not borrowed**     | a reply that does not report a `model` is rejected                                         |
+| **Strict contract**              | a reply that does not satisfy the intent schema is rejected, not partially accepted        |
+| **Secrets stay out of evidence** | redaction is applied and **counted**                                                       |
+| **No invented defaults**         | required config has no defaults; missing values are listed                                 |
 
 ---
 

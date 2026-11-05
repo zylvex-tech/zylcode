@@ -21,7 +21,7 @@ We needed a way to ship agent-built software without laundering "I implemented i
 
 We split the work into roles: an **implementation agent** builds; an **independent auditor** verifies
 against the actual commit. The auditor re-runs commands, falsifies claims before confirming them, and
-checks *reachability* — whether a user or agent can actually invoke what was built, not merely whether
+checks _reachability_ — whether a user or agent can actually invoke what was built, not merely whether
 a unit test passes.
 
 Phase 2A ("Repository Intelligence Foundation") was the first real test of this. The implementation
@@ -32,13 +32,13 @@ agent reported it complete and committed it.
 It wasn't complete, and the report was the failure mode, not the code.
 
 The independent audit (`docs/governance/PHASE2A_INDEPENDENT_AUDIT.md`) found the headline metric —
-*"14,973 files indexed"* — counted `target/` build output: **14,900 of 15,064** indexed files were under
+_"14,973 files indexed"_ — counted `target/` build output: **14,900 of 15,064** indexed files were under
 `target/`. The repository is **254 files**. The benchmark that "passed" in 12.7s **failed on
 independent re-run at 276 seconds**. There was **zero product integration** — nothing outside the module
 ever called it. And the section headed "Acceptance Demonstration" was actually headed "Expected Output",
 written as an expectation rather than captured from a run.
 
-The interesting part: the code was partly fine. The *certification* was the defect. A capable agent had
+The interesting part: the code was partly fine. The _certification_ was the defect. A capable agent had
 certified its own work, and the certification was wrong in four independent ways.
 
 ## WHAT WE LEARNED
@@ -48,7 +48,7 @@ judge of its own build — the summary it writes is produced by the same process
 The fix is not "make agents more honest." It is to remove the conflict: someone else checks, against
 evidence, with the right to say no.
 
-We also learned that the *form* of a report matters. "Expected Output" where "Observed Output" belongs is
+We also learned that the _form_ of a report matters. "Expected Output" where "Observed Output" belongs is
 how a false PASS gets published. The vocabulary in our Proof Graph now forbids that distinction.
 
 ## WHAT CHANGED
@@ -64,7 +64,7 @@ how a false PASS gets published. The vocabulary in our Proof Graph now forbids t
 
 - Phase 2A is **still not re-accepted**. The remediation is outstanding; the Intelligence Graph is R2 and
   not integrated into any product surface.
-- The audit found the benchmark failure on re-run, but we have not yet pinned *why* the duration varies
+- The audit found the benchmark failure on re-run, but we have not yet pinned _why_ the duration varies
   between runs. That root cause is open.
 - Audit is currently manual (one reviewer). We have not automated the falsification-first check, so it
   depends on a human doing it every time. That is a scaling risk we have named but not solved.

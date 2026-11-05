@@ -24,11 +24,11 @@
 
 ## 1. Observed `origin/main` SHA
 
-| Item | Value |
-|---|---|
-| `origin/main` (fetched this session) | **`1338d0bee3e676a2f5d8c678ba32f8e6ad41237b`** |
-| Local `HEAD` | `1338d0bee3e676a2f5d8c678ba32f8e6ad41237b` (**identical**) |
-| Working branch | `main` |
+| Item                                 | Value                                                      |
+| ------------------------------------ | ---------------------------------------------------------- |
+| `origin/main` (fetched this session) | **`1338d0bee3e676a2f5d8c678ba32f8e6ad41237b`**             |
+| Local `HEAD`                         | `1338d0bee3e676a2f5d8c678ba32f8e6ad41237b` (**identical**) |
+| Working branch                       | `main`                                                     |
 
 ```
 $ GIT_TERMINAL_PROMPT=0 GIT_ASKPASS=echo git fetch origin
@@ -46,21 +46,21 @@ Local and remote agree. No divergence, no unpushed commits.
 **87 entries.** Composition unchanged in character from the sweep audit
 (`docs/governance/STATUS_SWEEP_2026-09-16.md` §15).
 
-| Measure | Value |
-|---|---|
-| Total entries | **87** |
-| Modified (tracked) | 55 |
-| Untracked | 32 |
-| Source delta (`crates/`+`apps/`) | 52 files, 4157 / 1545 raw |
-| Whitespace-insensitive | 3487 / 875 |
-| Already audited | **Yes** — `STATUS_SWEEP` §15 (composition, per-group disposition §15.7) |
+| Measure                          | Value                                                                   |
+| -------------------------------- | ----------------------------------------------------------------------- |
+| Total entries                    | **87**                                                                  |
+| Modified (tracked)               | 55                                                                      |
+| Untracked                        | 32                                                                      |
+| Source delta (`crates/`+`apps/`) | 52 files, 4157 / 1545 raw                                               |
+| Whitespace-insensitive           | 3487 / 875                                                              |
+| Already audited                  | **Yes** — `STATUS_SWEEP` §15 (composition, per-group disposition §15.7) |
 
 **No unknown work was discarded and no unknown work was absorbed.** Nothing was staged, committed,
 or reverted during this preflight.
 
 > ### ⚠ THE DIRTY TREE IS LOAD-BEARING — this is new
 >
-> The working tree is not merely *unreviewed*. It is **what makes the repository compile**.
+> The working tree is not merely _unreviewed_. It is **what makes the repository compile**.
 > Discarding it — the obvious reading of "leave a clean tree" — would leave `origin/main` in a
 > permanently broken state and destroy the only copy of two modules. See §9.
 
@@ -70,15 +70,15 @@ or reverted during this preflight.
 
 ### 3.1 Worktrees ARE viable — the recorded blocker is WRONG
 
-`docs/governance/STATUS_SWEEP_2026-09-16.md` §11 records: *"The sandbox blocks cargo writes outside
-the primary `target/` directory, so `git worktree`-based clean-checkout builds fail."*
+`docs/governance/STATUS_SWEEP_2026-09-16.md` §11 records: _"The sandbox blocks cargo writes outside
+the primary `target/` directory, so `git worktree`-based clean-checkout builds fail."_
 
 **This preflight falsified that finding.** Two independent causes, neither a sandbox restriction:
 
-| Cause | Evidence | Fix |
-|---|---|---|
-| **Path translation** | `git worktree add /tmp/wt_probe` created `C:/tmp/wt_probe` — outside any writable/tracked tree | Use a worktree path **inside** the project (`.wt/<name>`) |
-| **`--offline` with an empty registry** | `error: failed to download clap_derive v4.6.7 … --offline was specified` | Build the first time **with** network |
+| Cause                                  | Evidence                                                                                       | Fix                                                       |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| **Path translation**                   | `git worktree add /tmp/wt_probe` created `C:/tmp/wt_probe` — outside any writable/tracked tree | Use a worktree path **inside** the project (`.wt/<name>`) |
+| **`--offline` with an empty registry** | `error: failed to download clap_derive v4.6.7 … --offline was specified`                       | Build the first time **with** network                     |
 
 Proof — a worktree inside the project built without sandbox interference:
 
@@ -119,16 +119,16 @@ Protocol §4.7). A, B, C, D, E, F, G are tracks; none is a "Phase N".
 
 ## 4. Agent allocation
 
-| Agent | Workstream | Track | Base | Parallel-safe? |
-|---|---|---|---|---|
-| **A** | Phase 2A remediation | `phase2a-remediation` | needs fixed base | ⛔ **BLOCKED** (§9) |
-| **B** | Product-surface forensic | `product-surface` | needs fixed base | ⛔ **BLOCKED** (§9) |
-| **C** | Public Foundation / community | `public-foundation` | docs-only, own paths | ✅ **READY** |
-| **D** | DevLog foundation | `devlog-foundation` | docs-only, own paths | ✅ **READY** |
-| **E** | Public benchmark design | `benchmark-foundation` | docs-only, own paths | ✅ **READY** |
-| **F** | ZylForge.com website | `zylforge-website` | **separate repo** | ✅ **READY** (§7) |
-| **G** | Brand / Penpot | `brand-penpot` | needs Penpot probe | ⚠️ **CONDITIONAL** |
-| **H** | Independent verifier | `independent-audit` | — | ✅ Reserved (§8) |
+| Agent | Workstream                    | Track                  | Base                 | Parallel-safe?      |
+| ----- | ----------------------------- | ---------------------- | -------------------- | ------------------- |
+| **A** | Phase 2A remediation          | `phase2a-remediation`  | needs fixed base     | ⛔ **BLOCKED** (§9) |
+| **B** | Product-surface forensic      | `product-surface`      | needs fixed base     | ⛔ **BLOCKED** (§9) |
+| **C** | Public Foundation / community | `public-foundation`    | docs-only, own paths | ✅ **READY**        |
+| **D** | DevLog foundation             | `devlog-foundation`    | docs-only, own paths | ✅ **READY**        |
+| **E** | Public benchmark design       | `benchmark-foundation` | docs-only, own paths | ✅ **READY**        |
+| **F** | ZylForge.com website          | `zylforge-website`     | **separate repo**    | ✅ **READY** (§7)   |
+| **G** | Brand / Penpot                | `brand-penpot`         | needs Penpot probe   | ⚠️ **CONDITIONAL**  |
+| **H** | Independent verifier          | `independent-audit`    | —                    | ✅ Reserved (§8)    |
 
 **Parallelism limit honoured.** I will not spawn C+D+E+F+G simultaneously. Per the work order's
 priority order (A, F, C, B, G, then D, E) and because **A and B are blocked**, Wave A reduces to
@@ -178,16 +178,16 @@ priority order (A, F, C, B, G, then D, E) and because **A and B are blocked**, W
 
 Paths are **exclusive**. No two agents may own the same file.
 
-| Agent | Owns | Forbidden |
-|---|---|---|
-| **A** | `crates/zylcode-core/src/intelligence/*`, `crates/zylcode-core/tests/intelligence*`, `docs/capability-registry.json`, `docs/roadmap/` (Phase 2A sections) | everything else |
-| **B** | `apps/zylcode-desktop/**` | `crates/**` (report findings to A instead) |
-| **C** | `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, `SUPPORT.md`, `.github/ISSUE_TEMPLATE/**`, `.github/PULL_REQUEST_TEMPLATE*`, `docs/community/**` | `.github/workflows/ci.yml` (coordinator-owned), `crates/**` |
-| **D** | `docs/devlog/**` | `docs/governance/**` |
-| **E** | `benchmarks/**`, `docs/benchmark/**` | `docs/community/PUBLIC_CLAIM_MATRIX.yaml` |
-| **F** | **separate repository** (§7) | this repository entirely |
-| **G** | `docs/design/**`, `design/tokens/**` | `docs/governance/ZYLCODE_ARCHITECTURE_V2.md` |
-| **H** | **read-only** — writes only `docs/audit/**` | all implementation paths |
+| Agent | Owns                                                                                                                                                      | Forbidden                                                   |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| **A** | `crates/zylcode-core/src/intelligence/*`, `crates/zylcode-core/tests/intelligence*`, `docs/capability-registry.json`, `docs/roadmap/` (Phase 2A sections) | everything else                                             |
+| **B** | `apps/zylcode-desktop/**`                                                                                                                                 | `crates/**` (report findings to A instead)                  |
+| **C** | `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, `SUPPORT.md`, `.github/ISSUE_TEMPLATE/**`, `.github/PULL_REQUEST_TEMPLATE*`, `docs/community/**`  | `.github/workflows/ci.yml` (coordinator-owned), `crates/**` |
+| **D** | `docs/devlog/**`                                                                                                                                          | `docs/governance/**`                                        |
+| **E** | `benchmarks/**`, `docs/benchmark/**`                                                                                                                      | `docs/community/PUBLIC_CLAIM_MATRIX.yaml`                   |
+| **F** | **separate repository** (§7)                                                                                                                              | this repository entirely                                    |
+| **G** | `docs/design/**`, `design/tokens/**`                                                                                                                      | `docs/governance/ZYLCODE_ARCHITECTURE_V2.md`                |
+| **H** | **read-only** — writes only `docs/audit/**`                                                                                                               | all implementation paths                                    |
 
 **Contention found and resolved:** Agents A and B both plausibly want
 `crates/zylcode-mcp/**` (A for the registry correction, B for IPC fixes). **B is forbidden from
@@ -201,13 +201,13 @@ concurrent. This is the LAW 2 resolution.
 
 ## 7. Tasks that can execute NOW
 
-| Agent | Track | Why it is safe now |
-|---|---|---|
+| Agent | Track                | Why it is safe now                                                                                 |
+| ----- | -------------------- | -------------------------------------------------------------------------------------------------- |
 | **F** | ZylForge.com website | **Separate repository.** Zero file contention with ZylCode. Highest-value parallel work available. |
-| **C** | Public Foundation | Scoped to root community files + `docs/community/**`. No `crates/`, no build dependency. |
-| **D** | DevLog foundation | Scoped to `docs/devlog/**`. Drafts only — **no publishing**. |
-| **E** | Benchmark framework | Scoped to `benchmarks/**`. Design only — **no results, no rankings**. |
-| **G** | Brand / Penpot | Conditional on a real connection probe (§8). Repository-side prep only if absent. |
+| **C** | Public Foundation    | Scoped to root community files + `docs/community/**`. No `crates/`, no build dependency.           |
+| **D** | DevLog foundation    | Scoped to `docs/devlog/**`. Drafts only — **no publishing**.                                       |
+| **E** | Benchmark framework  | Scoped to `benchmarks/**`. Design only — **no results, no rankings**.                              |
+| **G** | Brand / Penpot       | Conditional on a real connection probe (§8). Repository-side prep only if absent.                  |
 
 **All four/five require one precondition:** `.wt/` in `.gitignore` and worktrees created from a
 base that builds. C/D/E/F are docs-scoped so they tolerate the broken base — **but they must not
@@ -217,14 +217,14 @@ be merged while `main` is red**, or they will inherit blame for it.
 
 ## 8. Tasks that are BLOCKED
 
-| Task | Blocked by | Unblocks when |
-|---|---|---|
-| **AGENT A — Phase 2A remediation** | `origin/main` does not compile (§9) | FIX-1 + FIX-2 committed and CI green |
-| **AGENT B — product-surface forensic** | Same. Also cannot be verified without a running app. | Same + a runnable desktop build |
-| **AGENT G — Penpot** | No verified Penpot connection. **Not probed; must not be assumed.** | A real connection is demonstrated |
-| **AGENT H — verification** | No candidates exist | A builder produces a candidate commit |
-| Phase 2B | Phase 2A not re-accepted at G3 | G3 audit passes |
-| Blocker #3 (sweep list) | — | **Misdiagnosed**; see §3.1. Corrected to "blocked by broken HEAD", not by sandbox. |
+| Task                                   | Blocked by                                                          | Unblocks when                                                                      |
+| -------------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| **AGENT A — Phase 2A remediation**     | `origin/main` does not compile (§9)                                 | FIX-1 + FIX-2 committed and CI green                                               |
+| **AGENT B — product-surface forensic** | Same. Also cannot be verified without a running app.                | Same + a runnable desktop build                                                    |
+| **AGENT G — Penpot**                   | No verified Penpot connection. **Not probed; must not be assumed.** | A real connection is demonstrated                                                  |
+| **AGENT H — verification**             | No candidates exist                                                 | A builder produces a candidate commit                                              |
+| Phase 2B                               | Phase 2A not re-accepted at G3                                      | G3 audit passes                                                                    |
+| Blocker #3 (sweep list)                | —                                                                   | **Misdiagnosed**; see §3.1. Corrected to "blocked by broken HEAD", not by sandbox. |
 
 **Phase 2A remediation status: 0 of 10 items complete.** P1.9 (`router.rs:1030`) is **RESOLVED**
 (`8f751ed`). No remediation work may be reported as progress until A runs.
@@ -287,7 +287,7 @@ them (775 additional lines) but **has not been committed**.
    the tree as "coherent".
 2. **CI must be failing.** `.github/workflows/ci.yml:69` runs `cargo check --workspace --all-targets`
    on a clean checkout of `main`. **CI status could NOT be independently observed** (§10), so this
-   is an *inference from the compile result*, not a reading of a CI dashboard. It is a high-
+   is an _inference from the compile result_, not a reading of a CI dashboard. It is a high-
    confidence inference, but it is recorded as such.
 3. **It silently fuses the dirty tree to the repository.** Any instruction to "discard the dirty
    tree" would destroy two modules and leave the project unbuildable. The two are now inseparable
@@ -296,19 +296,19 @@ them (775 additional lines) but **has not been committed**.
 
 ### 9.4 Required repair (FIX-1 / FIX-2) — sequenced, not parallel
 
-| Step | Action | Owner |
-|---|---|---|
-| **FIX-1** | Commit `crates/zylcode-mcp/src/performance.rs` and `system_integration.rs` so declared modules exist | *owner decision* — currently untracked foreign work |
-| **FIX-2** | Commit the `get_more_*` implementations in `enhanced_bridge.rs` (775 lines) | *owner decision* — same |
-| **FIX-3** | Verify a clean worktree compiles: `cargo check --workspace --all-targets` | coordinator |
-| **FIX-4** | Confirm CI green on the push (needs a valid token — §10) | coordinator |
-| **FIX-5** | Only then: create Wave A worktrees | coordinator |
+| Step      | Action                                                                                               | Owner                                               |
+| --------- | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| **FIX-1** | Commit `crates/zylcode-mcp/src/performance.rs` and `system_integration.rs` so declared modules exist | _owner decision_ — currently untracked foreign work |
+| **FIX-2** | Commit the `get_more_*` implementations in `enhanced_bridge.rs` (775 lines)                          | _owner decision_ — same                             |
+| **FIX-3** | Verify a clean worktree compiles: `cargo check --workspace --all-targets`                            | coordinator                                         |
+| **FIX-4** | Confirm CI green on the push (needs a valid token — §10)                                             | coordinator                                         |
+| **FIX-5** | Only then: create Wave A worktrees                                                                   | coordinator                                         |
 
 **FIX-1 and FIX-2 are not mine to make unilaterally.** They commit another session's unreviewed
 work — the same restraint exercised in `6c19e1f` for `FINAL_SUMMARY.md`. **Owner decision required.**
 
 Note the irony worth recording: the two "untracked, never reviewed" modules flagged in
-`STATUS_SWEEP` §15.4 as *risk* are in fact **load-bearing** — their absence is what breaks `main`.
+`STATUS_SWEEP` §15.4 as _risk_ are in fact **load-bearing** — their absence is what breaks `main`.
 
 ---
 
@@ -318,9 +318,9 @@ Note the irony worth recording: the two "untracked, never reviewed" modules flag
 
 1. **Authorize FIX-1 / FIX-2** (commit the two modules + the `get_more_*` methods), or state that
    the other session will commit them. **Nothing else can safely proceed until `main` builds.**
-2. **Provide a valid GitHub token** so CI state is observable. *(`GITHUB_TOKEN` is invalid;
+2. **Provide a valid GitHub token** so CI state is observable. _(`GITHUB_TOKEN` is invalid;
    the keyring account also returns HTTP 401. CI state is currently **NOT OBSERVABLE** — I will not
-   report it as green.)*
+   report it as green.)_
 
 **P1 — needed for Wave A**
 
@@ -358,27 +358,27 @@ Gate: **no agent is spawned until step 5 passes in a clean worktree.**
 
 ### Wave A-1 — Parallel, 4 agents, zero file contention
 
-| Order | Agent | Track | Owns | Deliverable |
-|---|---|---|---|---|
-| 1 | **F** | `zylforge-website` | separate repo | Homepage + 9 IA pages, staging evidence, media labelled by class |
-| 2 | **C** | `public-foundation` | root community files, `docs/community/**` | CONTRIBUTING / CoC / SECURITY / SUPPORT / templates |
-| 3 | **D** | `devlog-foundation` | `docs/devlog/**` | 4 article drafts with FACT / OBSERVED / HISTORICAL / CURRENT / INTENT separation |
-| 4 | **E** | `benchmark-foundation` | `benchmarks/**`, `docs/benchmark/**` | Task definitions, anti-gaming controls, impl/results separation |
+| Order | Agent | Track                  | Owns                                      | Deliverable                                                                      |
+| ----- | ----- | ---------------------- | ----------------------------------------- | -------------------------------------------------------------------------------- |
+| 1     | **F** | `zylforge-website`     | separate repo                             | Homepage + 9 IA pages, staging evidence, media labelled by class                 |
+| 2     | **C** | `public-foundation`    | root community files, `docs/community/**` | CONTRIBUTING / CoC / SECURITY / SUPPORT / templates                              |
+| 3     | **D** | `devlog-foundation`    | `docs/devlog/**`                          | 4 article drafts with FACT / OBSERVED / HISTORICAL / CURRENT / INTENT separation |
+| 4     | **E** | `benchmark-foundation` | `benchmarks/**`, `docs/benchmark/**`      | Task definitions, anti-gaming controls, impl/results separation                  |
 
 **G (Penpot)** joins Wave A-1 only if a connection is proven; otherwise it returns
 `PENPOT_CONNECTION_REQUIRED`.
 
 ### Wave A-2 — After Wave A-1 integration
 
-| Agent | Track | Gate |
-|---|---|---|
-| **A** | `phase2a-remediation` | Requires a green base. Now the critical path. |
-| **B** | `product-surface` | Requires A's base, or at least a runnable desktop build. Serialized behind A on `crates/`. |
+| Agent | Track                 | Gate                                                                                       |
+| ----- | --------------------- | ------------------------------------------------------------------------------------------ |
+| **A** | `phase2a-remediation` | Requires a green base. Now the critical path.                                              |
+| **B** | `product-surface`     | Requires A's base, or at least a runnable desktop build. Serialized behind A on `crates/`. |
 
 ### Wave A-3 — Verification
 
-| Agent | Role |
-|---|---|
+| Agent | Role                                                                                                                              |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------- |
 | **H** | Receives each candidate. Falsifies. Classifies ACCEPT / ACCEPT_WITH_CONDITIONS / REJECT / BLOCKED_EXTERNAL. **H builds nothing.** |
 
 ### Integration rule (unchanged)
@@ -393,17 +393,17 @@ rebase invalidates prior evidence** — re-verify, never carry it forward.
 
 Statuses: `QUEUED` `RUNNING` `BLOCKED` `CANDIDATE_READY` `AUDITING` `REJECTED` `ACCEPTED` `MERGED`
 
-| Workstream | Agent | Base SHA | Branch | Status | Deps | Files owned | Tests | Commit | Audit | Merge |
-|---|---|---|---|---|---|---|---|---|---|---|
-| Base repair (FIX-1/2) | coord | `1338d0b` | `main` | **BLOCKED** — owner decision | — | `crates/zylcode-mcp/src/{performance,system_integration,enhanced_bridge}.rs` | `cargo check --workspace --all-targets` | — | — | — |
-| Phase 2A remediation | A | — | `phase2a-remediation` | **BLOCKED** | base repair | `crates/zylcode-core/src/intelligence/**` | 10-item order | — | — | — |
-| Product surface | B | — | `product-surface` | **BLOCKED** | base repair | `apps/zylcode-desktop/**` | surface map | — | — | — |
-| Public foundation | C | `1338d0b` | `public-foundation` | **QUEUED** | — | community files | link/file check | — | — | — |
-| DevLog foundation | D | `1338d0b` | `devlog-foundation` | **QUEUED** | — | `docs/devlog/**` | evidence citations | — | — | — |
-| Benchmark foundation | E | `1338d0b` | `benchmark-foundation` | **QUEUED** | — | `benchmarks/**` | task schema | — | — | — |
-| ZylForge website | F | — | `zylforge-website` | **BLOCKED** — repo unknown | owner confirm | separate repo | staging evidence | — | — | — |
-| Brand / Penpot | G | `1338d0b` | `brand-penpot` | **BLOCKED** — no connection | Penpot probe | `docs/design/**` | token governance | — | — | — |
-| Independent audit | H | — | `independent-audit` | **QUEUED** (idle) | candidates | `docs/audit/**` | falsification | — | — | — |
+| Workstream            | Agent | Base SHA  | Branch                 | Status                       | Deps          | Files owned                                                                  | Tests                                   | Commit | Audit | Merge |
+| --------------------- | ----- | --------- | ---------------------- | ---------------------------- | ------------- | ---------------------------------------------------------------------------- | --------------------------------------- | ------ | ----- | ----- |
+| Base repair (FIX-1/2) | coord | `1338d0b` | `main`                 | **BLOCKED** — owner decision | —             | `crates/zylcode-mcp/src/{performance,system_integration,enhanced_bridge}.rs` | `cargo check --workspace --all-targets` | —      | —     | —     |
+| Phase 2A remediation  | A     | —         | `phase2a-remediation`  | **BLOCKED**                  | base repair   | `crates/zylcode-core/src/intelligence/**`                                    | 10-item order                           | —      | —     | —     |
+| Product surface       | B     | —         | `product-surface`      | **BLOCKED**                  | base repair   | `apps/zylcode-desktop/**`                                                    | surface map                             | —      | —     | —     |
+| Public foundation     | C     | `1338d0b` | `public-foundation`    | **QUEUED**                   | —             | community files                                                              | link/file check                         | —      | —     | —     |
+| DevLog foundation     | D     | `1338d0b` | `devlog-foundation`    | **QUEUED**                   | —             | `docs/devlog/**`                                                             | evidence citations                      | —      | —     | —     |
+| Benchmark foundation  | E     | `1338d0b` | `benchmark-foundation` | **QUEUED**                   | —             | `benchmarks/**`                                                              | task schema                             | —      | —     | —     |
+| ZylForge website      | F     | —         | `zylforge-website`     | **BLOCKED** — repo unknown   | owner confirm | separate repo                                                                | staging evidence                        | —      | —     | —     |
+| Brand / Penpot        | G     | `1338d0b` | `brand-penpot`         | **BLOCKED** — no connection  | Penpot probe  | `docs/design/**`                                                             | token governance                        | —      | —     | —     |
+| Independent audit     | H     | —         | `independent-audit`    | **QUEUED** (idle)            | candidates    | `docs/audit/**`                                                              | falsification                           | —      | —     | —     |
 
 **No row may read `COMPLETE`.** `ACCEPTED` requires H. `MERGED` requires integration + remote
 verification.
@@ -414,20 +414,20 @@ verification.
 
 ### T0 — before this program
 
-| Item | Value |
-|---|---|
-| `origin/main` SHA | `1338d0bee3e676a2f5d8c678ba32f8e6ad41237b` |
-| Local `HEAD` | `1338d0bee3e676a2f5d8c678ba32f8e6ad41237b` |
-| Commit count on `main` | **68** |
-| Remote branches | `main` only |
-| Local branches | `main`, `origin/main` |
-| Tags | `v0.1.0`, `v0.2.0`, `v0.2.0-dev` |
-| Release state | Not observed (needs API) |
-| README state | Tracked, present |
-| Repository About | **NOT OBSERVABLE** — `gh` token invalid |
-| Topics | **NOT OBSERVABLE** |
-| Discussions | **NOT OBSERVABLE** |
-| CI runs | **NOT OBSERVABLE** — HTTP 401 (invalid token) |
+| Item                   | Value                                         |
+| ---------------------- | --------------------------------------------- |
+| `origin/main` SHA      | `1338d0bee3e676a2f5d8c678ba32f8e6ad41237b`    |
+| Local `HEAD`           | `1338d0bee3e676a2f5d8c678ba32f8e6ad41237b`    |
+| Commit count on `main` | **68**                                        |
+| Remote branches        | `main` only                                   |
+| Local branches         | `main`, `origin/main`                         |
+| Tags                   | `v0.1.0`, `v0.2.0`, `v0.2.0-dev`              |
+| Release state          | Not observed (needs API)                      |
+| README state           | Tracked, present                              |
+| Repository About       | **NOT OBSERVABLE** — `gh` token invalid       |
+| Topics                 | **NOT OBSERVABLE**                            |
+| Discussions            | **NOT OBSERVABLE**                            |
+| CI runs                | **NOT OBSERVABLE** — HTTP 401 (invalid token) |
 
 ```
 $ git rev-parse origin/main
@@ -439,8 +439,8 @@ $ git ls-remote --heads origin
 ```
 
 > **`NOT OBSERVABLE` is not `green`.** Per the standing rule, an unobserved state is never converted
-> into a pass. The work order's concern — *"'the agent says it pushed'"* must not be treated as
-> *"'GitHub changed'"* — is satisfied by recording the SHA directly from `ls-remote`, and by
+> into a pass. The work order's concern — _"'the agent says it pushed'"_ must not be treated as
+> _"'GitHub changed'"_ — is satisfied by recording the SHA directly from `ls-remote`, and by
 > recording what could **not** be read.
 
 ---
@@ -477,21 +477,21 @@ $ git log --oneline origin/main..HEAD
 29a9654 docs(governance): parallel preflight — Finding I: origin/main does not compile
 ```
 
-| State | Value |
-|---|---|
+| State                                | Value                                          |
+| ------------------------------------ | ---------------------------------------------- |
 | `origin/main` (authoritative remote) | **`1338d0bee3e676a2f5d8c678ba32f8e6ad41237b`** |
-| Local `HEAD` | **`29a9654`** |
-| Unpushed commits | **1** |
-| Branch | `main` |
+| Local `HEAD`                         | **`29a9654`**                                  |
+| Unpushed commits                     | **1**                                          |
+| Branch                               | `main`                                         |
 
 `remote == 1338d0b` is the base every agent must start from. **`29a9654` is the preflight's own
 documentation commit and is not on the remote** — it changes no source file, so it does not affect
-what agents build from, but it does mean *the preflight record itself is unpublished*.
+what agents build from, but it does mean _the preflight record itself is unpublished_.
 
 ### 15.2 ⚠ CORRECTION — **AGENT F's repository is not what the work order assumes. It is already discovered and already gated.**
 
-The work order instructs AGENT F to stand up **the ZylForge.com website** as *"a separate repo"*, and
-lists *"Confirm the ZylForge.com repository location"* as an owner action. **That repository exists,
+The work order instructs AGENT F to stand up **the ZylForge.com website** as _"a separate repo"_, and
+lists _"Confirm the ZylForge.com repository location"_ as an owner action. **That repository exists,
 and so does the live site.** Verified:
 
 ```
@@ -517,9 +517,9 @@ Three sub-findings:
    list, nor identifiable from this environment's DNS/header response.
 
 > **This falsifies the "must not contaminate ZylCode" premise as stated.** The correct premise is
-> stronger and stranger: *the ZylForge web surface is a worktree of an unrelated repository
+> stronger and stranger: _the ZylForge web surface is a worktree of an unrelated repository
 > (`zylforge-mr`) that already exists on the owner's disk, and whose deployment source cannot be
-> derived from either repository's remote state.* Agent F as written would either duplicate existing
+> derived from either repository's remote state._ Agent F as written would either duplicate existing
 > work or overwrite it. **It must not be dispatched until the owner resolves 15.2(3).**
 
 ### 15.3 CORRECTION — **AGENT G's blocker is cleared: Penpot is reachable**
@@ -533,7 +533,7 @@ $ curl -s -o /dev/null -w "%{http_code}" https://design.penpot.app → 200
 ```
 
 **Network reachability ≠ an authorized connection.** No Penpot account, token, or project is
-configured in this environment, so the *API* path is still unverified. The distinction matters:
+configured in this environment, so the _API_ path is still unverified. The distinction matters:
 `PENPOT_CONNECTION_REQUIRED` is **not** warranted (the service is up), but **credentials are still
 required** before G can commission anything. Reported as such rather than as either green or blocked.
 
@@ -549,14 +549,14 @@ $ git status --porcelain | awk '{print $1}' | sort | uniq -c
 
 Breakdown of the `crates/zylcode-mcp` defects, re-confirmed directly against `HEAD`:
 
-| Claim | Verified |
-|---|---|
+| Claim                                                     | Verified                              |
+| --------------------------------------------------------- | ------------------------------------- |
 | `performance.rs` / `system_integration.rs` tracked in git | **No** — `git ls-files` returns empty |
-| Both files present on disk | **Yes** — 11,092 B and 12,652 B |
-| `pub mod performance;` declared at `HEAD` | **Yes** — `lib.rs:10` |
-| `pub mod system_integration;` declared at `HEAD` | **Yes** — `lib.rs:15` |
-| `fn get_more_*` defined at `HEAD` | **0** |
-| `fn get_more_*` defined in the working tree | **8** |
+| Both files present on disk                                | **Yes** — 11,092 B and 12,652 B       |
+| `pub mod performance;` declared at `HEAD`                 | **Yes** — `lib.rs:10`                 |
+| `pub mod system_integration;` declared at `HEAD`          | **Yes** — `lib.rs:15`                 |
+| `fn get_more_*` defined at `HEAD`                         | **0**                                 |
+| `fn get_more_*` defined in the working tree               | **8**                                 |
 
 The 19 modified `zylcode-mcp` paths plus the 2 untracked modules are therefore **one indivisible
 group**: the crate cannot build unless both committed declarations find their files. This is the
@@ -564,16 +564,16 @@ load-bearing core of §9 and the reason FIX-1/FIX-2 cannot be partially applied.
 
 ### 15.5 Effect on Wave A
 
-| Agent | Prior status | **Corrected status** | Reason |
-|---|---|---|---|
-| A | BLOCKED | **BLOCKED** | base does not compile (Finding I) |
-| B | BLOCKED | **BLOCKED** | needs a compiling base to observe product surface |
-| C | executable | **executable** | docs-scoped, named track |
-| D | executable | **executable** | docs-scoped, named track |
-| E | executable | **executable** | docs-scoped, named track |
-| F | executable | **BLOCKED — OWNER DECISION** | §15.2 — repo already exists, deployment source unresolved |
-| G | conditional | **AWAITING CREDENTIALS** | §15.3 — service up, no authorized connection |
-| H | reserved | **RESERVED** | builds nothing |
+| Agent | Prior status | **Corrected status**         | Reason                                                    |
+| ----- | ------------ | ---------------------------- | --------------------------------------------------------- |
+| A     | BLOCKED      | **BLOCKED**                  | base does not compile (Finding I)                         |
+| B     | BLOCKED      | **BLOCKED**                  | needs a compiling base to observe product surface         |
+| C     | executable   | **executable**               | docs-scoped, named track                                  |
+| D     | executable   | **executable**               | docs-scoped, named track                                  |
+| E     | executable   | **executable**               | docs-scoped, named track                                  |
+| F     | executable   | **BLOCKED — OWNER DECISION** | §15.2 — repo already exists, deployment source unresolved |
+| G     | conditional  | **AWAITING CREDENTIALS**     | §15.3 — service up, no authorized connection              |
+| H     | reserved     | **RESERVED**                 | builds nothing                                            |
 
 **Net effect: the executable Wave A set shrinks from four agents to three (C, D, E).** That is the
 honest reading of the dependency graph. Adding capacity does not clear a prerequisite (LAW 3).
@@ -584,15 +584,15 @@ honest reading of the dependency graph. Adding capacity does not clear a prerequ
 
 Owner authorized P0 surgical recovery. **Status: COMMITTED `f1b2b36`, NOT PUSHED.**
 
-**Four defects found, not two.** All the same mode: a commit landed the *caller* but withheld the
-*callee*.
+**Four defects found, not two.** All the same mode: a commit landed the _caller_ but withheld the
+_callee_.
 
-| ID | Defect | Root commit | Repair | In order? |
-|---|---|---|---|---|
-| FIX-1 | `lib.rs` declares `performance` / `system_integration`; files never committed | `5f5a99e` | remove 2 decls + 2 re-exports | yes |
-| FIX-2 | 8 × `get_more_*_tools()` called, never defined | `29cc936` | remove 8 call sites | yes |
-| **FIX-3** | `zylcode-core` needs `ToolSchema` / `RiskLevel` / `list_schemas` — absent | `158370f` | add 2 types + 1 method | **no** |
-| **FIX-4** | `agent_loop_e2e.rs` passes 5 args to a 6-arg fn | same lineage | add `ledger` arg | **no** |
+| ID        | Defect                                                                        | Root commit  | Repair                        | In order? |
+| --------- | ----------------------------------------------------------------------------- | ------------ | ----------------------------- | --------- |
+| FIX-1     | `lib.rs` declares `performance` / `system_integration`; files never committed | `5f5a99e`    | remove 2 decls + 2 re-exports | yes       |
+| FIX-2     | 8 × `get_more_*_tools()` called, never defined                                | `29cc936`    | remove 8 call sites           | yes       |
+| **FIX-3** | `zylcode-core` needs `ToolSchema` / `RiskLevel` / `list_schemas` — absent     | `158370f`    | add 2 types + 1 method        | **no**    |
+| **FIX-4** | `agent_loop_e2e.rs` passes 5 args to a 6-arg fn                               | same lineage | add `ledger` arg              | **no**    |
 
 ### 16.1 The rejection that matters (FIX-2)
 
@@ -613,13 +613,13 @@ of the `100+ tools` claim re-entering after retraction.
 
 ### 16.3 Verification (fresh clean worktree at the repaired SHA)
 
-| Command | Result |
-|---|---|
-| `cargo check --workspace --all-targets` | **EXIT 0 — 0 errors** |
-| `git diff --check` | **EXIT 0** |
-| untracked required source | **none** |
-| `cargo clippy --workspace --all-targets -- -D warnings` | **EXIT 1 — 31 pre-existing warnings** (none from this patch) |
-| `cargo test --workspace --lib` | 215 pass / 11 fail — **all pre-existing** (10 `cli` subprocess tests needing an unbuilt bench binary; 1 non-hermetic `router` test hitting a live provider 401) |
+| Command                                                 | Result                                                                                                                                                          |
+| ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cargo check --workspace --all-targets`                 | **EXIT 0 — 0 errors**                                                                                                                                           |
+| `git diff --check`                                      | **EXIT 0**                                                                                                                                                      |
+| untracked required source                               | **none**                                                                                                                                                        |
+| `cargo clippy --workspace --all-targets -- -D warnings` | **EXIT 1 — 31 pre-existing warnings** (none from this patch)                                                                                                    |
+| `cargo test --workspace --lib`                          | 215 pass / 11 fail — **all pre-existing** (10 `cli` subprocess tests needing an unbuilt bench binary; 1 non-hermetic `router` test hitting a live provider 401) |
 
 Patch: **6 files, +379 / −25** (5 source files + the recovery report). The 338-line dirty
 `real_tools.rs` refactor was **not** committed; only the 22 lines `zylcode-core` structurally
@@ -627,7 +627,7 @@ requires were extracted. The other 51 dirty paths are untouched.
 
 ### 16.4 Effect on the dependency graph
 
-**Gate 0 is not yet cleared.** A clean checkout *compiles*, but `cargo test --workspace` does not
+**Gate 0 is not yet cleared.** A clean checkout _compiles_, but `cargo test --workspace` does not
 pass, and the patch is not on the remote. Until both hold:
 
 - **AGENT A / B** remain **BLOCKED** — Phase 2A remediation must not start on an unaccepted base.

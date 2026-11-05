@@ -4,6 +4,7 @@
 > **Superseded by:** `docs/governance/ZYLCODE_ARCHITECTURE_V2.md`
 >
 > **Why it was superseded:** two reasons.
+>
 > 1. It describes **six** engines, omitting the **Project System**.
 > 2. It contains **no `PROPOSED` markers** — it describes systems that do not exist without
 >    distinguishing them from systems that do. Per Constitution §9.3 that is prohibited.
@@ -192,6 +193,7 @@ OBSERVE → THINK → PLAN → ACT → VERIFY → COMPLETE/FAIL/LOOP
 ```
 
 Each cycle:
+
 1. **Observe** — gather context (file state, terminal output, test results,
    screenshots, intelligence graph query)
 2. **Think** — internal reasoning about current state and next action
@@ -202,16 +204,17 @@ Each cycle:
 
 ### 2.4 Session Model
 
-| Field | Type | Purpose |
-|-------|------|---------|
-| `session_id` | UUID | Unique session identifier |
-| `parent_session_id` | UUID? | Parent session for fork/resume |
-| `checkpoint_cursor` | String? | Crash recovery cursor into ledger |
-| `created_at` | Timestamp | Session creation time |
-| `status` | Enum | Active / Paused / Completed / Failed |
-| `context` | Object | Session-specific context (repo, design system, etc.) |
+| Field               | Type      | Purpose                                              |
+| ------------------- | --------- | ---------------------------------------------------- |
+| `session_id`        | UUID      | Unique session identifier                            |
+| `parent_session_id` | UUID?     | Parent session for fork/resume                       |
+| `checkpoint_cursor` | String?   | Crash recovery cursor into ledger                    |
+| `created_at`        | Timestamp | Session creation time                                |
+| `status`            | Enum      | Active / Paused / Completed / Failed                 |
+| `context`           | Object    | Session-specific context (repo, design system, etc.) |
 
 Sessions support:
+
 - **Create** — new task session
 - **Resume** — continue from checkpoint after crash
 - **Fork** — branch session to explore alternative approach
@@ -243,16 +246,16 @@ Tools are registered with metadata:
 
 ### 2.6 Existing Implementation (Stage 1)
 
-| Component | File | Status |
-|-----------|------|--------|
-| Agent loop | `agent.rs` | ✅ Complete |
-| Decision types | `agent_protocol.rs` | ✅ Complete |
-| Evidence ledger | `ledger.rs` | ✅ Complete |
-| SQLite ledger | `sqlite_ledger.rs` | ✅ Complete |
-| Crash recovery | `agent.rs` | ✅ Complete |
-| Hash chain integrity | `agent.rs` | ✅ Complete |
-| Approval model | `agent.rs` | ✅ Complete |
-| Risk classification | `agent_protocol.rs` | ✅ Complete |
+| Component            | File                | Status      |
+| -------------------- | ------------------- | ----------- |
+| Agent loop           | `agent.rs`          | ✅ Complete |
+| Decision types       | `agent_protocol.rs` | ✅ Complete |
+| Evidence ledger      | `ledger.rs`         | ✅ Complete |
+| SQLite ledger        | `sqlite_ledger.rs`  | ✅ Complete |
+| Crash recovery       | `agent.rs`          | ✅ Complete |
+| Hash chain integrity | `agent.rs`          | ✅ Complete |
+| Approval model       | `agent.rs`          | ✅ Complete |
+| Risk classification  | `agent_protocol.rs` | ✅ Complete |
 
 ---
 
@@ -337,18 +340,18 @@ all context-aware agent operations.
 
 ### 3.3 Intelligence Layers
 
-| Layer | Data | Quality | Stage |
-|-------|------|---------|-------|
-| File Inventory | files, languages, roles, hashes | COMPLETE | 2 ✅ |
-| Manifest Intelligence | workspaces, packages, deps | COMPLETE | 2 ✅ |
-| Symbol Graph | definitions, types, visibility | DEFINITION_INDEXED | 2 ✅ |
-| Dependency Graph | package, module, external | COMPLETE | 2 ✅ |
-| Change Graph | commits, files, diffs | COMPLETE | 2 ✅ |
-| Architecture Fingerprint | frameworks, tools, patterns | COMPLETE | 2 ✅ |
-| Import Graph | file→file imports | PLANNED | 3+ |
-| Reference Graph | symbol→symbol calls/uses | PLANNED | 3+ |
-| Semantic Index | vector embeddings | PLANNED | 3+ |
-| Impact Analysis | change impact with confidence | PLANNED | 4+ |
+| Layer                    | Data                            | Quality            | Stage |
+| ------------------------ | ------------------------------- | ------------------ | ----- |
+| File Inventory           | files, languages, roles, hashes | COMPLETE           | 2 ✅  |
+| Manifest Intelligence    | workspaces, packages, deps      | COMPLETE           | 2 ✅  |
+| Symbol Graph             | definitions, types, visibility  | DEFINITION_INDEXED | 2 ✅  |
+| Dependency Graph         | package, module, external       | COMPLETE           | 2 ✅  |
+| Change Graph             | commits, files, diffs           | COMPLETE           | 2 ✅  |
+| Architecture Fingerprint | frameworks, tools, patterns     | COMPLETE           | 2 ✅  |
+| Import Graph             | file→file imports               | PLANNED            | 3+    |
+| Reference Graph          | symbol→symbol calls/uses        | PLANNED            | 3+    |
+| Semantic Index           | vector embeddings               | PLANNED            | 3+    |
+| Impact Analysis          | change impact with confidence   | PLANNED            | 4+    |
 
 ### 3.4 Provenance Model
 
@@ -364,12 +367,12 @@ Every fact has provenance:
 }
 ```
 
-| Level | Meaning | Authority |
-|-------|---------|-----------|
-| OBSERVED | Direct filesystem observation | Highest |
-| Parsed | Extracted by structured parser | High |
-| Derived | Computed from other facts | Medium |
-| Inferred | Heuristic guess | Low |
+| Level    | Meaning                        | Authority |
+| -------- | ------------------------------ | --------- |
+| OBSERVED | Direct filesystem observation  | Highest   |
+| Parsed   | Extracted by structured parser | High      |
+| Derived  | Computed from other facts      | Medium    |
+| Inferred | Heuristic guess                | Low       |
 
 ### 3.5 Benchmark
 
@@ -382,22 +385,22 @@ The Intelligence Graph includes a commissioning benchmark:
 
 ### 3.6 Existing Implementation
 
-| Component | File | Status |
-|-----------|------|--------|
-| Module root | `intelligence/mod.rs` | ✅ Complete |
-| Types | `intelligence/types.rs` | ✅ Complete |
-| Classifier | `intelligence/classifier.rs` | ✅ Complete |
-| Scanner | `intelligence/scanner.rs` | ✅ Complete |
-| Manifest parser | `intelligence/manifest.rs` | ✅ Complete |
-| Symbol extractor | `intelligence/symbols.rs` | ✅ Complete |
-| Dependency graph | `intelligence/dependency.rs` | ✅ Complete |
-| Entry points | `intelligence/entry_points.rs` | ✅ Complete |
-| Architecture | `intelligence/architecture.rs` | ✅ Complete |
-| Git intelligence | `intelligence/git.rs` | ✅ Complete |
-| SQLite store | `intelligence/store.rs` | ✅ Complete |
-| Query API | `intelligence/query.rs` | ✅ Complete |
-| Context retriever | `intelligence/context.rs` | ✅ Complete |
-| Benchmark | `tests/repo_intelligence_benchmark.rs` | ✅ Complete |
+| Component         | File                                   | Status      |
+| ----------------- | -------------------------------------- | ----------- |
+| Module root       | `intelligence/mod.rs`                  | ✅ Complete |
+| Types             | `intelligence/types.rs`                | ✅ Complete |
+| Classifier        | `intelligence/classifier.rs`           | ✅ Complete |
+| Scanner           | `intelligence/scanner.rs`              | ✅ Complete |
+| Manifest parser   | `intelligence/manifest.rs`             | ✅ Complete |
+| Symbol extractor  | `intelligence/symbols.rs`              | ✅ Complete |
+| Dependency graph  | `intelligence/dependency.rs`           | ✅ Complete |
+| Entry points      | `intelligence/entry_points.rs`         | ✅ Complete |
+| Architecture      | `intelligence/architecture.rs`         | ✅ Complete |
+| Git intelligence  | `intelligence/git.rs`                  | ✅ Complete |
+| SQLite store      | `intelligence/store.rs`                | ✅ Complete |
+| Query API         | `intelligence/query.rs`                | ✅ Complete |
+| Context retriever | `intelligence/context.rs`              | ✅ Complete |
+| Benchmark         | `tests/repo_intelligence_benchmark.rs` | ✅ Complete |
 
 ---
 
@@ -487,31 +490,31 @@ Each runtime target implements the same interface:
 }
 ```
 
-| Adapter | Stage | Control Method | Capabilities |
-|---------|-------|---------------|-------------|
-| Web (Chrome) | 5 | Chrome DevTools Protocol | Full browser control |
-| Web (Firefox) | 5 | Marionette | Full browser control |
-| Web (Edge) | 5 | Chrome DevTools Protocol | Full browser control |
-| Desktop (Windows) | 5 | Tauri runtime | Window control, IPC |
-| Desktop (Linux) | 5 | Tauri runtime | Window control, IPC |
-| Desktop (macOS) | 5 | Tauri runtime | Window control, IPC |
-| Android Emulator | 8 | ADB + UI Automator | Device control |
-| Android Device | 8 | ADB + UI Automator | Device control |
-| iOS Simulator | 9 | xcrun simctl + XCUITest | Device control |
-| iOS Device | 9 | libimobiledevice + XCUITest | Device control |
-| Remote macOS | 9 | SSH + remote worker | Remote control |
+| Adapter           | Stage | Control Method              | Capabilities         |
+| ----------------- | ----- | --------------------------- | -------------------- |
+| Web (Chrome)      | 5     | Chrome DevTools Protocol    | Full browser control |
+| Web (Firefox)     | 5     | Marionette                  | Full browser control |
+| Web (Edge)        | 5     | Chrome DevTools Protocol    | Full browser control |
+| Desktop (Windows) | 5     | Tauri runtime               | Window control, IPC  |
+| Desktop (Linux)   | 5     | Tauri runtime               | Window control, IPC  |
+| Desktop (macOS)   | 5     | Tauri runtime               | Window control, IPC  |
+| Android Emulator  | 8     | ADB + UI Automator          | Device control       |
+| Android Device    | 8     | ADB + UI Automator          | Device control       |
+| iOS Simulator     | 9     | xcrun simctl + XCUITest     | Device control       |
+| iOS Device        | 9     | libimobiledevice + XCUITest | Device control       |
+| Remote macOS      | 9     | SSH + remote worker         | Remote control       |
 
 ### 4.5 Build Integration
 
 The Execution Engine integrates with build systems:
 
-| Build System | Detection | Build Command | Test Command |
-|-------------|-----------|---------------|-------------|
-| Cargo | `Cargo.toml` | `cargo build` | `cargo test` |
-| npm/pnpm | `package.json` | `npm run build` | `npm test` |
-| Gradle | `build.gradle` | `./gradlew build` | `./gradlew test` |
-| Xcode | `.xcodeproj` | `xcodebuild` | `xcodebuild test` |
-| Vite | `vite.config.*` | `vite build` | `vitest` |
+| Build System | Detection       | Build Command     | Test Command      |
+| ------------ | --------------- | ----------------- | ----------------- |
+| Cargo        | `Cargo.toml`    | `cargo build`     | `cargo test`      |
+| npm/pnpm     | `package.json`  | `npm run build`   | `npm test`        |
+| Gradle       | `build.gradle`  | `./gradlew build` | `./gradlew test`  |
+| Xcode        | `.xcodeproj`    | `xcodebuild`      | `xcodebuild test` |
+| Vite         | `vite.config.*` | `vite build`      | `vitest`          |
 
 ### 4.6 Inspection Pipeline
 
@@ -601,17 +604,17 @@ verification system that produces evidence.
 
 ### 5.3 Verification Layers
 
-| Layer | Verifies | Evidence | Fail-Closed |
-|-------|----------|----------|-------------|
-| Build | Compilation, bundling, artifacts | Build log, exit code, artifact hashes | ✅ |
-| Unit Test | Function/module correctness | Test results, coverage | ✅ |
-| Integration | Component interaction | Test results, API traces | ✅ |
-| Visual QA | UI matches design | Screenshot diff, pixel comparison | ✅ |
-| Runtime QA | App behaves correctly | Interaction traces, console logs | ✅ |
-| Security | No vulnerabilities/secrets | Audit results, dependency scan | ✅ |
-| Performance | Adequate response times | Profiling, benchmarks | ✅ |
-| Accessibility | WCAG compliance | Automated a11y audit | ✅ |
-| Evidence | All above have proof | Ledger entries, hash chain | ✅ |
+| Layer         | Verifies                         | Evidence                              | Fail-Closed |
+| ------------- | -------------------------------- | ------------------------------------- | ----------- |
+| Build         | Compilation, bundling, artifacts | Build log, exit code, artifact hashes | ✅          |
+| Unit Test     | Function/module correctness      | Test results, coverage                | ✅          |
+| Integration   | Component interaction            | Test results, API traces              | ✅          |
+| Visual QA     | UI matches design                | Screenshot diff, pixel comparison     | ✅          |
+| Runtime QA    | App behaves correctly            | Interaction traces, console logs      | ✅          |
+| Security      | No vulnerabilities/secrets       | Audit results, dependency scan        | ✅          |
+| Performance   | Adequate response times          | Profiling, benchmarks                 | ✅          |
+| Accessibility | WCAG compliance                  | Automated a11y audit                  | ✅          |
+| Evidence      | All above have proof             | Ledger entries, hash chain            | ✅          |
 
 ### 5.4 Visual QA Pipeline
 
@@ -753,16 +756,16 @@ one truth.
 
 ### 6.4 Canvas Capabilities
 
-| Category | Capabilities |
-|----------|-------------|
-| Layout | Frames, Auto-layout, Flex, Grid, Constraints, Responsive breakpoints |
-| Content | Text, Shapes, Images, SVG, Icons, Rich text |
-| Components | Definition, Variants, Instances, Overrides, Slots |
-| Design System | Tokens, Variables, Themes, Typography scale |
-| Interaction | Prototype links, Transitions, Animations, Hover states |
-| Collaboration | Comments, Annotations, Multi-cursor (future) |
-| Accessibility | Contrast checking, Screen reader preview, ARIA labels |
-| Export | Code export, Asset export, Design spec, CSS variables |
+| Category      | Capabilities                                                         |
+| ------------- | -------------------------------------------------------------------- |
+| Layout        | Frames, Auto-layout, Flex, Grid, Constraints, Responsive breakpoints |
+| Content       | Text, Shapes, Images, SVG, Icons, Rich text                          |
+| Components    | Definition, Variants, Instances, Overrides, Slots                    |
+| Design System | Tokens, Variables, Themes, Typography scale                          |
+| Interaction   | Prototype links, Transitions, Animations, Hover states               |
+| Collaboration | Comments, Annotations, Multi-cursor (future)                         |
+| Accessibility | Contrast checking, Screen reader preview, ARIA labels                |
+| Export        | Code export, Asset export, Design spec, CSS variables                |
 
 ### 6.5 Code Bridge Protocol
 
@@ -794,14 +797,14 @@ Code Edit → Canvas Update:
 
 ### 6.6 Technology Stack
 
-| Component | Technology | Rationale |
-|-----------|-----------|-----------|
-| Canvas rendering | WebGL/WebGPU | High-performance 2D rendering |
-| Layout engine | Custom Flexbox/Grid | CSS-spec-compliant layout |
-| AST parsing | tree-sitter | Language-aware, incremental |
-| Component model | React tree | Native React component as source of truth |
-| Token system | JSON/YAML → CSS variables | Standards-based, toolable |
-| File watching | chokidar / notify | Cross-platform file system events |
+| Component        | Technology                | Rationale                                 |
+| ---------------- | ------------------------- | ----------------------------------------- |
+| Canvas rendering | WebGL/WebGPU              | High-performance 2D rendering             |
+| Layout engine    | Custom Flexbox/Grid       | CSS-spec-compliant layout                 |
+| AST parsing      | tree-sitter               | Language-aware, incremental               |
+| Component model  | React tree                | Native React component as source of truth |
+| Token system     | JSON/YAML → CSS variables | Standards-based, toolable                 |
+| File watching    | chokidar / notify         | Cross-platform file system events         |
 
 ---
 
@@ -859,14 +862,14 @@ artifacts with full evidence trails.
 
 ### 7.3 Platform-Specific Delivery
 
-| Platform | Format | Signing | Store |
-|----------|--------|---------|-------|
-| Windows | NSIS installer, MSIX | Code signing certificate | Microsoft Store |
-| macOS | DMG, PKG | Apple Developer ID | Mac App Store |
-| Linux | DEB, RPM, AppImage, Flatpak | GPG signing | Flathub, Snapcraft |
-| Web | Static bundle, Docker | TLS certificate | Any hosting |
-| Android | APK, AAB | Keystore | Google Play |
-| iOS | IPA | Apple provisioning | App Store |
+| Platform | Format                      | Signing                  | Store              |
+| -------- | --------------------------- | ------------------------ | ------------------ |
+| Windows  | NSIS installer, MSIX        | Code signing certificate | Microsoft Store    |
+| macOS    | DMG, PKG                    | Apple Developer ID       | Mac App Store      |
+| Linux    | DEB, RPM, AppImage, Flatpak | GPG signing              | Flathub, Snapcraft |
+| Web      | Static bundle, Docker       | TLS certificate          | Any hosting        |
+| Android  | APK, AAB                    | Keystore                 | Google Play        |
+| iOS      | IPA                         | Apple provisioning       | App Store          |
 
 ---
 
@@ -883,15 +886,15 @@ runtime that makes the system extensible.
 Define → Approve → Activate → Run → Update → Stop → Undefine
 ```
 
-| State | Description |
-|-------|-------------|
-| Defined | Plugin source registered, not yet running |
-| Awaiting Approval | Plugin needs user consent |
-| Activating | Plugin loading in progress |
-| Running | Plugin active and contributing |
-| Updating | Switching to new version |
-| Stopped | Plugin disabled but preserved |
-| Removed | Plugin permanently deleted |
+| State             | Description                               |
+| ----------------- | ----------------------------------------- |
+| Defined           | Plugin source registered, not yet running |
+| Awaiting Approval | Plugin needs user consent                 |
+| Activating        | Plugin loading in progress                |
+| Running           | Plugin active and contributing            |
+| Updating          | Switching to new version                  |
+| Stopped           | Plugin disabled but preserved             |
+| Removed           | Plugin permanently deleted                |
 
 ### 8.3 Plugin Contract
 
@@ -930,20 +933,20 @@ Define → Approve → Activate → Run → Update → Stop → Undefine
 
 ### 8.4 Plugin Types
 
-| Type | Provides | Registration |
-|------|----------|-------------|
-| Model Provider | LLM inference | `models.register(id, provider)` |
-| Tool Provider | Discrete actions | `tools.register(id, handler)` |
-| MCP Server | Tools + resources | `mcp.connect(endpoint)` |
-| Skill | Knowledge + patterns | `skills.register(id, skill)` |
-| Agent | AI entity | `agents.register(id, config)` |
-| Workflow | Orchestration | `workflows.register(id, workflow)` |
-| Context Provider | Structured context | `context.register(id, provider)` |
-| Design Tool | Visual manipulation | `design.register(id, tool)` |
-| Device Tool | Runtime control | `device.register(id, tool)` |
-| Verification Provider | Evidence production | `verification.register(id, provider)` |
-| Deployment Provider | Release target | `deployment.register(id, provider)` |
-| UI Plugin | Workspace extension | `ui.register(slot, component)` |
+| Type                  | Provides             | Registration                          |
+| --------------------- | -------------------- | ------------------------------------- |
+| Model Provider        | LLM inference        | `models.register(id, provider)`       |
+| Tool Provider         | Discrete actions     | `tools.register(id, handler)`         |
+| MCP Server            | Tools + resources    | `mcp.connect(endpoint)`               |
+| Skill                 | Knowledge + patterns | `skills.register(id, skill)`          |
+| Agent                 | AI entity            | `agents.register(id, config)`         |
+| Workflow              | Orchestration        | `workflows.register(id, workflow)`    |
+| Context Provider      | Structured context   | `context.register(id, provider)`      |
+| Design Tool           | Visual manipulation  | `design.register(id, tool)`           |
+| Device Tool           | Runtime control      | `device.register(id, tool)`           |
+| Verification Provider | Evidence production  | `verification.register(id, provider)` |
+| Deployment Provider   | Release target       | `deployment.register(id, provider)`   |
+| UI Plugin             | Workspace extension  | `ui.register(slot, component)`        |
 
 ---
 
@@ -1020,18 +1023,18 @@ Define → Approve → Activate → Run → Update → Stop → Undefine
 function selectModel(task, context):
     category = classifyTask(task)
     candidates = getModelsForCategory(category)
-    
+
     // Filter by hard constraints
     candidates = filterByPrivacy(candidates, context.privacyRequirements)
     candidates = filterByAvailability(candidates)
-    
+
     // Score by soft criteria
     for model in candidates:
-        model.score = 
+        model.score =
             performanceWeight * getPerformance(model, category) +
             costWeight * getCostEfficiency(model, task) +
             latencyWeight * getLatency(model)
-    
+
     // Select best, with fallback
     return selectBest(candidates) || getLocalFallback()
 ```
@@ -1040,14 +1043,14 @@ function selectModel(task, context):
 
 When cloud is unavailable:
 
-| Capability | Cloud Mode | Sovereign Mode |
-|-----------|-----------|---------------|
-| Code generation | Full | Reduced quality, fully functional |
-| Visual reasoning | Full | Basic (no vision models) |
-| Repository intelligence | Full | Full (local index) |
-| Build/test verification | Full | Full (local execution) |
-| Design system | Full | Reduced (simpler suggestions) |
-| Model routing | Full selection | Local models only |
+| Capability              | Cloud Mode     | Sovereign Mode                    |
+| ----------------------- | -------------- | --------------------------------- |
+| Code generation         | Full           | Reduced quality, fully functional |
+| Visual reasoning        | Full           | Basic (no vision models)          |
+| Repository intelligence | Full           | Full (local index)                |
+| Build/test verification | Full           | Full (local execution)            |
+| Design system           | Full           | Reduced (simpler suggestions)     |
+| Model routing           | Full selection | Local models only                 |
 
 The system never fails due to cloud unavailability. It degrades
 gracefully and informs the user of reduced capability.
@@ -1119,14 +1122,14 @@ gracefully and informs the user of reduced capability.
 
 ### 10.2 Coordination Protocol
 
-| Mechanism | Purpose |
-|-----------|---------|
-| Git branches | Each agent works in its own branch |
-| Task ownership | File-level ownership prevents conflicts |
+| Mechanism          | Purpose                                    |
+| ------------------ | ------------------------------------------ |
+| Git branches       | Each agent works in its own branch         |
+| Task ownership     | File-level ownership prevents conflicts    |
 | Intelligence Graph | Agents see each other's structural changes |
-| Evidence Ledger | All actions are recorded and auditable |
-| Quality gates | No merge without passing verification |
-| Handoff protocol | Structured message passing between agents |
+| Evidence Ledger    | All actions are recorded and auditable     |
+| Quality gates      | No merge without passing verification      |
+| Handoff protocol   | Structured message passing between agents  |
 
 ### 10.3 Quality Gate
 
@@ -1145,61 +1148,61 @@ No agent's work merges to main until:
 
 ### 11.1 Persistence
 
-| Data | Storage | Lifecycle |
-|------|---------|-----------|
-| Evidence Ledger | SQLite | Permanent, append-only |
-| Intelligence Graph | SQLite | Reindexable, content-hashed |
-| Session State | SQLite | Session-scoped, resumable |
-| Model Performance | SQLite | Growing over time |
-| Design System | JSON/YAML | Version-controlled |
-| Plugin Registry | SQLite | Managed by plugin runtime |
-| Marketplace Cache | SQLite/FS | Cacheable, refreshable |
+| Data               | Storage   | Lifecycle                   |
+| ------------------ | --------- | --------------------------- |
+| Evidence Ledger    | SQLite    | Permanent, append-only      |
+| Intelligence Graph | SQLite    | Reindexable, content-hashed |
+| Session State      | SQLite    | Session-scoped, resumable   |
+| Model Performance  | SQLite    | Growing over time           |
+| Design System      | JSON/YAML | Version-controlled          |
+| Plugin Registry    | SQLite    | Managed by plugin runtime   |
+| Marketplace Cache  | SQLite/FS | Cacheable, refreshable      |
 
 ### 11.2 Networking
 
-| Connection | Method | Security |
-|-----------|--------|----------|
-| Model API | HTTPS | TLS 1.3, API key in secure storage |
-| MCP Server | stdio / WebSocket | Local or authenticated remote |
-| Git Remote | HTTPS / SSH | TLS / SSH key |
-| Marketplace | HTTPS | TLS, signed packages |
-| Device Control | ADB / USB / SSH | Device-specific auth |
-| Browser Control | CDP / WebSocket | Localhost only |
+| Connection      | Method            | Security                           |
+| --------------- | ----------------- | ---------------------------------- |
+| Model API       | HTTPS             | TLS 1.3, API key in secure storage |
+| MCP Server      | stdio / WebSocket | Local or authenticated remote      |
+| Git Remote      | HTTPS / SSH       | TLS / SSH key                      |
+| Marketplace     | HTTPS             | TLS, signed packages               |
+| Device Control  | ADB / USB / SSH   | Device-specific auth               |
+| Browser Control | CDP / WebSocket   | Localhost only                     |
 
 ### 11.3 IPC
 
-| Channel | Direction | Format |
-|---------|-----------|--------|
-| Workspace ↔ Host | Bidirectional | JSON over Tauri IPC |
-| Agent ↔ Tools | Agent → Tool | Tool call protocol |
-| Agent ↔ Model | Agent → Model → Agent | Chat completion API |
-| Plugin ↔ Host | Bidirectional | Plugin API (JSON) |
-| Plugin ↔ Plugin | Through Host | Service calls via registry |
+| Channel          | Direction             | Format                     |
+| ---------------- | --------------------- | -------------------------- |
+| Workspace ↔ Host | Bidirectional         | JSON over Tauri IPC        |
+| Agent ↔ Tools    | Agent → Tool          | Tool call protocol         |
+| Agent ↔ Model    | Agent → Model → Agent | Chat completion API        |
+| Plugin ↔ Host    | Bidirectional         | Plugin API (JSON)          |
+| Plugin ↔ Plugin  | Through Host          | Service calls via registry |
 
 ### 11.4 Security Model
 
-| Concern | Approach |
-|---------|----------|
-| Tool permissions | Risk-based approval (Section 4.5 of Constitution) |
-| Plugin permissions | Declared in manifest, enforced by sandbox |
-| File access | Path allowlists per sandbox |
-| Network access | Domain allowlists per sandbox |
-| Shell access | Command allowlists per sandbox |
-| Secret handling | Never in logs, never in evidence, never in context |
-| Model data | Configurable: local-only, encrypted, or cloud |
-| Marketplace trust | Signed packages, permission declarations, audit status |
+| Concern            | Approach                                               |
+| ------------------ | ------------------------------------------------------ |
+| Tool permissions   | Risk-based approval (Section 4.5 of Constitution)      |
+| Plugin permissions | Declared in manifest, enforced by sandbox              |
+| File access        | Path allowlists per sandbox                            |
+| Network access     | Domain allowlists per sandbox                          |
+| Shell access       | Command allowlists per sandbox                         |
+| Secret handling    | Never in logs, never in evidence, never in context     |
+| Model data         | Configurable: local-only, encrypted, or cloud          |
+| Marketplace trust  | Signed packages, permission declarations, audit status |
 
 ### 11.5 Observability
 
-| Signal | Source | Destination |
-|--------|--------|-------------|
-| Agent decisions | Agent loop | Evidence Ledger |
-| Tool executions | Tool executor | Evidence Ledger |
-| Build/test results | Proof Engine | Evidence Ledger |
-| Model performance | Model Router | Performance Tracker |
-| Plugin lifecycle | Plugin Runtime | Event log |
-| Error/failure | All engines | Evidence Ledger + alert |
-| User feedback | Workspace | Session state |
+| Signal             | Source         | Destination             |
+| ------------------ | -------------- | ----------------------- |
+| Agent decisions    | Agent loop     | Evidence Ledger         |
+| Tool executions    | Tool executor  | Evidence Ledger         |
+| Build/test results | Proof Engine   | Evidence Ledger         |
+| Model performance  | Model Router   | Performance Tracker     |
+| Plugin lifecycle   | Plugin Runtime | Event log               |
+| Error/failure      | All engines    | Evidence Ledger + alert |
+| User feedback      | Workspace      | Session state           |
 
 ---
 
@@ -1207,20 +1210,21 @@ No agent's work merges to main until:
 
 ### 12.1 What Exists Today
 
-| Component | Stage | Status |
-|-----------|-------|--------|
-| Agent loop | 1 | ✅ Complete |
-| Evidence Ledger | 1 | ✅ Complete |
-| Crash recovery | 1 | ✅ Complete |
-| Repository Intelligence | 2 | ✅ Complete |
-| MCP server | 1 | ✅ Complete |
-| CLI | 1 | ✅ Complete |
-| Desktop shell (Tauri) | 1 | ✅ Complete |
-| React frontend | 1 | ✅ Complete |
+| Component               | Stage | Status      |
+| ----------------------- | ----- | ----------- |
+| Agent loop              | 1     | ✅ Complete |
+| Evidence Ledger         | 1     | ✅ Complete |
+| Crash recovery          | 1     | ✅ Complete |
+| Repository Intelligence | 2     | ✅ Complete |
+| MCP server              | 1     | ✅ Complete |
+| CLI                     | 1     | ✅ Complete |
+| Desktop shell (Tauri)   | 1     | ✅ Complete |
+| React frontend          | 1     | ✅ Complete |
 
 ### 12.2 What Comes Next
 
 Stage 3 (Intelligence) builds on Stage 2 by adding:
+
 - Model routing (new crate/module)
 - Context optimization (enhance context.rs)
 - Model benchmarking (new test infrastructure)
@@ -1251,20 +1255,20 @@ Stage 8:   packages/zylcode-device-lab (new package)
 
 Each stage has measurable acceptance criteria:
 
-| Stage | Benchmark | Metric | Threshold |
-|-------|-----------|--------|-----------|
-| 2 | Repository Intelligence | P@10, R@10 | 0.25, 0.30 |
-| 3 | Model routing accuracy | Task→model match rate | ≥0.80 |
-| 4 | Plugin load time | Time to activate | <500ms |
-| 5 | Execution pipeline | Build→screenshot time | <30s |
-| 6 | Canvas↔Code sync | Bidirectional fidelity | ≥0.95 |
-| 7 | Visual QA accuracy | Defect detection rate | ≥0.80 |
-| 8 | Android execution | Build→emulator time | <120s |
-| 9 | iOS execution | Build→simulator time | <180s |
-| 10 | Multi-agent coordination | Task completion rate | ≥0.70 |
-| 11 | Delivery pipeline | Build→installer time | <300s |
-| 12 | Marketplace install | Package install time | <10s |
-| 13 | Autonomous benchmark | End-to-end task completion | ≥0.60 |
+| Stage | Benchmark                | Metric                     | Threshold  |
+| ----- | ------------------------ | -------------------------- | ---------- |
+| 2     | Repository Intelligence  | P@10, R@10                 | 0.25, 0.30 |
+| 3     | Model routing accuracy   | Task→model match rate      | ≥0.80      |
+| 4     | Plugin load time         | Time to activate           | <500ms     |
+| 5     | Execution pipeline       | Build→screenshot time      | <30s       |
+| 6     | Canvas↔Code sync         | Bidirectional fidelity     | ≥0.95      |
+| 7     | Visual QA accuracy       | Defect detection rate      | ≥0.80      |
+| 8     | Android execution        | Build→emulator time        | <120s      |
+| 9     | iOS execution            | Build→simulator time       | <180s      |
+| 10    | Multi-agent coordination | Task completion rate       | ≥0.70      |
+| 11    | Delivery pipeline        | Build→installer time       | <300s      |
+| 12    | Marketplace install      | Package install time       | <10s       |
+| 13    | Autonomous benchmark     | End-to-end task completion | ≥0.60      |
 
 ### 13.2 The Autonomous Benchmark
 
@@ -1295,12 +1299,12 @@ Metrics:
 
 ## 14. Document History
 
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
+| Version   | Date       | Author      | Changes                 |
+| --------- | ---------- | ----------- | ----------------------- |
 | 2.0 DRAFT | 2026-09-15 | Zylvex Tech | Initial architecture v2 |
 
 ---
 
-*ZylCode Architecture v2.0*
-*Companion to ZylCode Product Constitution v2.0*
-*Status: DRAFT — pending review*
+_ZylCode Architecture v2.0_
+_Companion to ZylCode Product Constitution v2.0_
+_Status: DRAFT — pending review_

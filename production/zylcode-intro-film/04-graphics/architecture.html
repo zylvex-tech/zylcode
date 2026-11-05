@@ -1,140 +1,344 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8" />
-<title>ZylCode — Architecture</title>
-<style>
-  :root{--bg:#0B0F14;--panel:#111A2B;--panel2:#0E1626;--line:#1E2A3D;
-    --blue:#007BFF;--blue-soft:#3D9BFF;--amber:#FF9F1C;--text:#E6EDF7;--muted:#7E8DA5}
-  *{box-sizing:border-box;margin:0;padding:0}
-  html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);
-    font-family:"Segoe UI",Inter,system-ui,sans-serif;color:var(--text)}
-  #stage{position:relative;width:1920px;height:1080px;overflow:hidden;
-    background:radial-gradient(1100px 700px at 20% -10%,#13233C 0%,rgba(19,35,60,0) 60%),
-               radial-gradient(1000px 700px at 110% 100%,#10203A 0%,rgba(16,32,58,0) 60%),var(--bg)}
-  #stage::before{content:"";position:absolute;inset:0;
-    background-image:linear-gradient(rgba(70,110,170,.07) 1px,transparent 1px),
-                     linear-gradient(90deg,rgba(70,110,170,.07) 1px,transparent 1px);
-    background-size:64px 64px;
-    mask-image:radial-gradient(1400px 900px at 50% 55%,#000 40%,transparent 100%)}
-  .label{position:absolute;top:56px;left:80px;font-size:20px;letter-spacing:.42em;
-    color:var(--blue-soft);text-transform:uppercase;font-weight:600}
-  h1{position:absolute;top:104px;left:80px;font-size:66px;font-weight:700}
-  h1 span{color:var(--blue)}
-  .cols{position:absolute;top:250px;left:80px;right:80px;display:flex;gap:110px;align-items:flex-start}
-  .col{flex:1;display:flex;flex-direction:column;gap:26px}
-  .card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);
-    border-radius:16px;padding:26px 28px;position:relative;overflow:hidden}
-  .card::after{content:"";position:absolute;left:0;top:0;width:100%;height:3px;
-    background:linear-gradient(90deg,var(--blue),transparent);opacity:.7}
-  .card.amber::after{background:linear-gradient(90deg,var(--amber),transparent)}
-  .card h3{font-size:26px;margin-bottom:8px;letter-spacing:.02em}
-  .card .tag{font-size:15px;letter-spacing:.18em;text-transform:uppercase;color:var(--blue-soft);
-    margin-bottom:14px;display:block}
-  .card.amber .tag{color:var(--amber)}
-  .card ul{list-style:none;display:flex;flex-direction:column;gap:9px}
-  .card li{font-size:19px;color:#B9C6DA;padding-left:22px;position:relative}
-  .card li::before{content:"";position:absolute;left:0;top:9px;width:8px;height:8px;border-radius:2px;
-    background:var(--blue)}
-  .card.amber li::before{background:var(--amber)}
-  .colhead{font-size:17px;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);
-    text-align:center;margin-bottom:4px}
-  .wire{position:absolute;top:340px;width:110px;height:2px;background:var(--line)}
-  .wire .pkt{position:absolute;top:-4px;left:0;width:10px;height:10px;border-radius:50%;
-    background:var(--blue);box-shadow:0 0 14px 3px rgba(0,123,255,.75);
-    animation:flow 2.4s linear infinite}
-  .wire .pkt.b{animation-delay:1.2s;background:var(--amber);box-shadow:0 0 14px 3px rgba(255,159,28,.7)}
-  .wire.w1{left:calc(80px + (100% - 160px - 220px)/3 * 1 + 0px)}
-  @keyframes flow{0%{left:0;opacity:0}10%{opacity:1}90%{opacity:1}100%{left:100%;opacity:0}}
-  .caption{position:absolute;left:80px;bottom:74px;font-size:28px;color:#C8D4E6;
-    border-left:4px solid var(--blue);padding-left:24px;max-width:1300px}
-  .caption b{color:var(--blue-soft);font-weight:600}
-  .brand{position:absolute;right:80px;bottom:70px;text-align:right;color:var(--muted);font-size:18px;
-    letter-spacing:.24em;text-transform:uppercase}
-  .brand strong{display:block;color:var(--text);font-size:22px;letter-spacing:.1em;margin-bottom:6px}
-  .row{display:flex;gap:24px}
-  .row .card{flex:1;padding:20px 22px}
-  .row .card li{font-size:17px}
-</style>
-</head>
-<body>
-<div id="stage">
-  <div class="label">ZylCode · how it is built</div>
-  <h1>An engineering <span>workspace</span>, not a chat window</h1>
+  <head>
+    <meta charset="utf-8" />
+    <title>ZylCode — Architecture</title>
+    <style>
+      :root {
+        --bg: #0b0f14;
+        --panel: #111a2b;
+        --panel2: #0e1626;
+        --line: #1e2a3d;
+        --blue: #007bff;
+        --blue-soft: #3d9bff;
+        --amber: #ff9f1c;
+        --text: #e6edf7;
+        --muted: #7e8da5;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: var(--bg);
+        font-family: "Segoe UI", Inter, system-ui, sans-serif;
+        color: var(--text);
+      }
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background:
+          radial-gradient(
+            1100px 700px at 20% -10%,
+            #13233c 0%,
+            rgba(19, 35, 60, 0) 60%
+          ),
+          radial-gradient(
+            1000px 700px at 110% 100%,
+            #10203a 0%,
+            rgba(16, 32, 58, 0) 60%
+          ),
+          var(--bg);
+      }
+      #stage::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(70, 110, 170, 0.07) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(70, 110, 170, 0.07) 1px, transparent 1px);
+        background-size: 64px 64px;
+        mask-image: radial-gradient(
+          1400px 900px at 50% 55%,
+          #000 40%,
+          transparent 100%
+        );
+      }
+      .label {
+        position: absolute;
+        top: 56px;
+        left: 80px;
+        font-size: 20px;
+        letter-spacing: 0.42em;
+        color: var(--blue-soft);
+        text-transform: uppercase;
+        font-weight: 600;
+      }
+      h1 {
+        position: absolute;
+        top: 104px;
+        left: 80px;
+        font-size: 66px;
+        font-weight: 700;
+      }
+      h1 span {
+        color: var(--blue);
+      }
+      .cols {
+        position: absolute;
+        top: 250px;
+        left: 80px;
+        right: 80px;
+        display: flex;
+        gap: 110px;
+        align-items: flex-start;
+      }
+      .col {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 26px;
+      }
+      .card {
+        background: linear-gradient(180deg, var(--panel), var(--panel2));
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 26px 28px;
+        position: relative;
+        overflow: hidden;
+      }
+      .card::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 3px;
+        background: linear-gradient(90deg, var(--blue), transparent);
+        opacity: 0.7;
+      }
+      .card.amber::after {
+        background: linear-gradient(90deg, var(--amber), transparent);
+      }
+      .card h3 {
+        font-size: 26px;
+        margin-bottom: 8px;
+        letter-spacing: 0.02em;
+      }
+      .card .tag {
+        font-size: 15px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--blue-soft);
+        margin-bottom: 14px;
+        display: block;
+      }
+      .card.amber .tag {
+        color: var(--amber);
+      }
+      .card ul {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+      }
+      .card li {
+        font-size: 19px;
+        color: #b9c6da;
+        padding-left: 22px;
+        position: relative;
+      }
+      .card li::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 9px;
+        width: 8px;
+        height: 8px;
+        border-radius: 2px;
+        background: var(--blue);
+      }
+      .card.amber li::before {
+        background: var(--amber);
+      }
+      .colhead {
+        font-size: 17px;
+        letter-spacing: 0.28em;
+        text-transform: uppercase;
+        color: var(--muted);
+        text-align: center;
+        margin-bottom: 4px;
+      }
+      .wire {
+        position: absolute;
+        top: 340px;
+        width: 110px;
+        height: 2px;
+        background: var(--line);
+      }
+      .wire .pkt {
+        position: absolute;
+        top: -4px;
+        left: 0;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--blue);
+        box-shadow: 0 0 14px 3px rgba(0, 123, 255, 0.75);
+        animation: flow 2.4s linear infinite;
+      }
+      .wire .pkt.b {
+        animation-delay: 1.2s;
+        background: var(--amber);
+        box-shadow: 0 0 14px 3px rgba(255, 159, 28, 0.7);
+      }
+      .wire.w1 {
+        left: calc(80px + (100% - 160px - 220px) / 3 * 1 + 0px);
+      }
+      @keyframes flow {
+        0% {
+          left: 0;
+          opacity: 0;
+        }
+        10% {
+          opacity: 1;
+        }
+        90% {
+          opacity: 1;
+        }
+        100% {
+          left: 100%;
+          opacity: 0;
+        }
+      }
+      .caption {
+        position: absolute;
+        left: 80px;
+        bottom: 74px;
+        font-size: 28px;
+        color: #c8d4e6;
+        border-left: 4px solid var(--blue);
+        padding-left: 24px;
+        max-width: 1300px;
+      }
+      .caption b {
+        color: var(--blue-soft);
+        font-weight: 600;
+      }
+      .brand {
+        position: absolute;
+        right: 80px;
+        bottom: 70px;
+        text-align: right;
+        color: var(--muted);
+        font-size: 18px;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+      }
+      .brand strong {
+        display: block;
+        color: var(--text);
+        font-size: 22px;
+        letter-spacing: 0.1em;
+        margin-bottom: 6px;
+      }
+      .row {
+        display: flex;
+        gap: 24px;
+      }
+      .row .card {
+        flex: 1;
+        padding: 20px 22px;
+      }
+      .row .card li {
+        font-size: 17px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="stage">
+      <div class="label">ZylCode · how it is built</div>
+      <h1>An engineering <span>workspace</span>, not a chat window</h1>
 
-  <div class="cols">
-    <div class="col">
-      <div class="colhead">Surface</div>
-      <div class="card">
-        <span class="tag">Desktop / browser</span>
-        <h3>Workbench UI</h3>
-        <ul>
-          <li>Explorer, editor, source control</li>
-          <li>Mission composer + autonomy levels</li>
-          <li>Terminal that runs real commands</li>
-          <li>Evidence ledger, proof inspector</li>
-        </ul>
+      <div class="cols">
+        <div class="col">
+          <div class="colhead">Surface</div>
+          <div class="card">
+            <span class="tag">Desktop / browser</span>
+            <h3>Workbench UI</h3>
+            <ul>
+              <li>Explorer, editor, source control</li>
+              <li>Mission composer + autonomy levels</li>
+              <li>Terminal that runs real commands</li>
+              <li>Evidence ledger, proof inspector</li>
+            </ul>
+          </div>
+          <div class="card">
+            <span class="tag">Local only</span>
+            <h3>Bring your own key</h3>
+            <ul>
+              <li>Loopback service, no cloud account</li>
+              <li>Providers stay configurable and optional</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="col">
+          <div class="colhead">Service</div>
+          <div class="card">
+            <span class="tag">serve-intel · 127.0.0.1</span>
+            <h3>Local gateway</h3>
+            <ul>
+              <li>HTTP routes for terminal, nav, intel</li>
+              <li>One shared in-process index</li>
+              <li>Same contract as desktop IPC</li>
+            </ul>
+          </div>
+          <div class="card amber">
+            <span class="tag">Agent loop</span>
+            <h3>Planned execution</h3>
+            <ul>
+              <li>Context gathering → plan → tools</li>
+              <li>Approval gate before consequential writes</li>
+              <li>Verification decides pass or fail</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="col">
+          <div class="colhead">Evidence</div>
+          <div class="card">
+            <span class="tag">zylcode-core</span>
+            <h3>Repository index</h3>
+            <ul>
+              <li>Files, symbols, packages, imports</li>
+              <li>Every row labelled by evidence class</li>
+              <li>Persisted, content-hash validated</li>
+            </ul>
+          </div>
+          <div class="card">
+            <span class="tag">Hash-chained</span>
+            <h3>Evidence ledger</h3>
+            <ul>
+              <li>Tool calls, approvals, results recorded</li>
+              <li>Failures kept, never rewritten</li>
+              <li>Chain integrity you can verify</li>
+            </ul>
+          </div>
+        </div>
       </div>
-      <div class="card">
-        <span class="tag">Local only</span>
-        <h3>Bring your own key</h3>
-        <ul>
-          <li>Loopback service, no cloud account</li>
-          <li>Providers stay configurable and optional</li>
-        </ul>
+
+      <div class="wire" style="left: 640px">
+        <div class="pkt"></div>
+        <div class="pkt b"></div>
       </div>
+      <div class="wire" style="left: 1170px">
+        <div class="pkt"></div>
+        <div class="pkt b"></div>
+      </div>
+
+      <div class="caption">
+        One workspace: <b>understand → plan → execute → verify</b> — every step
+        recorded locally.
+      </div>
+      <div class="brand"><strong>ZYLCODE</strong>Zylvex Technologies Ltd.</div>
     </div>
-
-    <div class="col">
-      <div class="colhead">Service</div>
-      <div class="card">
-        <span class="tag">serve-intel · 127.0.0.1</span>
-        <h3>Local gateway</h3>
-        <ul>
-          <li>HTTP routes for terminal, nav, intel</li>
-          <li>One shared in-process index</li>
-          <li>Same contract as desktop IPC</li>
-        </ul>
-      </div>
-      <div class="card amber">
-        <span class="tag">Agent loop</span>
-        <h3>Planned execution</h3>
-        <ul>
-          <li>Context gathering → plan → tools</li>
-          <li>Approval gate before consequential writes</li>
-          <li>Verification decides pass or fail</li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="col">
-      <div class="colhead">Evidence</div>
-      <div class="card">
-        <span class="tag">zylcode-core</span>
-        <h3>Repository index</h3>
-        <ul>
-          <li>Files, symbols, packages, imports</li>
-          <li>Every row labelled by evidence class</li>
-          <li>Persisted, content-hash validated</li>
-        </ul>
-      </div>
-      <div class="card">
-        <span class="tag">Hash-chained</span>
-        <h3>Evidence ledger</h3>
-        <ul>
-          <li>Tool calls, approvals, results recorded</li>
-          <li>Failures kept, never rewritten</li>
-          <li>Chain integrity you can verify</li>
-        </ul>
-      </div>
-    </div>
-  </div>
-
-  <div class="wire" style="left:640px"><div class="pkt"></div><div class="pkt b"></div></div>
-  <div class="wire" style="left:1170px"><div class="pkt"></div><div class="pkt b"></div></div>
-
-  <div class="caption">One workspace: <b>understand → plan → execute → verify</b> — every step recorded locally.</div>
-  <div class="brand"><strong>ZYLCODE</strong>Zylvex Technologies Ltd.</div>
-</div>
-</body>
+  </body>
 </html>

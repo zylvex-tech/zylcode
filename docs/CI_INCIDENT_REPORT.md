@@ -5,37 +5,46 @@
 ## Phase 1B Status Correction
 
 ### Previous Claim
+
 Phase 1B was declared COMPLETE based on local verification.
 
 ### Actual Status
+
 Phase 1B local verification PASSED but remote CI FAILED.
 
 ### Root Cause
+
 The CI failure was caused by a CSS `@import` ordering issue in `apps/zylcode-desktop/src/index.css`.
 
 The `@import` statement was placed after `@tailwind` directives, which violates the CSS specification that `@import` rules must precede all other statements.
 
 ### Affected Platforms
+
 - windows-latest
 - ubuntu-22.04
 - macos-latest
 
 ### CI Run
+
 - Commit: `a2b58fe420968d8a4ff881d44cf44f4d3eca4c2a`
 - CI Run: #27
 - Status: FAILED
 
 ### Repair
+
 Moved the `@import './styles/themes.css'` statement to the top of the file, before the `@tailwind` directives.
 
 ### Verification
+
 After the fix:
+
 - `pnpm --filter zylcode-desktop build` succeeds without warnings
 - `cargo fmt --all -- --check` passes
 - `cargo clippy --workspace --all-targets -- -D warnings` passes
 - `cargo test --workspace` passes (all 249 tests pass)
 
 ### Regression Protection
+
 The CSS `@import` ordering is now correct and follows the CSS specification.
 
 ## New Permanent Rule
@@ -43,6 +52,7 @@ The CSS `@import` ordering is now correct and follows the CSS specification.
 **REMOTE CI IS PART OF THE DEFINITION OF DONE**
 
 A phase is NOT COMPLETE merely because:
+
 - local tests pass
 - code is committed
 - code is pushed
@@ -80,9 +90,11 @@ X The job was not started because your account is locked due to a billing issue.
 This is NOT a code issue. The CI repair is correct and passes all local verification gates.
 
 ### Action Required
+
 The GitHub account billing issue must be resolved before CI can run successfully.
 
 ### Current Status
+
 - Implementation: COMPLETE
 - Local verification: PASS
 - Remote CI: BLOCKED (billing issue)

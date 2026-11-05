@@ -43,18 +43,19 @@ Legacy `primary_provider`/`fallback_provider`/`primary_model`/`fallback_model` k
 
 `RouterConfig::api_key(&ModelProvider)` and `api_key_for_kind(&ProviderKind)` check `api_keys: HashMap<String,String>` then env:
 
-| Provider | Env |
-|----------|-----|
-| Anthropic | `ANTHROPIC_API_KEY` |
+| Provider   | Env                  |
+| ---------- | -------------------- |
+| Anthropic  | `ANTHROPIC_API_KEY`  |
 | OpenRouter | `OPENROUTER_API_KEY` |
-| DeepSeek | `DEEPSEEK_API_KEY` |
-| Ollama | none |
+| DeepSeek   | `DEEPSEEK_API_KEY`   |
+| Ollama     | none                 |
 
 Engine extra keys `anthropic_api_key`/`openrouter_api_key`/`deepseek_api_key` are folded into `api_keys`.
 
 ### Failover Semantics
 
 `TokenRouter::dispatch_prompt(prompt, system)`:
+
 1. `ContextCompressor` if over budget (track: CTX-COMPRESSION).
 2. Cache probe `hash(prompt, system, primary_model)`.
 3. If no keys and both providers need keys → synthetic immediately.
@@ -90,7 +91,13 @@ const configs = await invoke<ProviderConfig[]>("get_provider_configs");
 Validates `timeout_ms` 1000..300000, non-empty model, known kind. Mutates `provider_configs` RwLock, returns sorted snapshot.
 
 ```ts
-await invoke("set_provider_config", { kind: "ollama", endpoint: "http://gpu:11434", timeoutMs: 30000, enabled: true, model: "qwen2.5:14b" });
+await invoke("set_provider_config", {
+  kind: "ollama",
+  endpoint: "http://gpu:11434",
+  timeoutMs: 30000,
+  enabled: true,
+  model: "qwen2.5:14b",
+});
 ```
 
 #### `reorder_provider_chain(order: ProviderKind[]) -> Vec<ProviderConfig>`
@@ -98,7 +105,9 @@ await invoke("set_provider_config", { kind: "ollama", endpoint: "http://gpu:1143
 `order` is authoritative prefix; assigns `fallback_order 0..order.len()-1` to those kinds, pushes remainder (previous relative order) to tail. Validates non-empty, no duplicates, all known.
 
 ```ts
-await invoke("reorder_provider_chain", { order: ["ollama","anthropic","open_router","synthetic_offline"] });
+await invoke("reorder_provider_chain", {
+  order: ["ollama", "anthropic", "open_router", "synthetic_offline"],
+});
 ```
 
 ### Frontend — ProviderSettings
@@ -112,7 +121,13 @@ await invoke("reorder_provider_chain", { order: ["ollama","anthropic","open_rout
 Payload:
 
 ```ts
-type Failover = { timestamp: string; from_provider: string; to_provider: string; reason: string; attempt_number: number };
+type Failover = {
+  timestamp: string;
+  from_provider: string;
+  to_provider: string;
+  reason: string;
+  attempt_number: number;
+};
 ```
 
 `App.tsx` mounts `<ProviderSettings />` between ArtifactViewer and Verify section.

@@ -20,11 +20,11 @@ impl ContextCompressor {
   pub fn compress(&self, prompt: &str, system: &str) -> (String, String, CompressionMetrics);
   pub fn compress_single(&self, input: &str) -> (String, CompressionMetrics);
 }
-pub struct CompressionMetrics { 
-  pub original_tokens: usize, 
-  pub compressed_tokens: usize, 
-  pub compression_ratio: f64, 
-  pub strategy: String 
+pub struct CompressionMetrics {
+  pub original_tokens: usize,
+  pub compressed_tokens: usize,
+  pub compression_ratio: f64,
+  pub strategy: String
 }
 ```
 

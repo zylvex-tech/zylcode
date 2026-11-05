@@ -1,6 +1,6 @@
 # ZylCode product introduction film — preliminary outline
 
-**Status:** PRELIMINARY. Per the brief, final narration is written *after* footage is
+**Status:** PRELIMINARY. Per the brief, final narration is written _after_ footage is
 captured and verified. This file maps each scene to the footage that can honestly be
 recorded, using the audit in `../00-audit/REPOSITORY_AUDIT_2026-10-31.md` as the source of
 truth.
@@ -43,18 +43,18 @@ paths, adoption/customer/partnership numbers, NVIDIA references.
 
 ## Structure
 
-| # | Time | Scene | Primary footage | Spoken intent (preliminary) |
-|---|---|---|---|---|
-| 1 | 00:00–00:40 | Cinematic hook | grid/motion + title card, brand line | An assistant can suggest code. A platform has to show its work. |
-| 2 | 00:40–01:30 | The problem with conventional AI coding assistance | diagram: suggestion → no record → no evidence | Unverifiable output is the real cost. |
-| 3 | 01:30–02:20 | Introducing ZylCode | **FOOTAGE-01**, logo, slogan | Local-first, bring-your-own-key, evidence-first. |
-| 4 | 02:20–03:30 | The workbench and engineering workflow | **FOOTAGE-02, 07** | Surfaces a working engineer already needs. |
-| 5 | 03:30–04:45 | Repository understanding and mission planning | **FOOTAGE-03, 04** | Real index; a mission is a plan before it is a diff. |
-| 6 | 04:45–06:00 | Agent execution and human approval | **FOOTAGE-05** (+ approval discipline via **09**) | Real tool calls, a real failure, a real repair; humans stay in the loop. |
-| 7 | 06:00–07:00 | Verification and evidence | **FOOTAGE-06** (+ optional **08**) | The ledger distinguishes recorded evidence from certification. |
-| 8 | 07:00–07:50 | Provider architecture and N-ATLAS | provider diagram + registry counts | BYOK, controlled state; N-ATLAS is an integration workstream. |
-| 9 | 07:50–08:35 | Current capabilities, limitations, direction | registry stats 22/2/12/1 + Phase 2A re-opened | Say plainly what works, what is disputed, what is next. |
-| 10 | 08:35–09:00 | Close and call to action | brand, `Engineered in Nigeria. Built for the world.`, early access | Waitlist; repository is public. |
+| #   | Time        | Scene                                              | Primary footage                                                    | Spoken intent (preliminary)                                              |
+| --- | ----------- | -------------------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| 1   | 00:00–00:40 | Cinematic hook                                     | grid/motion + title card, brand line                               | An assistant can suggest code. A platform has to show its work.          |
+| 2   | 00:40–01:30 | The problem with conventional AI coding assistance | diagram: suggestion → no record → no evidence                      | Unverifiable output is the real cost.                                    |
+| 3   | 01:30–02:20 | Introducing ZylCode                                | **FOOTAGE-01**, logo, slogan                                       | Local-first, bring-your-own-key, evidence-first.                         |
+| 4   | 02:20–03:30 | The workbench and engineering workflow             | **FOOTAGE-02, 07**                                                 | Surfaces a working engineer already needs.                               |
+| 5   | 03:30–04:45 | Repository understanding and mission planning      | **FOOTAGE-03, 04**                                                 | Real index; a mission is a plan before it is a diff.                     |
+| 6   | 04:45–06:00 | Agent execution and human approval                 | **FOOTAGE-05** (+ approval discipline via **09**)                  | Real tool calls, a real failure, a real repair; humans stay in the loop. |
+| 7   | 06:00–07:00 | Verification and evidence                          | **FOOTAGE-06** (+ optional **08**)                                 | The ledger distinguishes recorded evidence from certification.           |
+| 8   | 07:00–07:50 | Provider architecture and N-ATLAS                  | provider diagram + registry counts                                 | BYOK, controlled state; N-ATLAS is an integration workstream.            |
+| 9   | 07:50–08:35 | Current capabilities, limitations, direction       | registry stats 22/2/12/1 + Phase 2A re-opened                      | Say plainly what works, what is disputed, what is next.                  |
+| 10  | 08:35–09:00 | Close and call to action                           | brand, `Engineered in Nigeria. Built for the world.`, early access | Waitlist; repository is public.                                          |
 
 Timings are targets; they move to match the captured takes rather than stretching footage.
 

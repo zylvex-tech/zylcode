@@ -83,7 +83,10 @@ export type NatlasResilienceState =
  * "warming" — that would invite a retry that cannot succeed and leave the
  * tester looking at a spinner that never resolves (NAT-A-001 / NAT-A-002).
  */
-export function classifyHttp(status: number, bodyExcerpt = ""): NatlasResilienceState {
+export function classifyHttp(
+  status: number,
+  bodyExcerpt = "",
+): NatlasResilienceState {
   const b = bodyExcerpt.toLowerCase();
   if (status === 401 || status === 403) return "auth_failure";
   // 429 is the canonical rate-limit; HF ZeroGPU quota exhaustion also surfaces
@@ -98,7 +101,8 @@ export function classifyHttp(status: number, bodyExcerpt = ""): NatlasResilience
     ) {
       return "quota";
     }
-    if (b.includes("load") || b.includes("starting") || b.includes("boot")) return "loading";
+    if (b.includes("load") || b.includes("starting") || b.includes("boot"))
+      return "loading";
     return "warming";
   }
   if ([400, 404, 405, 500, 501].includes(status)) return "failed";
@@ -117,7 +121,10 @@ export function resilienceStateOf(err: NatlasError): NatlasResilienceState {
       return "timeout";
     case "HTTP_STATUS": {
       const m = /HTTP (\d{3})/.exec(err.message);
-      return classifyHttp(m ? Number.parseInt(m[1] ?? "", 10) : 0, err.detail ?? "");
+      return classifyHttp(
+        m ? Number.parseInt(m[1] ?? "", 10) : 0,
+        err.detail ?? "",
+      );
     }
     case "MALFORMED_RESPONSE":
       return "failed";
@@ -240,11 +247,15 @@ export const RESPAN_DEFAULT_MODEL = "gpt-5.5";
  * show is stripped). Absent the key, this returns `undefined` and
  * {@link configFromEnv} reads the N-ATLAS variables exactly as before.
  */
-export function configFromRespanGateway(env: EnvLike = defaultEnv()): NatlasConfig | undefined {
+export function configFromRespanGateway(
+  env: EnvLike = defaultEnv(),
+): NatlasConfig | undefined {
   const apiKey = env["RESPAN_API_KEY"]?.trim();
   if (!apiKey) return undefined;
 
-  const baseUrl = (env["RESPAN_BASE_URL"]?.trim() || RESPAN_GATEWAY_BASE_URL).replace(/\/+$/, "");
+  const baseUrl = (
+    env["RESPAN_BASE_URL"]?.trim() || RESPAN_GATEWAY_BASE_URL
+  ).replace(/\/+$/, "");
   const model = env["RESPAN_MODEL"]?.trim() || RESPAN_DEFAULT_MODEL;
   const timeoutMs = Number.parseInt(env["NATLAS_TIMEOUT_MS"] ?? "", 10);
 
@@ -253,7 +264,10 @@ export function configFromRespanGateway(env: EnvLike = defaultEnv()): NatlasConf
     requestPath: RESPAN_GATEWAY_CHAT_PATH,
     model,
     apiKey,
-    timeoutMs: Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : DEFAULT_TIMEOUT_MS,
+    timeoutMs:
+      Number.isFinite(timeoutMs) && timeoutMs > 0
+        ? timeoutMs
+        : DEFAULT_TIMEOUT_MS,
     provider: "respan",
   };
 }
@@ -299,7 +313,10 @@ export function configFromEnv(env: EnvLike = defaultEnv()): NatlasConfig {
     requestPath,
     model,
     apiKey,
-    timeoutMs: Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : DEFAULT_TIMEOUT_MS,
+    timeoutMs:
+      Number.isFinite(timeoutMs) && timeoutMs > 0
+        ? timeoutMs
+        : DEFAULT_TIMEOUT_MS,
   };
 }
 
@@ -362,7 +379,8 @@ export interface NatlasEvidence {
   secretRedactions: number;
 }
 
-export type IntentStepKind = "analyse" | "implement" | "test" | "document" | "approve";
+export type IntentStepKind =
+  "analyse" | "implement" | "test" | "document" | "approve";
 
 export interface IntentStep {
   kind: IntentStepKind;
@@ -410,7 +428,10 @@ export const INTENT_SYSTEM_PREAMBLE = [
  * Secrets shorter than 4 characters are ignored: redacting them would corrupt
  * unrelated text while protecting nothing.
  */
-export function redactSecrets(text: string, secrets: string[]): { text: string; count: number } {
+export function redactSecrets(
+  text: string,
+  secrets: string[],
+): { text: string; count: number } {
   let out = text;
   let count = 0;
   for (const secret of secrets) {
@@ -432,7 +453,10 @@ export function redactSecrets(text: string, secrets: string[]): { text: string; 
  * Probe a local runtime. Performs real I/O; `reachable` is true only when an
  * HTTP request actually succeeded.
  */
-export async function probeRuntime(baseUrl: string, model?: string): Promise<RuntimeHealth> {
+export async function probeRuntime(
+  baseUrl: string,
+  model?: string,
+): Promise<RuntimeHealth> {
   const base = baseUrl.replace(/\/+$/, "");
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 3000);
@@ -445,7 +469,11 @@ export async function probeRuntime(baseUrl: string, model?: string): Promise<Run
       const models = json["models"];
       if (Array.isArray(models)) {
         return models
-          .map((m) => (m as Record<string, unknown>)["name"] ?? (m as Record<string, unknown>)["model"])
+          .map(
+            (m) =>
+              (m as Record<string, unknown>)["name"] ??
+              (m as Record<string, unknown>)["model"],
+          )
           .filter((n): n is string => typeof n === "string");
       }
       const data = json["data"];
@@ -467,7 +495,9 @@ export async function probeRuntime(baseUrl: string, model?: string): Promise<Run
         baseUrl: base,
         reachable: true,
         models: ollama,
-        modelPresent: model ? ollama.some((m) => m === model || m.startsWith(`${model}:`)) : undefined,
+        modelPresent: model
+          ? ollama.some((m) => m === model || m.startsWith(`${model}:`))
+          : undefined,
         detail: "local runtime reachable (Ollama /api/tags)",
       };
     }
@@ -552,7 +582,9 @@ export class NatlasBridge {
   }
 
   /** A log-safe view. Never contains the API key. */
-  get redactedConfig(): Omit<NatlasConfig, "apiKey"> & { apiKeyPresent: boolean } {
+  get redactedConfig(): Omit<NatlasConfig, "apiKey"> & {
+    apiKeyPresent: boolean;
+  } {
     const { apiKey, ...rest } = this.config;
     return { ...rest, apiKeyPresent: Boolean(apiKey && apiKey.length > 0) };
   }
@@ -605,13 +637,17 @@ export class NatlasBridge {
       let user = "";
       if (request.context?.length) {
         user += "Repository context (read-only excerpts):\n";
-        for (const c of request.context) user += `\n--- ${c.path} ---\n${c.excerpt}\n`;
+        for (const c of request.context)
+          user += `\n--- ${c.path} ---\n${c.excerpt}\n`;
         user += "\nDeveloper request:\n";
       }
       user += request.intent;
 
-      const headers: Record<string, string> = { "content-type": "application/json" };
-      if (this.config.apiKey) headers["authorization"] = `Bearer ${this.config.apiKey}`;
+      const headers: Record<string, string> = {
+        "content-type": "application/json",
+      };
+      if (this.config.apiKey)
+        headers["authorization"] = `Bearer ${this.config.apiKey}`;
 
       let res: Response;
       try {
@@ -633,8 +669,14 @@ export class NatlasBridge {
       } catch (e) {
         const aborted = e instanceof Error && e.name === "AbortError";
         const err = aborted
-          ? new NatlasError("TIMEOUT", `N-ATLAS request timed out after ${this.config.timeoutMs} ms`)
-          : new NatlasError("TRANSPORT", `could not reach the local N-ATLAS runtime: ${String(e)}`);
+          ? new NatlasError(
+              "TIMEOUT",
+              `N-ATLAS request timed out after ${this.config.timeoutMs} ms`,
+            )
+          : new NatlasError(
+              "TRANSPORT",
+              `could not reach the local N-ATLAS runtime: ${String(e)}`,
+            );
         return this.failure(base, err, Date.now() - started, undefined);
       } finally {
         clearTimeout(timer);
@@ -644,7 +686,11 @@ export class NatlasBridge {
       const raw = await res.text();
 
       if (!res.ok) {
-        const err = new NatlasError("HTTP_STATUS", `N-ATLAS returned HTTP ${res.status}`, raw.slice(0, 300));
+        const err = new NatlasError(
+          "HTTP_STATUS",
+          `N-ATLAS returned HTTP ${res.status}`,
+          raw.slice(0, 300),
+        );
         return this.failure(base, err, Date.now() - started, httpStatus);
       }
 
@@ -683,7 +729,10 @@ export class NatlasBridge {
     const invocation = await this.invoke(request);
     if (!invocation.response) return { invocation };
     try {
-      return { invocation, intent: parseEngineeringIntent(invocation.response.text) };
+      return {
+        invocation,
+        intent: parseEngineeringIntent(invocation.response.text),
+      };
     } catch {
       // A model that did not honour the contract is a real, reportable outcome.
       return { invocation };
@@ -712,7 +761,12 @@ export class NatlasBridge {
     // `text` is intentionally unused beyond redaction accounting: we store the
     // code, not the message, so a server cannot smuggle a secret into evidence.
     void text;
-    return { status: "failed", state: resilienceStateOf(err), error: err, evidence };
+    return {
+      status: "failed",
+      state: resilienceStateOf(err),
+      error: err,
+      evidence,
+    };
   }
 }
 
@@ -723,9 +777,13 @@ export class NatlasBridge {
 function classify(intent: string): string {
   const t = intent.toLowerCase();
   const has = (words: string[]): boolean => words.some((w) => t.includes(w));
-  if (has(["implement", "add ", "fix", "refactor", "write ", "create ", "rename"])) return "implementation";
+  if (
+    has(["implement", "add ", "fix", "refactor", "write ", "create ", "rename"])
+  )
+    return "implementation";
   if (has(["test", "assert", "coverage"])) return "testing";
-  if (has(["explain", "why", "what is", "how does", "document", "describe"])) return "analysis";
+  if (has(["explain", "why", "what is", "how does", "document", "describe"]))
+    return "analysis";
   return "general";
 }
 
@@ -751,7 +809,11 @@ export function translateOpenAiReply(body: string): NatlasResponse {
   try {
     value = JSON.parse(body);
   } catch (e) {
-    throw new NatlasError("MALFORMED_RESPONSE", "reply was not valid JSON", String(e));
+    throw new NatlasError(
+      "MALFORMED_RESPONSE",
+      "reply was not valid JSON",
+      String(e),
+    );
   }
   if (typeof value !== "object" || value === null) {
     throw new NatlasError("MALFORMED_RESPONSE", "reply was not a JSON object");
@@ -784,14 +846,25 @@ export function translateOpenAiReply(body: string): NatlasResponse {
     requestId: typeof id === "string" ? id : undefined,
     finishReason: typeof finish === "string" ? finish : undefined,
     usage: {
-      inputTokens: typeof usage?.["prompt_tokens"] === "number" ? (usage["prompt_tokens"] as number) : undefined,
+      inputTokens:
+        typeof usage?.["prompt_tokens"] === "number"
+          ? (usage["prompt_tokens"] as number)
+          : undefined,
       outputTokens:
-        typeof usage?.["completion_tokens"] === "number" ? (usage["completion_tokens"] as number) : undefined,
+        typeof usage?.["completion_tokens"] === "number"
+          ? (usage["completion_tokens"] as number)
+          : undefined,
     },
   };
 }
 
-const VALID_KINDS: readonly IntentStepKind[] = ["analyse", "implement", "test", "document", "approve"];
+const VALID_KINDS: readonly IntentStepKind[] = [
+  "analyse",
+  "implement",
+  "test",
+  "document",
+  "approve",
+];
 
 /** Parse ZylCode's intent contract out of a model reply. Strict. */
 export function parseEngineeringIntent(text: string): EngineeringIntent {
@@ -800,7 +873,11 @@ export function parseEngineeringIntent(text: string): EngineeringIntent {
   try {
     value = JSON.parse(stripped);
   } catch (e) {
-    throw new NatlasError("MALFORMED_RESPONSE", "intent is not valid JSON", String(e));
+    throw new NatlasError(
+      "MALFORMED_RESPONSE",
+      "intent is not valid JSON",
+      String(e),
+    );
   }
   if (typeof value !== "object" || value === null) {
     throw new NatlasError("MALFORMED_RESPONSE", "intent must be a JSON object");
@@ -808,21 +885,36 @@ export function parseEngineeringIntent(text: string): EngineeringIntent {
   const obj = value as Record<string, unknown>;
   const summary = obj["summary"];
   if (typeof summary !== "string" || summary.trim() === "") {
-    throw new NatlasError("MALFORMED_RESPONSE", "intent requires a non-empty summary");
+    throw new NatlasError(
+      "MALFORMED_RESPONSE",
+      "intent requires a non-empty summary",
+    );
   }
   const rawSteps = obj["steps"];
   if (!Array.isArray(rawSteps) || rawSteps.length === 0) {
-    throw new NatlasError("MALFORMED_RESPONSE", "intent requires a non-empty steps array");
+    throw new NatlasError(
+      "MALFORMED_RESPONSE",
+      "intent requires a non-empty steps array",
+    );
   }
   const steps: IntentStep[] = rawSteps.map((raw, i) => {
     const s = raw as Record<string, unknown>;
     const kind = s["kind"];
-    if (typeof kind !== "string" || !VALID_KINDS.includes(kind as IntentStepKind)) {
-      throw new NatlasError("MALFORMED_RESPONSE", `step ${i} has unknown kind ${String(kind)}`);
+    if (
+      typeof kind !== "string" ||
+      !VALID_KINDS.includes(kind as IntentStepKind)
+    ) {
+      throw new NatlasError(
+        "MALFORMED_RESPONSE",
+        `step ${i} has unknown kind ${String(kind)}`,
+      );
     }
     const description = s["description"];
     if (typeof description !== "string" || description.trim() === "") {
-      throw new NatlasError("MALFORMED_RESPONSE", `step ${i} is missing a description`);
+      throw new NatlasError(
+        "MALFORMED_RESPONSE",
+        `step ${i} is missing a description`,
+      );
     }
     const targetPath = s["target_path"];
     return {

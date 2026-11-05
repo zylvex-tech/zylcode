@@ -12,13 +12,13 @@ other documents disagree, this contract wins for cross-product matters.
 
 ## 1. Product boundary
 
-| Domain | Authoritative product |
-|---|---|
-| CAD geometry, OCCT operations, geometry measurements | **ZylForge** |
-| Engineering validity of `.zyl` contents | **ZylForge** |
-| Software projects, missions, evidence, artifacts, delivery | **ZylCode** |
-| Cross-product orchestration and handoff | **ZylCode** |
-| `.zyl` artifact *consumption* and provenance recording | **ZylCode** (read-only) |
+| Domain                                                     | Authoritative product   |
+| ---------------------------------------------------------- | ----------------------- |
+| CAD geometry, OCCT operations, geometry measurements       | **ZylForge**            |
+| Engineering validity of `.zyl` contents                    | **ZylForge**            |
+| Software projects, missions, evidence, artifacts, delivery | **ZylCode**             |
+| Cross-product orchestration and handoff                    | **ZylCode**             |
+| `.zyl` artifact _consumption_ and provenance recording     | **ZylCode** (read-only) |
 
 ZylCode is not a second geometry kernel. It never executes, simulates, or
 reinterprets OCCT operations.
@@ -29,16 +29,16 @@ reinterprets OCCT operations.
 
 A ZylForge capability is referenced by ZylCode as a **capability descriptor**:
 
-| Field | Meaning |
-|---|---|
-| `capability_id` | Stable ID (`zylforge.<workbench>.<operation>`) |
-| `product` | Always `zylforge` |
-| `workbench` | ZylForge workbench name |
-| `operation` | Operation name |
-| `state` | ZylForge's own state (`PROPOSED`/`IMPLEMENTED`/`RUNTIME_VERIFIED`/…) |
-| `evidence_ref` | ZylForge evidence reference, carried verbatim |
-| `version` | ZylForge build/version string |
-| `limitations` | ZylForge's recorded limitations, carried verbatim |
+| Field           | Meaning                                                              |
+| --------------- | -------------------------------------------------------------------- |
+| `capability_id` | Stable ID (`zylforge.<workbench>.<operation>`)                       |
+| `product`       | Always `zylforge`                                                    |
+| `workbench`     | ZylForge workbench name                                              |
+| `operation`     | Operation name                                                       |
+| `state`         | ZylForge's own state (`PROPOSED`/`IMPLEMENTED`/`RUNTIME_VERIFIED`/…) |
+| `evidence_ref`  | ZylForge evidence reference, carried verbatim                        |
+| `version`       | ZylForge build/version string                                        |
+| `limitations`   | ZylForge's recorded limitations, carried verbatim                    |
 
 **Rules**
 
@@ -55,17 +55,17 @@ A ZylForge capability is referenced by ZylCode as a **capability descriptor**:
 
 ## 3. `.zyl` artifacts
 
-| Field | Meaning |
-|---|---|
-| `artifact_type` | `zyl_package` (see Artifact Bus) |
-| `schema_version` | The `.zyl` package's own schema version, carried verbatim |
-| `project_id` | ZylCode project the package is associated with |
-| `geometry_provenance` | ZylForge operation history that produced the geometry |
-| `feature_tree_provenance` | ZylForge feature tree reference |
-| `telemetry_ref` | ZylForge telemetry record reference |
-| `verification_ref` | ZylForge verification summary reference |
-| `source_build` | ZylForge build identity |
-| `hash` | SHA-256 of the package bytes (pinned by the Artifact Bus) |
+| Field                     | Meaning                                                   |
+| ------------------------- | --------------------------------------------------------- |
+| `artifact_type`           | `zyl_package` (see Artifact Bus)                          |
+| `schema_version`          | The `.zyl` package's own schema version, carried verbatim |
+| `project_id`              | ZylCode project the package is associated with            |
+| `geometry_provenance`     | ZylForge operation history that produced the geometry     |
+| `feature_tree_provenance` | ZylForge feature tree reference                           |
+| `telemetry_ref`           | ZylForge telemetry record reference                       |
+| `verification_ref`        | ZylForge verification summary reference                   |
+| `source_build`            | ZylForge build identity                                   |
+| `hash`                    | SHA-256 of the package bytes (pinned by the Artifact Bus) |
 
 **Rules**
 
@@ -104,19 +104,19 @@ ZylCode **must not**:
 ZylCode records, in its evidence ledger / Proof Engine, the following
 cross-product events — each with explicit states:
 
-| Event | Recorded as |
-|---|---|
-| ZylForge operation proposal received | `PROPOSED` + descriptor ref |
-| User approval granted/denied | `ACCEPTED`/`REJECTED` + reviewer |
-| Kernel result reported by ZylForge | carried verbatim; state = ZylForge's state |
-| Verification result reported | `RuntimeCommand` proof only if ZylForge attests runtime execution; otherwise `UNVERIFIED` |
-| Artifact hash pinned | Artifact Bus `Generated` |
-| Runtime capture | linked artifact refs |
-| Blocked journey | `BLOCKED` + reason |
-| Unsupported feature | `UNVERIFIED`/`BLOCKED` + descriptor ref |
+| Event                                | Recorded as                                                                               |
+| ------------------------------------ | ----------------------------------------------------------------------------------------- |
+| ZylForge operation proposal received | `PROPOSED` + descriptor ref                                                               |
+| User approval granted/denied         | `ACCEPTED`/`REJECTED` + reviewer                                                          |
+| Kernel result reported by ZylForge   | carried verbatim; state = ZylForge's state                                                |
+| Verification result reported         | `RuntimeCommand` proof only if ZylForge attests runtime execution; otherwise `UNVERIFIED` |
+| Artifact hash pinned                 | Artifact Bus `Generated`                                                                  |
+| Runtime capture                      | linked artifact refs                                                                      |
+| Blocked journey                      | `BLOCKED` + reason                                                                        |
+| Unsupported feature                  | `UNVERIFIED`/`BLOCKED` + descriptor ref                                                   |
 
 **Rule:** ZylCode never upgrades a reported result. "ZylForge says the kernel
-succeeded" is recorded as *ZylForge-attested*, and marked `RUNTIME_VERIFIED`
+succeeded" is recorded as _ZylForge-attested_, and marked `RUNTIME_VERIFIED`
 only when ZylForge's own evidence says runtime verification happened.
 
 ---

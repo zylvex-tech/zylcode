@@ -22,30 +22,32 @@
 // Usage:  node scripts/provider_probe_smoke.mjs [port]
 // Exits 0 only when every case behaves as asserted.
 
-import http from 'node:http';
+import http from "node:http";
 
-const port = process.argv[2] ?? '9222';
+const port = process.argv[2] ?? "9222";
 const base = `http://127.0.0.1:${port}`;
 
 const results = [];
 const check = (name, pass, detail) => {
   results.push({ name, pass, detail });
-  console.log(`${pass ? 'PASS' : 'FAIL'}  ${name}${detail ? ` — ${detail}` : ''}`);
+  console.log(
+    `${pass ? "PASS" : "FAIL"}  ${name}${detail ? ` — ${detail}` : ""}`,
+  );
 };
 
 // ---------------------------------------------------------------------------
 // A loopback provider: answers one chat request with an Ollama-shaped body.
 // ---------------------------------------------------------------------------
 const answerProvider = () =>
-  new Promise(resolve => {
+  new Promise((resolve) => {
     const server = http.createServer((req, res) => {
-      let body = '';
-      req.on('data', c => (body += c));
-      req.on('end', () => {
-        res.writeHead(200, { 'content-type': 'application/json' });
+      let body = "";
+      req.on("data", (c) => (body += c));
+      req.on("end", () => {
+        res.writeHead(200, { "content-type": "application/json" });
         res.end(
           JSON.stringify({
-            message: { role: 'assistant', content: 'OK' },
+            message: { role: "assistant", content: "OK" },
             prompt_eval_count: 3,
             eval_count: 1,
           }),
@@ -54,14 +56,16 @@ const answerProvider = () =>
         resolve({ server, received: body });
       });
     });
-    server.listen(0, '127.0.0.1', () => resolve({ server, url: `http://127.0.0.1:${server.address().port}` }));
+    server.listen(0, "127.0.0.1", () =>
+      resolve({ server, url: `http://127.0.0.1:${server.address().port}` }),
+    );
   });
 
 // A port that is bound then released: reliably closed, never reused here.
 const closedPortUrl = () =>
-  new Promise(resolve => {
+  new Promise((resolve) => {
     const s = http.createServer();
-    s.listen(0, '127.0.0.1', () => {
+    s.listen(0, "127.0.0.1", () => {
       const url = `http://127.0.0.1:${s.address().port}`;
       s.close(() => resolve(url));
     });
@@ -79,9 +83,9 @@ try {
   process.exit(2);
 }
 
-const page = targets.find(t => t.type === 'page');
+const page = targets.find((t) => t.type === "page");
 if (!page) {
-  console.error('No page target: the app window is not loaded yet.');
+  console.error("No page target: the app window is not loaded yet.");
   process.exit(2);
 }
 
@@ -93,7 +97,7 @@ await new Promise((resolve, reject) => {
 
 let seq = 0;
 const pending = new Map();
-ws.onmessage = ev => {
+ws.onmessage = (ev) => {
   const msg = JSON.parse(ev.data);
   if (msg.id && pending.has(msg.id)) {
     pending.get(msg.id)(msg);
@@ -101,18 +105,18 @@ ws.onmessage = ev => {
   }
 };
 const rpc = (method, params) =>
-  new Promise(resolve => {
+  new Promise((resolve) => {
     const id = ++seq;
     pending.set(id, resolve);
     ws.send(JSON.stringify({ id, method, params }));
   });
 
-await rpc('Runtime.enable', {});
+await rpc("Runtime.enable", {});
 
 /** Invoke a Tauri command in the app and return `{ok,value}` or `{ok,error}`. */
 const invoke = async (cmd, args) =>
   (
-    await rpc('Runtime.evaluate', {
+    await rpc("Runtime.evaluate", {
       expression: `(async () => {
         try {
           const v = await window.__TAURI_INTERNALS__.invoke(${JSON.stringify(cmd)}, ${JSON.stringify(args)});
@@ -135,95 +139,99 @@ const invoke = async (cmd, args) =>
 //    the probe used.
 {
   const { url } = await answerProvider();
-  const r = await invoke('test_provider_connection', {
-    kind: 'ollama',
+  const r = await invoke("test_provider_connection", {
+    kind: "ollama",
     endpoint: url,
-    model: 'llama3.1',
+    model: "llama3.1",
     timeoutMs: 15000,
   });
   const p = r?.value;
   check(
-    'a reachable endpoint reports connected',
-    r?.ok === true && p?.status === 'connected' && p?.response_chars === 2,
+    "a reachable endpoint reports connected",
+    r?.ok === true && p?.status === "connected" && p?.response_chars === 2,
     p ? `${p.status} ${p.latency_ms}ms ${p.endpoint}` : r?.error,
   );
   check(
-    'the probe reports the credential source, never a key',
-    p?.key_source === 'not_required' && !JSON.stringify(r).includes('sk-'),
+    "the probe reports the credential source, never a key",
+    p?.key_source === "not_required" && !JSON.stringify(r).includes("sk-"),
     String(p?.key_source),
   );
 }
 
 // 2. A provider that needs a key and has none: refused before any request.
 {
-  const r = await invoke('test_provider_connection', { kind: 'anthropic' });
+  const r = await invoke("test_provider_connection", { kind: "anthropic" });
   const p = r?.value;
   check(
-    'a missing credential is configuration_incomplete, not a failed request',
-    p?.status === 'configuration_incomplete' && p?.http_status == null,
+    "a missing credential is configuration_incomplete, not a failed request",
+    p?.status === "configuration_incomplete" && p?.http_status == null,
     p ? `${p.status} key_source=${p.key_source}` : r?.error,
   );
   check(
-    'the incompleteness message names the variable to set',
-    String(p?.detail ?? '').includes('ANTHROPIC_API_KEY'),
-    String(p?.detail ?? '').slice(0, 80),
+    "the incompleteness message names the variable to set",
+    String(p?.detail ?? "").includes("ANTHROPIC_API_KEY"),
+    String(p?.detail ?? "").slice(0, 80),
   );
 }
 
 // 3. Nothing listening: a transport failure is its own answer.
 {
   const dead = await closedPortUrl();
-  const r = await invoke('test_provider_connection', {
-    kind: 'ollama',
+  const r = await invoke("test_provider_connection", {
+    kind: "ollama",
     endpoint: dead,
     timeoutMs: 4000,
   });
   const p = r?.value;
   check(
-    'a closed port is network_error',
-    p?.status === 'network_error' && p?.http_status == null,
+    "a closed port is network_error",
+    p?.status === "network_error" && p?.http_status == null,
     p?.status ?? r?.error,
   );
 }
 
 // 4. The synthetic provider never sends anything.
 {
-  const r = await invoke('test_provider_connection', { kind: 'synthetic_offline' });
+  const r = await invoke("test_provider_connection", {
+    kind: "synthetic_offline",
+  });
   const p = r?.value;
   check(
-    'synthetic offline is reported as offline, not as connected',
-    p?.status === 'offline_provider' && p?.endpoint === '(no network)',
+    "synthetic offline is reported as offline, not as connected",
+    p?.status === "offline_provider" && p?.endpoint === "(no network)",
     p?.status ?? r?.error,
   );
 }
 
 // 5. The IPC boundary rejects a non-http endpoint before any request is built.
 {
-  const r = await invoke('test_provider_connection', {
-    kind: 'ollama',
-    endpoint: 'file:///etc/passwd',
+  const r = await invoke("test_provider_connection", {
+    kind: "ollama",
+    endpoint: "file:///etc/passwd",
   });
   check(
-    'a non-http endpoint is rejected at the boundary',
+    "a non-http endpoint is rejected at the boundary",
     r?.ok === false && /http:\/\/ and https:\/\//.test(String(r?.error)),
-    String(r?.error ?? '').slice(0, 100),
+    String(r?.error ?? "").slice(0, 100),
   );
 }
 
 // 6. An unusable model id is rejected at the boundary.
 {
-  const r = await invoke('test_provider_connection', {
-    kind: 'ollama',
-    model: 'bad model;drop',
+  const r = await invoke("test_provider_connection", {
+    kind: "ollama",
+    model: "bad model;drop",
   });
   check(
-    'an invalid model id is rejected at the boundary',
+    "an invalid model id is rejected at the boundary",
     r?.ok === false && /model/.test(String(r?.error)),
-    String(r?.error ?? '').slice(0, 100),
+    String(r?.error ?? "").slice(0, 100),
   );
 }
 
 ws.close();
-const failed = results.filter(r => !r.pass);
-console.log(`\n${results.length - failed.length}/${results.length} checks passed`);
+const failed = results.filter((r) => !r.pass);
+console.log(
+  `\n${results.length - failed.length}/${results.length} checks passed`,
+);
 process.exit(failed.length === 0 ? 0 : 1);

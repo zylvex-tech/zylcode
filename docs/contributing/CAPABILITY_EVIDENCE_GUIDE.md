@@ -6,14 +6,14 @@ fabricating status.
 
 ## The ladder (authoritative)
 
-| Rung | Name | What it means |
-|---|---|---|
-| **R0** | CLAIMED | Claimed only. No evidence. A hand-asserted status is R0 by definition. |
-| **R1** | OBSERVED | Runs; one-off observation. |
-| **R2** | EXECUTED | Unit/integration tested; reachable behaviour. |
-| **R3** | VERIFIED | Reachable through a named product surface, with captured evidence. |
-| **R4** | REPRODUCIBLE | Independently reproduced by another party. |
-| **R5** | COMMISSIONED | Publicly shipped and accepted. |
+| Rung   | Name         | What it means                                                          |
+| ------ | ------------ | ---------------------------------------------------------------------- |
+| **R0** | CLAIMED      | Claimed only. No evidence. A hand-asserted status is R0 by definition. |
+| **R1** | OBSERVED     | Runs; one-off observation.                                             |
+| **R2** | EXECUTED     | Unit/integration tested; reachable behaviour.                          |
+| **R3** | VERIFIED     | Reachable through a named product surface, with captured evidence.     |
+| **R4** | REPRODUCIBLE | Independently reproduced by another party.                             |
+| **R5** | COMMISSIONED | Publicly shipped and accepted.                                         |
 
 Full definitions: `docs/governance/ZYLCODE_PROOF_GRAPH.md`.
 

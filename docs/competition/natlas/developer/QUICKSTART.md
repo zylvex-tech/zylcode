@@ -11,14 +11,14 @@ a structured engineering intent come back.
 
 ## What you need
 
-| Requirement | Why |
-|---|---|
-| Windows 11 / macOS / Linux | the toolkit is cross-platform |
-| ~16 GB free disk | the model is ~15 GB (official) or ~4.6 GB (quantized) |
-| 16 GB+ RAM (32 GB comfortable) | an 8B model runs in RAM |
-| [Ollama](https://ollama.com) installed | serves the model locally |
-| Node.js ≥ 18 | for the TypeScript SDK and playground |
-| A Hugging Face account | the official weights are **gated** |
+| Requirement                            | Why                                                   |
+| -------------------------------------- | ----------------------------------------------------- |
+| Windows 11 / macOS / Linux             | the toolkit is cross-platform                         |
+| ~16 GB free disk                       | the model is ~15 GB (official) or ~4.6 GB (quantized) |
+| 16 GB+ RAM (32 GB comfortable)         | an 8B model runs in RAM                               |
+| [Ollama](https://ollama.com) installed | serves the model locally                              |
+| Node.js ≥ 18                           | for the TypeScript SDK and playground                 |
+| A Hugging Face account                 | the official weights are **gated**                    |
 
 ---
 
@@ -62,7 +62,11 @@ node --experimental-strip-types test/smoke.mjs   # 10 checks, no model required
 Then from your own code:
 
 ```ts
-import { NatlasBridge, OPENAI_CHAT_PATH, INTENT_SYSTEM_PREAMBLE } from "@zylvex/natlas-bridge";
+import {
+  NatlasBridge,
+  OPENAI_CHAT_PATH,
+  INTENT_SYSTEM_PREAMBLE,
+} from "@zylvex/natlas-bridge";
 
 const bridge = NatlasBridge.configure({
   baseUrl: "http://127.0.0.1:11434",
@@ -104,13 +108,13 @@ A stated failure with a code: `TRANSPORT`, `TIMEOUT`, `HTTP_STATUS`, `MALFORMED_
 
 ## Next
 
-| I want to… | Read |
-|---|---|
-| install properly | [INSTALLATION.md](INSTALLATION.md) |
-| understand the model and licence | [NATLAS_SETUP.md](NATLAS_SETUP.md) |
-| run the full bounded workflow | [FIRST_WORKFLOW.md](FIRST_WORKFLOW.md) |
-| understand the architecture | [ARCHITECTURE.md](ARCHITECTURE.md) |
-| know why approval exists | [SECURITY_AND_APPROVALS.md](SECURITY_AND_APPROVALS.md) |
-| find the evidence | [EVIDENCE_AND_VALIDATION.md](EVIDENCE_AND_VALIDATION.md) |
-| fix a problem | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) |
-| beta-test the toolkit | [BETA_TEST_GUIDE.md](BETA_TEST_GUIDE.md) |
+| I want to…                       | Read                                                     |
+| -------------------------------- | -------------------------------------------------------- |
+| install properly                 | [INSTALLATION.md](INSTALLATION.md)                       |
+| understand the model and licence | [NATLAS_SETUP.md](NATLAS_SETUP.md)                       |
+| run the full bounded workflow    | [FIRST_WORKFLOW.md](FIRST_WORKFLOW.md)                   |
+| understand the architecture      | [ARCHITECTURE.md](ARCHITECTURE.md)                       |
+| know why approval exists         | [SECURITY_AND_APPROVALS.md](SECURITY_AND_APPROVALS.md)   |
+| find the evidence                | [EVIDENCE_AND_VALIDATION.md](EVIDENCE_AND_VALIDATION.md) |
+| fix a problem                    | [TROUBLESHOOTING.md](TROUBLESHOOTING.md)                 |
+| beta-test the toolkit            | [BETA_TEST_GUIDE.md](BETA_TEST_GUIDE.md)                 |

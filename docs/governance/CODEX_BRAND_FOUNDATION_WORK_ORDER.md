@@ -13,21 +13,21 @@
 Established by direct observation, not assumption. Codex must confirm these still hold before writing;
 if any differ, stop and report rather than proceeding.
 
-| Fact | Observed value |
-|---|---|
-| `HEAD` | `1faf90944a132fcb008c9a1dcad19f85286c3628` |
-| `origin/main` | `1faf90944a132fcb008c9a1dcad19f85286c3628` (identical — in sync) |
-| `docs/brand/` | **does not exist** |
-| `docs/design/` | **does not exist** |
-| `.agents/skills/` | **does not exist** |
-| `docs/evidence/` | **does not exist** |
-| `docs/` subdirs present | `architecture`, `community`, `contributing`, `devlog`, `governance`, `roadmap` |
-| Existing `ZylForge` references | 9 tracked files (the PUBLIC-FOUNDATION set + `SECURITY.md`, `SUPPORT.md`) |
-| `ZylMind` / `Aurora` references | **zero** in tracked files |
+| Fact                            | Observed value                                                                 |
+| ------------------------------- | ------------------------------------------------------------------------------ |
+| `HEAD`                          | `1faf90944a132fcb008c9a1dcad19f85286c3628`                                     |
+| `origin/main`                   | `1faf90944a132fcb008c9a1dcad19f85286c3628` (identical — in sync)               |
+| `docs/brand/`                   | **does not exist**                                                             |
+| `docs/design/`                  | **does not exist**                                                             |
+| `.agents/skills/`               | **does not exist**                                                             |
+| `docs/evidence/`                | **does not exist**                                                             |
+| `docs/` subdirs present         | `architecture`, `community`, `contributing`, `devlog`, `governance`, `roadmap` |
+| Existing `ZylForge` references  | 9 tracked files (the PUBLIC-FOUNDATION set + `SECURITY.md`, `SUPPORT.md`)      |
+| `ZylMind` / `Aurora` references | **zero** in tracked files                                                      |
 
 **Consequence Codex must respect:** every path named in the approved file plan is a **new** path. There is
 no pre-existing `BRAND.md` to preserve and no pre-existing brand authority to inherit. `BRAND.md` is
-being *created* as canonical, and Correction 4's hierarchy describes the state after this pass — it is
+being _created_ as canonical, and Correction 4's hierarchy describes the state after this pass — it is
 not a description of an existing hierarchy. Say so plainly in the report; do not imply a prior authority
 that was superseded.
 
@@ -48,9 +48,9 @@ your own edits exactly. A larger stat means foreign changes are staged — unsta
 >
 > Create the token architecture/schema, but distinguish clearly between:
 >
-> * `LOCKED` semantic architecture;
-> * `PROPOSED` visual values;
-> * `VALIDATED` production values.
+> - `LOCKED` semantic architecture;
+> - `PROPOSED` visual values;
+> - `VALIDATED` production values.
 >
 > If necessary use:
 >
@@ -309,7 +309,7 @@ engineering viewport semantics, ZylMind interaction language, and Adaptive Engin
 architecture.
 
 Consequence for **this** pass: build the token architecture so that milestone can fill it. The schema —
-which token *groups* exist, what a token *means*, and how the three authority axes (`LOCKED` /
+which token _groups_ exist, what a token _means_, and how the three authority axes (`LOCKED` /
 `PROPOSED` / `VALIDATED`) are represented — is the durable part. The values are not, and must not be
 guessed now.
 

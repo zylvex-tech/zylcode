@@ -28,25 +28,16 @@ correct one.
 ## 3. Files created (20)
 
 **Rust (3)**
+
 1. `crates/zylcode-core/src/competition/natlas/local.rs`
 2. `crates/zylcode-core/src/competition/natlas/remote.rs`
 3. `crates/zylcode-core/tests/natlas_runtime.rs`
 
-**TypeScript SDK (5)** — `apps/natlas-sdk/`
-4. `package.json` · 5. `tsconfig.json` · 6. `README.md`
-7. `src/index.ts`
-8. `test/smoke.mjs`
+**TypeScript SDK (5)** — `apps/natlas-sdk/` 4. `package.json` · 5. `tsconfig.json` · 6. `README.md` 7. `src/index.ts` 8. `test/smoke.mjs`
 
-**Playground (1)**
-9. `apps/natlas-sdk/playground/index.html`
+**Playground (1)** 9. `apps/natlas-sdk/playground/index.html`
 
-**Documentation (11)**
-10. `docs/competition/natlas/NATLAS_RUNTIME_FEASIBILITY_2026-10-06.md`
-11. `docs/competition/natlas/PUBLIC_REPO_READINESS_2026-10-06.md`
-12. `docs/competition/natlas/WORKING_ARTEFACT_EVIDENCE_PLAN.md`
-13. `docs/competition/natlas/TECHNICAL_DOCUMENTATION_STRUCTURE.md`
-14. `docs/competition/natlas/VIDEO_DEMO_PLAN.md`
-15. `docs/competition/natlas/MULTILINGUAL_VALIDATION_MATRIX.md`
+**Documentation (11)** 10. `docs/competition/natlas/NATLAS_RUNTIME_FEASIBILITY_2026-10-06.md` 11. `docs/competition/natlas/PUBLIC_REPO_READINESS_2026-10-06.md` 12. `docs/competition/natlas/WORKING_ARTEFACT_EVIDENCE_PLAN.md` 13. `docs/competition/natlas/TECHNICAL_DOCUMENTATION_STRUCTURE.md` 14. `docs/competition/natlas/VIDEO_DEMO_PLAN.md` 15. `docs/competition/natlas/MULTILINGUAL_VALIDATION_MATRIX.md`
 16–24. `docs/competition/natlas/developer/{QUICKSTART, INSTALLATION, NATLAS_SETUP, FIRST_WORKFLOW,
    ARCHITECTURE, SECURITY_AND_APPROVALS, EVIDENCE_AND_VALIDATION, TROUBLESHOOTING, BETA_TEST_GUIDE}.md`
 
@@ -63,25 +54,25 @@ correct one.
 
 ## 5. Commits created (9, narrow)
 
-| SHA | Message |
-|---|---|
-| `8d896ed` | `docs(competition): assess official N-ATLAS runtime options` |
-| `f998419` | `feat(competition): implement genuine N-ATLAS runtime transport` |
-| `8dcc6d0` | `test(competition): verify transport and anti-fallback boundary` |
-| `8ed94c1` | `feat(competition): add N-ATLAS developer SDK` |
+| SHA       | Message                                                           |
+| --------- | ----------------------------------------------------------------- |
+| `8d896ed` | `docs(competition): assess official N-ATLAS runtime options`      |
+| `f998419` | `feat(competition): implement genuine N-ATLAS runtime transport`  |
+| `8dcc6d0` | `test(competition): verify transport and anti-fallback boundary`  |
+| `8ed94c1` | `feat(competition): add N-ATLAS developer SDK`                    |
 | `b54d0bc` | `feat(competition): add interactive N-ATLAS developer playground` |
-| `f8aa9f7` | `docs(competition): add first-time developer documentation set` |
-| `36cc178` | `test(competition): add multilingual validation harness` |
-| `4538349` | `docs(competition): prepare external beta validation package` |
-| `67a19cf` | `docs(competition): prepare public submission evidence package` |
+| `f8aa9f7` | `docs(competition): add first-time developer documentation set`   |
+| `36cc178` | `test(competition): add multilingual validation harness`          |
+| `4538349` | `docs(competition): prepare external beta validation package`     |
+| `67a19cf` | `docs(competition): prepare public submission evidence package`   |
 
 ## 6. Tests added (33)
 
-| Suite | Added | Total |
-|---|---|---|
-| `competition::` unit tests (in-crate) | 11 | **29** (was 18) |
-| `tests/natlas_runtime.rs` (new) | 12 | **12** |
-| TypeScript SDK smoke tests | 10 | **10** |
+| Suite                                 | Added | Total           |
+| ------------------------------------- | ----- | --------------- |
+| `competition::` unit tests (in-crate) | 11    | **29** (was 18) |
+| `tests/natlas_runtime.rs` (new)       | 12    | **12**          |
+| TypeScript SDK smoke tests            | 10    | **10**          |
 
 ## 7. Exact tests run
 
@@ -96,15 +87,15 @@ cd apps/natlas-sdk && ../../node_modules/.bin/tsc --noEmit
 
 ## 8. Exact pass / fail / ignored totals
 
-| Suite | Passed | Failed | Ignored |
-|---|---|---|---|
-| `--lib competition::` | **29** | 0 | 0 |
-| `--test natlas_boundary` (C0, preserved) | **17** | 0 | 0 |
-| `--test natlas_runtime` (new) | **12** | 0 | 0 |
-| **Rust competition total** | **58** | **0** | **0** |
-| SDK smoke (`test/smoke.mjs`) | **10** | 0 | 0 |
-| SDK typecheck (`tsc --noEmit`) | clean | — | — |
-| Clippy `-D warnings` | clean | — | — |
+| Suite                                    | Passed | Failed | Ignored |
+| ---------------------------------------- | ------ | ------ | ------- |
+| `--lib competition::`                    | **29** | 0      | 0       |
+| `--test natlas_boundary` (C0, preserved) | **17** | 0      | 0       |
+| `--test natlas_runtime` (new)            | **12** | 0      | 0       |
+| **Rust competition total**               | **58** | **0**  | **0**   |
+| SDK smoke (`test/smoke.mjs`)             | **10** | 0      | 0       |
+| SDK typecheck (`tsc --noEmit`)           | clean  | —      | —       |
+| Clippy `-D warnings`                     | clean  | —      | —       |
 
 **All existing C0 tests were preserved and still pass.**
 
@@ -122,11 +113,11 @@ and Robotics, NITDA, Nigeria) with Awarri Technologies.
 
 ## 10. Runtime options investigated
 
-| Route | Outcome |
-|---|---|
-| **A — official inference API** | no documented public API found → `BLOCKED_NATLAS_API_ACCESS` |
-| **B — official model, local execution** | **viable**; owner selected this route |
-| B-alt — community GGUF mirror | available and ungated; **not selected**, recorded as fallback |
+| Route                                   | Outcome                                                       |
+| --------------------------------------- | ------------------------------------------------------------- |
+| **A — official inference API**          | no documented public API found → `BLOCKED_NATLAS_API_ACCESS`  |
+| **B — official model, local execution** | **viable**; owner selected this route                         |
+| B-alt — community GGUF mirror           | available and ungated; **not selected**, recorded as fallback |
 
 ## 11. Local-model feasibility
 
@@ -153,15 +144,15 @@ key process is published. **Nothing was invented.**
 
 ## 14. Model / download / RAM / VRAM requirements
 
-| Item | Value |
-|---|---|
-| Official format | safetensors, 4 shards |
-| Official download | **15,333 MB (~15.0 GiB)** |
-| Community Q4_K_M (fallback) | 4,692.8 MB (~4.6 GiB) |
-| Runtime RAM (FP16) | ~18–20 GB |
-| Runtime RAM (Q4) | ~7–8 GB |
-| VRAM | 4 GB → partial offload only |
-| Free disk | 67 GB (sufficient) |
+| Item                        | Value                       |
+| --------------------------- | --------------------------- |
+| Official format             | safetensors, 4 shards       |
+| Official download           | **15,333 MB (~15.0 GiB)**   |
+| Community Q4_K_M (fallback) | 4,692.8 MB (~4.6 GiB)       |
+| Runtime RAM (FP16)          | ~18–20 GB                   |
+| Runtime RAM (Q4)            | ~7–8 GB                     |
+| VRAM                        | 4 GB → partial offload only |
+| Free disk                   | 67 GB (sufficient)          |
 
 ## 15. Whether any model was downloaded
 
@@ -183,25 +174,25 @@ evidence id exists to report.
 
 ## 19. End-to-end workflow status
 
-| Stage | Status |
-|---|---|
-| Configuration (env-only, no defaults) | `TESTED` |
-| Boundary trait | `IMPLEMENTED` |
-| Local transport (real HTTP round trip) | `TESTED` (against a stub server) |
-| Runtime probe | `TESTED` |
-| Client → interpret → evidence | `TESTED` |
-| Intent → validated `TaskGraph` | `TESTED` |
-| Approval gate | `IMPLEMENTED` (a real gate in the graph) |
-| **Genuine invocation** | **`BLOCKED_NATLAS_ACCESS`** |
-| Approved-write execution | `PROPOSED` — needs the concrete patch/test command |
+| Stage                                  | Status                                             |
+| -------------------------------------- | -------------------------------------------------- |
+| Configuration (env-only, no defaults)  | `TESTED`                                           |
+| Boundary trait                         | `IMPLEMENTED`                                      |
+| Local transport (real HTTP round trip) | `TESTED` (against a stub server)                   |
+| Runtime probe                          | `TESTED`                                           |
+| Client → interpret → evidence          | `TESTED`                                           |
+| Intent → validated `TaskGraph`         | `TESTED`                                           |
+| Approval gate                          | `IMPLEMENTED` (a real gate in the graph)           |
+| **Genuine invocation**                 | **`BLOCKED_NATLAS_ACCESS`**                        |
+| Approved-write execution               | `PROPOSED` — needs the concrete patch/test command |
 
 ## 20. Multilingual matrix status
 
-| Language | State |
-|---|---|
-| Yoruba | ⛔ not tested — blocked |
-| Hausa | ⛔ not tested — blocked |
-| Igbo | ⛔ not tested — blocked |
+| Language                   | State                   |
+| -------------------------- | ----------------------- |
+| Yoruba                     | ⛔ not tested — blocked |
+| Hausa                      | ⛔ not tested — blocked |
+| Igbo                       | ⛔ not tested — blocked |
 | English / Nigerian-English | ⛔ not tested — blocked |
 
 Gates ML-1 … ML-4 are **all blocked on the same dependency**. The harness is ready; the model is
@@ -210,12 +201,12 @@ machine-translating them would invalidate the direct-language claim.
 
 ## 21. Toolkit components actually implemented
 
-| Component | State | Honest description |
-|---|---|---|
-| **Developer SDK (TypeScript)** | ✅ real | `apps/natlas-sdk` — configure, `checkStatus`, `invoke`, `submitIntent`, evidence. Typechecks; 10 smoke tests pass. |
-| **Interactive playground** | ✅ real | self-contained HTML; status, model identity, language, context, invocation, intent, approval gate, evidence. Never claims success without a real call. |
-| **Developer documentation** | ✅ real | 9 documents under `docs/competition/natlas/developer/`. |
-| Fine-tuning starter kit | 🚫 not built | out of scope, as instructed |
+| Component                      | State        | Honest description                                                                                                                                     |
+| ------------------------------ | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Developer SDK (TypeScript)** | ✅ real      | `apps/natlas-sdk` — configure, `checkStatus`, `invoke`, `submitIntent`, evidence. Typechecks; 10 smoke tests pass.                                     |
+| **Interactive playground**     | ✅ real      | self-contained HTML; status, model identity, language, context, invocation, intent, approval gate, evidence. Never claims success without a real call. |
+| **Developer documentation**    | ✅ real      | 9 documents under `docs/competition/natlas/developer/`.                                                                                                |
+| Fine-tuning starter kit        | 🚫 not built | out of scope, as instructed                                                                                                                            |
 
 Portal options claimable: **"More than one"** (SDK + playground + docs) — and the SDK is genuinely
 a Python/JS SDK. **The Python SDK option is NOT claimed** (only TypeScript was built).
@@ -327,10 +318,11 @@ deployment. All work exists only as local commits on `competition/natlas-2026`.
 >
 > Official weights: `https://huggingface.co/NCAIR1/N-ATLaS` (accept the terms first).
 
-*Alternative:* authorise the ungated community GGUF mirror (`QuantFactory/N-ATLaS-GGUF`,
+_Alternative:_ authorise the ungated community GGUF mirror (`QuantFactory/N-ATLaS-GGUF`,
 Q4_K_M ≈ 4.6 GB), which needs no Hugging Face login.
 
 **Secondary blockers (owner decisions, not yet taken):**
+
 - authorising a public deployment / hosted playground;
 - making the repository public;
 - recruiting two real external beta testers;

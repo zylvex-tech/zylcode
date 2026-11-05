@@ -1,15 +1,19 @@
 # PHASE 1B COMPLETION REPORT
 
 ## PHASE
+
 Phase 1B: Agent Kernel - Iterative Reasoning Loop
 
 ## STATUS
+
 **COMPLETE**
 
 ## IMPLEMENTATION
+
 Replaced single-turn pipeline with real iterative agent loop.
 
 ### Changes Made
+
 1. **Created `crates/zylcode-core/src/agent.rs`**
    - `AgentState` enum with 8 states (Created, Analyzing, Planning, AwaitingApproval, Executing, Verifying, Repairing, Completed, Failed)
    - `AgentLoop` struct with iterative execution engine
@@ -36,22 +40,27 @@ Replaced single-turn pipeline with real iterative agent loop.
 ## FILES
 
 ### Created
+
 - `crates/zylcode-core/src/agent.rs`
 - `crates/zylcode-core/tests/agent_loop_e2e.rs`
 
 ### Modified
+
 - `crates/zylcode-core/src/lib.rs`
 - `crates/zylcode-mcp/src/real_tools.rs`
 - `docs/capability-registry.json`
 
 ## ARCHITECTURE
+
 ### New Components
+
 - **AgentLoop**: Iterative execution engine with state machine
 - **AgentSession**: Conversation history and context tracking
 - **AgentMessage**: Tool call/result tracking
 - **AgentState**: State machine (Created → Analyzing → Planning → Executing → Verifying → Completed)
 
 ### Data Flow
+
 ```
 User Request
     ↓
@@ -67,14 +76,17 @@ IntentResult { summary, artifacts, success }
 ## TESTS
 
 ### Unit Tests
+
 - `agent::tests::test_agent_loop_creation` - ✅ PASS
 - `agent::tests::test_agent_loop_step` - ✅ PASS
 
 ### End-to-End Tests
+
 - `agent_loop_e2e::test_agent_loop_end_to_end` - ✅ PASS
 - `agent_loop_e2e::test_agent_loop_with_tool_execution` - ✅ PASS
 
 ### Full Suite
+
 - **Total Tests**: 144 (core) + 2 (e2e) = 146
 - **Passed**: 146
 - **Failed**: 0
@@ -82,17 +94,20 @@ IntentResult { summary, artifacts, success }
 ## VERIFICATION
 
 ### Commands Executed
+
 ```bash
 cargo test --package zylcode-core --lib agent
 cargo test --test agent_loop_e2e
 ```
 
 ### Results
+
 All tests pass. Agent loop verified with real tool execution.
 
 ## RUNTIME EVIDENCE
 
 ### Agent Loop Execution
+
 ```
 DEBUG: execute_plan called
 DEBUG: fs.read tool found: true
@@ -113,14 +128,14 @@ DEBUG: Command added to executed list
 
 ## CAPABILITY CHANGES
 
-| Capability | Previous | New | Evidence |
-|------------|----------|-----|----------|
-| agent_conversation | RED | FUNCTIONAL | AgentLoop implements iterative reasoning |
-| context_gathering | RED | FUNCTIONAL | Agent reads files during Analyzing phase |
-| planning | RED | FUNCTIONAL | Agent generates plans during Planning phase |
-| iterative_reasoning | RED | FUNCTIONAL | Agent iterates through states |
-| session_persistence | RED | FUNCTIONAL | AgentSession tracks history |
-| real_agentic_loop | RED | FUNCTIONAL | AgentLoop with context→plan→act→verify |
+| Capability          | Previous | New        | Evidence                                    |
+| ------------------- | -------- | ---------- | ------------------------------------------- |
+| agent_conversation  | RED      | FUNCTIONAL | AgentLoop implements iterative reasoning    |
+| context_gathering   | RED      | FUNCTIONAL | Agent reads files during Analyzing phase    |
+| planning            | RED      | FUNCTIONAL | Agent generates plans during Planning phase |
+| iterative_reasoning | RED      | FUNCTIONAL | Agent iterates through states               |
+| session_persistence | RED      | FUNCTIONAL | AgentSession tracks history                 |
+| real_agentic_loop   | RED      | FUNCTIONAL | AgentLoop with context→plan→act→verify      |
 
 ## DOCUMENTATION UPDATED
 
@@ -153,6 +168,7 @@ DEBUG: Command added to executed list
 **Phase 1C: LLM Integration - Real Planning**
 
 Implement real planning phase:
+
 1. Call LLM to generate execution plan
 2. Parse plan into tool calls
 3. Execute tools based on plan

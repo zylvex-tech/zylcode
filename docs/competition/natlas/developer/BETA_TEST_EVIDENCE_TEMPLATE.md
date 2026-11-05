@@ -9,31 +9,31 @@ One row per test (A–J in [BETA_TEST_GUIDE.md](BETA_TEST_GUIDE.md), or the live
 
 ## Tester header (fill once per tester)
 
-| Field | Value |
-|---|---|
-| Tester id | (assigned, e.g. EXT-01) |
-| Name (with consent) | |
-| Status | **external** (never core-team) |
-| Technical background | |
-| Environment | OS / RAM / GPU / runtime version |
-| Dates (start–end) | |
-| Total elapsed | |
-| Consent for anonymised use | yes / no |
+| Field                      | Value                            |
+| -------------------------- | -------------------------------- |
+| Tester id                  | (assigned, e.g. EXT-01)          |
+| Name (with consent)        |                                  |
+| Status                     | **external** (never core-team)   |
+| Technical background       |                                  |
+| Environment                | OS / RAM / GPU / runtime version |
+| Dates (start–end)          |                                  |
+| Total elapsed              |                                  |
+| Consent for anonymised use | yes / no                         |
 
 ## Per-test rows
 
 | Test | Repository | Language (send as-is) | Exact task given | N-ATLAS evidence id | Outcome (success/partial/failure) | Real exit code / verification | Rating (1–5) | Observations (verbatim) | Issues + resolution |
-|---|---|---|---|---|---|---|---|---|---|
-| A | | | | | | | | | |
-| B | | | | | | | | | |
-| C | | | | | | | | | |
-| D | | | | | | | | | |
-| E | | | | | | | | | |
-| F | | | | | | | | | |
-| G | | | | | | | | | |
-| H | | | | | | | | | |
-| I | | | | | | | | | |
-| J | | | | | | | | | |
+| ---- | ---------- | --------------------- | ---------------- | ------------------- | --------------------------------- | ----------------------------- | ------------ | ----------------------- | ------------------- |
+| A    |            |                       |                  |                     |                                   |                               |              |                         |                     |
+| B    |            |                       |                  |                     |                                   |                               |              |                         |                     |
+| C    |            |                       |                  |                     |                                   |                               |              |                         |                     |
+| D    |            |                       |                  |                     |                                   |                               |              |                         |                     |
+| E    |            |                       |                  |                     |                                   |                               |              |                         |                     |
+| F    |            |                       |                  |                     |                                   |                               |              |                         |                     |
+| G    |            |                       |                  |                     |                                   |                               |              |                         |                     |
+| H    |            |                       |                  |                     |                                   |                               |              |                         |                     |
+| I    |            |                       |                  |                     |                                   |                               |              |                         |                     |
+| J    |            |                       |                  |                     |                                   |                               |              |                         |                     |
 
 ## Honesty rules
 

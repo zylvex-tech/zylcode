@@ -51,16 +51,16 @@ not a log. Publishing failure is the mechanism by which this project earns the r
 
 ## Editorial queue
 
-| # | Subject | Status | Evidence anchor |
-|---|---|---|---|
-| 1 | Why coding agents shouldn't certify their own work | **SEEDED** | Phase 2A re-opening (`0ecea8e` → audit) |
-| 2 | We caught our own false benchmark | PLANNED | Phase 2A benchmark 276s vs claimed 12.7s |
-| 3 | How ZylCode survives an agent crash | PLANNED | Recovery subsystem (Phase 1D) |
-| 4 | R2 is a library; R3 is a capability | PLANNED | Proof Graph rung definitions |
-| 5 | Why ZylCode uses an Evidence Ledger | PLANNED | Ledger design (Phase 1D) |
-| 6 | Building repository intelligence without lying to ourselves | PLANNED | Phase 2A audit + remediation |
-| 7 | Why a model dropdown is not Model Democracy | PLANNED | Model Platform status |
-| 8 | Building ZylCode in public | PLANNED | This log + Public Foundation track |
+| #   | Subject                                                     | Status     | Evidence anchor                          |
+| --- | ----------------------------------------------------------- | ---------- | ---------------------------------------- |
+| 1   | Why coding agents shouldn't certify their own work          | **SEEDED** | Phase 2A re-opening (`0ecea8e` → audit)  |
+| 2   | We caught our own false benchmark                           | PLANNED    | Phase 2A benchmark 276s vs claimed 12.7s |
+| 3   | How ZylCode survives an agent crash                         | PLANNED    | Recovery subsystem (Phase 1D)            |
+| 4   | R2 is a library; R3 is a capability                         | PLANNED    | Proof Graph rung definitions             |
+| 5   | Why ZylCode uses an Evidence Ledger                         | PLANNED    | Ledger design (Phase 1D)                 |
+| 6   | Building repository intelligence without lying to ourselves | PLANNED    | Phase 2A audit + remediation             |
+| 7   | Why a model dropdown is not Model Democracy                 | PLANNED    | Model Platform status                    |
+| 8   | Building ZylCode in public                                  | PLANNED    | This log + Public Foundation track       |
 
 New subjects are added here first, then written, then linked. The queue is the contract with readers
 that we publish substance, not a schedule we pretend to keep.

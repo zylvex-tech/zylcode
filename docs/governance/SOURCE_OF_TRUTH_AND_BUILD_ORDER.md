@@ -12,13 +12,13 @@ audit; per LAW 3, builder results remain builder results until independently ver
 
 There were **five** parallel versions of the project. Measured this session:
 
-| Version | Where | State before this session |
-|---|---|---|
-| `origin/main` | `1338d0b` | **Did not compile** (declared modules missing, 8 undefined methods) |
-| Local `main` | `639dbbb` | Compiled only via an uncommitted 88-entry dirty tree; 3 unpushed docs commits |
-| Remediation candidate | `.wt/remediation` @ `34d29a9` (25 commits, `f1b2b36..34d29a9`) | Fully tested (416/0, clippy clean); never merged |
-| Recovery commit | `f1b2b36` (made in the worktree) | Not an ancestor of any branch on `main` |
-| The dirty working tree | 56 modified + 38 untracked | Load-bearing: it was the only thing that compiled |
+| Version                | Where                                                          | State before this session                                                     |
+| ---------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `origin/main`          | `1338d0b`                                                      | **Did not compile** (declared modules missing, 8 undefined methods)           |
+| Local `main`           | `639dbbb`                                                      | Compiled only via an uncommitted 88-entry dirty tree; 3 unpushed docs commits |
+| Remediation candidate  | `.wt/remediation` @ `34d29a9` (25 commits, `f1b2b36..34d29a9`) | Fully tested (416/0, clippy clean); never merged                              |
+| Recovery commit        | `f1b2b36` (made in the worktree)                               | Not an ancestor of any branch on `main`                                       |
+| The dirty working tree | 56 modified + 38 untracked                                     | Load-bearing: it was the only thing that compiled                             |
 
 **As of this session, all five are reconciled into one:** `main` **is** the source of
 truth, locally and on the remote. It contains the dirty tree (committed in coherent
@@ -39,12 +39,12 @@ resolved.
 
 ### Verification battery, executed on the merged tree (this session)
 
-| Check | Command | Result |
-|---|---|---|
-| Compile | `cargo check --workspace --all-targets` | **PASS** |
-| Lint | `cargo clippy --workspace --all-targets -- -D warnings` | **PASS** |
-| Tests | `cargo test --workspace --all-targets --no-fail-fast` | **417 passed / 0 failed** |
-| Claims guard | `python scripts/check_retracted_claims.py` | **OK** (11 baselined, 0 new) |
+| Check        | Command                                                 | Result                       |
+| ------------ | ------------------------------------------------------- | ---------------------------- |
+| Compile      | `cargo check --workspace --all-targets`                 | **PASS**                     |
+| Lint         | `cargo clippy --workspace --all-targets -- -D warnings` | **PASS**                     |
+| Tests        | `cargo test --workspace --all-targets --no-fail-fast`   | **417 passed / 0 failed**    |
+| Claims guard | `python scripts/check_retracted_claims.py`              | **OK** (11 baselined, 0 new) |
 
 Caveat recorded per LAW 7: the earlier clean-worktree check ran from a worktree
 carrying state; this session's battery ran on the primary tree. A third-party
@@ -103,8 +103,8 @@ reproduction on a fresh clone is the remaining step to R4 (P1.1 below).
 3. **Resolve the GitHub Actions billing lock** — **RECORDED 2026-09-18, NOT
    OBSERVABLE converted to its observed value:** runs trigger on every push and all
    three OS jobs fail with zero executed steps. Check-run annotation, quoted from the
-   API: *"The job was not started because your account is locked due to a billing
-   issue."* Classification: **BLOCKED_EXTERNAL**. No code change can clear it; until
+   API: _"The job was not started because your account is locked due to a billing
+   issue."_ Classification: **BLOCKED_EXTERNAL**. No code change can clear it; until
    billing is resolved, the local battery is the only verification authority.
 
 ### P1 — Make main GREEN in the governance sense (highest value now)
@@ -121,7 +121,7 @@ reproduction on a fresh clone is the remaining step to R4 (P1.1 below).
    fix: deterministic query ordering), corpus delta 344→330 (D4), CI
    BLOCKED_EXTERNAL (D5). **Rung promotion to R4 is the independent auditor's
    decision, not the builder's.**
-1.5. **P1.2 — Phase 2A re-acceptance preparation** — **EXECUTED 2026-09-19** — see
+   1.5. **P1.2 — Phase 2A re-acceptance preparation** — **EXECUTED 2026-09-19** — see
    `PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md`: benchmark made deterministic
    (10/10 byte-identical cross-process runs; root causes: HashMap iteration,
    stable-sort ties, absolute-path model inputs), known-answer set expanded to
@@ -131,7 +131,7 @@ reproduction on a fresh clone is the remaining step to R4 (P1.1 below).
    capability registry rebaselined with dispute history preserved. Builder
    recommendation: READY_FOR_INDEPENDENT_PHASE_2A_AUDIT. **Phase 2A remains
    RE-OPENED; acceptance is the auditor's.**
-1.6. **P1.3 — Product Convergence (desktop UX foundation)** — **EXECUTED
+   1.6. **P1.3 — Product Convergence (desktop UX foundation)** — **EXECUTED
    2026-09-19** — per `docs/product/ZYLCODE_PRODUCT_ARCHITECTURE_V3.md`
    (proposed model, subject to governance reconciliation). Implemented: the
    Home/project workspace shell with left-nav, context dock and status strip;
@@ -140,7 +140,7 @@ reproduction on a fresh clone is the remaining step to R4 (P1.1 below).
    Diagnostics; the environment-aware runtime bridge (TAURI_DESKTOP /
    BROWSER_PREVIEW / TEST / UNKNOWN) so browser preview renders controlled
    "Desktop runtime required" states — the raw `Cannot read properties of
-   undefined (reading 'invoke')` error class is gone (zero raw Tauri imports
+undefined (reading 'invoke')` error class is gone (zero raw Tauri imports
    outside the bridge; verified live, clean console); the Evidence Center and
    Proof Inspector render only real mission data with `NOT CAPTURED` otherwise;
    the Forge domain (CapabilityPack manifest v1 strict parser with secret scan,
@@ -208,12 +208,12 @@ succeeded.
 
 - **`origin/main` = `6e93c43d`** at first success (verified via `ls-remote`): one
   squash commit on top of the previous remote base `1338d0b`, whose tree is exactly
-  the  verified integrated tree. Local `main` was reset onto this lineage so local and
+  the verified integrated tree. Local `main` was reset onto this lineage so local and
   remote share history; subsequent documentation corrections advanced it further —
   each push was verified by `ls-remote` at the time it happened, and none is
   hard-coded here as a current-state SHA.
 - **Granular history preserved locally** at `local/granular-integration` (44 commits,
-  tip `e540ad8`). It cannot be pushed as-is: its *history* still contains the old
+  tip `e540ad8`). It cannot be pushed as-is: its _history_ still contains the old
   fixture strings (push protection evaluates every pushed commit — falsified: the
   archive push was rejected naming router.rs lines 1213/1217/1223). Pushing it
   requires a history rewrite of the fixture or the per-secret unblock URLs.

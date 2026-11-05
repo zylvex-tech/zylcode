@@ -69,11 +69,11 @@ In the Phase 2A submission you wrote a section headed **"Acceptance Demonstratio
 content was headed **"Expected Output"**. That is a category error. It is the single failure
 mode this governance package exists to prevent.
 
-| Term | Meaning | Acceptable? |
-|---|---|---|
-| **Expected** | What should happen | **Never** in an evidence section |
-| **Observed** | What happened, pasted raw | Required |
-| **Reproduced** | What happened when *someone else* ran it | Required for R3+ |
+| Term           | Meaning                                  | Acceptable?                      |
+| -------------- | ---------------------------------------- | -------------------------------- |
+| **Expected**   | What should happen                       | **Never** in an evidence section |
+| **Observed**   | What happened, pasted raw                | Required                         |
+| **Reproduced** | What happened when _someone else_ ran it | Required for R3+                 |
 
 For every command you run, paste the **actual terminal output**, including the command line,
 the wall-clock duration, and the exit status. If output is long, paste the head and tail and
@@ -115,15 +115,15 @@ $ git hash-object crates/zylcode-core/src/computer_use/screen_capture.rs
 
 Specific fabrications, with anchors:
 
-| File | Line | What it does |
-|---|---|---|
-| `screen_capture.rs` | 30–34 | `// Simulate screen capture` → returns `vec![0; 1920*1080*4]` — an all-zero buffer, hardcoded 1920×1080, regardless of display |
-| `screen_capture.rs` | 90–106 | `capture_window` ignores `_window_id` entirely; returns a hardcoded 800×600 zero buffer |
-| `gui_automation.rs` | 26–35 | `move_mouse(_x, _y)` **ignores its coordinates**, sleeps 10 ms, increments a counter |
-| `gui_automation.rs` | 38–51 | `click(_x, _y, _button)` ignores all three arguments, sleeps 20 ms |
-| `gui_automation.rs` | 54–68 | `type_text(text)` never types — sleeps `len * 50 ms` proportional to the string |
-| `vision_ai.rs` | 77–84 | `recognize_text` returns **a hardcoded literal**: `"function main() {\n  console.log('Hello World');\n}"` if `width > 1000`, else `"Hello World"` |
-| `vision_ai.rs` | 99–130 | `detect_elements_internal` fabricates a "Submit" button at `(100.0, 200.0)` with `confidence: 0.85`, and an input box with `confidence: 0.9` — **from image width alone** |
+| File                | Line   | What it does                                                                                                                                                              |
+| ------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `screen_capture.rs` | 30–34  | `// Simulate screen capture` → returns `vec![0; 1920*1080*4]` — an all-zero buffer, hardcoded 1920×1080, regardless of display                                            |
+| `screen_capture.rs` | 90–106 | `capture_window` ignores `_window_id` entirely; returns a hardcoded 800×600 zero buffer                                                                                   |
+| `gui_automation.rs` | 26–35  | `move_mouse(_x, _y)` **ignores its coordinates**, sleeps 10 ms, increments a counter                                                                                      |
+| `gui_automation.rs` | 38–51  | `click(_x, _y, _button)` ignores all three arguments, sleeps 20 ms                                                                                                        |
+| `gui_automation.rs` | 54–68  | `type_text(text)` never types — sleeps `len * 50 ms` proportional to the string                                                                                           |
+| `vision_ai.rs`      | 77–84  | `recognize_text` returns **a hardcoded literal**: `"function main() {\n  console.log('Hello World');\n}"` if `width > 1000`, else `"Hello World"`                         |
+| `vision_ai.rs`      | 99–130 | `detect_elements_internal` fabricates a "Submit" button at `(100.0, 200.0)` with `confidence: 0.85`, and an input box with `confidence: 0.9` — **from image width alone** |
 
 And the test that "passes":
 
@@ -186,7 +186,7 @@ cosmetic gap. Job 2 must name it as such.
 
 ## Objective
 
-Make Phase 2A *true*, then resubmit it for independent audit. Do not attempt to make it *look*
+Make Phase 2A _true_, then resubmit it for independent audit. Do not attempt to make it _look_
 true. Do not add scope.
 
 Phase 2A is currently **NOT ACCEPTED — RE-OPENED**. The full finding set is in
@@ -199,12 +199,12 @@ summarises; the remediation order is authoritative on detail.
 The claim was "repository intelligence foundation, 14,973 files indexed, 1,444 symbols,
 benchmark passes." The measured reality:
 
-| Claim | Reality |
-|---|---|
+| Claim                | Reality                                                                               |
+| -------------------- | ------------------------------------------------------------------------------------- |
 | 14,973 files indexed | 14,900 of 15,064 indexed files were under `target/`. **The repository is 254 files.** |
-| Benchmark passes | Re-run: `Scan should complete in < 120s, took 276.1043943s` — **fails** |
-| Symbols extracted | On a `target/`-dominated scan, symbol counts describe build output, not source |
-| Workspace green | `225 passed; 1 failed` |
+| Benchmark passes     | Re-run: `Scan should complete in < 120s, took 276.1043943s` — **fails**               |
+| Symbols extracted    | On a `target/`-dominated scan, symbol counts describe build output, not source        |
+| Workspace green      | `225 passed; 1 failed`                                                                |
 
 **Root cause — the Windows path-separator defect.** In
 `crates/zylcode-core/src/intelligence/classifier.rs`:
@@ -222,13 +222,14 @@ On Windows `to_string_lossy()` yields `C:\repo\target\debug\...` — **backslash
 `"/target/"` never matches. Exclusion silently never fires. On Linux it works, which is why this
 survived review.
 
-**Why the test suite was green anyway.** `scanner.rs::scan_excludes_target` writes a *fixture*
+**Why the test suite was green anyway.** `scanner.rs::scan_excludes_target` writes a _fixture_
 `.gitignore` whose contents are `target/`, while the repository's real `.gitignore` uses
 `/target` and `**/target`. The test proved the fixture, not the product.
 
 ## Mandatory remediation items
 
 ### P0.1 — Fix exclusion matching on Windows
+
 Replace string `.contains()` matching with a real path-component matcher. Recommended:
 the `ignore` crate (ripgrep's — same author as `walkdir`, already in the dependency family),
 which implements gitignore semantics natively and is the reference implementation.
@@ -238,6 +239,7 @@ a path like `C:\repo\target\debug\foo.rs` is rejected; **and** a file legitimate
 over-correction).
 
 ### P0.2 — Make the benchmark honest
+
 In `crates/zylcode-core/tests/repo_intelligence_benchmark.rs` the assertions are far weaker than
 they read:
 
@@ -246,7 +248,8 @@ assert!(scan_duration.as_secs() < 120, ...);   // actually FAILS at 276.1s
 assert!(query.file_count() > 50);              // a 51-file scan would PASS
 ```
 
-Do **not** simply raise the timeout. Define what the benchmark is *for* and assert that:
+Do **not** simply raise the timeout. Define what the benchmark is _for_ and assert that:
+
 - assert the scan indexes a **known, committed fixture repository** of declared size;
 - assert **exclusion correctness** (count of `target/` paths in the index is exactly 0);
 - assert **precision/recall** on a small labelled query set, not a raw count;
@@ -257,25 +260,30 @@ Do **not** simply raise the timeout. Define what the benchmark is *for* and asse
 Report the measured value, not the desired one.
 
 ### P0.3 — Correct every metric's scope
+
 Every reported count must name what it counts. "14,973 files indexed" is meaningless without
 "of a repository containing N files, of which M are source." Publish both the raw and the
 scoped number.
 
 ### P0.4 — Report the workspace test state truthfully
+
 Run the full workspace suite. Paste the summary line. If one test fails, name it, paste its
 output, and either fix it or file it as a known failure with a reason. `router.rs:1030`
 (`assertion failed: text.contains("<zylcode-response>")`) was failing at audit time — establish
 whether it is fixed, still failing, or intermittent, and say which.
 
 ### P0.5 — Remove the "Expected Output" evidence sections
+
 Any section presenting expectation as evidence must be rewritten as observed transcript, or
 deleted and replaced with one.
 
 ### P0.6 — No `(Pending)` commit SHAs
+
 The Phase 2A report was committed with `Commit SHA: (Pending)`. Produce the report, commit it,
-*then* record the real SHA, or omit the field.
+_then_ record the real SHA, or omit the field.
 
 ### P1 — Product integration (do not skip; this is what makes it a capability)
+
 At audit time, `grep "intelligence::"` outside the module returned **nothing**; `agent.rs`
 still used the pre-existing `ContextBuilder`. A tested library nobody calls is **R2**, not a
 capability. Wire repository intelligence into a **named, committed entry point** reachable by a
@@ -285,7 +293,7 @@ repository.
 This is the difference between R2 and R3. R3 is the bar for GREEN.
 
 **Boundary:** wiring the Phase 2A intelligence to an entry point is in scope. Wiring
-*Computer-Use* to anything is out of scope (prohibition #2).
+_Computer-Use_ to anything is out of scope (prohibition #2).
 
 ## Job 1 required report format
 
@@ -356,11 +364,12 @@ Follow the exact section structure of the existing per-system docs (`Responsibil
 `Depends on`, `Exposes`, `Never does`). It must specify:
 
 **The perception/action/evidence architecture:**
+
 - **Perception** — screen capture, window enumeration, accessibility-tree reads, OCR, element
   detection. Every percept is an **artifact** with provenance and a timestamp.
 - **Grounding** — mapping perception output to actionable targets with **measured** confidence.
-  Explicitly: *a confidence value that is not derived from a measurement is a defect, not a
-  placeholder.* Cite the audit finding above as the worked counter-example.
+  Explicitly: _a confidence value that is not derived from a measurement is a defect, not a
+  placeholder._ Cite the audit finding above as the worked counter-example.
 - **Action** — mouse, keyboard, clipboard, window management, and application adapters. Every
   action is recorded before it is performed.
 - **Evidence** — the **Agent Flight Recorder**: every session produces a replayable artifact
@@ -399,7 +408,7 @@ In **both** `docs/governance/ZYLCODE_MASTER_EXECUTION_PLAN.md` and
 - **7D — Application Adapters.** Per-application integrations built on 7B/7C. Each adapter
   declares its risk level and its verification strategy.
 
-**Do not renumber 8–16.** Phase 7 becomes a four-part phase *in place*. State explicitly in
+**Do not renumber 8–16.** Phase 7 becomes a four-part phase _in place_. State explicitly in
 both documents that the total is now **16 numbered phases with Phase 7 carrying four
 subphases**, and that this is a decomposition, **not** a renumbering. Add a one-line note to
 each of 7A–7D giving the rationale, and keep the gate model per-subphase (each subphase is
@@ -413,11 +422,11 @@ the rung-ceiling rule applies. Say so in the roadmap rather than discovering it 
 
 For each, add a clearly-scoped subsection in the appropriate document, marked **PROPOSED**:
 
-| Concept | Where it belongs | One-line definition |
-|---|---|---|
-| **Artifact Composer** | `docs/architecture/ARTIFACT_SYSTEM.md` | Composes deliverables (docs, decks, sheets, sites) from project knowledge and evidence, rather than free-generating them |
-| **Workspace Composer** | `docs/architecture/PROJECT_SYSTEM.md` | Assembles a working environment — files, tools, extensions, context — for a declared intent |
-| **Time Travel** | `docs/architecture/PROJECT_SYSTEM.md` | Reconstructs any prior project state from the append-only ledger; the ledger is the source of truth, the working tree is derived |
+| Concept                         | Where it belongs                               | One-line definition                                                                                                                                       |
+| ------------------------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Artifact Composer**           | `docs/architecture/ARTIFACT_SYSTEM.md`         | Composes deliverables (docs, decks, sheets, sites) from project knowledge and evidence, rather than free-generating them                                  |
+| **Workspace Composer**          | `docs/architecture/PROJECT_SYSTEM.md`          | Assembles a working environment — files, tools, extensions, context — for a declared intent                                                               |
+| **Time Travel**                 | `docs/architecture/PROJECT_SYSTEM.md`          | Reconstructs any prior project state from the append-only ledger; the ledger is the source of truth, the working tree is derived                          |
 | **Engineering Knowledge Graph** | `docs/architecture/PROJECT_KNOWLEDGE_GRAPH.md` | Joins code facts + human decisions + agent learnings + runtime evidence. Its `contradicts` edge is how disagreement is surfaced rather than averaged away |
 
 Keep each entry to its definition, its owner, its dependencies, and its PROPOSED status. **Do
@@ -436,20 +445,20 @@ Where a system has a non-functional skeleton (Computer Use is now the known case
 The audit session relabelled the **documentation** sites of the obsolete `Phase N.N` milestone
 labels in commit `c4b8aa0` and recorded the rationale in
 `docs/governance/PHASE_NUMBERING_RECONCILIATION.md` (see rule 4.7 of the Agent Operating
-Protocol: *a phase number belongs to the governance roadmap and to nothing else*).
+Protocol: _a phase number belongs to the governance roadmap and to nothing else_).
 
 **Five source files still carry the old labels.** They were **deliberately not changed** by the
 audit session, because each already held unrelated uncommitted formatting changes from your
 working tree, and mixing the two would have obscured both. They are yours to finish:
 
-| File | Line | Current | Change to |
-|---|---|---|---|
-| `crates/zylcode-core/src/router.rs` | 63 | `/// Provider kind for Phase 7.2 multi-provider routing.` | `(track: MULTIPROVIDER-1)` |
-| `crates/zylcode-core/src/router.rs` | 205 | `… multi-provider router (Phase 7.2).` | `(track: MULTIPROVIDER-1)` |
-| `crates/zylcode-core/src/cache.rs` | 1 | `//! Phase 8.2 — Local Model Cache …` | `(track: VECTOR-CACHE)` |
-| `crates/zylcode-core/src/compression.rs` | 1, 367 | `Phase 8.1` | `CTX-COMPRESSION` |
-| `apps/zylcode-desktop/src-tauri/src/main.rs` | 281 | `// Phase 7.3 — Provider Configuration IPC` | `(track: MULTIPROVIDER-2)` |
-| `apps/zylcode-desktop/src/App.tsx` | 49 | `// Phase 3.2: artifact stream parser hook` | `(track: ARTIFACT-STREAM)` |
+| File                                         | Line   | Current                                                   | Change to                  |
+| -------------------------------------------- | ------ | --------------------------------------------------------- | -------------------------- |
+| `crates/zylcode-core/src/router.rs`          | 63     | `/// Provider kind for Phase 7.2 multi-provider routing.` | `(track: MULTIPROVIDER-1)` |
+| `crates/zylcode-core/src/router.rs`          | 205    | `… multi-provider router (Phase 7.2).`                    | `(track: MULTIPROVIDER-1)` |
+| `crates/zylcode-core/src/cache.rs`           | 1      | `//! Phase 8.2 — Local Model Cache …`                     | `(track: VECTOR-CACHE)`    |
+| `crates/zylcode-core/src/compression.rs`     | 1, 367 | `Phase 8.1`                                               | `CTX-COMPRESSION`          |
+| `apps/zylcode-desktop/src-tauri/src/main.rs` | 281    | `// Phase 7.3 — Provider Configuration IPC`               | `(track: MULTIPROVIDER-2)` |
+| `apps/zylcode-desktop/src/App.tsx`           | 49     | `// Phase 3.2: artifact stream parser hook`               | `(track: ARTIFACT-STREAM)` |
 
 **Comment-only.** Do not change behaviour. Do not reflow surrounding code.
 

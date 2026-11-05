@@ -35,43 +35,53 @@ failure. Record it.
 ## The ten tests
 
 ### TEST A — Installation / onboarding
+
 Can you get from the documentation to a running toolkit **without asking anyone**?
 Record: which document you followed, where you got stuck, how long it took.
 
 ### TEST B — Connection
+
 Can you prove the runtime is **genuine N-ATLAS**?
 Record: the output of `curl http://127.0.0.1:11434/api/tags`, and the model identity the toolkit
 reports. It must be the identity the **server** reports.
 
 ### TEST C — Repository workflow
+
 Can you open/select a small repository?
 Record: the repository you used, its size, and how you selected it.
 
 ### TEST D — Developer task
+
 Can you give a bounded software-engineering instruction?
 Record: the **exact** instruction you gave, and in which language.
 
 ### TEST E — N-ATLAS interpretation
+
 Does a genuine response enter the structured intent boundary?
 Record: the raw response, and whether it satisfied the intent contract.
 
 ### TEST F — Approval
+
 Can you understand and approve/reject the proposed action?
 Record: what you understood the proposal to be, and what you chose.
 
 ### TEST G — Controlled execution
+
 Does the approved action execute through the intended tool path?
 Record: what executed, and what did **not**.
 
 ### TEST H — Verification
+
 Does the toolkit run a real test/verification and expose the **actual** result?
 Record: the command and the real exit code.
 
 ### TEST I — Evidence
+
 Can you locate the evidence record?
 Record: the evidence id and the fields you found.
 
 ### TEST J — Usability
+
 Can you explain what succeeded, what failed, and what confused you?
 Record: verbatim, in your own words.
 
@@ -82,10 +92,10 @@ Record: verbatim, in your own words.
 Where practical, testers are asked to cover different languages so that the multilingual claim is
 measured rather than assumed. A suggested (not mandatory) split:
 
-| Tester | Languages |
-|---|---|
+| Tester   | Languages                            |
+| -------- | ------------------------------------ |
 | Tester 1 | English (Nigerian-accented) + Yoruba |
-| Tester 2 | Hausa + Igbo |
+| Tester 2 | Hausa + Igbo                         |
 
 > **Do not translate a Nigerian-language prompt into English before sending it.** That would
 > invalidate the direct-language claim. Send the prompt as-is and record what N-ATLAS actually did

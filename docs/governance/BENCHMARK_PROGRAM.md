@@ -13,10 +13,10 @@ make that class of failure impossible for the external benchmark program.
 
 ## 1. What is being measured, and with which harness
 
-| Benchmark | Measures | Harness under test |
-|---|---|---|
-| SWE-bench Verified | End-to-end issue resolution on 500 human-validated real GitHub issues | ZylCode agent loop (`AgentLoop` + best-of-N) as a standalone scaffold |
-| Terminal-Bench 2.0 | Long-horizon terminal task completion | ZylCode agent loop with the shell toolset (`fs.*`, `git.*`, `shell.execute`) |
+| Benchmark          | Measures                                                              | Harness under test                                                           |
+| ------------------ | --------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| SWE-bench Verified | End-to-end issue resolution on 500 human-validated real GitHub issues | ZylCode agent loop (`AgentLoop` + best-of-N) as a standalone scaffold        |
+| Terminal-Bench 2.0 | Long-horizon terminal task completion                                 | ZylCode agent loop with the shell toolset (`fs.*`, `git.*`, `shell.execute`) |
 
 **Harness disclosure (mandatory in every publication):** results are attributed to the
 ZylCode scaffold with the model named per run. A score is meaningless without both —
@@ -27,19 +27,19 @@ budget, N in best-of-N, and the verifier command.
 
 ## 2. What exists today vs. what the benchmarks require
 
-| Requirement | Status today | Gap |
-|---|---|---|
-| Real tool execution (fs/git/shell/search) | 🟢 Built — 12 real executors, fail-closed gate | — |
-| Bounded execution | 🟢 Built — steps, timeouts, cancellation | — |
-| Crash recovery | 🟢 Built — checkpoint + ledger reconciliation | — |
-| Best-of-N with evidence-scored selection | 🟢 Built (`best_of_n.rs`, `patch_best_of_n.rs`) — N model-sampled patches, per-candidate worktree verification, concurrent fan-out, ledger-recorded selection, refuse-if-all-fail, winner export | Exported patch format is `git apply`-compatible unified diff |
-| Self-verification gate | 🟢 Built (`SelfVerificationGate`) — refuses unevidenced acceptance | — |
-| Persisted intelligence index | 🟢 Built — content-hash cache kills per-step re-index | — |
-| Context retrieval | 🟢 Built — deterministic, 20-query known-answer benchmark | Precision@10 = 0.48 leaves headroom; SWE-bench needs higher |
-| Sandboxed execution workers | 🟢 Built (`sandbox.rs`, Phase 7A slice) — container-per-candidate docker verifier: `--network=none`, `--read-only` rootfs, size-capped noexec tmpfs, CPU/memory/PID caps, worktree-only writable mount, ready-marker env; **fails closed** (no daemon or image ⇒ refusal, never host fallback); concurrent-safe. In-container commissioning run requires an operator-provided image. | Podman/other backends not yet supported; Windows requires Linux containers |
-| Docker-based evaluation client | 🔴 Not built — SWE-bench runs candidates in per-instance containers | **Blocking for SWE-bench**: the harness must submit patches to the official evaluator |
-| Multi-file patch generation + apply | 🟢 Built — Phase 3A candidates are `git diff` patches applied via `git apply` in isolated worktrees | Benchmark task instance → model context mapping is the remaining harness work |
-| Model-agnostic routing with measured performance | 🟡 Providers wired; routing not measurement-based | Terminal-Bench economy runs need cost-aware routing |
+| Requirement                                      | Status today                                                                                                                                                                                                                                                                                                                                                                         | Gap                                                                                   |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| Real tool execution (fs/git/shell/search)        | 🟢 Built — 12 real executors, fail-closed gate                                                                                                                                                                                                                                                                                                                                       | —                                                                                     |
+| Bounded execution                                | 🟢 Built — steps, timeouts, cancellation                                                                                                                                                                                                                                                                                                                                             | —                                                                                     |
+| Crash recovery                                   | 🟢 Built — checkpoint + ledger reconciliation                                                                                                                                                                                                                                                                                                                                        | —                                                                                     |
+| Best-of-N with evidence-scored selection         | 🟢 Built (`best_of_n.rs`, `patch_best_of_n.rs`) — N model-sampled patches, per-candidate worktree verification, concurrent fan-out, ledger-recorded selection, refuse-if-all-fail, winner export                                                                                                                                                                                     | Exported patch format is `git apply`-compatible unified diff                          |
+| Self-verification gate                           | 🟢 Built (`SelfVerificationGate`) — refuses unevidenced acceptance                                                                                                                                                                                                                                                                                                                   | —                                                                                     |
+| Persisted intelligence index                     | 🟢 Built — content-hash cache kills per-step re-index                                                                                                                                                                                                                                                                                                                                | —                                                                                     |
+| Context retrieval                                | 🟢 Built — deterministic, 20-query known-answer benchmark                                                                                                                                                                                                                                                                                                                            | Precision@10 = 0.48 leaves headroom; SWE-bench needs higher                           |
+| Sandboxed execution workers                      | 🟢 Built (`sandbox.rs`, Phase 7A slice) — container-per-candidate docker verifier: `--network=none`, `--read-only` rootfs, size-capped noexec tmpfs, CPU/memory/PID caps, worktree-only writable mount, ready-marker env; **fails closed** (no daemon or image ⇒ refusal, never host fallback); concurrent-safe. In-container commissioning run requires an operator-provided image. | Podman/other backends not yet supported; Windows requires Linux containers            |
+| Docker-based evaluation client                   | 🔴 Not built — SWE-bench runs candidates in per-instance containers                                                                                                                                                                                                                                                                                                                  | **Blocking for SWE-bench**: the harness must submit patches to the official evaluator |
+| Multi-file patch generation + apply              | 🟢 Built — Phase 3A candidates are `git diff` patches applied via `git apply` in isolated worktrees                                                                                                                                                                                                                                                                                  | Benchmark task instance → model context mapping is the remaining harness work         |
+| Model-agnostic routing with measured performance | 🟡 Providers wired; routing not measurement-based                                                                                                                                                                                                                                                                                                                                    | Terminal-Bench economy runs need cost-aware routing                                   |
 
 **Publication gate:** no external number is published until the 🔴-blocking rows for
 the target benchmark are built and the harness runs unattended on the official evaluator
@@ -48,11 +48,11 @@ requires an operator-provided image on the runner.)
 
 ## 3. Target ladder (targets, not claims)
 
-| Rung | Definition | SWE-bench Verified target | Terminal-Bench 2.0 target |
-|---|---|---|---|
-| T1 — Reproducible baseline | Harness runs unattended end-to-end on the official evaluator; any score recorded is real | ≥ 5% (floor: the pipeline works) | ≥ 10% |
-| T2 — Competitive floor | Above the median of published open scaffolds on the same model class | ≥ 30% | ≥ 30% |
-| T3 — Flagship | Best-of-N + self-verification + measured routing all engaged | ≥ 55% | ≥ 50% |
+| Rung                       | Definition                                                                               | SWE-bench Verified target        | Terminal-Bench 2.0 target |
+| -------------------------- | ---------------------------------------------------------------------------------------- | -------------------------------- | ------------------------- |
+| T1 — Reproducible baseline | Harness runs unattended end-to-end on the official evaluator; any score recorded is real | ≥ 5% (floor: the pipeline works) | ≥ 10%                     |
+| T2 — Competitive floor     | Above the median of published open scaffolds on the same model class                     | ≥ 30%                            | ≥ 30%                     |
+| T3 — Flagship              | Best-of-N + self-verification + measured routing all engaged                             | ≥ 55%                            | ≥ 50%                     |
 
 A rung is reached only when **three consecutive independent runs** at the same SHA
 produce scores within ±2 points of each other. A single lucky run is R1 (observed
