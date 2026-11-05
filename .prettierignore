@@ -6,9 +6,11 @@ node_modules/
 *.lock
 *.tsbuildinfo
 
-# Rust targets and Tauri gen
-src-tauri/target/
-src-tauri/gen/
+# Rust targets and Tauri gen. The leading ** is required: a pattern with an
+# internal slash is anchored to the repository root, so `src-tauri/gen/` alone
+# never matched apps/*/src-tauri/gen/ and generated schemas were being checked.
+**/src-tauri/target/
+**/src-tauri/gen/
 target/
 Cargo.lock
 
