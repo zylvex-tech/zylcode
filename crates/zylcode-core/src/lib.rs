@@ -41,6 +41,7 @@ pub mod project;
 pub mod project_store;
 pub mod proof_engine;
 pub mod provider_scorecard;
+pub mod providers;
 pub mod router;
 pub mod sandbox;
 pub mod sqlite_ledger;

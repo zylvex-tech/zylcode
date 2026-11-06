@@ -1396,8 +1396,17 @@ impl TokenRouter {
         }
     }
 
-    /// Streaming variant — calls the provider and emits `StreamEvent`s via
-    /// callback. Falls back to synthetic streaming when offline.
+    /// Streaming variant — asks the selected provider for a *real* stream and
+    /// forwards its deltas as they arrive.
+    ///
+    /// This used to call `dispatch_prompt` and then re-chunk the finished string by
+    /// line, which looked like streaming in the UI while the provider had already
+    /// answered in one piece. Now each provider module owns its own wire protocol
+    /// (SSE for Anthropic and OpenAI-compatible, NDJSON for Ollama) and the router
+    /// only chooses the provider, forwards chunks, and records usage.
+    ///
+    /// Offline/synthetic responses are still available and are explicitly labelled
+    /// as synthetic rather than dressed up as a provider stream.
     pub async fn dispatch_stream<F>(
         &self,
         prompt: &str,
@@ -1407,21 +1416,261 @@ impl TokenRouter {
     where
         F: FnMut(StreamEvent) + Send,
     {
-        let full = self.dispatch_prompt(prompt, system).await?;
-        // Emit synthetic stream events chunked by lines for UI progress.
-        for (idx, line) in full.lines().enumerate() {
-            on_chunk(StreamEvent {
-                index: idx as u64,
-                delta: line.to_string(),
-                done: false,
+        // A stream with no external cancel source still exposes the handle shape, so
+        // callers can migrate to `dispatch_stream_cancellable` without an API split.
+        let cancel = crate::providers::streaming::CancelToken::new();
+        self.dispatch_stream_cancellable(prompt, system, cancel, &mut on_chunk)
+            .await
+    }
+
+    /// Streaming variant with an explicit cancellation token.
+    ///
+    /// Cancelling the token aborts the in-flight HTTP request (the provider modules
+    /// drop the response body, which closes the connection); it does not merely stop
+    /// forwarding chunks.
+    pub async fn dispatch_stream_cancellable<F>(
+        &self,
+        prompt: &str,
+        system: &str,
+        cancel: crate::providers::streaming::CancelToken,
+        on_chunk: &mut F,
+    ) -> Result<String>
+    where
+        F: FnMut(StreamEvent) + Send,
+    {
+        let cfg = self.config();
+        let (prompt_owned, system_owned) =
+            trim_to_window(prompt, system, cfg.context_window_tokens, cfg.trim_strategy);
+        let prompt = prompt_owned.as_str();
+        let system = system_owned.as_str();
+
+        // Same offline decision `dispatch_prompt` makes: if neither the primary nor
+        // the fallback can possibly have a credential, do not open a socket.
+        let primary_key = cfg.api_key(&cfg.primary_provider);
+        let fallback_key = cfg.api_key(&cfg.fallback_provider);
+        let both_need_keys = cfg.primary_provider != ModelProvider::LocalOllama
+            && cfg.fallback_provider != ModelProvider::LocalOllama;
+        let offline = (primary_key.is_none() && fallback_key.is_none() && both_need_keys)
+            || cfg.primary_provider == ModelProvider::SyntheticOffline;
+
+        if offline {
+            let outcome = crate::providers::synthetic::stream(prompt, system, &mut |chunk| {
+                on_chunk(StreamEvent {
+                    index: chunk.index,
+                    delta: chunk.kind.text.unwrap_or_default(),
+                    done: chunk.done,
+                });
             });
+            self.metrics.record_usage(
+                ((prompt.len() + system.len()) / 4) as u64,
+                (outcome.text.len() / 4) as u64,
+            );
+            return Ok(outcome.text);
         }
-        on_chunk(StreamEvent {
-            index: full.lines().count() as u64,
-            delta: String::new(),
-            done: true,
-        });
-        Ok(full)
+
+        // Attempt the primary, then the configured fallback, then the remaining
+        // enabled chain entries — the same order `dispatch_prompt` uses. A provider
+        // that has already forwarded text is never retried on another provider: that
+        // would duplicate output in the consumer.
+        let mut candidates: Vec<(ModelProvider, String)> = vec![
+            (cfg.primary_provider.clone(), cfg.primary_model.clone()),
+            (cfg.fallback_provider.clone(), cfg.fallback_model.clone()),
+        ];
+        if cfg.max_retries > 0 {
+            let mut entries = cfg.provider_configs.clone();
+            entries.sort_by_key(|e| e.fallback_order);
+            for entry in entries {
+                if !entry.enabled {
+                    continue;
+                }
+                let Some(provider) = kind_to_model_provider(&entry.kind) else {
+                    continue;
+                };
+                if candidates.iter().any(|(p, _)| *p == provider) {
+                    continue;
+                }
+                candidates.push((provider, entry.model.clone()));
+            }
+        }
+
+        let mut last_err: Option<anyhow::Error> = None;
+        for (provider, model) in candidates {
+            let started = crate::provider_scorecard::LatencyGuard::start();
+            match self
+                .stream_one_provider(&provider, &model, prompt, system, &cfg, &cancel, on_chunk)
+                .await
+            {
+                Ok(text) => {
+                    self.scorecard
+                        .record(&provider.to_string(), true, started.elapsed_ms());
+                    return Ok(text);
+                }
+                Err(StreamAttemptError::Cancelled) => {
+                    self.scorecard
+                        .record(&provider.to_string(), false, started.elapsed_ms());
+                    return Ok(String::new());
+                }
+                Err(StreamAttemptError::Failed(err)) => {
+                    self.scorecard
+                        .record(&provider.to_string(), false, started.elapsed_ms());
+                    warn!(provider = %provider, error = %err, "streaming provider failed");
+                    last_err = Some(err);
+                }
+                Err(StreamAttemptError::AlreadyStreamed(err)) => {
+                    // Partial output already reached the consumer; retrying elsewhere
+                    // would duplicate it.
+                    self.scorecard
+                        .record(&provider.to_string(), false, started.elapsed_ms());
+                    return Err(err);
+                }
+            }
+        }
+
+        Err(last_err.unwrap_or_else(|| anyhow::anyhow!("no streaming provider was configured")))
+    }
+
+    /// One streaming attempt against one provider.
+    #[allow(clippy::too_many_arguments)]
+    async fn stream_one_provider<F>(
+        &self,
+        provider: &ModelProvider,
+        model: &str,
+        prompt: &str,
+        system: &str,
+        cfg: &RouterConfig,
+        cancel: &crate::providers::streaming::CancelToken,
+        on_chunk: &mut F,
+    ) -> std::result::Result<String, StreamAttemptError>
+    where
+        F: FnMut(StreamEvent) + Send,
+    {
+        use crate::providers::streaming::{ChatRequest, FinishReason};
+
+        // A provider that cannot stream is reported as such rather than faked.
+        if !crate::providers::capabilities::provider_capabilities(provider).streaming {
+            return Err(StreamAttemptError::Failed(anyhow::anyhow!(
+                "provider {provider} does not support streaming"
+            )));
+        }
+
+        let request = ChatRequest::new(model, system, prompt);
+        let timeout = Duration::from_millis(cfg.provider_timeout_ms(provider));
+        let base = cfg.base_url(provider);
+        let api_key = cfg.api_key(provider);
+
+        // Atomic, not `Cell`, because the streaming future must stay `Send` for
+        // callers that drive it from another thread.
+        let emitted = std::sync::atomic::AtomicBool::new(false);
+        let mut forward = |chunk: crate::providers::streaming::StreamChunk| {
+            if chunk.kind.text.is_some() || chunk.done {
+                emitted.store(true, std::sync::atomic::Ordering::SeqCst);
+            }
+            on_chunk(StreamEvent {
+                index: chunk.index,
+                delta: chunk.kind.text.unwrap_or_default(),
+                done: chunk.done,
+            });
+        };
+
+        #[cfg(test)]
+        NETWORK_EGRESS_COUNT.with(|c| c.set(c.get() + 1));
+
+        let outcome = match provider {
+            ModelProvider::Anthropic => {
+                crate::providers::anthropic::stream(
+                    &self.http,
+                    &base,
+                    api_key.as_deref(),
+                    &request,
+                    timeout,
+                    cancel,
+                    &mut forward,
+                )
+                .await
+            }
+            ModelProvider::LocalOllama => {
+                crate::providers::ollama::stream(
+                    &self.http,
+                    &base,
+                    &request,
+                    timeout,
+                    cancel,
+                    &mut forward,
+                )
+                .await
+            }
+            ModelProvider::SyntheticOffline => {
+                let outcome = crate::providers::synthetic::stream(prompt, system, &mut forward);
+                self.metrics.record_usage(
+                    ((prompt.len() + system.len()) / 4) as u64,
+                    (outcome.text.len() / 4) as u64,
+                );
+                return Ok(outcome.text);
+            }
+            _ => {
+                let extra: Vec<(String, String)> = if *provider == ModelProvider::OpenRouter {
+                    vec![
+                        (
+                            "HTTP-Referer".to_string(),
+                            "https://zylcode.dev".to_string(),
+                        ),
+                        ("X-Title".to_string(), "ZylCode".to_string()),
+                    ]
+                } else {
+                    Vec::new()
+                };
+                let target = crate::providers::openai_compatible::CompatTarget {
+                    base_url: &base,
+                    api_key: api_key.as_deref(),
+                    provider: &provider.to_string(),
+                    timeout,
+                    extra_headers: &extra,
+                };
+                crate::providers::openai_compatible::stream(
+                    &self.http,
+                    &target,
+                    &request,
+                    cancel,
+                    &mut forward,
+                )
+                .await
+            }
+        };
+
+        match outcome {
+            Ok(outcome) => {
+                if outcome.finish == FinishReason::Cancelled {
+                    return Err(StreamAttemptError::Cancelled);
+                }
+                let inp = outcome
+                    .usage
+                    .as_ref()
+                    .and_then(|u| u.input_tokens)
+                    .unwrap_or(((prompt.len() + system.len()) / 4) as u64);
+                let out = outcome
+                    .usage
+                    .as_ref()
+                    .and_then(|u| u.output_tokens)
+                    .unwrap_or((outcome.text.len() / 4) as u64);
+                self.metrics.record_usage(inp, out);
+                info!(provider = %provider, model = %model, input_tokens = inp, output_tokens = out, "provider stream completed");
+                Ok(outcome.text)
+            }
+            Err(err) => {
+                let err = anyhow::anyhow!(
+                    "provider {provider} stream failed ({:?}): {}",
+                    err.kind,
+                    err.message
+                );
+                if emitted.load(std::sync::atomic::Ordering::SeqCst) {
+                    Err(StreamAttemptError::AlreadyStreamed(err))
+                } else if cancel.is_cancelled() {
+                    Err(StreamAttemptError::Cancelled)
+                } else {
+                    Err(StreamAttemptError::Failed(err))
+                }
+            }
+        }
     }
 
     // -- internal provider call ---------------------------------------------
@@ -1592,17 +1841,10 @@ impl TokenRouter {
         }
     }
 
-    fn synthetic_response(prompt: &str, _system: &str) -> String {
-        // Return a valid AgentDecision JSON response for the agent protocol
-        // This allows the agent to complete successfully in offline/CI mode
-        serde_json::json!({
-            "action": "Complete",
-            "payload": {
-                "summary": format!("Task completed: {}", prompt),
-                "evidence": ["Synthetic offline response"],
-                "remaining_limitations": ["Using synthetic offline mode - configure API keys for live LLM generation"]
-            }
-        }).to_string()
+    fn synthetic_response(prompt: &str, system: &str) -> String {
+        // The synthetic payload lives in the provider module now, so the offline
+        // answer has exactly one definition and stays explicitly labelled.
+        crate::providers::synthetic::response(prompt, system)
     }
 }
 
@@ -1616,6 +1858,20 @@ pub struct StreamEvent {
     pub index: u64,
     pub delta: String,
     pub done: bool,
+}
+
+/// Why one streaming attempt did not produce a completed answer.
+///
+/// The distinction that matters is whether the consumer already received output:
+/// a silent failure may be retried on the next provider, while a failure after
+/// partial output must be surfaced instead of duplicating text.
+enum StreamAttemptError {
+    /// The caller cancelled; no retry and no error.
+    Cancelled,
+    /// The attempt failed before anything was forwarded; another provider may be tried.
+    Failed(anyhow::Error),
+    /// Output was already forwarded, so this failure is terminal for the request.
+    AlreadyStreamed(anyhow::Error),
 }
 
 // ---------------------------------------------------------------------------
