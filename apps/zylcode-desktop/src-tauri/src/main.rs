@@ -141,8 +141,13 @@ async fn process_intent_stream(
         };
 
         let _ = router
-            .dispatch_stream(&plan.compiled_prompt, &plan.system_prompt, |ev| {
-                let _ = app_clone.emit("intent:chunk", &ev);
+            .dispatch_stream(&plan.compiled_prompt, &plan.system_prompt, |chunk| {
+                // The frontend renders the pre-existing three-field payload, so the
+                // boundary projects it here. One streaming implementation stays
+                // authoritative: the projection is derived from the chunk and drops
+                // nothing the dispatcher chose to send.
+                let event = zylcode_core::providers::compat::StreamEvent::from(&chunk);
+                let _ = app_clone.emit("intent:chunk", &event);
             })
             .await;
     });

@@ -37,6 +37,13 @@ pub struct StreamChunk {
     pub kind: ChunkKind,
     /// Whether the stream has finished from the provider's perspective.
     pub done: bool,
+    /// Why the provider ended the stream, when the provider said so.
+    ///
+    /// This is a first-class field rather than a `metadata` entry: a consumer
+    /// deciding whether an answer was cut off by a length limit, filtered, or
+    /// completed normally must not have to parse provider-specific JSON to find out.
+    #[serde(default)]
+    pub finish_reason: Option<FinishReason>,
     /// Whether this response was produced by the synthetic offline path.
     ///
     /// Real provider streams set this to `false`. Synthetic/offline paths set it
@@ -79,6 +86,7 @@ impl StreamChunk {
                 tool_call: None,
             },
             done: false,
+            finish_reason: None,
             synthetic,
             tool_state: None,
             usage: None,
@@ -97,6 +105,7 @@ impl StreamChunk {
                 tool_call: None,
             },
             done: true,
+            finish_reason: None,
             synthetic,
             tool_state: None,
             usage: None,
@@ -592,7 +601,7 @@ pub async fn run_stream<D: LineDecoder>(
 
     // A cancelled request must not egress at all.
     if cancel.is_cancelled() {
-        on_chunk(StreamChunk::terminal(index, synthetic));
+        on_chunk(cancelled_terminal(index, synthetic));
         outcome.finish = FinishReason::Cancelled;
         return Ok(outcome);
     }
@@ -610,7 +619,7 @@ pub async fn run_stream<D: LineDecoder>(
     let resp = tokio::select! {
         biased;
         () = cancel.cancelled() => {
-            on_chunk(StreamChunk::terminal(index, synthetic));
+            on_chunk(cancelled_terminal(index, synthetic));
             outcome.finish = FinishReason::Cancelled;
             return Ok(outcome);
         }
@@ -641,7 +650,7 @@ pub async fn run_stream<D: LineDecoder>(
                 // Dropping the byte stream drops the response body, which closes
                 // the connection and aborts the in-flight request.
                 drop(stream);
-                on_chunk(StreamChunk::terminal(index, synthetic));
+                on_chunk(cancelled_terminal(index, synthetic));
                 outcome.finish = FinishReason::Cancelled;
                 outcome.chunks = index;
                 return Ok(outcome);
@@ -735,6 +744,16 @@ pub async fn run_stream<D: LineDecoder>(
     Ok(outcome)
 }
 
+/// The one terminal chunk a cancelled stream emits.
+///
+/// It says *why* it ended, so a consumer does not have to treat "no more chunks"
+/// as either success or failure after a cancellation.
+fn cancelled_terminal(index: u64, synthetic: bool) -> StreamChunk {
+    let mut chunk = StreamChunk::terminal(index, synthetic);
+    chunk.finish_reason = Some(FinishReason::Cancelled);
+    chunk
+}
+
 /// Fold one decoded event into the running outcome, returning `true` when the
 /// stream is complete.
 fn emit(
@@ -747,6 +766,7 @@ fn emit(
 ) -> bool {
     if let Some(err) = event.error.clone() {
         let mut chunk = StreamChunk::terminal(*index, synthetic);
+        chunk.finish_reason = Some(FinishReason::Error);
         chunk.error = Some(err.clone());
         on_chunk(chunk);
         *index += 1;
@@ -785,6 +805,7 @@ fn emit(
             chunk.kind.text = None;
         }
         chunk.usage = event.usage;
+        chunk.finish_reason = event.finish;
         chunk.metadata = event.metadata;
         chunk.provider_ref = event.provider_ref;
         // Completion is signalled by exactly one terminal chunk below, never by a
@@ -796,6 +817,7 @@ fn emit(
 
     if event.done {
         let mut terminal = StreamChunk::terminal(*index, synthetic);
+        terminal.finish_reason = Some(outcome.finish);
         terminal.usage = outcome.usage.clone();
         terminal.provider_ref = outcome.provider_ref.clone();
         on_chunk(terminal);
@@ -920,6 +942,51 @@ mod tests {
         let err = classify_http_failure("openai", 503, "down");
         assert_eq!(err.code.as_deref(), Some("503"));
         assert!(err.message.contains("503"));
+    }
+
+    #[test]
+    fn finish_reason_is_a_first_class_field_on_both_payload_and_terminal_chunks() {
+        let mut outcome = StreamOutcome::empty(FinishReason::Other);
+        let mut index = 0u64;
+        let mut failure = None;
+        let mut seen: Vec<StreamChunk> = Vec::new();
+
+        let event = DecodedEvent {
+            text: Some("partial".into()),
+            usage: None,
+            finish: Some(FinishReason::Length),
+            error: None,
+            provider_ref: None,
+            metadata: None,
+            done: true,
+        };
+        assert!(emit(
+            event,
+            &mut outcome,
+            &mut index,
+            false,
+            &mut failure,
+            &mut |c| seen.push(c)
+        ));
+
+        assert_eq!(seen.len(), 2, "one payload chunk and one terminal chunk");
+        assert_eq!(
+            seen[0].finish_reason,
+            Some(FinishReason::Length),
+            "a payload chunk must not hide the finish reason in metadata"
+        );
+        assert!(seen[0].metadata.is_none());
+        assert_eq!(seen[1].finish_reason, Some(FinishReason::Length));
+        assert!(seen[1].done);
+    }
+
+    #[test]
+    fn a_cancelled_stream_says_so_instead_of_looking_complete() {
+        let chunk = cancelled_terminal(4, false);
+        assert!(chunk.done);
+        assert_eq!(chunk.finish_reason, Some(FinishReason::Cancelled));
+        assert!(chunk.error.is_none());
+        assert!(!chunk.synthetic);
     }
 
     #[test]

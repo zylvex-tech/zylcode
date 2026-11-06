@@ -4,11 +4,21 @@
 //! fabricates about itself. The router and the agent loop may consult them before
 //! dispatching to decide whether streaming, native tool calling, vision, logit
 //! bias, or a client-side max_tokens cap are even meaningful for the chosen
-//! provider. They are deliberately static per provider and must be updated only
-//! when the provider's actual protocol supports more or less.
+//! provider.
 //!
-//! This module is the single source of truth for that table. `router.rs` stops
-//! defining it and instead re-exports it from here.
+//! A flag is `true` only when *this client* actually implements that shape for
+//! that provider — not merely when the provider's public API offers it. Two
+//! consequences follow, and both are deliberate:
+//!
+//! - `streaming` is `true` only where a provider module parses that provider's own
+//!   increment protocol (Anthropic and OpenAI-compatible SSE, Ollama NDJSON), and
+//!   is covered by a loopback test that sees two distinct deltas. `SyntheticOffline`
+//!   emits chunked feedback with no wire, so it is `false`.
+//! - `vision` and `logprobs` are `false` everywhere: no request builder sends image
+//!   blocks and nothing requests or surfaces log probabilities, so claiming them
+//!   would make this table describe someone else's client.
+//!
+//! This module is the single source of truth for that table.
 
 use crate::router::ModelProvider;
 use serde::{Deserialize, Serialize};
@@ -30,9 +40,15 @@ pub struct ProviderCapabilitySet {
     /// in-process tool runtime, which already lives elsewhere and remains the
     /// execution/security boundary.
     pub tools: bool,
-    /// Whether the provider's chat API accepts image content blocks.
+    /// Whether this client can send image content blocks to the provider.
+    ///
+    /// The provider APIs mostly accept them; no request builder here constructs
+    /// them, so this stays `false` until one does.
     pub vision: bool,
-    /// Whether the provider accepts logit bias / logprobs-shaped input.
+    /// Whether this client requests and surfaces log probabilities.
+    ///
+    /// `false` until a request builder sends `logprobs` and the stream contract
+    /// carries the result back.
     pub logprobs: bool,
     /// Whether the provider exposes usage (input/output tokens).
     pub usage: bool,
@@ -69,12 +85,15 @@ impl ProviderCapabilitySet {
 /// acceptance gate that has not passed, so no provider module builds `tools` into a
 /// request. The provider APIs can do it; this client does not yet, and claiming
 /// otherwise would make the capability table lie to the router.
+///
+/// `max_client_tokens` is `Some(4096)` wherever the request builder actually sends
+/// `max_tokens`/`num_predict`, which is every provider except the offline path.
 pub fn provider_capabilities(provider: &ModelProvider) -> ProviderCapabilitySet {
     match provider {
         ModelProvider::Anthropic => ProviderCapabilitySet {
             streaming: true,
             tools: false,
-            vision: true,
+            vision: false,
             logprobs: false,
             usage: true,
             max_client_tokens: Some(4096),
@@ -86,8 +105,8 @@ pub fn provider_capabilities(provider: &ModelProvider) -> ProviderCapabilitySet 
         | ModelProvider::OpenAiCompatible => ProviderCapabilitySet {
             streaming: true,
             tools: false,
-            vision: true,
-            logprobs: true,
+            vision: false,
+            logprobs: false,
             usage: true,
             max_client_tokens: Some(4096),
         },

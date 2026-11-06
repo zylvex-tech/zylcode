@@ -52,73 +52,61 @@ Ownership rules:
 What does NOT move into these modules from `router.rs`:
 
 - `ModelProvider`, `ProviderKind`, `ProviderConfig`, `RouterConfig`, `TokenRouter`, `dispatch_prompt`, `call_provider`, `probe_provider_with_config` stay in `router.rs` as orchestration/config surface.
-- The existing `StreamEvent` struct is replaced by the new provider-neutral contract at the dispatch boundary; internal provider modules may keep private wire-level types.
 
 ## 2. Provider-neutral `StreamChunk` contract
 
-The consumer (agent loop and UI layer) consumes only this. It must not need to know whether the underlying provider used Anthropic SSE, OpenAI-compatible SSE, Ollama NDJSON, or the synthetic offline path.
+This is the streaming contract at the dispatch boundary: `dispatch_stream` and
+`dispatch_stream_cancellable` hand consumers `StreamChunk` values directly, and
+`router.rs` no longer defines a reduced stream type of its own.
 
-Core chunk type:
+Implemented shape (`providers/streaming.rs`). Owned strings rather than borrowed
+slices: chunks cross an `await` boundary and are serialised at the IPC edge, so
+borrowed deltas would force a lifetime parameter on every consumer for no gain.
 
 ```rust
-pub struct StreamChunk<'a> {
+pub struct StreamChunk {
     pub index: u64,
-    pub kind: ChunkKind<'a>,
+    pub kind: ChunkKind,
+    pub done: bool,
     pub finish_reason: Option<FinishReason>,
-    pub usage: Option<Usage>,
-    pub provider_metadata: Option<ProviderMetadata>,
-    pub error: Option<ProviderError>,
     pub synthetic: bool,
+    pub tool_state: Option<ToolCallState>,
+    pub usage: Option<Usage>,
+    pub metadata: Option<serde_json::Value>,
+    pub provider_ref: Option<String>,
+    pub error: Option<ProviderError>,
 }
 
-pub enum ChunkKind<'a> {
-    TextDelta { delta: &'a str },
-    ToolCallDelta {
-        call_id: &'a str,
-        kind: ToolCallDeltaKind<'a>,
-    },
-    ToolResultAvailable {
-        call_id: &'a str,
-        result: ToolResultPayload<'a>,
-    },
-}
-
-pub enum ToolCallDeltaKind<'a> {
-    Added { name: &'a str, partial_arguments: Option<&'a str> },
-    ArgumentDelta { delta: &'a str },
-    Done { arguments: &'a str },
-}
-
-pub enum FinishReason {
-    Stop,
-    ToolUse,
-    Length,
-    Error,
-    Interrupted,
-    Unknown(String),
-}
-
-pub struct Usage {
-    pub input_tokens: u64,
-    pub output_tokens: u64,
-    pub cached_input_tokens: Option<u64>,
-    pub reasoning_tokens: Option<u64>,
-}
-
-pub struct ProviderMetadata {
-    pub provider_kind: ModelProvider,
-    pub model: Option<String>,
-    pub extra: HashMap<String, serde_json::Value>,
+pub struct ChunkKind {
+    pub text: Option<String>,
+    pub tool_call: Option<ToolCallDelta>,
 }
 ```
 
 Design notes:
 
-- `synthetic: bool` is set once per stream by the provider module. Synthetic streams are never presented as real provider completions; they are explicitly offline/simulation-shaped.
-- `ToolCallDelta` covers incremental tool-call construction where a provider emits partial tool calls; providers that only deliver complete tool calls simply emit `Added` + `Done` with no intermediate `ArgumentDelta`.
-- `ToolResultAvailable` is reserved for when a tool result has been produced and is ready for the consumer; it is not a provider-native transport detail, it is the neutral handoff point toward the execution path.
+- `finish_reason` is a first-class field, not a `metadata` entry. A consumer deciding whether an answer was truncated (`Length`), filtered (`ContentFiltered`), cancelled (`Cancelled`), or completed (`EndTurn`/`Stop`) must not have to parse provider-specific JSON.
+- `synthetic: bool` is set once per stream by the producing module. Synthetic streams are never presented as real provider completions; they are explicitly offline/simulation-shaped.
+- Exactly one chunk per stream carries `done = true`, and that terminal chunk repeats the stream-level `finish_reason`, `usage`, and `provider_ref` so a consumer that only inspects the terminal chunk still learns how the stream ended.
+- `tool_call` is `Option<ToolCallDelta>` rather than a required enum: a plain text delta and a tool-call delta share one chunk type, and no provider currently advertises tool calling (see `capabilities.rs` — `tools` is `false` everywhere until that gate passes).
+- `metadata` stays opaque and is never the only carrier of information the contract claims to represent.
 - `ProviderError` is neutral and classifies provider failures without forcing the consumer to parse SSE/NDJSON error shapes directly.
 - `index` is the stream-sequence counter so consumers can detect gaps, reorder if needed, and correlate cancellation/timeout.
+
+### 2a. Compatibility projection at the application boundary
+
+The desktop IPC layer ships `{ index, delta, done }` on `intent:chunk`, and the
+frontend renders exactly that shape (`StreamDelta` in `src/lib/events.ts`).
+`providers/compat.rs` holds one explicitly lossy projection, `StreamEvent`, whose
+only constructor is `From<&StreamChunk>`.
+
+Rules that keep this a projection and not a second streaming path:
+
+- nothing is produced from a provider into `StreamEvent`; the chunk is always the source,
+- the dispatcher never builds one, so it cannot drift from the contract,
+- fields the projection drops (usage, finish reason, tool deltas, structured errors, synthetic provenance) remain on the chunk, which is what new consumers must read.
+
+A consumer that can read `StreamChunk` should do so instead of using `StreamEvent`.
 
 ## 3. Tool-call contract
 

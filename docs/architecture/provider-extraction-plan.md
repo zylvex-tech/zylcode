@@ -192,11 +192,14 @@ streaming protocol to the provider modules.
 
 - **Native tool calling.** No provider module sends `tools`, and
   `provider_capabilities().tools` is `false` for every provider. Tool deltas that a
-  provider sends anyway are surfaced as opaque `metadata`, never executed.
-- **`StreamChunk` at the public dispatch boundary.** `dispatch_stream` still speaks
-  the pre-existing `StreamEvent { index, delta, done }` so downstream consumers keep
-  compiling. The neutral contract is what provider modules produce; promoting it to
-  the public boundary is a separate, breaking change.
+  provider sends anyway are surfaced as `ChunkKind::tool_call`, never executed.
+- **Vision and logprobs.** `provider_capabilities().vision` and `.logprobs` are `false`
+  for every provider: no request builder sends image blocks or asks for
+  log probabilities, so the table reports what this client does, not what the vendor's
+  API allows.
+- **`StreamEvent` at the dispatch boundary.** None — the projection now lives only in
+  `providers/compat.rs`, is constructed only from a `StreamChunk`, and is used only by
+  the desktop IPC edge.
 - **Respan-specific request shaping.** Respan routes through the OpenAI-compatible
   module; only its constants are extracted.
 
@@ -207,6 +210,7 @@ streaming protocol to the provider modules.
 | provider protocol lives under `providers/` | no SSE/NDJSON/body construction left in `router.rs` |
 | single neutral chunk contract | `StreamChunk`; all three decoders emit `DecodedEvent` |
 | genuine streaming | `anthropic_delivers_genuine_incremental_chunks` asserts two distinct text chunks |
+| `StreamChunk` is the boundary | `dispatch_stream_exposes_the_neutral_contract_at_the_boundary`: one terminal chunk, provenance and finish reason visible, text reassembles |
 | synthetic is labelled, never claims success | `synthetic::tests::payload_never_claims_a_real_side_effect`, `every_chunk_is_marked_synthetic_and_the_stream_terminates_once` |
 | cancellation aborts the request | `cancelling_mid_stream_aborts_the_underlying_request` (server observes disconnect) |
 | deterministic local tests | `providers::test_server` loopback; 67 provider tests, no network |

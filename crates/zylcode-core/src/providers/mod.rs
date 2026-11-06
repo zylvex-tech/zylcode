@@ -11,6 +11,7 @@
 
 pub mod anthropic;
 pub mod capabilities;
+pub mod compat;
 pub mod error;
 pub mod http;
 pub mod ollama;
@@ -37,9 +38,11 @@ mod tests {
         let b = a;
         assert_eq!(a, b);
         assert!(a.streaming);
-        assert!(a.vision);
-        assert!(!a.logprobs);
         assert!(a.usage);
+        // Implemented-feature-only: no request builder sends images or asks for
+        // log probabilities, so neither may be claimed.
+        assert!(!a.vision);
+        assert!(!a.logprobs);
         assert_eq!(a.max_client_tokens, Some(4096));
     }
 
@@ -47,9 +50,9 @@ mod tests {
     fn openai_compatible_capabilities_are_the_openai_family_default() {
         let caps = provider_capabilities(&ModelProvider::OpenAiCompatible);
         assert!(caps.streaming);
-        assert!(caps.vision);
-        assert!(caps.logprobs);
         assert!(caps.usage);
+        assert!(!caps.vision);
+        assert!(!caps.logprobs);
         assert_eq!(caps.max_client_tokens, Some(4096));
     }
 
@@ -91,6 +94,42 @@ mod tests {
         assert!(!caps.logprobs);
         assert!(!caps.usage);
         assert_eq!(caps.max_client_tokens, None);
+    }
+
+    /// The table may only claim what the provider modules actually do. Streaming is
+    /// the one capability that is genuinely implemented, and it is exactly the set of
+    /// providers whose body builders/decoders exist and are covered by loopback
+    /// tests; vision, logprobs and tools are not implemented anywhere.
+    #[test]
+    fn no_capability_is_claimed_without_an_implementation() {
+        for provider in [
+            ModelProvider::Anthropic,
+            ModelProvider::OpenAi,
+            ModelProvider::OpenRouter,
+            ModelProvider::DeepSeek,
+            ModelProvider::Respan,
+            ModelProvider::OpenAiCompatible,
+            ModelProvider::LocalOllama,
+            ModelProvider::SyntheticOffline,
+        ] {
+            let caps = provider_capabilities(&provider);
+            assert!(!caps.tools, "{provider}: tool calling is not implemented");
+            assert!(!caps.vision, "{provider}: no image content is ever sent");
+            assert!(!caps.logprobs, "{provider}: no logprobs are requested");
+        }
+
+        // Streaming differs per provider rather than being assumed identical: the
+        // offline path chunks locally and must not be presented as a provider stream.
+        let streaming: Vec<bool> = [
+            ModelProvider::Anthropic,
+            ModelProvider::OpenAiCompatible,
+            ModelProvider::LocalOllama,
+            ModelProvider::SyntheticOffline,
+        ]
+        .iter()
+        .map(|p| provider_capabilities(p).streaming)
+        .collect();
+        assert_eq!(streaming, vec![true, true, true, false]);
     }
 
     #[test]

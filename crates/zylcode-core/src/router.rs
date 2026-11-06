@@ -13,6 +13,7 @@ use std::time::Duration;
 use tracing::{info, warn};
 
 use crate::cache::{mock_embed, prompt_hash, VectorCacheStore};
+use crate::providers::streaming::StreamChunk;
 pub use cache::SpeculativeCache;
 
 // Test-only spy: counts every attempt to send an HTTP request to a model
@@ -1407,6 +1408,12 @@ impl TokenRouter {
     ///
     /// Offline/synthetic responses are still available and are explicitly labelled
     /// as synthetic rather than dressed up as a provider stream.
+    ///
+    /// The callback receives the provider-neutral [`StreamChunk`], not a reduced
+    /// delta type: usage, finish reason, tool-call deltas, structured errors and
+    /// provenance all reach the consumer without a second translation layer. A
+    /// consumer that only needs `{ index, delta, done }` projects it at its own
+    /// boundary (see `providers::compat`).
     pub async fn dispatch_stream<F>(
         &self,
         prompt: &str,
@@ -1414,7 +1421,7 @@ impl TokenRouter {
         mut on_chunk: F,
     ) -> Result<String>
     where
-        F: FnMut(StreamEvent) + Send,
+        F: FnMut(StreamChunk) + Send,
     {
         // A stream with no external cancel source still exposes the handle shape, so
         // callers can migrate to `dispatch_stream_cancellable` without an API split.
@@ -1436,7 +1443,7 @@ impl TokenRouter {
         on_chunk: &mut F,
     ) -> Result<String>
     where
-        F: FnMut(StreamEvent) + Send,
+        F: FnMut(StreamChunk) + Send,
     {
         let cfg = self.config();
         let (prompt_owned, system_owned) =
@@ -1454,13 +1461,9 @@ impl TokenRouter {
             || cfg.primary_provider == ModelProvider::SyntheticOffline;
 
         if offline {
-            let outcome = crate::providers::synthetic::stream(prompt, system, &mut |chunk| {
-                on_chunk(StreamEvent {
-                    index: chunk.index,
-                    delta: chunk.kind.text.unwrap_or_default(),
-                    done: chunk.done,
-                });
-            });
+            // The synthetic path produces the same neutral chunks as a real
+            // provider, marked synthetic; the dispatcher forwards them unchanged.
+            let outcome = crate::providers::synthetic::stream(prompt, system, on_chunk);
             self.metrics.record_usage(
                 ((prompt.len() + system.len()) / 4) as u64,
                 (outcome.text.len() / 4) as u64,
@@ -1542,7 +1545,7 @@ impl TokenRouter {
         on_chunk: &mut F,
     ) -> std::result::Result<String, StreamAttemptError>
     where
-        F: FnMut(StreamEvent) + Send,
+        F: FnMut(StreamChunk) + Send,
     {
         use crate::providers::streaming::{ChatRequest, FinishReason};
 
@@ -1561,15 +1564,11 @@ impl TokenRouter {
         // Atomic, not `Cell`, because the streaming future must stay `Send` for
         // callers that drive it from another thread.
         let emitted = std::sync::atomic::AtomicBool::new(false);
-        let mut forward = |chunk: crate::providers::streaming::StreamChunk| {
+        let mut forward = |chunk: StreamChunk| {
             if chunk.kind.text.is_some() || chunk.done {
                 emitted.store(true, std::sync::atomic::Ordering::SeqCst);
             }
-            on_chunk(StreamEvent {
-                index: chunk.index,
-                delta: chunk.kind.text.unwrap_or_default(),
-                done: chunk.done,
-            });
+            on_chunk(chunk);
         };
 
         #[cfg(test)]
@@ -1849,16 +1848,8 @@ impl TokenRouter {
 }
 
 // ---------------------------------------------------------------------------
-// Stream event
+// Streaming attempt outcome
 // ---------------------------------------------------------------------------
-
-/// A single streaming delta emitted during `dispatch_stream`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StreamEvent {
-    pub index: u64,
-    pub delta: String,
-    pub done: bool,
-}
 
 /// Why one streaming attempt did not produce a completed answer.
 ///
@@ -2504,6 +2495,56 @@ mod tests {
         // on whatever `./vector_cache.db` existed on the machine — a stale entry would
         // satisfy the prompt and the test would pass without exercising this path at all.
         TokenRouter::without_vector_cache(cfg).unwrap()
+    }
+
+    /// The streaming boundary hands consumers the neutral contract itself, not a
+    /// reduced projection of it: an offline answer can be told apart from a real
+    /// one, and the reason the stream ended is visible without parsing payload text.
+    #[tokio::test]
+    async fn dispatch_stream_exposes_the_neutral_contract_at_the_boundary() {
+        use crate::providers::streaming::FinishReason;
+
+        let _guard = DISPATCH_MUTEX.lock().await;
+        let router = synthetic_router();
+        let egress_before = NETWORK_EGRESS_COUNT.with(std::cell::Cell::get);
+
+        let mut chunks: Vec<StreamChunk> = Vec::new();
+        let text = router
+            .dispatch_stream("build a counter", "you are a code generator", |chunk| {
+                chunks.push(chunk)
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(
+            NETWORK_EGRESS_COUNT.with(std::cell::Cell::get),
+            egress_before,
+            "the offline boundary must not perform network egress"
+        );
+        assert!(!chunks.is_empty(), "the boundary must forward chunks");
+        assert!(
+            chunks.iter().all(|c| c.synthetic),
+            "every offline chunk must carry its provenance"
+        );
+
+        let terminals: Vec<&StreamChunk> = chunks.iter().filter(|c| c.done).collect();
+        assert_eq!(terminals.len(), 1, "exactly one terminal chunk per stream");
+        assert_eq!(
+            terminals[0].finish_reason,
+            Some(FinishReason::Stop),
+            "the terminal chunk must say why the stream ended"
+        );
+
+        let streamed: String = chunks
+            .iter()
+            .filter_map(|c| c.kind.text.clone())
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert_eq!(
+            streamed.trim_end(),
+            text,
+            "what the consumer saw must be what the call returned"
+        );
     }
 
     #[tokio::test]

@@ -633,9 +633,10 @@ pub use marketplace::{
 };
 pub use pipeline::{Artifact as PipelineArtifact, ArtifactPipeline, ProofMetrics};
 pub use planner::{ExecutionPlan, IntentPlanner, PlanStep};
+pub use providers::streaming::StreamChunk;
 pub use router::{
     cache::SpeculativeCache, trim_to_window, ContextTrim, ModelProvider, ProviderConfig,
-    ProviderKind, RouterConfig, StreamEvent, TokenMetrics, TokenRouter, TokenSnapshot,
+    ProviderKind, RouterConfig, TokenMetrics, TokenRouter, TokenSnapshot,
 };
 pub use zylcode_mcp::{
     execute_with_recovery, with_actor, ExecuteOptions, McpConfigFile, McpToolConfig, McpTransport,

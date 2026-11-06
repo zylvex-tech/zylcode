@@ -34,7 +34,11 @@ pub fn response(prompt: &str, _system: &str) -> String {
 /// The chunks exist so a UI has progress to render, not because a provider streamed
 /// anything. `finish` is [`FinishReason::Stop`] and `chunks` counts what was
 /// forwarded; no usage is reported because no provider measured any.
-pub fn stream(prompt: &str, system: &str, on_chunk: &mut (dyn FnMut(StreamChunk) + Send)) -> StreamOutcome {
+pub fn stream(
+    prompt: &str,
+    system: &str,
+    on_chunk: &mut (dyn FnMut(StreamChunk) + Send),
+) -> StreamOutcome {
     let full = response(prompt, system);
     let mut index = 0u64;
     for line in full.lines() {
@@ -42,7 +46,9 @@ pub fn stream(prompt: &str, system: &str, on_chunk: &mut (dyn FnMut(StreamChunk)
         on_chunk(chunk);
         index += 1;
     }
-    on_chunk(StreamChunk::terminal(index, true));
+    let mut terminal = StreamChunk::terminal(index, true);
+    terminal.finish_reason = Some(FinishReason::Stop);
+    on_chunk(terminal);
     StreamOutcome {
         text: full,
         finish: FinishReason::Stop,
