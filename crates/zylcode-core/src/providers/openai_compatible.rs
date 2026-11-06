@@ -18,7 +18,7 @@ use std::time::Duration;
 
 use super::sse::SseDecoder;
 use super::streaming::{
-    CancelToken, ChatRequest, DecodedEvent, FinishReason, LineDecoder, ProviderError,
+    CancelToken, ChatRequest, Completion, DecodedEvent, FinishReason, LineDecoder, ProviderError,
     ProviderErrorKind, StreamChunk, StreamEndpoint, StreamOutcome, Usage,
 };
 
@@ -61,6 +61,52 @@ pub fn headers(api_key: Option<&str>) -> Vec<(String, String)> {
         Some(key) => vec![("Authorization".to_string(), format!("Bearer {key}"))],
         None => Vec::new(),
     }
+}
+
+/// Extract the answer and usage from a non-streamed chat completions response.
+///
+/// A completion with no `choices` (some gateways return that on a filtered prompt)
+/// yields empty text rather than an error: the absence of an answer is not a
+/// protocol violation, and the caller already decides how to treat empty text.
+pub fn parse_completion(json: &serde_json::Value) -> Completion {
+    let text = json
+        .get("choices")
+        .and_then(|c| c.as_array())
+        .and_then(|choices| choices.first())
+        .and_then(|choice| choice.get("message"))
+        .and_then(|message| message.get("content"))
+        .and_then(|content| content.as_str())
+        .unwrap_or("")
+        .to_string();
+
+    Completion {
+        text,
+        usage: Usage {
+            input_tokens: json
+                .get("usage")
+                .and_then(|u| u.get("prompt_tokens"))
+                .and_then(|v| v.as_u64()),
+            output_tokens: json
+                .get("usage")
+                .and_then(|u| u.get("completion_tokens"))
+                .and_then(|v| v.as_u64()),
+            extra: None,
+        },
+    }
+}
+
+/// Extra headers OpenRouter documents for attribution.
+///
+/// Other OpenAI-compatible endpoints reject or ignore them, so they are applied
+/// only for that provider by the caller.
+pub fn openrouter_headers() -> Vec<(String, String)> {
+    vec![
+        (
+            "HTTP-Referer".to_string(),
+            "https://zylcode.dev".to_string(),
+        ),
+        ("X-Title".to_string(), "ZylCode".to_string()),
+    ]
 }
 
 /// Streaming URL for a base URL such as `https://api.openai.com/v1`.
@@ -261,6 +307,37 @@ mod tests {
         }
         out.extend(decoder.finish());
         out
+    }
+
+    #[test]
+    fn parse_completion_reads_choices_message_and_usage() {
+        let json = serde_json::json!({
+            "choices": [{ "message": { "role": "assistant", "content": "pong" }, "finish_reason": "stop" }],
+            "usage": { "prompt_tokens": 7, "completion_tokens": 2 }
+        });
+
+        let completion = parse_completion(&json);
+        assert_eq!(completion.text, "pong");
+        assert_eq!(completion.usage.input_tokens, Some(7));
+        assert_eq!(completion.usage.output_tokens, Some(2));
+    }
+
+    #[test]
+    fn parse_completion_tolerates_a_response_with_no_choices() {
+        let completion = parse_completion(&serde_json::json!({ "usage": { "prompt_tokens": 3 } }));
+        assert_eq!(completion.text, "");
+        assert_eq!(completion.usage.input_tokens, Some(3));
+        assert_eq!(completion.usage.output_tokens, None);
+    }
+
+    #[test]
+    fn openrouter_headers_are_the_documented_pair() {
+        let headers = openrouter_headers();
+        assert_eq!(headers.len(), 2);
+        assert!(headers
+            .iter()
+            .any(|(k, v)| k == "HTTP-Referer" && v.contains("zylcode")));
+        assert!(headers.iter().any(|(k, _)| k == "X-Title"));
     }
 
     fn chunk(delta: serde_json::Value, finish: Option<&str>) -> String {

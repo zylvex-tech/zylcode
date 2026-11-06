@@ -17,7 +17,7 @@ use std::time::Duration;
 
 use super::sse::SseDecoder;
 use super::streaming::{
-    CancelToken, ChatRequest, DecodedEvent, FinishReason, LineDecoder, ProviderError,
+    CancelToken, ChatRequest, Completion, DecodedEvent, FinishReason, LineDecoder, ProviderError,
     ProviderErrorKind, StreamEndpoint, StreamOutcome, Usage,
 };
 
@@ -40,6 +40,45 @@ pub fn messages_body(req: &ChatRequest, stream: bool) -> serde_json::Value {
         body["temperature"] = serde_json::json!(req.temperature);
     }
     body
+}
+
+/// Extract the answer and usage from a non-streamed Messages API response.
+///
+/// `content` is an array of blocks. Only blocks the provider types as `text` (or
+/// leaves untyped) contribute assistant text; a `tool_use` block is not text and
+/// must never be concatenated into the answer.
+pub fn parse_completion(json: &serde_json::Value) -> Completion {
+    let text = json
+        .get("content")
+        .and_then(|c| c.as_array())
+        .map(|blocks| {
+            blocks
+                .iter()
+                .filter(|block| {
+                    block
+                        .get("type")
+                        .and_then(|t| t.as_str())
+                        .is_none_or(|t| t == "text")
+                })
+                .filter_map(|block| block.get("text").and_then(|t| t.as_str()))
+                .collect::<String>()
+        })
+        .unwrap_or_default();
+
+    Completion {
+        text,
+        usage: Usage {
+            input_tokens: json
+                .get("usage")
+                .and_then(|u| u.get("input_tokens"))
+                .and_then(|v| v.as_u64()),
+            output_tokens: json
+                .get("usage")
+                .and_then(|u| u.get("output_tokens"))
+                .and_then(|v| v.as_u64()),
+            extra: None,
+        },
+    }
 }
 
 /// Headers the Messages API requires beyond `content-type`.
@@ -274,6 +313,33 @@ mod tests {
         }
         out.extend(decoder.finish());
         out
+    }
+
+    #[test]
+    fn parse_completion_joins_text_blocks_and_ignores_tool_use() {
+        let json = serde_json::json!({
+            "content": [
+                { "type": "text", "text": "Hello" },
+                { "type": "tool_use", "id": "t1", "name": "read", "input": {} },
+                { "type": "text", "text": " world" }
+            ],
+            "usage": { "input_tokens": 11, "output_tokens": 4 },
+            "stop_reason": "end_turn"
+        });
+
+        let completion = parse_completion(&json);
+        assert_eq!(completion.text, "Hello world");
+        assert_eq!(completion.usage.input_tokens, Some(11));
+        assert_eq!(completion.usage.output_tokens, Some(4));
+    }
+
+    #[test]
+    fn parse_completion_reports_missing_usage_as_missing_not_zero() {
+        let json = serde_json::json!({ "content": [{ "type": "text", "text": "hi" }] });
+        let completion = parse_completion(&json);
+        assert_eq!(completion.text, "hi");
+        assert_eq!(completion.usage.input_tokens, None);
+        assert_eq!(completion.usage.output_tokens, None);
     }
 
     #[test]

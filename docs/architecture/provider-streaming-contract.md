@@ -52,6 +52,7 @@ Ownership rules:
 What does NOT move into these modules from `router.rs`:
 
 - `ModelProvider`, `ProviderKind`, `ProviderConfig`, `RouterConfig`, `TokenRouter`, `dispatch_prompt`, `call_provider`, `probe_provider_with_config` stay in `router.rs` as orchestration/config surface.
+- Both dispatch paths delegate protocol work: `dispatch_stream` forwards `StreamChunk` from the provider module, and `call_provider` asks the module for its URL, body, headers and parses the answer with the module's `parse_completion`. `router.rs` no longer reads `content`, `choices`, `message`, or `eval_count`.
 
 ## 2. Provider-neutral `StreamChunk` contract
 

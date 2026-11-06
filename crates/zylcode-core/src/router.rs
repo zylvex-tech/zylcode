@@ -1698,36 +1698,36 @@ impl TokenRouter {
         let system = system_owned.as_str();
 
         let base = cfg.base_url(provider);
-        let url = format!("{}{}", base, provider.completions_path());
 
         // Estimate input tokens for telemetry regardless of outcome.
         let est_input = ((prompt.len() + system.len()) / 4) as u64;
 
-        let body = match provider {
-            ModelProvider::Anthropic => serde_json::json!({
-                "model": model,
-                "max_tokens": 4096,
-                "system": system,
-                "messages": [{ "role": "user", "content": prompt }]
-            }),
-            ModelProvider::LocalOllama => serde_json::json!({
-                "model": model,
-                "messages": [
-                    { "role": "system", "content": system },
-                    { "role": "user", "content": prompt }
-                ],
-                "stream": false
-            }),
-            _ => serde_json::json!({
-                "model": model,
-                "messages": [
-                    { "role": "system", "content": system },
-                    { "role": "user", "content": prompt }
-                ],
-                "temperature": 0.2,
-                "max_tokens": 4096
-            }),
+        // Request construction belongs to the provider module: this function knows
+        // which provider to call and how to report the outcome, not what Anthropic's
+        // or Ollama's body looks like.
+        let request = crate::providers::streaming::ChatRequest::new(model, system, prompt);
+        let api_key = cfg.api_key(provider);
+
+        let (url, body, mut extra_headers) = match provider {
+            ModelProvider::Anthropic => (
+                crate::providers::anthropic::messages_url(&base),
+                crate::providers::anthropic::messages_body(&request, false),
+                crate::providers::anthropic::headers(api_key.as_deref()),
+            ),
+            ModelProvider::LocalOllama => (
+                crate::providers::ollama::chat_url(&base),
+                crate::providers::ollama::chat_body(&request, false),
+                crate::providers::ollama::headers(api_key.as_deref()),
+            ),
+            _ => (
+                crate::providers::openai_compatible::chat_url(&base),
+                crate::providers::openai_compatible::chat_body(&request, false),
+                crate::providers::openai_compatible::headers(api_key.as_deref()),
+            ),
         };
+        if *provider == ModelProvider::OpenRouter {
+            extra_headers.extend(crate::providers::openai_compatible::openrouter_headers());
+        }
 
         // Per-provider timeout when the chain entry names one; the shared
         // HTTP client only carries the router-wide default.
@@ -1736,24 +1736,8 @@ impl TokenRouter {
             .post(&url)
             .json(&body)
             .timeout(Duration::from_millis(cfg.provider_timeout_ms(provider)));
-
-        if let Some(key) = cfg.api_key(provider) {
-            match provider {
-                ModelProvider::Anthropic => {
-                    req = req
-                        .header("x-api-key", key)
-                        .header("anthropic-version", "2023-06-01");
-                }
-                _ => {
-                    req = req.header("Authorization", format!("Bearer {key}"));
-                }
-            }
-        }
-
-        if *provider == ModelProvider::OpenRouter {
-            req = req
-                .header("HTTP-Referer", "https://zylcode.dev")
-                .header("X-Title", "ZylCode");
+        for (name, value) in extra_headers {
+            req = req.header(name, value);
         }
 
         // Test-only spy: record that we are about to egress to a provider.
@@ -1772,72 +1756,21 @@ impl TokenRouter {
 
         let json: serde_json::Value = resp.json().await.context("failed to parse JSON response")?;
 
-        let (text, usage_in, usage_out) = Self::extract_text_and_usage(provider, &json)?;
-        let inp = usage_in.unwrap_or(est_input);
-        let out = usage_out.unwrap_or((text.len() / 4) as u64);
+        // Response shape is the provider module's business too.
+        let completion = match provider {
+            ModelProvider::Anthropic => crate::providers::anthropic::parse_completion(&json),
+            ModelProvider::LocalOllama => crate::providers::ollama::parse_completion(&json),
+            _ => crate::providers::openai_compatible::parse_completion(&json),
+        };
+        let text = completion.text;
+        let inp = completion.usage.input_tokens.unwrap_or(est_input);
+        let out = completion
+            .usage
+            .output_tokens
+            .unwrap_or((text.len() / 4) as u64);
         self.metrics.record_usage(inp, out);
         info!(provider = %provider, model = %model, input_tokens = inp, output_tokens = out, "provider call succeeded");
         Ok(text)
-    }
-
-    fn extract_text_and_usage(
-        provider: &ModelProvider,
-        json: &serde_json::Value,
-    ) -> Result<(String, Option<u64>, Option<u64>)> {
-        match provider {
-            ModelProvider::Anthropic => {
-                let text = json
-                    .get("content")
-                    .and_then(|c| c.as_array())
-                    .and_then(|arr| arr.first())
-                    .and_then(|o| o.get("text"))
-                    .and_then(|t| t.as_str())
-                    .unwrap_or("")
-                    .to_string();
-                let inp = json
-                    .get("usage")
-                    .and_then(|u| u.get("input_tokens"))
-                    .and_then(|v| v.as_u64());
-                let out = json
-                    .get("usage")
-                    .and_then(|u| u.get("output_tokens"))
-                    .and_then(|v| v.as_u64());
-                Ok((text, inp, out))
-            }
-            ModelProvider::LocalOllama => {
-                let text = json
-                    .get("message")
-                    .and_then(|m| m.get("content"))
-                    .and_then(|c| c.as_str())
-                    .unwrap_or("")
-                    .to_string();
-                // Ollama reports prompt_eval_count / eval_count
-                let inp = json.get("prompt_eval_count").and_then(|v| v.as_u64());
-                let out = json.get("eval_count").and_then(|v| v.as_u64());
-                Ok((text, inp, out))
-            }
-            _ => {
-                // OpenAI-compatible (OpenRouter, DeepSeek)
-                let text = json
-                    .get("choices")
-                    .and_then(|c| c.as_array())
-                    .and_then(|arr| arr.first())
-                    .and_then(|o| o.get("message"))
-                    .and_then(|m| m.get("content"))
-                    .and_then(|c| c.as_str())
-                    .unwrap_or("")
-                    .to_string();
-                let inp = json
-                    .get("usage")
-                    .and_then(|u| u.get("prompt_tokens"))
-                    .and_then(|v| v.as_u64());
-                let out = json
-                    .get("usage")
-                    .and_then(|u| u.get("completion_tokens"))
-                    .and_then(|v| v.as_u64());
-                Ok((text, inp, out))
-            }
-        }
     }
 
     fn synthetic_response(prompt: &str, system: &str) -> String {

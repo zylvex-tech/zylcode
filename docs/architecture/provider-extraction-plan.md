@@ -172,7 +172,10 @@ This section records what the first pass actually shipped, as opposed to what it
 | `providers/transport_tests.rs` | acceptance tests over real sockets |
 
 `router.rs` lost nothing it is responsible for: it still owns provider selection, the
-chain, telemetry, cost estimation, and the probe. It gained
+chain, telemetry, cost estimation, and the probe. It also stopped parsing provider
+responses on the non-streaming path: `call_provider` now takes each module's URL,
+body and headers and reads the answer through `parse_completion`, so no wire shape
+is interpreted in the orchestration layer. It gained
 `dispatch_stream_cancellable` and now delegates the synthetic payload and the
 streaming protocol to the provider modules.
 
@@ -207,7 +210,7 @@ streaming protocol to the provider modules.
 
 | Requirement | Evidence |
 | --- | --- |
-| provider protocol lives under `providers/` | no SSE/NDJSON/body construction left in `router.rs` |
+| provider protocol lives under `providers/` | no SSE/NDJSON framing, request-body construction, or response-shape parsing left in `router.rs`; both `dispatch_stream` and `call_provider` delegate |
 | single neutral chunk contract | `StreamChunk`; all three decoders emit `DecodedEvent` |
 | genuine streaming | `anthropic_delivers_genuine_incremental_chunks` asserts two distinct text chunks |
 | `StreamChunk` is the boundary | `dispatch_stream_exposes_the_neutral_contract_at_the_boundary`: one terminal chunk, provenance and finish reason visible, text reassembles |

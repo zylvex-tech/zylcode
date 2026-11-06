@@ -16,7 +16,7 @@
 use std::time::Duration;
 
 use super::streaming::{
-    CancelToken, ChatRequest, DecodedEvent, FinishReason, LineDecoder, ProviderError,
+    CancelToken, ChatRequest, Completion, DecodedEvent, FinishReason, LineDecoder, ProviderError,
     ProviderErrorKind, StreamChunk, StreamEndpoint, StreamOutcome, Usage,
 };
 
@@ -43,6 +43,28 @@ pub fn chat_body(req: &ChatRequest, stream: bool) -> serde_json::Value {
         "num_predict": req.max_tokens,
     });
     body
+}
+
+/// Extract the answer and usage from a non-streamed `/api/chat` response.
+///
+/// Ollama reports token counts as `prompt_eval_count` / `eval_count` on the message
+/// object, not as a `usage` block.
+pub fn parse_completion(json: &serde_json::Value) -> Completion {
+    let text = json
+        .get("message")
+        .and_then(|m| m.get("content"))
+        .and_then(|c| c.as_str())
+        .unwrap_or("")
+        .to_string();
+
+    Completion {
+        text,
+        usage: Usage {
+            input_tokens: json.get("prompt_eval_count").and_then(|v| v.as_u64()),
+            output_tokens: json.get("eval_count").and_then(|v| v.as_u64()),
+            extra: None,
+        },
+    }
 }
 
 /// Ollama has no credentials; a locally bound daemon needs no auth header.
@@ -189,6 +211,21 @@ mod tests {
         }
         out.extend(decoder.finish());
         out
+    }
+
+    #[test]
+    fn parse_completion_reads_message_content_and_eval_counters() {
+        let json = serde_json::json!({
+            "message": { "role": "assistant", "content": "pong" },
+            "prompt_eval_count": 3,
+            "eval_count": 1,
+            "done": true
+        });
+
+        let completion = parse_completion(&json);
+        assert_eq!(completion.text, "pong");
+        assert_eq!(completion.usage.input_tokens, Some(3));
+        assert_eq!(completion.usage.output_tokens, Some(1));
     }
 
     #[test]

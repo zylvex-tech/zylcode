@@ -196,7 +196,7 @@ pub enum ToolCallDeltaKind {
 }
 
 /// Provider-reported usage.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct Usage {
     pub input_tokens: Option<u64>,
@@ -223,6 +223,29 @@ impl Usage {
         if other.extra.is_some() {
             self.extra = other.extra;
         }
+    }
+}
+
+/// A completed (non-streamed) provider answer.
+///
+/// The non-streaming path needs the same three facts the streaming path carries in
+/// its terminal chunk — text, input/output usage — and nothing provider-specific.
+/// Provider modules build it from their own response shape, so the router never
+/// reads `choices`, `content`, or `eval_count` itself.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Completion {
+    /// The assistant text, with no provider framing left in it.
+    pub text: String,
+    /// Provider-reported usage. Fields stay `None` when the provider did not report
+    /// them, so the caller can decide whether to estimate instead of receiving a
+    /// fabricated zero.
+    pub usage: Usage,
+}
+
+impl Completion {
+    /// An answer with no text and no reported usage.
+    pub fn empty() -> Self {
+        Self::default()
     }
 }
 
