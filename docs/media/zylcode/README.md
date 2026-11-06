@@ -338,3 +338,94 @@ The difference from batch 2 is one process (`serve-intel`) and one config line
 (`preview.proxy`). Everything else — the build, the port, the viewport, the
 locator-per-asset discipline — is unchanged, and no asset here is edited after
 capture.
+---
+
+## 9. Batch 4 — 2026-11-06 (the provider boundary, `fc69e4c`)
+
+Batch 4 exists because the model layer changed: three commits (`ebd5098`, `a202a08`,
+`fc69e4c`) replaced the fake line-chunker with real per-provider streaming, a neutral
+`StreamChunk`, request-aborting cancellation and a capability table. These five assets
+are the evidence a reader needs to check that story against the running product.
+
+### Shared environment (batch 4)
+
+| Field             | Value                                                                                                                                                                       |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Starting commit   | `fc69e4c` on `fix/r05-input-validation`; `/api/version` reported `dirty: true` (untracked scratch files and pre-existing untracked frontend work — none appear in a frame) |
+| Build             | `pnpm --filter zylcode-desktop build` → `tsc && vite build` (exit 0)                                                                                                          |
+| Backend           | `cargo run -p zylcode-cli -- serve-intel` on `127.0.0.1:17630` — index warm: 764 files, 3,187 symbols, 8 packages. The explorer in these frames reads `788 files`: the capture scratch directory existed in the checkout while the browser was driven. |
+| Serve             | `pnpm --filter zylcode-desktop preview` → `vite preview` on `4173`, proxying `/api/*` to `17630`                                                                               |
+| Driver            | `playwright-core` 1.64.1 driving local Chromium build 1243 at 1440×900, `deviceScaleFactor: 2`, real clicks and real keystrokes                                                |
+| App version shown | Status bar reads **`v0.2.3`**                                                                                                                                                 |
+| Runtime mode      | `BROWSER_PREVIEW` in the page, against a live `serve-intel` on loopback                                                                                                       |
+| Model in use      | None — no model call occurs in any captured scenario                                                                                                                          |
+
+Why a separate Chromium rather than the panel's built-in preview browser: that browser
+draws its own product badge over the app's top-right logo, which would put a fabricated
+UI element in the frame. The packaged Chromium is the same engine with no overlay.
+### Per-asset checklist (batch 4)
+
+#### `14-workbench-live.png` — the workbench, live, used as the README hero
+
+| Field            | Value                                                                                                                                                                                                                              |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Scenario         | The landing workbench with every backend-dependent surface reporting real state.                                                                                                                                                   |
+| Command / action | Load `http://localhost:4173/`, wait for `CAPABILITY SPOTLIGHT`, drag the bottom-panel separator up ~250 px so the terminal is legible, scroll the explorer to `crates` so no scratch directory is visible, type `git log --oneline -4`, capture. |
+| Expected result  | Explorer `AVAILABLE` with a real file count and real tree; terminal shows the four newest commits ending `fc69e4c`; status bar `v0.2.3` and `40 entries · chain intact`; no `HTTP 501` or `BLOCKED` anywhere on the page.             |
+| Evidence         | The frame itself: commits `fc69e4c`, `a202a08`, `ebd5098`, `afdf68b`; the ledger counter; the live capability spotlight.                                                                                                             |
+
+#### `15-mission-intent.png` — a real intent in the Mission Composer
+
+| Field            | Value                                                                                                                                       |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Scenario         | Missions surface with a genuine instruction typed into the composer, repository and terminal visible beside it.                               |
+| Command / action | Click `Missions` in the activity rail, wait for `MISSION COMPOSER`, click the textarea, type the intent character by character, capture without submitting. |
+| Expected result  | The composer holds the typed intent; the surface does **not** claim a mission ran.                                                           |
+| Evidence         | The frame itself, cross-checked against the `/api/missions` traffic for this session, which shows no mission was created.                    |
+
+#### `16-terminal-provider-tests.png` — tool execution, not a mock
+
+| Field            | Value                                                                                                                                            |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Scenario         | The provider test suite running in the integrated terminal, with its individual test names on screen.                                              |
+| Command / action | With the terminal focused, type `cargo test -p zylcode-core --lib providers::` and press Enter; wait ~45 s for the run to finish; capture.          |
+| Expected result  | The transcript shows the streaming, transport and cancellation test names and `81 passed; 0 failed`.                                               |
+| Evidence         | The frame itself, plus the matching `/api/terminal/exec` request, plus the same suite reproduced locally — `providers::` → 81 passed on this head. |
+#### `17-provider-chain.png` — the provider surface and the tool catalogue
+
+| Field            | Value                                                                                                                                                                                     |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Scenario         | Dev Tools / Providers: the live fallback chain as reported by `/api/providers`, next to the in-process tool catalogue.                                                                     |
+| Command / action | Open the bottom panel's `Providers` tab, wait for the chain to render, capture.                                                                                                            |
+| Expected result  | Provider entries with model, `key required` state, enabled/disabled and measured outcome; tool catalogue reads `20/20 executors bound`.                                                    |
+| Evidence         | The frame itself, matched against the `/api/providers` response for this session. Read-only by design in browser preview: editing keys and testing a connection need the Tauri runtime, so no edit control is shown working here. |
+
+#### `18-evidence-ledger.png` — verification, failures included
+
+| Field            | Value                                                                                                                                       |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Scenario         | The evidence rail and ledger over the real `.zylcode/` store.                                                                               |
+| Command / action | Click `Evidence` in the activity rail, wait for the ledger, capture the full-height rail.                                                    |
+| Expected result  | `40 entries · 13 sessions · chain intact`, with `Verified`, `Recorded`, `Approved` **and `Failed`** rows.                                     |
+| Evidence         | The frame itself. The `Failed` rows stay on purpose: a ledger that only showed successes would not be evidence.                               |
+
+### Redaction (batch 4)
+
+- No API keys appear anywhere; provider entries show `key required`, never a key value.
+- No absolute path carrying the local user profile: the explorer was left on
+  `crates`/`apps`/`docs` and the terminal ran repository-relative commands only.
+- The `.capture/` scratch directory used to drive the browser is not framed.
+- Terminal history holds only the two commands named above; no secret was exported into
+  that shell.
+
+### Reproducing batch 4
+
+```bash
+pnpm --filter zylcode-desktop build                       # exit 0
+cargo run -p zylcode-cli -- serve-intel                   # 127.0.0.1:17630
+pnpm --filter zylcode-desktop preview                     # 4173, proxies /api/* to 17630
+# drive http://localhost:4173/ at 1440x900, deviceScaleFactor 2, with the actions named per asset
+```
+
+Nothing in these assets is edited after capture: no crop retouching, no compositing, no
+text drawn on top. The only processing is the PNG encode itself.
