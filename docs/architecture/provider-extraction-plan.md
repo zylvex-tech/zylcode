@@ -155,21 +155,21 @@ This section records what the first pass actually shipped, as opposed to what it
 
 ### Files
 
-| Path | Role |
-| --- | --- |
-| `providers/mod.rs` | module root, declared provider submodules, capability tests |
-| `providers/streaming.rs` | neutral `StreamChunk` contract, `CancelToken`, `StreamHandle`, `LineReader`, `LineDecoder`, `run_stream` transport driver, `classify_http_failure` |
-| `providers/sse.rs` | SSE framing (`event:`/`data:` blocks, comments, multi-line data, unterminated tail) |
-| `providers/capabilities.rs` | static per-provider capability table (single source of truth) |
-| `providers/error.rs` | neutral error → probe-status and finish-reason mapping |
-| `providers/http.rs` | base-URL joining helpers only; no response parsing |
-| `providers/respan.rs` | Respan gateway constants |
-| `providers/anthropic.rs` | Messages API body/headers, SSE decoder, `stream()` |
-| `providers/openai_compatible.rs` | chat-completions body/headers, SSE decoder, `stream()` |
-| `providers/ollama.rs` | `/api/chat` body, NDJSON decoder, `stream()` |
-| `providers/synthetic.rs` | labelled offline payload and labelled synthetic chunk stream |
-| `providers/test_server.rs` | deterministic loopback HTTP server for transport tests |
-| `providers/transport_tests.rs` | acceptance tests over real sockets |
+| Path                             | Role                                                                                                                                               |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `providers/mod.rs`               | module root, declared provider submodules, capability tests                                                                                        |
+| `providers/streaming.rs`         | neutral `StreamChunk` contract, `CancelToken`, `StreamHandle`, `LineReader`, `LineDecoder`, `run_stream` transport driver, `classify_http_failure` |
+| `providers/sse.rs`               | SSE framing (`event:`/`data:` blocks, comments, multi-line data, unterminated tail)                                                                |
+| `providers/capabilities.rs`      | static per-provider capability table (single source of truth)                                                                                      |
+| `providers/error.rs`             | neutral error → probe-status and finish-reason mapping                                                                                             |
+| `providers/http.rs`              | base-URL joining helpers only; no response parsing                                                                                                 |
+| `providers/respan.rs`            | Respan gateway constants                                                                                                                           |
+| `providers/anthropic.rs`         | Messages API body/headers, SSE decoder, `stream()`                                                                                                 |
+| `providers/openai_compatible.rs` | chat-completions body/headers, SSE decoder, `stream()`                                                                                             |
+| `providers/ollama.rs`            | `/api/chat` body, NDJSON decoder, `stream()`                                                                                                       |
+| `providers/synthetic.rs`         | labelled offline payload and labelled synthetic chunk stream                                                                                       |
+| `providers/test_server.rs`       | deterministic loopback HTTP server for transport tests                                                                                             |
+| `providers/transport_tests.rs`   | acceptance tests over real sockets                                                                                                                 |
 
 `router.rs` lost nothing it is responsible for: it still owns provider selection, the
 chain, telemetry, cost estimation, and the probe. It also stopped parsing provider
@@ -208,24 +208,24 @@ streaming protocol to the provider modules.
 
 ### Acceptance gate (Phase 1E)
 
-| Requirement | Evidence |
-| --- | --- |
-| provider protocol lives under `providers/` | no SSE/NDJSON framing, request-body construction, or response-shape parsing left in `router.rs`; both `dispatch_stream` and `call_provider` delegate |
-| single neutral chunk contract | `StreamChunk`; all three decoders emit `DecodedEvent` |
-| genuine streaming | `anthropic_delivers_genuine_incremental_chunks` asserts two distinct text chunks |
-| `StreamChunk` is the boundary | `dispatch_stream_exposes_the_neutral_contract_at_the_boundary`: one terminal chunk, provenance and finish reason visible, text reassembles |
-| synthetic is labelled, never claims success | `synthetic::tests::payload_never_claims_a_real_side_effect`, `every_chunk_is_marked_synthetic_and_the_stream_terminates_once` |
-| cancellation aborts the request | `cancelling_mid_stream_aborts_the_underlying_request` (server observes disconnect) |
-| deterministic local tests | `providers::test_server` loopback; 67 provider tests, no network |
-| provider error / malformed / truncated / timeout / refused | `transport_tests` |
-| no native tool calling | `native_tool_calling_is_not_claimed_anywhere`; decoders keep tool deltas as metadata |
-| no second execution framework | provider layer returns neutral chunks; `ToolRegistry` untouched |
+| Requirement                                                | Evidence                                                                                                                                             |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| provider protocol lives under `providers/`                 | no SSE/NDJSON framing, request-body construction, or response-shape parsing left in `router.rs`; both `dispatch_stream` and `call_provider` delegate |
+| single neutral chunk contract                              | `StreamChunk`; all three decoders emit `DecodedEvent`                                                                                                |
+| genuine streaming                                          | `anthropic_delivers_genuine_incremental_chunks` asserts two distinct text chunks                                                                     |
+| `StreamChunk` is the boundary                              | `dispatch_stream_exposes_the_neutral_contract_at_the_boundary`: one terminal chunk, provenance and finish reason visible, text reassembles           |
+| synthetic is labelled, never claims success                | `synthetic::tests::payload_never_claims_a_real_side_effect`, `every_chunk_is_marked_synthetic_and_the_stream_terminates_once`                        |
+| cancellation aborts the request                            | `cancelling_mid_stream_aborts_the_underlying_request` (server observes disconnect)                                                                   |
+| deterministic local tests                                  | `providers::test_server` loopback; 67 provider tests, no network                                                                                     |
+| provider error / malformed / truncated / timeout / refused | `transport_tests`                                                                                                                                    |
+| no native tool calling                                     | `native_tool_calling_is_not_claimed_anywhere`; decoders keep tool deltas as metadata                                                                 |
+| no second execution framework                              | provider layer returns neutral chunks; `ToolRegistry` untouched                                                                                      |
 
 ### Streaming truth table
 
-| Provider | Streams | Transport | Cancellation honours request abort | Tools |
-| --- | --- | --- | --- | --- |
-| Anthropic | yes | SSE | yes | not claimed |
-| OpenAI / OpenRouter / DeepSeek / Respan / custom | yes | SSE | yes | not claimed |
-| Ollama | yes | NDJSON | yes | not claimed |
-| Synthetic offline | labelled synthetic chunks only | none | n/a | not claimed |
+| Provider                                         | Streams                        | Transport | Cancellation honours request abort | Tools       |
+| ------------------------------------------------ | ------------------------------ | --------- | ---------------------------------- | ----------- |
+| Anthropic                                        | yes                            | SSE       | yes                                | not claimed |
+| OpenAI / OpenRouter / DeepSeek / Respan / custom | yes                            | SSE       | yes                                | not claimed |
+| Ollama                                           | yes                            | NDJSON    | yes                                | not claimed |
+| Synthetic offline                                | labelled synthetic chunks only | none      | n/a                                | not claimed |
