@@ -62,11 +62,7 @@ node --experimental-strip-types test/smoke.mjs   # 10 checks, no model required
 Then from your own code:
 
 ```ts
-import {
-  NatlasBridge,
-  OPENAI_CHAT_PATH,
-  INTENT_SYSTEM_PREAMBLE,
-} from "@zylvex/natlas-bridge";
+import { NatlasBridge, OPENAI_CHAT_PATH, INTENT_SYSTEM_PREAMBLE } from "@zylvex/natlas-bridge";
 
 const bridge = NatlasBridge.configure({
   baseUrl: "http://127.0.0.1:11434",

@@ -379,11 +379,7 @@
       "rust_symbol_index",
       "typescript_symbol_index"
     ],
-    "new_entries": [
-      "agent_context_gathering",
-      "benchmark_determinism",
-      "tool_system_executable"
-    ],
+    "new_entries": ["agent_context_gathering", "benchmark_determinism", "tool_system_executable"],
     "rule": "No dispute field erased; no R4 claimed anywhere; Phase 2A remains RE-OPENED."
   }
 }

@@ -47,14 +47,20 @@
 # Total: 11 occurrence(s) across 2 file(s).
 #
 
-ISO 27001|competitive-analysis.md|259
-ISO 27001|research-findings.md|819
-SOC 2|competitive-analysis.md|259
-SOC 2|competitive-analysis.md|277
-SOC 2|competitive-analysis.md|527
-SOC 2|competitive-analysis.md|588
-SOC 2|competitive-analysis.md|695
-SOC 2|competitive-analysis.md|770
-SOC 2|research-findings.md|819
-SOC 2|research-findings.md|838
-SOC 2|research-findings.md|886
+#
+# 2026-11-07 -- RELOCATION, NOT GROWTH
+#   The 49 root reports these entries pointed at were moved verbatim to
+#   docs/archive/2026-root-reports/ (PR #49). The entries were re-keyed to their
+#   new paths with --baseline and the count stayed at 11, so nothing was added
+#   and nothing was dropped: the same claims in the same archived documents.
+ISO 27001|docs/archive/2026-root-reports/competitive-analysis.md|259
+ISO 27001|docs/archive/2026-root-reports/research-findings.md|819
+SOC 2|docs/archive/2026-root-reports/competitive-analysis.md|259
+SOC 2|docs/archive/2026-root-reports/competitive-analysis.md|277
+SOC 2|docs/archive/2026-root-reports/competitive-analysis.md|527
+SOC 2|docs/archive/2026-root-reports/competitive-analysis.md|588
+SOC 2|docs/archive/2026-root-reports/competitive-analysis.md|695
+SOC 2|docs/archive/2026-root-reports/competitive-analysis.md|770
+SOC 2|docs/archive/2026-root-reports/research-findings.md|819
+SOC 2|docs/archive/2026-root-reports/research-findings.md|838
+SOC 2|docs/archive/2026-root-reports/research-findings.md|886

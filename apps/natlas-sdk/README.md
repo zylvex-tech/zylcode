@@ -20,11 +20,7 @@ Node.js ≥ 18 is required (the SDK uses the built-in `fetch`).
 ## Quick start
 
 ```ts
-import {
-  NatlasBridge,
-  OPENAI_CHAT_PATH,
-  INTENT_SYSTEM_PREAMBLE,
-} from "@zylvex/natlas-bridge";
+import { NatlasBridge, OPENAI_CHAT_PATH, INTENT_SYSTEM_PREAMBLE } from "@zylvex/natlas-bridge";
 
 const bridge = NatlasBridge.configure({
   baseUrl: "http://127.0.0.1:11434",

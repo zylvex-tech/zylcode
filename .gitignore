@@ -79,6 +79,7 @@ __pycache__/
 # Agent tooling state (vision attachment scratch space, client session state)
 .dsh-vision-toolkit/
 .freebuff/
+.cloud-attachments/
 
 # ZylCode per-project session state (agent memory, evidence, recovery markers)
 .zylcode/

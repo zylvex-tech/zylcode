@@ -280,8 +280,8 @@ for VS Code / Cursor. More detail:
 [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md),
 [`docs/TUTORIALS.md`](docs/TUTORIALS.md),
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md),
-[`docs/VERIFICATION.md`](docs/VERIFICATION.md), and the re-runnable fresh-clone
-sequence in [`INSTALLATION_GUIDE.md`](INSTALLATION_GUIDE.md).
+[`docs/VERIFICATION.md`](docs/VERIFICATION.md). Platform installation notes for
+Windows, macOS and Linux are in [`docs/INSTALLATION_GUIDE.md`](docs/INSTALLATION_GUIDE.md).
 
 ### Tests and quality gates
 

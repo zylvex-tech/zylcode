@@ -82,8 +82,7 @@ const evaluate = async (expression) => {
     returnByValue: true,
     userGesture: true,
   });
-  if (res.result?.exceptionDetails)
-    return { threw: res.result.exceptionDetails.text };
+  if (res.result?.exceptionDetails) return { threw: res.result.exceptionDetails.text };
   return res.result?.result?.value;
 };
 
@@ -114,8 +113,7 @@ const cases = [
     command: "terminal_exec",
     args: { request: { command: SENTINEL_CMD, cwd: ".." } },
     assert: (result) =>
-      result.ok === false &&
-      /must stay inside the permitted workspace/.test(result.error),
+      result.ok === false && /must stay inside the permitted workspace/.test(result.error),
     describe: () => "expected the confinement error, no child process",
   },
   {
@@ -123,8 +121,7 @@ const cases = [
     command: "terminal_exec",
     args: { request: { command: "echo nope", cwd: "C:/Windows" } },
     assert: (result) =>
-      result.ok === false &&
-      /must stay inside the permitted workspace/.test(result.error),
+      result.ok === false && /must stay inside the permitted workspace/.test(result.error),
     describe: () => "expected the confinement error",
   },
   {
@@ -132,57 +129,49 @@ const cases = [
     command: "terminal_exec",
     args: { request: { command: "echo nope", cwd: "../.." } },
     assert: (result) =>
-      result.ok === false &&
-      /must stay inside the permitted workspace/.test(result.error),
+      result.ok === false && /must stay inside the permitted workspace/.test(result.error),
     describe: () => "expected the confinement error",
   },
   {
     label: "terminal_exec rejects a blank command",
     command: "terminal_exec",
     args: { request: { command: "   ", cwd: "." } },
-    assert: (result) =>
-      result.ok === false && /must not be empty/.test(result.error),
+    assert: (result) => result.ok === false && /must not be empty/.test(result.error),
     describe: () => 'expected "must not be empty"',
   },
   {
     label: "terminal_exec rejects a 5000-character command",
     command: "terminal_exec",
     args: { request: { command: "x".repeat(5000), cwd: "." } },
-    assert: (result) =>
-      result.ok === false && /the limit is 4096/.test(result.error),
+    assert: (result) => result.ok === false && /the limit is 4096/.test(result.error),
     describe: () => "expected the 4096-character limit",
   },
   {
     label: "terminal_exec rejects an unsupported shell mode",
     command: "terminal_exec",
     args: { request: { command: "echo hi", shell: "bash -c evil" } },
-    assert: (result) =>
-      result.ok === false && /unsupported shell mode/.test(result.error),
+    assert: (result) => result.ok === false && /unsupported shell mode/.test(result.error),
     describe: () => 'expected "unsupported shell mode"',
   },
   {
     label: "terminal_exec rejects a zero timeout",
     command: "terminal_exec",
     args: { request: { command: "echo hi", timeout_secs: 0 } },
-    assert: (result) =>
-      result.ok === false && /at least 1 second/.test(result.error),
+    assert: (result) => result.ok === false && /at least 1 second/.test(result.error),
     describe: () => 'expected "at least 1 second"',
   },
   {
     label: "package_start rejects a version with path separators",
     command: "package_start",
     args: { version: "1/../x" },
-    assert: (result) =>
-      result.ok === false &&
-      /path separators are not allowed/.test(result.error),
+    assert: (result) => result.ok === false && /path separators are not allowed/.test(result.error),
     describe: () => 'expected "path separators are not allowed"',
   },
   {
     label: "marketplace_search rejects a blank query",
     command: "marketplace_search",
     args: { query: "  " },
-    assert: (result) =>
-      result.ok === false && /must not be empty/.test(result.error),
+    assert: (result) => result.ok === false && /must not be empty/.test(result.error),
     describe: () => 'expected "must not be empty"',
   },
   {
@@ -196,16 +185,14 @@ const cases = [
     label: "register_mcp_bridge rejects a non-http endpoint",
     command: "register_mcp_bridge",
     args: { id: "smoke", endpoint: "file:///C:/Windows/System32/cmd.exe" },
-    assert: (result) =>
-      result.ok === false && /only http:\/\/ and https:\/\//.test(result.error),
+    assert: (result) => result.ok === false && /only http:\/\/ and https:\/\//.test(result.error),
     describe: () => "expected the scheme error",
   },
   {
     label: "register_mcp_bridge rejects an id with a space",
     command: "register_mcp_bridge",
     args: { id: "a b", endpoint: "http://127.0.0.1:9999" },
-    assert: (result) =>
-      result.ok === false && /unexpected character/.test(result.error),
+    assert: (result) => result.ok === false && /unexpected character/.test(result.error),
     describe: () => "expected the character error",
   },
 ];
@@ -213,17 +200,13 @@ const cases = [
 console.log(`Desktop IPC smoke against ${page.url} (${page.title})`);
 let failures = 0;
 for (const testCase of cases) {
-  const result = await evaluate(
-    invoke(testCase.command, JSON.stringify(testCase.args)),
-  );
+  const result = await evaluate(invoke(testCase.command, JSON.stringify(testCase.args)));
   const passed = testCase.assert(result);
   if (!passed) failures++;
   const detail = result.ok
     ? `ok: ${JSON.stringify(result.value).slice(0, 120)}`
     : `rejected: ${result.error}`;
-  console.log(
-    `${passed ? "PASS" : "FAIL"}  ${testCase.label}\n        ${detail}`,
-  );
+  console.log(`${passed ? "PASS" : "FAIL"}  ${testCase.label}\n        ${detail}`);
   if (!passed) console.log(`        ${testCase.describe()}`);
 }
 
@@ -235,19 +218,11 @@ const sentinelPath = join(process.env.TEMP ?? process.env.TMP ?? ".", SENTINEL);
 const leaked = existsSync(sentinelPath);
 if (leaked) {
   failures++;
-  console.log(
-    `FAIL  rejected cwd ".." ran its command anyway (${sentinelPath} exists)`,
-  );
+  console.log(`FAIL  rejected cwd ".." ran its command anyway (${sentinelPath} exists)`);
 } else {
-  console.log(
-    'PASS  rejected cwd ".." left no sentinel — no child process ran',
-  );
+  console.log('PASS  rejected cwd ".." left no sentinel — no child process ran');
 }
 ws.close();
 
-console.log(
-  failures === 0
-    ? `\nALL PASSED (${cases.length + 1} checks)`
-    : `\n${failures} FAILED`,
-);
+console.log(failures === 0 ? `\nALL PASSED (${cases.length + 1} checks)` : `\n${failures} FAILED`);
 process.exit(failures === 0 ? 0 : 1);
