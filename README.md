@@ -65,14 +65,14 @@ providers' real protocols over real sockets.
 
 ## What it does today
 
-| Stage         | What happens                                                                                                        | State on this branch                                            |
-| ------------- | ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| **Understand** | Repository index: files, symbols, dependency graph; `zylcode repo-context` answers "what would this change touch?" | Working; benchmark 0.61 against a 0.60 floor (2026-10-29)        |
-| **Plan**       | Intent becomes a plan with explicit steps and tool intents                                                          | Working in the core; agent-loop e2e suites green                 |
-| **Act**        | Tool calls run through the permission gate in `zylcode-mcp`; consequential ones need approval                       | Working; approval-enforcement tests green                        |
-| **Observe**    | Live terminal, source control, and streaming model output                                                           | Working; the captures below execute real commands                |
-| **Verify**     | Results are checked and recorded; a failed check stays visible as failed                                            | Working; the ledger keeps failures, it does not tidy them away   |
-| **Evidence**   | Hash-chained records under `.zylcode/`; a broken chain is an error, never an empty screen                           | Working; ledger and tamper tests green                           |
+| Stage          | What happens                                                                                                       | State on this branch                                           |
+| -------------- | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------- |
+| **Understand** | Repository index: files, symbols, dependency graph; `zylcode repo-context` answers "what would this change touch?" | Working; benchmark 0.61 against a 0.60 floor (2026-10-29)      |
+| **Plan**       | Intent becomes a plan with explicit steps and tool intents                                                         | Working in the core; agent-loop e2e suites green               |
+| **Act**        | Tool calls run through the permission gate in `zylcode-mcp`; consequential ones need approval                      | Working; approval-enforcement tests green                      |
+| **Observe**    | Live terminal, source control, and streaming model output                                                          | Working; the captures below execute real commands              |
+| **Verify**     | Results are checked and recorded; a failed check stays visible as failed                                           | Working; the ledger keeps failures, it does not tidy them away |
+| **Evidence**   | Hash-chained records under `.zylcode/`; a broken chain is an error, never an empty screen                          | Working; ledger and tamper tests green                         |
 
 The desktop UI reaches all of that through 39 registered Tauri commands; the same core is
 also served to the browser preview by `zylcode serve-intel` on loopback.
@@ -84,22 +84,22 @@ also served to the browser preview by `zylcode serve-intel` on loopback.
 Every row states where it is proven, not just that code exists. Nothing here is a
 promise about a hosted service.
 
-| Capability                                     | Status                            | Evidence                                                                                                                       |
-| ---------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| Repository explorer over a live index          | **Verified**                      | Capture `14` (live tree); `serve-intel` warm index: 764 files / 3,187 symbols / 8 packages                                       |
-| Terminal executing real commands               | **Verified**                      | Capture `16` (`cargo test … providers::` → 81 passed); 51 terminal tests                                                        |
-| Provider streaming, Anthropic + OpenAI-style   | **Implemented, protocol-tested**   | `providers::anthropic`, `providers::openai_compatible`; loopback SSE tests                                                     |
-| Provider streaming, Ollama (local)             | **Implemented, protocol-tested**   | `providers::ollama`; loopback NDJSON tests                                                                                     |
-| Stream cancellation aborts the request         | **Implemented, tested**            | `test_server::Scenario::BodyThenHold` reports socket teardown when the client cancels                                           |
-| Provider failover across the whole chain       | **Implemented, tested**            | Router failover suites; capture `17` shows the live chain and measured outcomes                                                 |
-| Offline/synthetic output labelled as such       | **Implemented, tested**            | `StreamChunk.synthetic`, `providers::synthetic`; the offline provider advertises `streaming: false`                             |
-| Evidence ledger, hash-chained                  | **Verified**                      | Capture `18` (40 entries, 13 sessions, chain intact); ledger tests                                                              |
-| Mission compose → plan → gated tools → evidence | **Implemented and tested in core** | `agent_loop_e2e`, `factory_job_e2e`; the UI journey needs the desktop runtime, so the browser captures show composition only     |
-| Provider key editing / connection test UI      | **Partial**                       | Backend commands exist (`test_provider_connection`); editing is desktop-only — capture `17` is the read-only chain in preview    |
-| Native provider tool calling                   | **Not implemented**               | `tools: false` for all 8 providers; no request builder emits `tools`                                                            |
-| External MCP client (connect to MCP servers)   | **Not implemented**               | `zylcode-mcp` is an in-process registry + permission gate + executors; no JSON-RPC transport exists                             |
-| Vision input / log probabilities               | **Not implemented**               | `vision: false`, `logprobs: false`; no request builder sends or surfaces them                                                   |
-| Computer-use automation                        | **Not implemented**               | Independent status report records the engine as simulation ([`docs/governance/MAIN_STATUS_REPORT_2026-10-11.md`](docs/governance/MAIN_STATUS_REPORT_2026-10-11.md)) |
+| Capability                                      | Status                             | Evidence                                                                                                                                                            |
+| ----------------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Repository explorer over a live index           | **Verified**                       | Capture `14` (live tree); `serve-intel` warm index: 764 files / 3,187 symbols / 8 packages                                                                          |
+| Terminal executing real commands                | **Verified**                       | Capture `16` (`cargo test … providers::` → 81 passed); 51 terminal tests                                                                                            |
+| Provider streaming, Anthropic + OpenAI-style    | **Implemented, protocol-tested**   | `providers::anthropic`, `providers::openai_compatible`; loopback SSE tests                                                                                          |
+| Provider streaming, Ollama (local)              | **Implemented, protocol-tested**   | `providers::ollama`; loopback NDJSON tests                                                                                                                          |
+| Stream cancellation aborts the request          | **Implemented, tested**            | `test_server::Scenario::BodyThenHold` reports socket teardown when the client cancels                                                                               |
+| Provider failover across the whole chain        | **Implemented, tested**            | Router failover suites; capture `17` shows the live chain and measured outcomes                                                                                     |
+| Offline/synthetic output labelled as such       | **Implemented, tested**            | `StreamChunk.synthetic`, `providers::synthetic`; the offline provider advertises `streaming: false`                                                                 |
+| Evidence ledger, hash-chained                   | **Verified**                       | Capture `18` (40 entries, 13 sessions, chain intact); ledger tests                                                                                                  |
+| Mission compose → plan → gated tools → evidence | **Implemented and tested in core** | `agent_loop_e2e`, `factory_job_e2e`; the UI journey needs the desktop runtime, so the browser captures show composition only                                        |
+| Provider key editing / connection test UI       | **Partial**                        | Backend commands exist (`test_provider_connection`); editing is desktop-only — capture `17` is the read-only chain in preview                                       |
+| Native provider tool calling                    | **Not implemented**                | `tools: false` for all 8 providers; no request builder emits `tools`                                                                                                |
+| External MCP client (connect to MCP servers)    | **Not implemented**                | `zylcode-mcp` is an in-process registry + permission gate + executors; no JSON-RPC transport exists                                                                 |
+| Vision input / log probabilities                | **Not implemented**                | `vision: false`, `logprobs: false`; no request builder sends or surfaces them                                                                                       |
+| Computer-use automation                         | **Not implemented**                | Independent status report records the engine as simulation ([`docs/governance/MAIN_STATUS_REPORT_2026-10-11.md`](docs/governance/MAIN_STATUS_REPORT_2026-10-11.md)) |
 
 The authoritative row-by-row ledger, including which of these are disputed, is
 [`docs/capability-registry.json`](docs/capability-registry.json): 37 entries —
@@ -139,13 +139,13 @@ Earlier captures — `v0.2.3` (2026-10-29/31) and `v0.2.1` (2026-10-26), includi
 workbench with **no** backend attached where panels show their honest `BLOCKED` state —
 are listed in the capture record. Selected ones:
 
-| Surface                                  | Capture                                                         |
-| ---------------------------------------- | --------------------------------------------------------------- |
-| Workbench, live backend (batch 3)        | ![Workbench](docs/media/zylcode/11-workbench-live-terminal.png)  |
-| Missions + live terminal (batch 3)       | ![Missions](docs/media/zylcode/12-missions-pipeline-live.png)    |
-| Source control on the real branch        | ![Source control](docs/media/zylcode/13-source-control-live.png) |
-| Workbench without a backend (batch 2)    | ![Workbench](docs/media/zylcode/06-mission-lifecycle.png)        |
-| Arctic Light theme (current build)       | ![Arctic Light](docs/media/zylcode/10-theme-arctic-light.png)    |
+| Surface                               | Capture                                                          |
+| ------------------------------------- | ---------------------------------------------------------------- |
+| Workbench, live backend (batch 3)     | ![Workbench](docs/media/zylcode/11-workbench-live-terminal.png)  |
+| Missions + live terminal (batch 3)    | ![Missions](docs/media/zylcode/12-missions-pipeline-live.png)    |
+| Source control on the real branch     | ![Source control](docs/media/zylcode/13-source-control-live.png) |
+| Workbench without a backend (batch 2) | ![Workbench](docs/media/zylcode/06-mission-lifecycle.png)        |
+| Arctic Light theme (current build)    | ![Arctic Light](docs/media/zylcode/10-theme-arctic-light.png)    |
 
 Earlier recordings (2026-10-26 build): [live
 theming](docs/media/zylcode/preview-theming.mp4) ·
@@ -228,17 +228,17 @@ How the pieces relate:
 All rows measured on this head (`fc69e4c`) on 6 November 2026, on Windows, unless the
 row says otherwise.
 
-| Check                                                                                     | Result                                                       |
-| ----------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| `cargo test -p zylcode-core --lib`                                                        | ✅ **694 passed, 0 failed**                                    |
-| `cargo test -p zylcode-core --lib providers::`                                            | ✅ **81 passed, 0 failed**                                     |
-| `cargo test --workspace --all-targets`                                                    | ✅ **1,069 passed, 0 failed** across 31 test binaries          |
-| `cargo clippy --workspace --all-targets -- -D warnings`                                   | ✅ exit 0                                                      |
-| `cargo fmt --all -- --check`                                                              | ✅ clean                                                       |
-| `pnpm --filter zylcode-desktop build` (tsc + vite)                                        | ✅ exit 0                                                      |
-| `pnpm --filter zylcode-desktop test`                                                      | ✅ **764 passed in 67 files**, exit 0                          |
-| `pnpm --filter zylcode-desktop test:coverage`                                             | ✅ 97.07 / 90.72 / 96.2 / 97.07 (stmts / branches / funcs / lines), exit 0 |
-| Rust coverage — `cargo llvm-cov … --fail-under-lines 78` (CI `Coverage` job, 2026-11-04)   | ✅ 80.96% lines (42,381 total, 8,070 missed)                    |
+| Check                                                                                    | Result                                                                     |
+| ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `cargo test -p zylcode-core --lib`                                                       | ✅ **694 passed, 0 failed**                                                |
+| `cargo test -p zylcode-core --lib providers::`                                           | ✅ **81 passed, 0 failed**                                                 |
+| `cargo test --workspace --all-targets`                                                   | ✅ **1,069 passed, 0 failed** across 31 test binaries                      |
+| `cargo clippy --workspace --all-targets -- -D warnings`                                  | ✅ exit 0                                                                  |
+| `cargo fmt --all -- --check`                                                             | ✅ clean                                                                   |
+| `pnpm --filter zylcode-desktop build` (tsc + vite)                                       | ✅ exit 0                                                                  |
+| `pnpm --filter zylcode-desktop test`                                                     | ✅ **764 passed in 67 files**, exit 0                                      |
+| `pnpm --filter zylcode-desktop test:coverage`                                            | ✅ 97.07 / 90.72 / 96.2 / 97.07 (stmts / branches / funcs / lines), exit 0 |
+| Rust coverage — `cargo llvm-cov … --fail-under-lines 78` (CI `Coverage` job, 2026-11-04) | ✅ 80.96% lines (42,381 total, 8,070 missed)                               |
 
 Two honesty notes on the rows above:
 
@@ -280,8 +280,8 @@ for VS Code / Cursor. More detail:
 [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md),
 [`docs/TUTORIALS.md`](docs/TUTORIALS.md),
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md),
-[`docs/VERIFICATION.md`](docs/VERIFICATION.md), and the re-runnable fresh-clone
-sequence in [`INSTALLATION_GUIDE.md`](INSTALLATION_GUIDE.md).
+[`docs/VERIFICATION.md`](docs/VERIFICATION.md). Platform installation notes for
+Windows, macOS and Linux are in [`docs/INSTALLATION_GUIDE.md`](docs/INSTALLATION_GUIDE.md).
 
 ### Tests and quality gates
 
@@ -299,14 +299,14 @@ pnpm --filter zylcode-desktop test:coverage
 These are floors, not aspirations — CI fails below them, and each floor sits just under
 its measured value so a new untested file turns the run red instead of being absorbed.
 
-| Gate                                   | Floor                | Measured                                                              |
-| -------------------------------------- | -------------------- | --------------------------------------------------------------------- |
-| Frontend coverage — lines & statements | 70%                  | **97.07%** (764 tests, 67 files — 2026-11-06)                         |
-| Frontend coverage — branches           | 83%                  | **90.72%** (2026-11-06)                                               |
-| Frontend coverage — functions          | 80%                  | **96.2%** (2026-11-06)                                                |
-| Rust coverage — lines                  | 78%                  | **80.96%** (CI `Coverage` job, 2026-11-04)                            |
-| Repository-intelligence benchmark      | 0.60 precision floor | **0.61** (recall 0.95 — 2026-10-29)                                   |
-| Workspace tests                        | 0 failures           | **1,069 passed** across 31 binaries (2026-11-06)                      |
+| Gate                                   | Floor                | Measured                                         |
+| -------------------------------------- | -------------------- | ------------------------------------------------ |
+| Frontend coverage — lines & statements | 70%                  | **97.07%** (764 tests, 67 files — 2026-11-06)    |
+| Frontend coverage — branches           | 83%                  | **90.72%** (2026-11-06)                          |
+| Frontend coverage — functions          | 80%                  | **96.2%** (2026-11-06)                           |
+| Rust coverage — lines                  | 78%                  | **80.96%** (CI `Coverage` job, 2026-11-04)       |
+| Repository-intelligence benchmark      | 0.60 precision floor | **0.61** (recall 0.95 — 2026-10-29)              |
+| Workspace tests                        | 0 failures           | **1,069 passed** across 31 binaries (2026-11-06) |
 
 Gates live in [`.github/workflows/coverage.yml`](.github/workflows/coverage.yml) (Rust
 `coverage`, vitest `frontend-coverage`) and

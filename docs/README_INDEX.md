@@ -62,6 +62,12 @@ total; 15 with `*_COMPLETE*`/`*_SUMMARY*` names; 23 asserting a completion claim
 The files below are **HISTORICAL**. They are not to be deleted — deleting them would falsify the
 record — and they are not to be cited as current capability evidence.
 
+> **Location note (2026-11-07):** these files no longer sit in the repository root. They were moved
+> with `git mv` into [`archive/2026-root-reports/`](archive/2026-root-reports/INDEX.md), which is the
+> physical home of this quarantine and carries a generated index of every file. The one live
+> document in the set, `INSTALLATION_GUIDE.md`, moved to [`INSTALLATION_GUIDE.md`](INSTALLATION_GUIDE.md)
+> because the README cites it as the platform installation reference.
+
 ### 4.1 Legacy status reports (assert completion under a retired numbering scheme)
 
 ```
