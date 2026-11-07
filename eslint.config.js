@@ -22,8 +22,31 @@
 import { defineConfig } from "eslint/config";
 import packageConfig from "./apps/zylcode-desktop/eslint.config.js";
 
+// Global ignores for a *working copy*, not for policy.
+//
+// Flat config does not read .gitignore, so `eslint .` from the repository root
+// used to walk `target/`, the agent runtime's `.freebuff/` bundle (which ships a
+// Rust toolchain whose doc pages contain JavaScript), parallel-execution
+// worktrees under `.wt/`, and build output. On a clean CI checkout those paths do
+// not exist, so the same command passed there and failed for a contributor — the
+// worst kind of gate: green remotely, red locally, and red for a reason unrelated
+// to the change under review. Ignoring them here restores local/CI parity without
+// changing a single rule.
+const gitIgnoredArtifacts = {
+  ignores: [
+    "**/.freebuff/**",
+    "**/.wt/**",
+    "**/target/**",
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/coverage/**",
+    "**/coverage-meta/**",
+    "**/src-tauri/gen/**",
+  ],
+};
+
 /** eslint-disable plugin-type-safety: the package config is a flat config
  *  object; the root config must delegate to it wholesale and may not add
  *  per-file overrides (the package's `ignores` array is what stops tooling
  *  from linting generated or vendored directories). */
-export default defineConfig([...packageConfig]);
+export default defineConfig([gitIgnoredArtifacts, ...packageConfig]);
