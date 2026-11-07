@@ -17,9 +17,7 @@ const MODEL = "turn-proof-model";
 const results = [];
 const check = (name, pass, detail) => {
   results.push({ name, pass, detail });
-  console.log(
-    `${pass ? "PASS" : "FAIL"}  ${name}${detail ? ` — ${detail}` : ""}`,
-  );
+  console.log(`${pass ? "PASS" : "FAIL"}  ${name}${detail ? ` — ${detail}` : ""}`);
 };
 
 const seen = [];
@@ -53,9 +51,7 @@ await new Promise((resolve, reject) => {
 });
 const endpoint = `http://127.0.0.1:${provider.address().port}`;
 
-const targets = await (
-  await fetch(`http://127.0.0.1:${cdpPort}/json/list`)
-).json();
+const targets = await (await fetch(`http://127.0.0.1:${cdpPort}/json/list`)).json();
 const page = targets.find((t) => t.type === "page");
 const ws = new WebSocket(page.webSocketDebuggerUrl);
 await new Promise((resolve, reject) => {
@@ -111,11 +107,7 @@ const reorder = await invoke("reorder_provider_chain", {
     "synthetic_offline",
   ],
 });
-check(
-  "custom moved to first attempt",
-  reorder.ok === true,
-  reorder.error ?? "",
-);
+check("custom moved to first attempt", reorder.ok === true, reorder.error ?? "");
 check(
   "the chain reports custom first",
   reorder.value?.[0]?.kind === "custom",
@@ -132,11 +124,7 @@ const turn = await invoke("process_intent", {
   prompt: `Say hello in one short sentence. run ${Date.now()}`,
   model: null,
 });
-check(
-  "process_intent returned without a transport error",
-  turn.ok === true,
-  turn.error ?? "",
-);
+check("process_intent returned without a transport error", turn.ok === true, turn.error ?? "");
 
 check(
   "the turn reached the saved endpoint",

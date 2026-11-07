@@ -32,26 +32,19 @@ const MODEL = "smoke-model-1";
 const ENDPOINT = `http://127.0.0.1:${providerPort}`;
 
 if (!["before", "after"].includes(phase)) {
-  console.error(
-    "usage: node scripts/provider_persistence_smoke.mjs <before|after> [cdpPort]",
-  );
+  console.error("usage: node scripts/provider_persistence_smoke.mjs <before|after> [cdpPort]");
   process.exit(2);
 }
 
 const configDir =
   process.env.ZYLCODE_CONFIG_DIR ??
-  path.join(
-    process.env.APPDATA ?? path.join(process.env.HOME ?? ".", ".config"),
-    "ZylCode",
-  );
+  path.join(process.env.APPDATA ?? path.join(process.env.HOME ?? ".", ".config"), "ZylCode");
 const settingsFile = path.join(configDir, "providers.json");
 
 const results = [];
 const check = (name, pass, detail) => {
   results.push({ name, pass, detail });
-  console.log(
-    `${pass ? "PASS" : "FAIL"}  ${name}${detail ? ` — ${detail}` : ""}`,
-  );
+  console.log(`${pass ? "PASS" : "FAIL"}  ${name}${detail ? ` — ${detail}` : ""}`);
 };
 
 // ---------------------------------------------------------------------------
@@ -84,9 +77,7 @@ await new Promise((resolve, reject) => {
 // ---------------------------------------------------------------------------
 // CDP plumbing (same approach as the other desktop smoke scripts)
 // ---------------------------------------------------------------------------
-const targets = await (
-  await fetch(`http://127.0.0.1:${cdpPort}/json/list`)
-).json();
+const targets = await (await fetch(`http://127.0.0.1:${cdpPort}/json/list`)).json();
 const page = targets.find((t) => t.type === "page");
 if (!page) {
   console.error("No page target: the app window is not loaded yet.");
@@ -161,10 +152,7 @@ if (phase === "before") {
   const custom = saved.value?.find((c) => c.kind === "custom");
   check(
     "saving a Custom endpoint returns the live chain with those values",
-    saved.ok &&
-      custom?.endpoint === ENDPOINT &&
-      custom?.model === MODEL &&
-      custom.enabled === true,
+    saved.ok && custom?.endpoint === ENDPOINT && custom?.model === MODEL && custom.enabled === true,
     JSON.stringify(custom ?? saved.error),
   );
 
@@ -175,9 +163,7 @@ if (phase === "before") {
   const customKey = keyResult.value?.find((k) => k.kind === "custom");
   check(
     "the stored key is reported by source, not by value",
-    keyResult.ok &&
-      customKey?.source === "credential_store" &&
-      customKey?.configured === true,
+    keyResult.ok && customKey?.source === "credential_store" && customKey?.configured === true,
     JSON.stringify(customKey ?? keyResult.error),
   );
   check(
@@ -191,10 +177,7 @@ if (phase === "before") {
   );
 
   const status = await invoke("provider_key_status");
-  check(
-    "no key appears in any status payload",
-    !JSON.stringify(status.value ?? "").includes(KEY),
-  );
+  check("no key appears in any status payload", !JSON.stringify(status.value ?? "").includes(KEY));
 
   const probe = await invoke("test_provider_connection", {
     kind: "custom",
@@ -208,25 +191,15 @@ if (phase === "before") {
     probe.ok && probe.value?.status === "connected",
     `${probe.value?.status ?? probe.error}`,
   );
-  check(
-    "the probe used the saved model",
-    probe.value?.model === MODEL,
-    String(probe.value?.model),
-  );
+  check("the probe used the saved model", probe.value?.model === MODEL, String(probe.value?.model));
   check(
     "the stored key reached the request as a bearer credential",
     lastRequest?.authorization === `Bearer ${KEY}`,
     String(lastRequest?.authorization),
   );
 
-  const onDisk = fs.existsSync(settingsFile)
-    ? fs.readFileSync(settingsFile, "utf8")
-    : "";
-  check(
-    "the settings file exists after saving",
-    onDisk.length > 0,
-    settingsFile,
-  );
+  const onDisk = fs.existsSync(settingsFile) ? fs.readFileSync(settingsFile, "utf8") : "";
+  check("the settings file exists after saving", onDisk.length > 0, settingsFile);
   check(
     "the settings file holds the endpoint and model",
     onDisk.includes(ENDPOINT) && onDisk.includes(MODEL),
@@ -237,10 +210,7 @@ if (phase === "before") {
   );
 
   const chainPayload = JSON.stringify(chain.value ?? "");
-  check(
-    "no key appears in the provider-chain payload",
-    !chainPayload.includes(KEY),
-  );
+  check("no key appears in the provider-chain payload", !chainPayload.includes(KEY));
 }
 
 // ---------------------------------------------------------------------------
@@ -251,27 +221,20 @@ if (phase === "after") {
   const custom = chain.value?.find((c) => c.kind === "custom");
   check(
     "the saved Custom endpoint and model survived the restart",
-    chain.ok &&
-      custom?.endpoint === ENDPOINT &&
-      custom?.model === MODEL &&
-      custom.enabled === true,
+    chain.ok && custom?.endpoint === ENDPOINT && custom?.model === MODEL && custom.enabled === true,
     JSON.stringify(custom ?? chain.error),
   );
   check(
     "the saved order survived the restart",
     chain.ok &&
-      chain.value.every(
-        (c, i, all) => i === 0 || all[i - 1].fallback_order <= c.fallback_order,
-      ),
+      chain.value.every((c, i, all) => i === 0 || all[i - 1].fallback_order <= c.fallback_order),
   );
 
   const status = await invoke("provider_key_status");
   const customKey = status.value?.find((k) => k.kind === "custom");
   check(
     "the key is still in the OS credential store after the restart",
-    status.ok &&
-      customKey?.source === "credential_store" &&
-      customKey?.configured === true,
+    status.ok && customKey?.source === "credential_store" && customKey?.configured === true,
     JSON.stringify(customKey ?? status.error),
   );
   check(
@@ -302,9 +265,7 @@ if (phase === "after") {
   const afterDelete = removed.value?.find((k) => k.kind === "custom");
   check(
     "deleting the key removes it from the store",
-    removed.ok &&
-      afterDelete?.source === "none" &&
-      afterDelete?.configured === false,
+    removed.ok && afterDelete?.source === "none" && afterDelete?.configured === false,
     JSON.stringify(afterDelete ?? removed.error),
   );
   const reset = await invoke("set_provider_config", {
@@ -317,26 +278,17 @@ if (phase === "after") {
   const cleaned = reset.value?.find((c) => c.kind === "custom");
   check(
     "the Custom entry is reset to its default state",
-    reset.ok &&
-      cleaned?.endpoint === "" &&
-      cleaned?.model === "" &&
-      cleaned.enabled === false,
+    reset.ok && cleaned?.endpoint === "" && cleaned?.model === "" && cleaned.enabled === false,
     JSON.stringify(cleaned ?? reset.error),
   );
   // A second delete is a no-op, not an error.
   const again = await invoke("delete_provider_key", { kind: "custom" });
-  check(
-    "deleting an absent key is idempotent",
-    again.ok === true,
-    String(again.error ?? ""),
-  );
+  check("deleting an absent key is idempotent", again.ok === true, String(again.error ?? ""));
 }
 
 provider.close();
 ws.close();
 
 const failed = results.filter((r) => !r.pass);
-console.log(
-  `\n${results.length - failed.length}/${results.length} PASS  phase=${phase}`,
-);
+console.log(`\n${results.length - failed.length}/${results.length} PASS  phase=${phase}`);
 process.exit(failed.length === 0 ? 0 : 1);

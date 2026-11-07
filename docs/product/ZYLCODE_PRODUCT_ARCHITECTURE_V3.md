@@ -218,8 +218,7 @@ discarded.
 Typed runtime environment detection:
 
 ```ts
-type RuntimeEnvironment =
-  "TAURI_DESKTOP" | "BROWSER_PREVIEW" | "TEST" | "UNKNOWN";
+type RuntimeEnvironment = "TAURI_DESKTOP" | "BROWSER_PREVIEW" | "TEST" | "UNKNOWN";
 ```
 
 Detection order: `TAURI_DESKTOP` when the `__TAURI_INTERNALS__` global exists;

@@ -30,9 +30,7 @@ const base = `http://127.0.0.1:${port}`;
 const results = [];
 const check = (name, pass, detail) => {
   results.push({ name, pass, detail });
-  console.log(
-    `${pass ? "PASS" : "FAIL"}  ${name}${detail ? ` — ${detail}` : ""}`,
-  );
+  console.log(`${pass ? "PASS" : "FAIL"}  ${name}${detail ? ` — ${detail}` : ""}`);
 };
 
 // ---------------------------------------------------------------------------
@@ -231,7 +229,5 @@ const invoke = async (cmd, args) =>
 
 ws.close();
 const failed = results.filter((r) => !r.pass);
-console.log(
-  `\n${results.length - failed.length}/${results.length} checks passed`,
-);
+console.log(`\n${results.length - failed.length}/${results.length} checks passed`);
 process.exit(failed.length === 0 ? 0 : 1);

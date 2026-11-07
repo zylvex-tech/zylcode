@@ -240,8 +240,7 @@
     <header>
       <h1>ZylCode &times; N-ATLAS <span>— Developer Playground</span></h1>
       <div class="sub">
-        Phase C1 · Developer Infrastructure (PS1) · the boundary up to the human
-        approval gate
+        Phase C1 · Developer Infrastructure (PS1) · the boundary up to the human approval gate
       </div>
     </header>
 
@@ -257,16 +256,9 @@
           <label for="model">Model</label>
           <input id="model" value="n-atlas:latest" />
           <label for="apiKey"
-            >API key
-            <span class="muted"
-              >(optional for a local runtime; never logged)</span
-            ></label
+            >API key <span class="muted">(optional for a local runtime; never logged)</span></label
           >
-          <input
-            id="apiKey"
-            type="password"
-            placeholder="leave empty for a local runtime"
-          />
+          <input id="apiKey" type="password" placeholder="leave empty for a local runtime" />
           <div class="row">
             <button id="btnProbe">Check runtime status</button>
             <button id="btnDemo">Use offline demo</button>
@@ -287,13 +279,8 @@
 Add a health-check endpoint to the router and a test for it.</textarea>
           <label for="ctxPath">Repository context — path (optional)</label>
           <input id="ctxPath" placeholder="src/routes.rs" />
-          <label for="ctxExcerpt"
-            >Repository context — excerpt (optional)</label
-          >
-          <textarea
-            id="ctxExcerpt"
-            placeholder="pub fn router() { /* ... */ }"
-          ></textarea>
+          <label for="ctxExcerpt">Repository context — excerpt (optional)</label>
+          <textarea id="ctxExcerpt" placeholder="pub fn router() { /* ... */ }"></textarea>
           <div class="row">
             <button id="btnInvoke" class="primary">Invoke N-ATLAS</button>
           </div>
@@ -302,13 +289,10 @@ Add a health-check endpoint to the router and a test for it.</textarea>
         <div class="panel">
           <h2>What this playground does not do</h2>
           <div class="muted" style="font-size: 13px">
-            Executing the approved change and running the verification command
-            happen in the
-            <strong>ZylCode core</strong>, not in a browser. This page
-            demonstrates the boundary through the approval gate. See
-            <span class="kv"
-              >docs/competition/natlas/developer/FIRST_WORKFLOW.md</span
-            >.
+            Executing the approved change and running the verification command happen in the
+            <strong>ZylCode core</strong>, not in a browser. This page demonstrates the boundary
+            through the approval gate. See
+            <span class="kv">docs/competition/natlas/developer/FIRST_WORKFLOW.md</span>.
           </div>
         </div>
       </section>
@@ -318,8 +302,8 @@ Add a health-check endpoint to the router and a test for it.</textarea>
         <div id="banner" class="banner blocked">
           <strong>N-ATLAS has not been contacted.</strong>
           No runtime has been reached yet. Configure a runtime above and press
-          <em>Check runtime status</em>. Nothing on this page will claim success
-          until a real call succeeds.
+          <em>Check runtime status</em>. Nothing on this page will claim success until a real call
+          succeeds.
         </div>
 
         <div class="panel">
@@ -392,9 +376,7 @@ Add a health-check endpoint to the router and a test for it.</textarea>
           <h2>Proposed operation &amp; approval gate</h2>
           <div id="proposal" class="muted">No proposal yet.</div>
           <div class="gate">
-            <div id="gateText" class="muted">
-              The approval gate is not active.
-            </div>
+            <div id="gateText" class="muted">The approval gate is not active.</div>
             <div class="row">
               <button id="btnApprove" disabled>Approve</button>
               <button id="btnReject" disabled>Reject</button>
@@ -427,22 +409,10 @@ Add a health-check endpoint to the router and a test for it.</textarea>
       function classify(intent) {
         const t = intent.toLowerCase();
         const has = (w) => w.some((x) => t.includes(x));
-        if (
-          has([
-            "implement",
-            "add ",
-            "fix",
-            "refactor",
-            "write ",
-            "create ",
-            "rename",
-          ])
-        )
+        if (has(["implement", "add ", "fix", "refactor", "write ", "create ", "rename"]))
           return "implementation";
         if (has(["test", "assert", "coverage"])) return "testing";
-        if (
-          has(["explain", "why", "what is", "how does", "document", "describe"])
-        )
+        if (has(["explain", "why", "what is", "how does", "document", "describe"]))
           return "analysis";
         return "general";
       }
@@ -465,12 +435,7 @@ Add a health-check endpoint to the router and a test for it.</textarea>
             b.includes("too many requests")
           )
             return "QUOTA";
-          if (
-            b.includes("load") ||
-            b.includes("starting") ||
-            b.includes("boot")
-          )
-            return "LOADING";
+          if (b.includes("load") || b.includes("starting") || b.includes("boot")) return "LOADING";
           return "WARMING";
         }
         if ([400, 404, 405, 500, 501].includes(status)) return "FAILED";
@@ -480,8 +445,7 @@ Add a health-check endpoint to the router and a test for it.</textarea>
       const GUIDANCE = {
         WARMING:
           "The shared GPU is waking up. This is normal on a cold start; retrying shortly usually succeeds.",
-        LOADING:
-          "The model is loading into memory. Wait for it to finish, then retry.",
+        LOADING: "The model is loading into memory. Wait for it to finish, then retry.",
         TIMEOUT:
           "The request took longer than the configured timeout. The shared GPU may be busy; retry, or raise the timeout.",
         QUOTA:
@@ -495,10 +459,7 @@ Add a health-check endpoint to the router and a test for it.</textarea>
       };
 
       function guidanceFor(state) {
-        return (
-          GUIDANCE[state] ||
-          "The request did not complete. Inspect the error above."
-        );
+        return GUIDANCE[state] || "The request did not complete. Inspect the error above.";
       }
 
       /* A bounded, visible processing state. The elapsed counter proves the page is
@@ -543,9 +504,7 @@ Add a health-check endpoint to the router and a test for it.</textarea>
 
       function endpoint(c) {
         const base = c.baseUrl.replace(/\/+$/, "");
-        const path = c.requestPath.startsWith("/")
-          ? c.requestPath
-          : "/" + c.requestPath;
+        const path = c.requestPath.startsWith("/") ? c.requestPath : "/" + c.requestPath;
         return base + path;
       }
 
@@ -565,8 +524,7 @@ Add a health-check endpoint to the router and a test for it.</textarea>
             if (Array.isArray(json.models)) {
               return json.models.map((m) => m.name || m.model).filter(Boolean);
             }
-            if (Array.isArray(json.data))
-              return json.data.map((m) => m.id).filter(Boolean);
+            if (Array.isArray(json.data)) return json.data.map((m) => m.id).filter(Boolean);
             return undefined;
           } catch {
             return undefined;
@@ -582,9 +540,7 @@ Add a health-check endpoint to the router and a test for it.</textarea>
           }
 
           if (models) {
-            const present = models.some(
-              (m) => m === c.model || m.startsWith(c.model + ":"),
-            );
+            const present = models.some((m) => m === c.model || m.startsWith(c.model + ":"));
             setStatus("ok", "REACHABLE", true, present, models, detail);
             banner(
               "ok",
@@ -594,14 +550,7 @@ Add a health-check endpoint to the router and a test for it.</textarea>
                   : `Model <span class="kv">${c.model}</span> was NOT reported by the server.`),
             );
           } else {
-            setStatus(
-              "bad",
-              "UNREACHABLE",
-              false,
-              undefined,
-              [],
-              `no runtime answered at ${base}`,
-            );
+            setStatus("bad", "UNREACHABLE", false, undefined, [], `no runtime answered at ${base}`);
             banner(
               "blocked",
               `<strong>No runtime answered at <span class="kv">${base}</span>.</strong> ` +
@@ -617,11 +566,7 @@ Add a health-check endpoint to the router and a test for it.</textarea>
         $("stStatus").innerHTML = `<span class="badge ${kind}">${label}</span>`;
         $("stReachable").textContent = reachable ? "yes" : "no";
         $("stModel").textContent =
-          modelPresent === undefined
-            ? "—"
-            : modelPresent
-              ? "present (see list)"
-              : "NOT present";
+          modelPresent === undefined ? "—" : modelPresent ? "present (see list)" : "NOT present";
         $("stModels").textContent = models.length ? models.join(", ") : "—";
         $("stDetail").textContent = detail;
       }
@@ -649,9 +594,7 @@ Add a health-check endpoint to the router and a test for it.</textarea>
 
         let ticker = startProcessingTicker(
           started,
-          DEMO_MODE
-            ? "(offline demo — TEST DOUBLE)"
-            : "waiting for the runtime…",
+          DEMO_MODE ? "(offline demo — TEST DOUBLE)" : "waiting for the runtime…",
         );
         const stopTicker = () => {
           if (ticker) {
@@ -686,8 +629,7 @@ Add a health-check endpoint to the router and a test for it.</textarea>
                   message: {
                     role: "assistant",
                     content: JSON.stringify({
-                      summary:
-                        "Add a health-check endpoint and a test (TEST DOUBLE OUTPUT)",
+                      summary: "Add a health-check endpoint and a test (TEST DOUBLE OUTPUT)",
                       steps: [
                         {
                           kind: "analyse",
@@ -713,10 +655,7 @@ Add a health-check endpoint to the router and a test for it.</textarea>
           }
 
           const controller = new AbortController();
-          const timer = setTimeout(
-            () => controller.abort(),
-            REQUEST_TIMEOUT_MS,
-          );
+          const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
           const headers = { "content-type": "application/json" };
           if (c.apiKey) headers["authorization"] = "Bearer " + c.apiKey;
 
@@ -753,9 +692,7 @@ Add a health-check endpoint to the router and a test for it.</textarea>
             const aborted = e && e.name === "AbortError";
             showFailure(
               aborted ? "TIMEOUT" : "TRANSPORT",
-              aborted
-                ? "N-ATLAS request timed out."
-                : "could not reach the runtime: " + e.message,
+              aborted ? "N-ATLAS request timed out." : "could not reach the runtime: " + e.message,
               started,
               base,
               undefined,
@@ -908,9 +845,7 @@ Add a health-check endpoint to the router and a test for it.</textarea>
           .map(
             (s) =>
               `<li><strong>${escapeHtml(s.kind)}</strong> — ${escapeHtml(s.description)}` +
-              (s.targetPath
-                ? ` <span class="kv muted">(${escapeHtml(s.targetPath)})</span>`
-                : "") +
+              (s.targetPath ? ` <span class="kv muted">(${escapeHtml(s.targetPath)})</span>` : "") +
               `</li>`,
           )
           .join("");
@@ -927,9 +862,7 @@ Add a health-check endpoint to the router and a test for it.</textarea>
         }
 
         PENDING_INTENT = intent;
-        const ops = intent.steps.filter(
-          (s) => s.kind === "implement" || s.kind === "test",
-        );
+        const ops = intent.steps.filter((s) => s.kind === "implement" || s.kind === "test");
         $("proposal").innerHTML = ops.length
           ? `<div>${ops.length} operation(s) would require execution in the ZylCode core:</div>
        <ol class="steps">${ops.map((s) => `<li><strong>${escapeHtml(s.kind)}</strong> ${escapeHtml(s.description)}</li>`).join("")}</ol>`
@@ -962,8 +895,7 @@ Add a health-check endpoint to the router and a test for it.</textarea>
         return {
           summary: obj.summary,
           steps: obj.steps.map((s, i) => {
-            if (!kinds.includes(s.kind))
-              throw new Error(`step ${i} has unknown kind ${s.kind}`);
+            if (!kinds.includes(s.kind)) throw new Error(`step ${i} has unknown kind ${s.kind}`);
             if (typeof s.description !== "string" || !s.description.trim())
               throw new Error(`step ${i} is missing a description`);
             return {
@@ -975,15 +907,7 @@ Add a health-check endpoint to the router and a test for it.</textarea>
         };
       }
 
-      function showFailure(
-        code,
-        message,
-        started,
-        base,
-        httpStatus,
-        raw,
-        providedState,
-      ) {
+      function showFailure(code, message, started, base, httpStatus, raw, providedState) {
         const latency = Date.now() - started;
         const state =
           providedState ||
@@ -995,10 +919,9 @@ Add a health-check endpoint to the router and a test for it.</textarea>
                 ? "UNAVAILABLE"
                 : "FAILED");
         const guidance = guidanceFor(state);
-        const { text, count } = redact(
-          message + (raw ? " :: " + raw.slice(0, 300) : ""),
-          [config().apiKey],
-        );
+        const { text, count } = redact(message + (raw ? " :: " + raw.slice(0, 300) : ""), [
+          config().apiKey,
+        ]);
         const evidence = {
           ...base,
           status: "failed",
@@ -1017,15 +940,13 @@ Add a health-check endpoint to the router and a test for it.</textarea>
           Math.random().toString(36).slice(2, 8);
         EVIDENCE_LOG.push(evidence);
 
-        $("ivStatus").innerHTML =
-          `<span class="badge bad">FAILED — ${state}</span>`;
+        $("ivStatus").innerHTML = `<span class="badge bad">FAILED — ${state}</span>`;
         $("ivModel").textContent = "—";
         $("ivReqId").textContent = "—";
         $("ivLatency").textContent = latency + " ms";
         $("ivEvidenceId").textContent = evidence.evidenceId;
         $("ivError").innerHTML =
-          escapeHtml(message) +
-          `<br><span class="muted">${escapeHtml(guidance)}</span>`;
+          escapeHtml(message) + `<br><span class="muted">${escapeHtml(guidance)}</span>`;
         $("evidence").textContent = JSON.stringify(evidence, null, 2);
         banner(
           "bad",

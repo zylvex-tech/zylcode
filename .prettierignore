@@ -4,6 +4,7 @@ build/
 coverage/
 node_modules/
 *.lock
+pnpm-lock.yaml
 *.tsbuildinfo
 
 # Rust targets and Tauri gen. The leading ** is required: a pattern with an
@@ -18,6 +19,16 @@ Cargo.lock
 .DS_Store
 *.swp
 .DS_Store?
+
+# Historical record, not live prose. These documents are archived verbatim —
+# reformatting them would rewrite the record they exist to preserve.
+docs/archive/
+
+# Rendered film graphics and captured test fixtures. Both are inputs to other
+# processes (video compositing, parser tests) where reformatting is a behaviour
+# change, not a style fix.
+production/
+**/tests/fixtures/
 
 # Freebuff agent-marked project files
 .freebuff/

@@ -104,16 +104,12 @@ await test("pure: parseEngineeringIntent is strict", () => {
   assert.equal(intent.steps.length, 3);
   assert.throws(() => parseEngineeringIntent('{"summary":"s","steps":[]}'));
   assert.throws(() =>
-    parseEngineeringIntent(
-      '{"summary":"s","steps":[{"kind":"deploy","description":"x"}]}',
-    ),
+    parseEngineeringIntent('{"summary":"s","steps":[{"kind":"deploy","description":"x"}]}'),
   );
 });
 
 await test("pure: redactSecrets removes and counts", () => {
-  const { text, count } = redactSecrets(`key ${TEST_FIXTURE_API_KEY} here`, [
-    TEST_FIXTURE_API_KEY,
-  ]);
+  const { text, count } = redactSecrets(`key ${TEST_FIXTURE_API_KEY} here`, [TEST_FIXTURE_API_KEY]);
   assert.ok(!text.includes(TEST_FIXTURE_API_KEY));
   assert.equal(count, 1);
 });
@@ -214,10 +210,7 @@ await test("http: a secret echoed in an error is redacted from evidence", async 
     });
     const inv = await bridge.invoke({ intent: "x", system: "y" });
     const serialised = JSON.stringify(inv.evidence);
-    assert.ok(
-      !serialised.includes(TEST_FIXTURE_API_KEY),
-      "the key must never reach evidence",
-    );
+    assert.ok(!serialised.includes(TEST_FIXTURE_API_KEY), "the key must never reach evidence");
     assert.ok(inv.evidence.secretRedactions > 0);
   } finally {
     stub.close();
@@ -272,11 +265,7 @@ await test("gateway: a blank or absent key leaves N-ATLAS configuration untouche
     NATLAS_API_KEY: "",
   });
   assert.equal(natlas.baseUrl, "http://127.0.0.1:11434");
-  assert.equal(
-    natlas.provider,
-    undefined,
-    "an unset gateway key must not relabel the provider",
-  );
+  assert.equal(natlas.provider, undefined, "an unset gateway key must not relabel the provider");
 });
 
 await test("gateway: evidence records the gateway as the provider", async () => {
@@ -305,11 +294,7 @@ await test("gateway: evidence records the gateway as the provider", async () => 
     const inv = await bridge.invoke({ intent: "x", system: "y" });
     assert.equal(inv.status, "succeeded");
     assert.equal(inv.evidence.provider, "respan");
-    assert.equal(
-      inv.evidence.model,
-      "gpt-5.5",
-      "the server's model identity is recorded",
-    );
+    assert.equal(inv.evidence.model, "gpt-5.5", "the server's model identity is recorded");
     assert.ok(!JSON.stringify(inv.evidence).includes(TEST_FIXTURE_API_KEY));
   } finally {
     stub.close();
@@ -319,8 +304,7 @@ await test("gateway: evidence records the gateway as the provider", async () => 
 // --- NAT-A-001 / NAT-A-003: quota classification + human-readable guidance ----
 
 await test("resilience: a ZeroGPU quota 503 is QUOTA, not warming", () => {
-  const body =
-    "You have exceeded your GPU quota (0s left). Please try again later.";
+  const body = "You have exceeded your GPU quota (0s left). Please try again later.";
   assert.equal(classifyHttp(503, body), "quota");
   assert.equal(classifyHttp(503, "GPU quota exceeded"), "quota");
   assert.equal(classifyHttp(402, ""), "quota");
@@ -352,10 +336,7 @@ await test("resilience: every state has non-empty, actionable guidance", () => {
   ];
   for (const s of states) {
     const g = guidance(s);
-    assert.ok(
-      g.length > 20,
-      `${s} guidance is too terse: ${JSON.stringify(g)}`,
-    );
+    assert.ok(g.length > 20, `${s} guidance is too terse: ${JSON.stringify(g)}`);
   }
   assert.ok(
     guidance("quota").includes("LOCAL_RUNTIME_FALLBACK"),
@@ -372,10 +353,7 @@ await test("resilience: an HTTP_STATUS error carries a human message, not a bare
   assert.equal(resilienceStateOf(err), "quota");
   const msg = humanMessage(err);
   assert.ok(msg.includes("quota"), "human message must name the cause");
-  assert.ok(
-    msg.split("\n").length >= 2,
-    "human message must have cause + guidance lines",
-  );
+  assert.ok(msg.split("\n").length >= 2, "human message must have cause + guidance lines");
 });
 
 // --- NAT-A-002 / NAT-A-004: state on the invocation + language propagation ----
@@ -394,11 +372,7 @@ await test("invoke: a 503 quota body yields state=quota, not a fabricated succes
     const inv = await bridge.invoke({ intent: "x", system: "y" });
     assert.equal(inv.status, "failed");
     assert.equal(inv.state, "quota");
-    assert.equal(
-      inv.response,
-      undefined,
-      "a quota failure must never carry a response",
-    );
+    assert.equal(inv.response, undefined, "a quota failure must never carry a response");
   } finally {
     stub.close();
   }
@@ -428,22 +402,14 @@ await test("invoke: a stated language is recorded in evidence; an unstated one i
       system: "y",
       language: "   ",
     });
-    assert.equal(
-      blank.evidence.language,
-      undefined,
-      "a blank tag is not a language",
-    );
+    assert.equal(blank.evidence.language, undefined, "a blank tag is not a language");
     assert.ok(
       !JSON.stringify(blank.evidence).includes('"language"'),
       "an unstated language must be omitted",
     );
 
     const none = await bridge.invoke({ intent: "x", system: "y" });
-    assert.equal(
-      none.evidence.language,
-      undefined,
-      "language must never be inferred",
-    );
+    assert.equal(none.evidence.language, undefined, "language must never be inferred");
   } finally {
     stub.close();
   }

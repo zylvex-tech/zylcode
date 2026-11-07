@@ -122,10 +122,7 @@ Each entry:
   "<capability_id>": {
     "status": "GREEN | FUNCTIONAL | PARTIAL | STUB | ABSENT | EXTERNAL_BLOCKER",
     "rung": "R0 | R1 | R2 | R3 | R4 | R5",
-    "entry_points": [
-      "zylcode repo context <task>",
-      "AgentLoop::assemble_context"
-    ],
+    "entry_points": ["zylcode repo context <task>", "AgentLoop::assemble_context"],
     "scope": "what this does and explicitly does not do",
     "evidence": "what was measured, with the command that measured it",
     "evidence_commit": "<sha>",
