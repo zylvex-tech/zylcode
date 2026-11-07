@@ -23,7 +23,7 @@ tracing = { workspace = true }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 tauri = { version = "2", features = [] }
 tauri-plugin-shell = "2"
-rusqlite = { version = "0.31", features = ["bundled"] }
+rusqlite = { version = "0.41", features = ["bundled"] }
 
 [features]
 # Production / standalone builds.
