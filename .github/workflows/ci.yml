@@ -130,7 +130,7 @@ jobs:
       # ---------------------------------------------------------------------
 
       - name: Install cargo-audit
-        uses: taiki-e/install-action@5488ac5a951645ce95062214902ac4b6bc1a1037
+        uses: taiki-e/install-action@c509219cf42fba86913069efd0ade2458c59337b
         with:
           tool: cargo-audit
           # Pinned to a commit SHA, not a tag: a tag is mutable, and a secret
