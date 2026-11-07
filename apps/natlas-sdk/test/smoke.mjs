@@ -14,7 +14,12 @@ import {
   NatlasError,
   OPENAI_CHAT_PATH,
   INTENT_SYSTEM_PREAMBLE,
+  RESPAN_DEFAULT_MODEL,
+  RESPAN_GATEWAY_BASE_URL,
+  RESPAN_GATEWAY_CHAT_PATH,
   classifyHttp,
+  configFromEnv,
+  configFromRespanGateway,
   guidance,
   humanMessage,
   isRetryable,
@@ -31,7 +36,11 @@ const INTENT_JSON = JSON.stringify({
   summary: "Add a health endpoint",
   steps: [
     { kind: "analyse", description: "find the router" },
-    { kind: "implement", description: "add GET /health", target_path: "src/routes.rs" },
+    {
+      kind: "implement",
+      description: "add GET /health",
+      target_path: "src/routes.rs",
+    },
     { kind: "approve", description: "supervisor sign-off" },
   ],
 });
@@ -84,14 +93,21 @@ await test("pure: translateOpenAiReply maps a documented reply", () => {
 
 await test("pure: a reply without model identity is rejected", () => {
   const bad = JSON.stringify({ choices: [{ message: { content: "hi" } }] });
-  assert.throws(() => translateOpenAiReply(bad), (e) => e instanceof NatlasError && e.code === "MALFORMED_RESPONSE");
+  assert.throws(
+    () => translateOpenAiReply(bad),
+    (e) => e instanceof NatlasError && e.code === "MALFORMED_RESPONSE",
+  );
 });
 
 await test("pure: parseEngineeringIntent is strict", () => {
   const intent = parseEngineeringIntent(INTENT_JSON);
   assert.equal(intent.steps.length, 3);
   assert.throws(() => parseEngineeringIntent('{"summary":"s","steps":[]}'));
-  assert.throws(() => parseEngineeringIntent('{"summary":"s","steps":[{"kind":"deploy","description":"x"}]}'));
+  assert.throws(() =>
+    parseEngineeringIntent(
+      '{"summary":"s","steps":[{"kind":"deploy","description":"x"}]}',
+    ),
+  );
 });
 
 await test("pure: redactSecrets removes and counts", () => {
@@ -198,7 +214,10 @@ await test("http: a secret echoed in an error is redacted from evidence", async 
     });
     const inv = await bridge.invoke({ intent: "x", system: "y" });
     const serialised = JSON.stringify(inv.evidence);
-    assert.ok(!serialised.includes(TEST_FIXTURE_API_KEY), "the key must never reach evidence");
+    assert.ok(
+      !serialised.includes(TEST_FIXTURE_API_KEY),
+      "the key must never reach evidence",
+    );
     assert.ok(inv.evidence.secretRedactions > 0);
   } finally {
     stub.close();
@@ -208,14 +227,100 @@ await test("http: a secret echoed in an error is redacted from evidence", async 
 await test("config: fromEnv lists every missing variable rather than defaulting", () => {
   assert.throws(
     () => NatlasBridge.fromEnv({}),
-    (e) => e instanceof NatlasError && e.code === "NOT_CONFIGURED" && e.message.includes("NATLAS_BASE_URL"),
+    (e) =>
+      e instanceof NatlasError &&
+      e.code === "NOT_CONFIGURED" &&
+      e.message.includes("NATLAS_BASE_URL"),
   );
+});
+
+// --- Respan hosted gateway: RESPAN_API_KEY is the whole switch ---------------
+
+await test("gateway: RESPAN_API_KEY selects the hosted gateway", () => {
+  const cfg = configFromEnv({ RESPAN_API_KEY: TEST_FIXTURE_API_KEY });
+  assert.equal(cfg.baseUrl, RESPAN_GATEWAY_BASE_URL);
+  assert.equal(cfg.requestPath, RESPAN_GATEWAY_CHAT_PATH);
+  assert.equal(cfg.model, RESPAN_DEFAULT_MODEL);
+  assert.equal(cfg.apiKey, TEST_FIXTURE_API_KEY);
+  assert.equal(cfg.provider, "respan");
+  // The gateway is OpenAI-compatible, so the request body is unchanged.
+  const local = NatlasBridge.configure({
+    baseUrl: "http://127.0.0.1:11434",
+    requestPath: OPENAI_CHAT_PATH,
+    model: "n-atlas:latest",
+  }).redactedConfig;
+  assert.equal(local.provider, undefined, "a local runtime stays unlabelled");
+});
+
+await test("gateway: RESPAN_MODEL and RESPAN_BASE_URL override, trailing slash stripped", () => {
+  const cfg = configFromEnv({
+    RESPAN_API_KEY: TEST_FIXTURE_API_KEY,
+    RESPAN_MODEL: "claude-sonnet-4-5-20250929",
+    RESPAN_BASE_URL: "https://endpoint.respan.ai/api/",
+  });
+  assert.equal(cfg.model, "claude-sonnet-4-5-20250929");
+  assert.equal(cfg.baseUrl, "https://endpoint.respan.ai/api");
+});
+
+await test("gateway: a blank or absent key leaves N-ATLAS configuration untouched", () => {
+  assert.equal(configFromRespanGateway({ RESPAN_API_KEY: "   " }), undefined);
+  assert.equal(configFromRespanGateway({}), undefined);
+  const natlas = configFromEnv({
+    NATLAS_BASE_URL: "http://127.0.0.1:11434",
+    NATLAS_REQUEST_PATH: OPENAI_CHAT_PATH,
+    NATLAS_MODEL: "n-atlas:latest",
+    NATLAS_API_KEY: "",
+  });
+  assert.equal(natlas.baseUrl, "http://127.0.0.1:11434");
+  assert.equal(
+    natlas.provider,
+    undefined,
+    "an unset gateway key must not relabel the provider",
+  );
+});
+
+await test("gateway: evidence records the gateway as the provider", async () => {
+  const stub = await startStub((req, res) => {
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(
+      JSON.stringify({
+        id: "stub-gateway-1",
+        model: "gpt-5.5",
+        choices: [
+          {
+            index: 0,
+            message: { role: "assistant", content: "hello" },
+            finish_reason: "stop",
+          },
+        ],
+        usage: { prompt_tokens: 3, completion_tokens: 1 },
+      }),
+    );
+  });
+  try {
+    const bridge = NatlasBridge.configure({
+      ...configFromEnv({ RESPAN_API_KEY: TEST_FIXTURE_API_KEY }),
+      baseUrl: stub.url,
+    });
+    const inv = await bridge.invoke({ intent: "x", system: "y" });
+    assert.equal(inv.status, "succeeded");
+    assert.equal(inv.evidence.provider, "respan");
+    assert.equal(
+      inv.evidence.model,
+      "gpt-5.5",
+      "the server's model identity is recorded",
+    );
+    assert.ok(!JSON.stringify(inv.evidence).includes(TEST_FIXTURE_API_KEY));
+  } finally {
+    stub.close();
+  }
 });
 
 // --- NAT-A-001 / NAT-A-003: quota classification + human-readable guidance ----
 
 await test("resilience: a ZeroGPU quota 503 is QUOTA, not warming", () => {
-  const body = "You have exceeded your GPU quota (0s left). Please try again later.";
+  const body =
+    "You have exceeded your GPU quota (0s left). Please try again later.";
   assert.equal(classifyHttp(503, body), "quota");
   assert.equal(classifyHttp(503, "GPU quota exceeded"), "quota");
   assert.equal(classifyHttp(402, ""), "quota");
@@ -247,17 +352,30 @@ await test("resilience: every state has non-empty, actionable guidance", () => {
   ];
   for (const s of states) {
     const g = guidance(s);
-    assert.ok(g.length > 20, `${s} guidance is too terse: ${JSON.stringify(g)}`);
+    assert.ok(
+      g.length > 20,
+      `${s} guidance is too terse: ${JSON.stringify(g)}`,
+    );
   }
-  assert.ok(guidance("quota").includes("LOCAL_RUNTIME_FALLBACK"), "quota guidance must point somewhere real");
+  assert.ok(
+    guidance("quota").includes("LOCAL_RUNTIME_FALLBACK"),
+    "quota guidance must point somewhere real",
+  );
 });
 
 await test("resilience: an HTTP_STATUS error carries a human message, not a bare code", () => {
-  const err = new NatlasError("HTTP_STATUS", "N-ATLAS returned HTTP 503", "You have exceeded your GPU quota");
+  const err = new NatlasError(
+    "HTTP_STATUS",
+    "N-ATLAS returned HTTP 503",
+    "You have exceeded your GPU quota",
+  );
   assert.equal(resilienceStateOf(err), "quota");
   const msg = humanMessage(err);
   assert.ok(msg.includes("quota"), "human message must name the cause");
-  assert.ok(msg.split("\n").length >= 2, "human message must have cause + guidance lines");
+  assert.ok(
+    msg.split("\n").length >= 2,
+    "human message must have cause + guidance lines",
+  );
 });
 
 // --- NAT-A-002 / NAT-A-004: state on the invocation + language propagation ----
@@ -276,7 +394,11 @@ await test("invoke: a 503 quota body yields state=quota, not a fabricated succes
     const inv = await bridge.invoke({ intent: "x", system: "y" });
     assert.equal(inv.status, "failed");
     assert.equal(inv.state, "quota");
-    assert.equal(inv.response, undefined, "a quota failure must never carry a response");
+    assert.equal(
+      inv.response,
+      undefined,
+      "a quota failure must never carry a response",
+    );
   } finally {
     stub.close();
   }
@@ -294,15 +416,34 @@ await test("invoke: a stated language is recorded in evidence; an unstated one i
       model: "n-atlas-stub",
     });
 
-    const withLang = await bridge.invoke({ intent: "x", system: "y", language: "ig" });
+    const withLang = await bridge.invoke({
+      intent: "x",
+      system: "y",
+      language: "ig",
+    });
     assert.equal(withLang.evidence.language, "ig", "Igbo must be recorded");
 
-    const blank = await bridge.invoke({ intent: "x", system: "y", language: "   " });
-    assert.equal(blank.evidence.language, undefined, "a blank tag is not a language");
-    assert.ok(!JSON.stringify(blank.evidence).includes('"language"'), "an unstated language must be omitted");
+    const blank = await bridge.invoke({
+      intent: "x",
+      system: "y",
+      language: "   ",
+    });
+    assert.equal(
+      blank.evidence.language,
+      undefined,
+      "a blank tag is not a language",
+    );
+    assert.ok(
+      !JSON.stringify(blank.evidence).includes('"language"'),
+      "an unstated language must be omitted",
+    );
 
     const none = await bridge.invoke({ intent: "x", system: "y" });
-    assert.equal(none.evidence.language, undefined, "language must never be inferred");
+    assert.equal(
+      none.evidence.language,
+      undefined,
+      "language must never be inferred",
+    );
   } finally {
     stub.close();
   }

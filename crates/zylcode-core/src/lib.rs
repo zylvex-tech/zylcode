@@ -22,6 +22,12 @@ pub mod failure;
 pub mod first_mission;
 pub mod gitops;
 pub mod input_validation;
+
+#[doc(inline)]
+pub use input_validation::{
+    validate_endpoint, validate_marketplace_query, validate_tool_args, validate_transport,
+    MAX_TOOL_ID_CHARS, MAX_URL_CHARS,
+};
 pub mod intelligence;
 pub mod ledger;
 pub mod marketplace;
@@ -35,6 +41,7 @@ pub mod project;
 pub mod project_store;
 pub mod proof_engine;
 pub mod provider_scorecard;
+pub mod providers;
 pub mod router;
 pub mod sandbox;
 pub mod sqlite_ledger;
@@ -626,9 +633,10 @@ pub use marketplace::{
 };
 pub use pipeline::{Artifact as PipelineArtifact, ArtifactPipeline, ProofMetrics};
 pub use planner::{ExecutionPlan, IntentPlanner, PlanStep};
+pub use providers::streaming::StreamChunk;
 pub use router::{
     cache::SpeculativeCache, trim_to_window, ContextTrim, ModelProvider, ProviderConfig,
-    ProviderKind, RouterConfig, StreamEvent, TokenMetrics, TokenRouter, TokenSnapshot,
+    ProviderKind, RouterConfig, TokenMetrics, TokenRouter, TokenSnapshot,
 };
 pub use zylcode_mcp::{
     execute_with_recovery, with_actor, ExecuteOptions, McpConfigFile, McpToolConfig, McpTransport,

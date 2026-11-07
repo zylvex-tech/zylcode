@@ -61,6 +61,35 @@ const baseConfigs = (): Config[] => [
   },
 ];
 
+/**
+ * Credential statuses: a source, never a key. Anthropic reports the
+ * environment variable; Ollama needs none.
+ */
+function baseKeyStatuses() {
+  return [
+    {
+      kind: "anthropic",
+      provider: "anthropic",
+      requires_key: true,
+      configured: true,
+      source: "environment",
+      env_var: "ANTHROPIC_API_KEY",
+      hint: null,
+      store_error: null,
+    },
+    {
+      kind: "ollama",
+      provider: "ollama",
+      requires_key: false,
+      configured: true,
+      source: "not_required",
+      env_var: null,
+      hint: null,
+      store_error: null,
+    },
+  ];
+}
+
 let unlisten = vi.fn();
 let failoverHandler: ((p: unknown) => void) | null = null;
 
@@ -105,6 +134,23 @@ beforeEach(() => {
       );
       return { ok: true, data: next } as never;
     }
+    if (cmd === "test_provider_connection") {
+      const patch = args as { kind: string; endpoint: string | null; model: string | null };
+      const cfg = baseConfigs().find((c) => c.kind === patch.kind)!;
+      return {
+        ok: true,
+        data: {
+          provider: patch.kind,
+          model: patch.model ?? cfg.model,
+          endpoint: `${patch.endpoint ?? cfg.endpoint}/v1/messages`,
+          key_source: cfg.requires_api_key ? "env:ANTHROPIC_API_KEY" : "not_required",
+          status: "connected",
+          latency_ms: 41,
+          response_chars: 2,
+          detail: "provider answered with a completion",
+        },
+      } as never;
+    }
     if (cmd === "reorder_provider_chain") {
       const order = (args as { order: string[] }).order;
       return {
@@ -114,6 +160,23 @@ beforeEach(() => {
           fallback_order: order.indexOf(c.kind),
         })),
       } as never;
+    }
+    if (cmd === "provider_key_status") return { ok: true, data: baseKeyStatuses() } as never;
+    if (cmd === "set_provider_key" || cmd === "delete_provider_key") {
+      const patch = args as { kind: string; apiKey?: string };
+      const next = baseKeyStatuses().map((k) =>
+        k.kind === patch.kind
+          ? cmd === "set_provider_key"
+            ? {
+                ...k,
+                configured: true,
+                source: "credential_store",
+                hint: "…ALUE",
+              }
+            : { ...k, configured: false, source: "none", hint: null }
+          : k,
+      );
+      return { ok: true, data: next } as never;
     }
     return { ok: false, reason: "unknown command" } as never;
   });
@@ -144,7 +207,9 @@ describe("ProviderSettings", () => {
 
     expect(screen.getByText("Anthropic Native")).toBeInTheDocument();
     expect(screen.getByText("#0 · anthropic")).toBeInTheDocument();
-    expect(screen.getByText("API key")).toBeInTheDocument();
+    expect(screen.getByTestId("provider-key-source-anthropic")).toHaveTextContent(
+      "key: environment variable (ANTHROPIC_API_KEY)",
+    );
     expect(screen.getByText("Ollama Local")).toBeInTheDocument();
     expect(screen.getByText("disabled")).toBeInTheDocument();
     // Inputs are prefilled from the engine's own values.
@@ -165,8 +230,10 @@ describe("ProviderSettings", () => {
     render(<ProviderSettings />);
     await screen.findByText("Anthropic Native");
     fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
-    await waitFor(() => expect(invoke).toHaveBeenCalledTimes(2));
-    expect(invoke).toHaveBeenLastCalledWith(expect.anything(), "get_provider_configs");
+    await waitFor(() => expect(invoke).toHaveBeenCalledTimes(4));
+    const commands = invoke.mock.calls.map((c) => c[1]);
+    expect(commands.filter((c) => c === "get_provider_configs")).toHaveLength(2);
+    expect(commands.filter((c) => c === "provider_key_status")).toHaveLength(2);
   });
 
   it("Save validates the timeout range before calling the engine", async () => {
@@ -178,7 +245,7 @@ describe("ProviderSettings", () => {
 
     expect(await screen.findByText(/timeout_ms must be 1000\.\.300000/)).toBeInTheDocument();
     // Validation happens before any engine call: only the initial load hit.
-    expect(invoke).toHaveBeenCalledTimes(1);
+    expect(invoke).toHaveBeenCalledTimes(2);
   });
 
   it("Save sends trimmed values, nulls for empties, and refreshes the chain", async () => {
@@ -193,7 +260,7 @@ describe("ProviderSettings", () => {
     await waitFor(() =>
       expect(invoke).toHaveBeenCalledWith(expect.anything(), "set_provider_config", {
         kind: "anthropic",
-        endpoint: null, // empty → engine default
+        endpoint: "", // emptied field → remove the override
         timeoutMs: 120000,
         enabled: null,
         model: "claude-3-opus",
@@ -247,7 +314,7 @@ describe("ProviderSettings", () => {
     const up = screen.getAllByTitle("Move up (higher priority)")[0];
     fireEvent.click(up);
     // Already first: no engine call.
-    await waitFor(() => expect(invoke).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(invoke).toHaveBeenCalledTimes(2));
 
     const down = screen.getAllByTitle("Move down (lower priority)")[0];
     fireEvent.click(down);
@@ -329,6 +396,100 @@ describe("ProviderSettings", () => {
     await waitFor(() => expect(listen).toHaveBeenCalledTimes(1));
     unmount();
     expect(unlisten).toHaveBeenCalledTimes(1);
+  });
+
+  it("tests a provider with the values in the form and shows what came back", async () => {
+    render(<ProviderSettings />);
+    const card = cardOf(await screen.findByText("Anthropic Native"));
+    fireEvent.change(field(card, "Model"), { target: { value: "claude-opus-4" } });
+    fireEvent.click(within(card).getByText("Test unsaved values"));
+
+    const badge = await screen.findByTestId("provider-probe-draft-anthropic");
+    expect(badge).toHaveTextContent("Connected");
+
+    // The probe is sent with the form's model, not the saved one: the question
+    // is whether the configuration on screen works.
+    const call = invoke.mock.calls.find((c) => c[1] === "test_provider_connection")!;
+    const sent = call[2] as Record<string, unknown>;
+    expect(sent.kind).toBe("anthropic");
+    expect(sent.model).toBe("claude-opus-4");
+    // The credential source is surfaced, and the key itself never is.
+    expect(within(badge).getByText(/env:ANTHROPIC_API_KEY/)).toBeInTheDocument();
+    expect(badge.textContent).not.toMatch(/sk-/);
+  });
+
+  it("reports a refused credential as a failure rather than as ready", async () => {
+    invoke.mockImplementation(async (_env, cmd) => {
+      if (cmd === "get_provider_configs") return { ok: true, data: baseConfigs() } as never;
+      if (cmd === "test_provider_connection") {
+        return {
+          ok: true,
+          data: {
+            provider: "anthropic",
+            model: "claude-sonnet-4",
+            endpoint: "https://api.anthropic.com/v1/messages",
+            key_source: "env:ANTHROPIC_API_KEY",
+            status: "authentication_failed",
+            http_status: 401,
+            latency_ms: 12,
+            response_chars: 0,
+            detail: "invalid x-api-key",
+          },
+        } as never;
+      }
+      return { ok: true, data: [] } as never;
+    });
+
+    render(<ProviderSettings />);
+    const card = cardOf(await screen.findByText("Anthropic Native"));
+    fireEvent.click(within(card).getByText("Test unsaved values"));
+
+    const badge = await screen.findByTestId("provider-probe-draft-anthropic");
+    expect(badge).toHaveTextContent("Authentication failed");
+    expect(within(badge).getByText("HTTP 401")).toBeInTheDocument();
+    expect(within(badge).getByText(/invalid x-api-key/)).toBeInTheDocument();
+    expect(badge.textContent).not.toContain("Connected");
+  });
+
+  it("probes the saved configuration when asked, without sending draft values", async () => {
+    render(<ProviderSettings />);
+    const card = cardOf(await screen.findByText("Anthropic Native"));
+
+    // The form is edited first: a saved probe must ignore it.
+    fireEvent.change(field(card, "Model"), { target: { value: "draft-only-model" } });
+    fireEvent.click(within(card).getByText("Test saved"));
+
+    const badge = await screen.findByTestId("provider-probe-saved-anthropic");
+    expect(within(badge).getByText(/Saved configuration/)).toBeInTheDocument();
+    expect(badge).toHaveTextContent("Connected");
+
+    const call = invoke.mock.calls.find((c) => c[1] === "test_provider_connection")!;
+    const sent = call[2] as Record<string, unknown>;
+    expect(sent.saved).toBe(true);
+    expect(sent.model).toBeNull();
+    expect(sent.endpoint).toBeNull();
+    expect(sent.timeoutMs).toBeNull();
+  });
+
+  it("stores a key through the credential store and never echoes it", async () => {
+    render(<ProviderSettings />);
+    const card = cardOf(await screen.findByText("Anthropic Native"));
+
+    const keyInput = within(card).getByPlaceholderText("paste key");
+    fireEvent.change(keyInput, { target: { value: "sk-ant-supersecret" } });
+    fireEvent.click(within(card).getByRole("button", { name: "Store key" }));
+
+    await waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith(expect.anything(), "set_provider_key", {
+        kind: "anthropic",
+        apiKey: "sk-ant-supersecret",
+      }),
+    );
+    // The field is cleared and the status shows a masked hint only.
+    await waitFor(() => expect(keyInput).toHaveValue(""));
+    const badge = screen.getByTestId("provider-key-source-anthropic");
+    expect(badge).toHaveTextContent("OS credential store");
+    expect(badge).not.toHaveTextContent("supersecret");
   });
 
   it("survives a runtime without the event bridge", async () => {

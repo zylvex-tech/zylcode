@@ -8,34 +8,34 @@
 
 ## 1. Summary
 
-| Question | Answer |
-|---|---|
-| Deployment URL | `https://zylvex-natlas-zylcode-bridge.hf.space` |
-| Reachable? | **Yes** — HTTP `200`, `server: uvicorn` |
-| Hosting | **Hugging Face Spaces** (Gradio `5.20.0`, `app_file: app.py`) |
-| Deployed commit | **`a2566d91fede85bf769daacdfb55d1678eafba2a`** (HF Space repo), last modified **2026-10-07T19:28:10Z** |
-| Model identity | **`NCAIR1/N-ATLaS`**, `PyTorch-Transformers`, ZeroGPU — confirmed live via `/healthz` |
-| Hardware | `zero-a10g` (ZeroGPU shared pool), 1 replica, runtime `RUNNING` |
-| Quota state at test time | **Exhausted** after one successful call |
-| Live model response obtained? | **Yes — one genuine response** (English). All subsequent attempts errored. |
-| Deployment action required? | **No** — see §6 |
+| Question                      | Answer                                                                                                 |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Deployment URL                | `https://zylvex-natlas-zylcode-bridge.hf.space`                                                        |
+| Reachable?                    | **Yes** — HTTP `200`, `server: uvicorn`                                                                |
+| Hosting                       | **Hugging Face Spaces** (Gradio `5.20.0`, `app_file: app.py`)                                          |
+| Deployed commit               | **`a2566d91fede85bf769daacdfb55d1678eafba2a`** (HF Space repo), last modified **2026-10-07T19:28:10Z** |
+| Model identity                | **`NCAIR1/N-ATLaS`**, `PyTorch-Transformers`, ZeroGPU — confirmed live via `/healthz`                  |
+| Hardware                      | `zero-a10g` (ZeroGPU shared pool), 1 replica, runtime `RUNNING`                                        |
+| Quota state at test time      | **Exhausted** after one successful call                                                                |
+| Live model response obtained? | **Yes — one genuine response** (English). All subsequent attempts errored.                             |
+| Deployment action required?   | **No** — see §6                                                                                        |
 
 ---
 
 ## 2. Two separate repositories (owner's point, confirmed)
 
-The owner stated: *"Updating GitHub and updating the live Hugging Face application are
-two separate operations."* This is **correct**, and was confirmed by measurement:
+The owner stated: _"Updating GitHub and updating the live Hugging Face application are
+two separate operations."_ This is **correct**, and was confirmed by measurement:
 
-| | GitHub | Hugging Face |
-|---|---|---|
-| Repo | `github.com/zylvex-tech/zylcode` | `huggingface.co/spaces/zylvex/natlas-zylcode-bridge` |
-| Branch | `competition/natlas-2026` | `main` |
-| HEAD | `8216738` | `a2566d91` |
-| Relationship | — | **independent; no mirror, no submodule, no auto-sync** |
+|              | GitHub                           | Hugging Face                                           |
+| ------------ | -------------------------------- | ------------------------------------------------------ |
+| Repo         | `github.com/zylvex-tech/zylcode` | `huggingface.co/spaces/zylvex/natlas-zylcode-bridge`   |
+| Branch       | `competition/natlas-2026`        | `main`                                                 |
+| HEAD         | `8216738`                        | `a2566d91`                                             |
+| Relationship | —                                | **independent; no mirror, no submodule, no auto-sync** |
 
 The Space does **not** auto-follow the GitHub branch. Its SHA (`a2566d91`) is a commit in
-the *Space's own* git history and has no counterpart in the ZylCode repository.
+the _Space's own_ git history and has no counterpart in the ZylCode repository.
 
 ---
 
@@ -48,24 +48,34 @@ The Space is an **Apache-2.0 fork of `samuelolubukun/NATLaS-Sovereign-Engine`**,
 
 Surface (all verified live):
 
-| Path | Auth | Observed |
-|---|---|---|
-| `GET /healthz` | none | `200` — model identity, GPU type, attribution |
-| `GET /v1/models` | `NATLAS_API_KEY` | `401` without a key |
-| `POST /v1/chat/completions` | `NATLAS_API_KEY` | `401` without a key |
-| `POST /v1/completions` | `NATLAS_API_KEY` | (same auth boundary) |
-| `POST /v1/audio/transcriptions` | `NATLAS_API_KEY` | (same auth boundary) |
-| `GET /openapi.json` | none | `200` (FastAPI `0.1.0`) |
-| `GET /` | none | `200` — Gradio frontend (98 163 bytes) |
+| Path                            | Auth             | Observed                                      |
+| ------------------------------- | ---------------- | --------------------------------------------- |
+| `GET /healthz`                  | none             | `200` — model identity, GPU type, attribution |
+| `GET /v1/models`                | `NATLAS_API_KEY` | `401` without a key                           |
+| `POST /v1/chat/completions`     | `NATLAS_API_KEY` | `401` without a key                           |
+| `POST /v1/completions`          | `NATLAS_API_KEY` | (same auth boundary)                          |
+| `POST /v1/audio/transcriptions` | `NATLAS_API_KEY` | (same auth boundary)                          |
+| `GET /openapi.json`             | none             | `200` (FastAPI `0.1.0`)                       |
+| `GET /`                         | none             | `200` — Gradio frontend (98 163 bytes)        |
 
 `/healthz` body (verbatim excerpt):
 
 ```json
-{"status":"healthy","service":"natlas-engine","model":"NCAIR1/N-ATLaS",
- "engine":"PyTorch-Transformers","gpu":"ZeroGPU (shared NVIDIA GPU)",
- "supported_models":["NCAIR1/Hausa-ASR","NCAIR1/Igbo-ASR",
- "NCAIR1/NigerianAccentedEnglish","NCAIR1/Yoruba-ASR"],"asr_models_loaded":[],
- "attribution":"N-ATLaS is an initiative of the Federal Ministry of Communications, ..."}
+{
+  "status": "healthy",
+  "service": "natlas-engine",
+  "model": "NCAIR1/N-ATLaS",
+  "engine": "PyTorch-Transformers",
+  "gpu": "ZeroGPU (shared NVIDIA GPU)",
+  "supported_models": [
+    "NCAIR1/Hausa-ASR",
+    "NCAIR1/Igbo-ASR",
+    "NCAIR1/NigerianAccentedEnglish",
+    "NCAIR1/Yoruba-ASR"
+  ],
+  "asr_models_loaded": [],
+  "attribution": "N-ATLaS is an initiative of the Federal Ministry of Communications, ..."
+}
 ```
 
 ---
@@ -104,8 +114,8 @@ question: "Say hello in one word."
 raw event tail: event: error / data: null
 ```
 
-**Interpretation (this is the important part):** English succeeded once, then *English
-also* failed. The failure is therefore **not language-specific** — it is a
+**Interpretation (this is the important part):** English succeeded once, then _English
+also_ failed. The failure is therefore **not language-specific** — it is a
 **capacity/quota condition** on the shared ZeroGPU pool. This is consistent with
 defect NAT-A-001 and with the Space's own behaviour.
 
@@ -164,12 +174,12 @@ rather than silently performed.
 
 ## 7. What is NOT verified
 
-| Item | Status |
-|---|---|
-| `/v1/chat/completions` with a valid key | **NOT VERIFIED** — `NATLAS_API_KEY` not available here. |
-| ASR routes | **NOT VERIFIED** — `asr_models_loaded: []` and no key. |
-| The deployed Space's `a2566d91` corresponding to any specific ZylCode commit | **NOT APPLICABLE** — separate repositories. |
-| A full multi-language live journey | **BLOCKED** by quota after the first call. |
-| Sustained throughput / concurrency | **NOT VERIFIED**. |
+| Item                                                                         | Status                                                  |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `/v1/chat/completions` with a valid key                                      | **NOT VERIFIED** — `NATLAS_API_KEY` not available here. |
+| ASR routes                                                                   | **NOT VERIFIED** — `asr_models_loaded: []` and no key.  |
+| The deployed Space's `a2566d91` corresponding to any specific ZylCode commit | **NOT APPLICABLE** — separate repositories.             |
+| A full multi-language live journey                                           | **BLOCKED** by quota after the first call.              |
+| Sustained throughput / concurrency                                           | **NOT VERIFIED**.                                       |
 
-*End of document.*
+_End of document._

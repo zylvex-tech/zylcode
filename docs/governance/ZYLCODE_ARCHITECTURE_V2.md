@@ -36,19 +36,19 @@ All implementation must conform to this document unless a Constitution amendment
 These are the invariants from which everything else follows. If a design decision contradicts
 an axiom, the design is wrong.
 
-| # | Axiom | Consequence |
-|---|---|---|
-| **A1** | **The loop is the product.** | Every system must strengthen some arc of Imagine→…→Ship. A system that only serves itself is deferred. |
-| **A2** | **The Project is the shared world state.** | Agents, runtimes and engines do not communicate by passing transcripts. They read and write Project state. |
-| **A3** | **Evidence is a first-class data type.** | Proof is stored, addressable, and citable — not a log line. |
-| **A4** | **Design is structured data.** | The design model is machine-readable and agent-addressable. Screenshots are observation, never the medium. |
-| **A5** | **Extensibility is an ABI, not a plugin folder.** | Integration points are versioned contracts from day one. |
-| **A6** | **Fail closed.** | Unknown input yields an explicit `UNSUPPORTED_*` / `*_FAILED` status. Never a plausible wrong answer. |
-| **A7** | **The rung ceiling holds.** | A system's proof rung cannot exceed the weakest link in its critical path. |
-| **A8** | **Local-first, sovereign by default.** | Indexing and analysis are local. Egress is explicit, never implicit. |
-| **A9** | **Determinism where measurement occurs.** | Anything used as a gate must be reproducible. |
-| **A10** | **Reachability is part of correctness.** | An unreachable subsystem is not a capability, regardless of test coverage. |
-| **A11** | **Acting is not the same as having acted.** | Every action against the outside world must be *observed* to have taken effect before it is reported as done. An action whose effect was not re-perceived is UNVERIFIED, not successful. (v2.1 — added for the Computer-Use Engine.) |
+| #       | Axiom                                             | Consequence                                                                                                                                                                                                                          |
+| ------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **A1**  | **The loop is the product.**                      | Every system must strengthen some arc of Imagine→…→Ship. A system that only serves itself is deferred.                                                                                                                               |
+| **A2**  | **The Project is the shared world state.**        | Agents, runtimes and engines do not communicate by passing transcripts. They read and write Project state.                                                                                                                           |
+| **A3**  | **Evidence is a first-class data type.**          | Proof is stored, addressable, and citable — not a log line.                                                                                                                                                                          |
+| **A4**  | **Design is structured data.**                    | The design model is machine-readable and agent-addressable. Screenshots are observation, never the medium.                                                                                                                           |
+| **A5**  | **Extensibility is an ABI, not a plugin folder.** | Integration points are versioned contracts from day one.                                                                                                                                                                             |
+| **A6**  | **Fail closed.**                                  | Unknown input yields an explicit `UNSUPPORTED_*` / `*_FAILED` status. Never a plausible wrong answer.                                                                                                                                |
+| **A7**  | **The rung ceiling holds.**                       | A system's proof rung cannot exceed the weakest link in its critical path.                                                                                                                                                           |
+| **A8**  | **Local-first, sovereign by default.**            | Indexing and analysis are local. Egress is explicit, never implicit.                                                                                                                                                                 |
+| **A9**  | **Determinism where measurement occurs.**         | Anything used as a gate must be reproducible.                                                                                                                                                                                        |
+| **A10** | **Reachability is part of correctness.**          | An unreachable subsystem is not a capability, regardless of test coverage.                                                                                                                                                           |
+| **A11** | **Acting is not the same as having acted.**       | Every action against the outside world must be _observed_ to have taken effect before it is reported as done. An action whose effect was not re-perceived is UNVERIFIED, not successful. (v2.1 — added for the Computer-Use Engine.) |
 
 ### 1.1 The grounding rule (v2.1)
 
@@ -112,7 +112,7 @@ crash-isolation, resource limits, and permission boundaries enforceable.
 
 The **Computer-Use worker** is drawn separately because its trust profile differs from every
 other worker: it drives arbitrary applications rather than a sandboxed toolchain, so its side
-effects reach a user's real desktop. It is therefore subject to the Permission gate at *every*
+effects reach a user's real desktop. It is therefore subject to the Permission gate at _every_
 step, not once per mission. See `docs/architecture/COMPUTER_USE_ENGINE.md`.
 
 ### 2.1 Why separate workers
@@ -130,13 +130,13 @@ Each system is specified by: **Responsibility · Owns · Depends on · Exposes �
 
 ### 3.1 Project System
 
-| | |
-|---|---|
-| **Responsibility** | Persistent project/product identity and shared world state |
-| **Owns** | Requirements, repositories, architecture records, design references, conversations, missions, agents, decisions, evidence references, artifacts, runtimes, model config, build config, releases, deployment history |
-| **Depends on** | Nothing (foundational) |
-| **Exposes** | Project read/write API, Project Graph, Project Knowledge Graph |
-| **Never does** | Execute code. Reason. Render UI. |
+|                    |                                                                                                                                                                                                                     |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Responsibility** | Persistent project/product identity and shared world state                                                                                                                                                          |
+| **Owns**           | Requirements, repositories, architecture records, design references, conversations, missions, agents, decisions, evidence references, artifacts, runtimes, model config, build config, releases, deployment history |
+| **Depends on**     | Nothing (foundational)                                                                                                                                                                                              |
+| **Exposes**        | Project read/write API, Project Graph, Project Knowledge Graph                                                                                                                                                      |
+| **Never does**     | Execute code. Reason. Render UI.                                                                                                                                                                                    |
 
 > **A Project is not a directory.** It is the durable representation of a software product.
 
@@ -144,85 +144,85 @@ Full specification: `docs/architecture/PROJECT_SYSTEM.md`
 
 ### 3.2 Agent Kernel
 
-| | |
-|---|---|
-| **Responsibility** | Reasoning, planning, tool invocation, workflows, model selection, permissions, memory |
-| **Owns** | Agent definitions, decision protocol, step budgets, approval gates, context assembly |
-| **Depends on** | Project System, Intelligence Graph, Execution Engine, Model Platform |
-| **Exposes** | Agent loop, tool registry, approval interface, memory API |
-| **Never does** | Own the truth about the repository (that is the Intelligence Graph). Store its own copy of project state. |
+|                    |                                                                                                           |
+| ------------------ | --------------------------------------------------------------------------------------------------------- |
+| **Responsibility** | Reasoning, planning, tool invocation, workflows, model selection, permissions, memory                     |
+| **Owns**           | Agent definitions, decision protocol, step budgets, approval gates, context assembly                      |
+| **Depends on**     | Project System, Intelligence Graph, Execution Engine, Model Platform                                      |
+| **Exposes**        | Agent loop, tool registry, approval interface, memory API                                                 |
+| **Never does**     | Own the truth about the repository (that is the Intelligence Graph). Store its own copy of project state. |
 
 Full specification: `docs/architecture/AGENT_KERNEL.md`
 
 ### 3.3 Intelligence Graph
 
-| | |
-|---|---|
-| **Responsibility** | Repository, symbol, dependency, architecture, history and runtime knowledge |
-| **Owns** | The repository index, symbol table, dependency graph, architectural fingerprint, change graph, retrieval/ranking |
-| **Depends on** | Project System (scoping) |
-| **Exposes** | Typed query API with relevance, reason and provenance on every result |
-| **Never does** | Act as the Evidence Ledger (an index is not a ledger). Pretend regex extraction is semantic resolution. |
+|                    |                                                                                                                  |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| **Responsibility** | Repository, symbol, dependency, architecture, history and runtime knowledge                                      |
+| **Owns**           | The repository index, symbol table, dependency graph, architectural fingerprint, change graph, retrieval/ranking |
+| **Depends on**     | Project System (scoping)                                                                                         |
+| **Exposes**        | Typed query API with relevance, reason and provenance on every result                                            |
+| **Never does**     | Act as the Evidence Ledger (an index is not a ledger). Pretend regex extraction is semantic resolution.          |
 
 Full specification: `docs/architecture/INTELLIGENCE_GRAPH.md`
 
 ### 3.4 Vision Studio
 
-| | |
-|---|---|
-| **Responsibility** | UI/UX design, design systems, prototypes, design↔code |
-| **Owns** | The canonical `DesignDocument` model and its UI-IR |
-| **Depends on** | Project System, Intelligence Graph (for code targets) |
-| **Exposes** | Design model API, UI-IR, framework adapters, visual diff model |
-| **Never does** | Use React DOM as the design model. Manipulate screenshots where primitives exist. |
+|                    |                                                                                   |
+| ------------------ | --------------------------------------------------------------------------------- |
+| **Responsibility** | UI/UX design, design systems, prototypes, design↔code                             |
+| **Owns**           | The canonical `DesignDocument` model and its UI-IR                                |
+| **Depends on**     | Project System, Intelligence Graph (for code targets)                             |
+| **Exposes**        | Design model API, UI-IR, framework adapters, visual diff model                    |
+| **Never does**     | Use React DOM as the design model. Manipulate screenshots where primitives exist. |
 
 Full specification: `docs/architecture/VISION_STUDIO.md`
 
 ### 3.5 Execution Engine
 
-| | |
-|---|---|
-| **Responsibility** | Shell, browser, desktop, containers, Android, iOS, cloud |
-| **Owns** | Worker lifecycle, sandboxes, resource limits, capability negotiation |
-| **Depends on** | Project System, Permissions |
-| **Exposes** | Uniform `ExecutionBackend` trait; every backend is interchangeable |
-| **Never does** | Decide *whether* an action is permitted (that is Permissions). Interpret results (that is Proof). |
+|                    |                                                                                                   |
+| ------------------ | ------------------------------------------------------------------------------------------------- |
+| **Responsibility** | Shell, browser, desktop, containers, Android, iOS, cloud                                          |
+| **Owns**           | Worker lifecycle, sandboxes, resource limits, capability negotiation                              |
+| **Depends on**     | Project System, Permissions                                                                       |
+| **Exposes**        | Uniform `ExecutionBackend` trait; every backend is interchangeable                                |
+| **Never does**     | Decide _whether_ an action is permitted (that is Permissions). Interpret results (that is Proof). |
 
 Full specification: `docs/architecture/EXECUTION_ENGINE.md`
 
 ### 3.6 Proof Engine
 
-| | |
-|---|---|
-| **Responsibility** | Build/test/runtime/visual/security/evidence verification |
-| **Owns** | The Proof Graph, acceptance-criteria evaluation, rung assignment |
-| **Depends on** | Execution Engine, Evidence Ledger, Artifact Bus |
-| **Exposes** | `verify(claim) → ProofResult`, proof graph queries |
-| **Never does** | Mark something verified without a citation to an artifact. Accept "tests passed" without captured output. |
+|                    |                                                                                                           |
+| ------------------ | --------------------------------------------------------------------------------------------------------- |
+| **Responsibility** | Build/test/runtime/visual/security/evidence verification                                                  |
+| **Owns**           | The Proof Graph, acceptance-criteria evaluation, rung assignment                                          |
+| **Depends on**     | Execution Engine, Evidence Ledger, Artifact Bus                                                           |
+| **Exposes**        | `verify(claim) → ProofResult`, proof graph queries                                                        |
+| **Never does**     | Mark something verified without a citation to an artifact. Accept "tests passed" without captured output. |
 
 Full specification: `docs/architecture/PROOF_ENGINE.md`
 
 ### 3.7 Delivery Engine
 
-| | |
-|---|---|
-| **Responsibility** | Git, PRs, CI/CD, packaging, deployment, app stores, releases |
-| **Owns** | Release graph, artifact signing, distribution targets, release evidence |
-| **Depends on** | Proof Engine (nothing ships unproven), Project System |
-| **Exposes** | `plan_release`, `package`, `publish`, release evidence bundle |
-| **Never does** | Publish an artifact whose required proofs are below threshold. |
+|                    |                                                                         |
+| ------------------ | ----------------------------------------------------------------------- |
+| **Responsibility** | Git, PRs, CI/CD, packaging, deployment, app stores, releases            |
+| **Owns**           | Release graph, artifact signing, distribution targets, release evidence |
+| **Depends on**     | Proof Engine (nothing ships unproven), Project System                   |
+| **Exposes**        | `plan_release`, `package`, `publish`, release evidence bundle           |
+| **Never does**     | Publish an artifact whose required proofs are below threshold.          |
 
 Full specification: `docs/architecture/DELIVERY_ENGINE.md`
 
 ### 3.8 Computer-Use Engine
 
-| | |
-|---|---|
-| **Responsibility** | Perceiving and driving the user's real desktop and arbitrary third-party applications, under permission, with evidence |
-| **Owns** | Screen/window capture, accessibility-tree reads, element grounding, input synthesis (mouse/keyboard/clipboard), window management, per-application adapters, the Agent Flight Recorder |
-| **Depends on** | Permissions (every step), Evidence Ledger, Artifact Bus, Project System (scoping), Execution Engine (worker lifecycle) |
-| **Exposes** | The canonical loop `Observe → Ground → Decide → Permission → Act → Observe → Verify`; risk-level declarations; adapter registry; replayable session artifacts |
-| **Never does** | Act without passing the Permission step. Report an action as successful without the Verify step re-observing its effect (A11). Carry a confidence value not derived from a measurement (§1.1). Own a browser DOM — that is the browser worker's job; this engine drives *applications*. |
+|                    |                                                                                                                                                                                                                                                                                         |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Responsibility** | Perceiving and driving the user's real desktop and arbitrary third-party applications, under permission, with evidence                                                                                                                                                                  |
+| **Owns**           | Screen/window capture, accessibility-tree reads, element grounding, input synthesis (mouse/keyboard/clipboard), window management, per-application adapters, the Agent Flight Recorder                                                                                                  |
+| **Depends on**     | Permissions (every step), Evidence Ledger, Artifact Bus, Project System (scoping), Execution Engine (worker lifecycle)                                                                                                                                                                  |
+| **Exposes**        | The canonical loop `Observe → Ground → Decide → Permission → Act → Observe → Verify`; risk-level declarations; adapter registry; replayable session artifacts                                                                                                                           |
+| **Never does**     | Act without passing the Permission step. Report an action as successful without the Verify step re-observing its effect (A11). Carry a confidence value not derived from a measurement (§1.1). Own a browser DOM — that is the browser worker's job; this engine drives _applications_. |
 
 > **Computer Use is a first-class engine, not a browser feature** (v2.1). Driving arbitrary GUI
 > applications carries its own perception, grounding, permission, action, verification and
@@ -233,13 +233,13 @@ Full specification: `docs/architecture/DELIVERY_ENGINE.md`
 **Risk levels.** Every action declares one, and each level maps to a required permission tier
 and a required verification depth:
 
-| Level | Scope | Example |
-|---|---|---|
-| **CU-0** | Observe only | Capture a screen region. No side effects. |
-| **CU-1** | Navigate within a scoped application | Switch tabs, scroll, focus a window |
-| **CU-2** | Interact, non-destructive | Click a form field, type into a scratch document |
-| **CU-3** | Modify user data | Save a file, send a message, edit a record |
-| **CU-4** | Irreversible or externally visible | Delete, purchase, publish, transmit |
+| Level    | Scope                                | Example                                          |
+| -------- | ------------------------------------ | ------------------------------------------------ |
+| **CU-0** | Observe only                         | Capture a screen region. No side effects.        |
+| **CU-1** | Navigate within a scoped application | Switch tabs, scroll, focus a window              |
+| **CU-2** | Interact, non-destructive            | Click a form field, type into a scratch document |
+| **CU-3** | Modify user data                     | Save a file, send a message, edit a record       |
+| **CU-4** | Irreversible or externally visible   | Delete, purchase, publish, transmit              |
 
 **PROPOSED — non-functional skeleton present.** No real perception, no real action, no
 permission gate, no verification, and no Flight Recorder exist. The tree contains
@@ -299,7 +299,7 @@ type T" becomes a **measured** claim.
 
 ### 4.3 Artifact Bus
 
-The canonical channel for anything a human or the Proof Engine needs to *inspect*.
+The canonical channel for anything a human or the Proof Engine needs to _inspect_.
 
 Artifact kinds: `WEB_PREVIEW · COMPONENT_PREVIEW · DESIGN · DOCUMENT · DIAGRAM · IMAGE · DIFF ·
 TEST_REPORT · BUILD_REPORT · SCREENSHOT · VIDEO · DEVICE_SCREEN · DATABASE_VIEW · API_RESPONSE`
@@ -327,7 +327,7 @@ Risk-classified, fail-closed authorization.
 
 - Absence of a grant is denial.
 - Destructive and external actions require explicit approval.
-- Every decision (allow *and* deny) is recorded with the rule that produced it.
+- Every decision (allow _and_ deny) is recorded with the rule that produced it.
 
 ### 5.3 Recovery
 
@@ -350,16 +350,16 @@ party that did not build it.
 **One writer per fact.** Duplicated truth is the most expensive architectural mistake available
 to us.
 
-| Fact | Owner | Everyone else |
-|---|---|---|
-| What the repository contains | Intelligence Graph | reads via query API |
-| What a file says on disk | Filesystem | reads |
-| What the Project is | Project System | reads via Project API |
-| What was proven | Evidence Ledger | appends via ledger API |
-| What a Mission requires | Project System (Mission) | reads |
-| What a design is | Vision Studio | reads via design model |
-| What a model did | Model Platform | appends evidence |
-| What shipped | Delivery Engine | reads proofs |
+| Fact                         | Owner                    | Everyone else          |
+| ---------------------------- | ------------------------ | ---------------------- |
+| What the repository contains | Intelligence Graph       | reads via query API    |
+| What a file says on disk     | Filesystem               | reads                  |
+| What the Project is          | Project System           | reads via Project API  |
+| What was proven              | Evidence Ledger          | appends via ledger API |
+| What a Mission requires      | Project System (Mission) | reads                  |
+| What a design is             | Vision Studio            | reads via design model |
+| What a model did             | Model Platform           | appends evidence       |
+| What shipped                 | Delivery Engine          | reads proofs           |
 
 **Corollary — the context-assembly rule:** the Agent Kernel must not maintain a parallel
 notion of repository structure. It asks the Intelligence Graph. Today it does not, and that is
@@ -441,28 +441,28 @@ Project System ──┬─► Agent Kernel ──► Mission Engine
 
 Rung definitions: `ZYLCODE_PROOF_GRAPH.md`.
 
-| System | Rung | Status | Notes |
-|---|---|---|---|
-| **Trust foundation** — Evidence Ledger | **R3** | PARTIAL | Ledger, permissions gate, checkpoint recovery implemented (Phases 1A–1D). Generic verification execution remains partial. |
-| **Agent Kernel** | **R3** | PARTIAL | Real tool runtime, iterative reasoning loop, model-driven decisions. **Live multi-provider commissioning outstanding.** |
-| **Intelligence Graph** | **R2** | PARTIAL | Module implemented and unit-tested (79 tests). **Fails benchmark on independent re-run; not integrated into any product surface.** See `PHASE2A_INDEPENDENT_AUDIT.md`. |
-| **Project System** | **R0** | PROPOSED | Does not exist. `Project` currently exists only as a UI-level notion. |
-| **Mission Engine** | **R0** | PROPOSED | Does not exist. |
-| **Model Platform** | **R1** | PARTIAL | Provider configuration and real HTTP dispatch exist. Capability-based routing does not. "Model Democracy" is **not** achieved. |
-| **Extension Platform** | **R0** | PROPOSED | MCP bridge and a plugin marketplace module exist, but no stable package ABI. |
-| **Artifact Bus** | **R0** | PROPOSED | No canonical artifact model. |
-| **Live Preview Runtime** | **R0** | PROPOSED | Does not exist. |
-| **Execution Engine** — shell/tools | **R3** | PARTIAL | Real filesystem/shell/git/search tools. |
-| **Execution Engine** — browser | **R0** | PROPOSED | Not implemented. |
-| **Execution Engine** — Android | **R0** | PROPOSED | Not implemented. |
-| **Execution Engine** — macOS/iOS worker | **R0** | PROPOSED | Not implemented. |
-| **Vision Studio** | **R0** | PROPOSED | Does not exist. |
-| **Visual Intelligence** | **R0** | PROPOSED | Does not exist. |
-| **Computer-Use Engine** | **R0** | **PROPOSED — non-functional skeleton present** | `crates/zylcode-core/src/computer_use/` (7 files, 1,763 lines, commit `29cc936`) is a **simulation facade**: 31 simulation sites; all capture returns `vec![0; …]`; all input is `tokio::time::sleep`; `recognize_text` returns a hardcoded literal; `detect_elements_internal` fabricates a "Submit" button with `confidence: 0.85` from image width alone. No permission gate, no verification, no Flight Recorder. Only reachable surface: CLI `computer-use stats`. Its tests assert `is_ok()` against a facade that cannot fail. **Replace, not extend.** |
-| **Proof Engine v2** | **R0** | PROPOSED | A verification rung exists in the pipeline; the Proof Graph does not. |
-| **Delivery Engine** | **R1** | PARTIAL | Release workflow configured (NSIS/DMG/DEB). **CI blocked externally.** Installer path has an incident history. |
-| **Multi-Agent Engineering** | **R0** | PROPOSED | Does not exist. |
-| **Marketplace** | **R0** | PROPOSED | Does not exist. |
+| System                                  | Rung   | Status                                         | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| --------------------------------------- | ------ | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Trust foundation** — Evidence Ledger  | **R3** | PARTIAL                                        | Ledger, permissions gate, checkpoint recovery implemented (Phases 1A–1D). Generic verification execution remains partial.                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| **Agent Kernel**                        | **R3** | PARTIAL                                        | Real tool runtime, iterative reasoning loop, model-driven decisions. **Live multi-provider commissioning outstanding.**                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| **Intelligence Graph**                  | **R2** | PARTIAL                                        | Module implemented and unit-tested (79 tests). **Fails benchmark on independent re-run; not integrated into any product surface.** See `PHASE2A_INDEPENDENT_AUDIT.md`.                                                                                                                                                                                                                                                                                                                                                                                         |
+| **Project System**                      | **R0** | PROPOSED                                       | Does not exist. `Project` currently exists only as a UI-level notion.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| **Mission Engine**                      | **R0** | PROPOSED                                       | Does not exist.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| **Model Platform**                      | **R1** | PARTIAL                                        | Provider configuration and real HTTP dispatch exist. Capability-based routing does not. "Model Democracy" is **not** achieved.                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| **Extension Platform**                  | **R0** | PROPOSED                                       | MCP bridge and a plugin marketplace module exist, but no stable package ABI.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| **Artifact Bus**                        | **R0** | PROPOSED                                       | No canonical artifact model.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| **Live Preview Runtime**                | **R0** | PROPOSED                                       | Does not exist.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| **Execution Engine** — shell/tools      | **R3** | PARTIAL                                        | Real filesystem/shell/git/search tools.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| **Execution Engine** — browser          | **R0** | PROPOSED                                       | Not implemented.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| **Execution Engine** — Android          | **R0** | PROPOSED                                       | Not implemented.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| **Execution Engine** — macOS/iOS worker | **R0** | PROPOSED                                       | Not implemented.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| **Vision Studio**                       | **R0** | PROPOSED                                       | Does not exist.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| **Visual Intelligence**                 | **R0** | PROPOSED                                       | Does not exist.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| **Computer-Use Engine**                 | **R0** | **PROPOSED — non-functional skeleton present** | `crates/zylcode-core/src/computer_use/` (7 files, 1,763 lines, commit `29cc936`) is a **simulation facade**: 31 simulation sites; all capture returns `vec![0; …]`; all input is `tokio::time::sleep`; `recognize_text` returns a hardcoded literal; `detect_elements_internal` fabricates a "Submit" button with `confidence: 0.85` from image width alone. No permission gate, no verification, no Flight Recorder. Only reachable surface: CLI `computer-use stats`. Its tests assert `is_ok()` against a facade that cannot fail. **Replace, not extend.** |
+| **Proof Engine v2**                     | **R0** | PROPOSED                                       | A verification rung exists in the pipeline; the Proof Graph does not.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| **Delivery Engine**                     | **R1** | PARTIAL                                        | Release workflow configured (NSIS/DMG/DEB). **CI blocked externally.** Installer path has an incident history.                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| **Multi-Agent Engineering**             | **R0** | PROPOSED                                       | Does not exist.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| **Marketplace**                         | **R0** | PROPOSED                                       | Does not exist.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 
 ### 9.1 Honest summary
 
@@ -478,17 +478,17 @@ precondition for everything that follows.
 
 ## 10. Architectural Risks
 
-| Risk | Why it matters | Mitigation |
-|---|---|---|
-| **Index-as-ledger confusion** | Rebuilding the index would appear to rewrite history | Separate stores, separate APIs, documented in §5.1 |
-| **Web-centric design model** | Permanently forecloses non-web targets | UI-IR mandatory before any canvas work (§A4, Constitution §8.3) |
-| **Late extensibility** | Hard-coded integrations become unfixable | Extension ABI in Phase 5, before the integrations exist |
-| **Cross-platform path handling** | Windows is the primary target and the current scanner is broken on it | Normalise paths at every boundary; test on the real platform |
-| **Self-certification** | Proven to have already produced a false PASS | Independent audit is mandatory (Constitution §3.2) |
-| **Metric scope creep** | "Files indexed" counted build output and was published as capability | Every metric names and scopes what it counts |
-| **Fabricated grounding (v2.1)** | A facade returning invented element positions and confidence scores is indistinguishable from real perception at the type level, and would silently corrupt Computer-Use reliability work | Percept types must carry provenance and method alongside confidence (§1.1); facades must be labelled and tested as facades |
-| **Simulated action (v2.1)** | Input synthesis that sleeps instead of acting passes every test that asserts `is_ok()` | Assert *effect*, not success. An action test must observe the change it claims to cause (A11) |
-| **Permission-gate bypass (v2.1)** | A Computer-Use engine built before the Permission gate will hard-code its own allow logic, which is then never removed | Dependency hard rule 7 — Permissions precedes CU; 7B is blocked without it |
+| Risk                              | Why it matters                                                                                                                                                                            | Mitigation                                                                                                                 |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| **Index-as-ledger confusion**     | Rebuilding the index would appear to rewrite history                                                                                                                                      | Separate stores, separate APIs, documented in §5.1                                                                         |
+| **Web-centric design model**      | Permanently forecloses non-web targets                                                                                                                                                    | UI-IR mandatory before any canvas work (§A4, Constitution §8.3)                                                            |
+| **Late extensibility**            | Hard-coded integrations become unfixable                                                                                                                                                  | Extension ABI in Phase 5, before the integrations exist                                                                    |
+| **Cross-platform path handling**  | Windows is the primary target and the current scanner is broken on it                                                                                                                     | Normalise paths at every boundary; test on the real platform                                                               |
+| **Self-certification**            | Proven to have already produced a false PASS                                                                                                                                              | Independent audit is mandatory (Constitution §3.2)                                                                         |
+| **Metric scope creep**            | "Files indexed" counted build output and was published as capability                                                                                                                      | Every metric names and scopes what it counts                                                                               |
+| **Fabricated grounding (v2.1)**   | A facade returning invented element positions and confidence scores is indistinguishable from real perception at the type level, and would silently corrupt Computer-Use reliability work | Percept types must carry provenance and method alongside confidence (§1.1); facades must be labelled and tested as facades |
+| **Simulated action (v2.1)**       | Input synthesis that sleeps instead of acting passes every test that asserts `is_ok()`                                                                                                    | Assert _effect_, not success. An action test must observe the change it claims to cause (A11)                              |
+| **Permission-gate bypass (v2.1)** | A Computer-Use engine built before the Permission gate will hard-code its own allow logic, which is then never removed                                                                    | Dependency hard rule 7 — Permissions precedes CU; 7B is blocked without it                                                 |
 
 ---
 

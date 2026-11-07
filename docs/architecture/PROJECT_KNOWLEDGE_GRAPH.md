@@ -15,11 +15,11 @@
 
 There is a capability gap between ordinary memory and repository intelligence:
 
-| Layer | Knows | Blind to |
-|---|---|---|
-| **Engineering memory** | what happened in a session | why the code is the way it is |
-| **Repository intelligence** | what the code *says* | what humans *decided*, what agents *learned*, what runtime *proved* |
-| **Project Knowledge Graph** | **all four** | — |
+| Layer                       | Knows                      | Blind to                                                            |
+| --------------------------- | -------------------------- | ------------------------------------------------------------------- |
+| **Engineering memory**      | what happened in a session | why the code is the way it is                                       |
+| **Repository intelligence** | what the code _says_       | what humans _decided_, what agents _learned_, what runtime _proved_ |
+| **Project Knowledge Graph** | **all four**               | —                                                                   |
 
 Every Project develops an evolving knowledge graph in which a single statement is connected to
 its decision, its implementation, its tests, its origin commit, and its verification:
@@ -42,16 +42,16 @@ It combines four normally-separate sources:
 
 ## 2. Why This Is a Differentiator
 
-Every serious code-intelligence product answers *"where is X defined?"*
+Every serious code-intelligence product answers _"where is X defined?"_
 
-Very few answer *"why is X like this, who decided, what depends on that decision, and was it ever
-proven to work?"*
+Very few answer _"why is X like this, who decided, what depends on that decision, and was it ever
+proven to work?"_
 
 The second question is the one that matters when:
 
 - an agent must decide whether changing X is safe;
 - a new engineer must understand a design choice made two years ago;
-- a system must explain *why* it is about to modify something;
+- a system must explain _why_ it is about to modify something;
 - a decision must be revisited because its original justification no longer holds.
 
 **The four-source join is the differentiator.** Each source alone is a commodity.
@@ -60,12 +60,12 @@ The second question is the one that matters when:
 
 ## 3. The Four Sources
 
-| Source | Origin | Provenance |
-|---|---|---|
-| **Code facts** | Intelligence Graph | `Parsed` / `Observed` |
-| **Human decisions** | ADRs, PR discussions, mission approvals | `Decided` |
-| **Agent learnings** | mission outcomes, repair histories, failures | `Learned` |
-| **Runtime evidence** | Evidence Ledger | `Verified` |
+| Source               | Origin                                       | Provenance            |
+| -------------------- | -------------------------------------------- | --------------------- |
+| **Code facts**       | Intelligence Graph                           | `Parsed` / `Observed` |
+| **Human decisions**  | ADRs, PR discussions, mission approvals      | `Decided`             |
+| **Agent learnings**  | mission outcomes, repair histories, failures | `Learned`             |
+| **Runtime evidence** | Evidence Ledger                              | `Verified`            |
 
 **Every knowledge node records which source it came from.** A statement sourced from code is not
 the same kind of claim as a statement sourced from a decision, and conflating them is how systems
@@ -91,16 +91,16 @@ KnowledgeNode
 
 ### 4.2 Edges
 
-| Edge | Meaning |
-|---|---|
-| `decided_in` | links to an ADR or approval |
-| `implemented_by` | links to a symbol/file |
-| `tested_by` | links to a test |
-| `introduced_in` | links to a commit |
-| `verified_by` | links to a ledger entry |
-| `supersedes` | this node replaces an earlier one |
-| `contradicts` | two nodes disagree — **must be surfaced, not hidden** |
-| `depends_on` | knowledge-level dependency |
+| Edge             | Meaning                                               |
+| ---------------- | ----------------------------------------------------- |
+| `decided_in`     | links to an ADR or approval                           |
+| `implemented_by` | links to a symbol/file                                |
+| `tested_by`      | links to a test                                       |
+| `introduced_in`  | links to a commit                                     |
+| `verified_by`    | links to a ledger entry                               |
+| `supersedes`     | this node replaces an earlier one                     |
+| `contradicts`    | two nodes disagree — **must be surfaced, not hidden** |
+| `depends_on`     | knowledge-level dependency                            |
 
 ### 4.3 The `contradicts` edge is essential
 
@@ -115,14 +115,14 @@ human needs. The graph must **surface contradictions**, not resolve them silentl
 
 Knowledge is accumulated, never bulk-imported.
 
-| Trigger | What is learned |
-|---|---|
-| Mission completes | the objective, the acceptance criteria, the proofs |
-| ADR recorded | the decision, its rationale, the alternatives rejected |
-| Repair loop succeeds | the failure signature and its fix |
-| Verification runs | what was proven, and at which rung |
-| Human correction | an explicit override, highest confidence |
-| Contradiction detected | a `contradicts` edge, surfaced for review |
+| Trigger                | What is learned                                        |
+| ---------------------- | ------------------------------------------------------ |
+| Mission completes      | the objective, the acceptance criteria, the proofs     |
+| ADR recorded           | the decision, its rationale, the alternatives rejected |
+| Repair loop succeeds   | the failure signature and its fix                      |
+| Verification runs      | what was proven, and at which rung                     |
+| Human correction       | an explicit override, highest confidence               |
+| Contradiction detected | a `contradicts` edge, surfaced for review              |
 
 **Corrections are append-only.** A superseded node is retained with `supersedes`/`superseded_by`
 links. The graph has history, like the Ledger.
@@ -142,8 +142,8 @@ knowledge.risks(symbol)      → contradictions and unverified claims
 knowledge.unverified(scope)  → claims that were never proven
 ```
 
-This is what turns context assembly from *"here are the relevant files"* into *"here is the
-relevant context and here is why it is relevant"* — extending the `ContextResult.reason` pattern
+This is what turns context assembly from _"here are the relevant files"_ into _"here is the
+relevant context and here is why it is relevant"_ — extending the `ContextResult.reason` pattern
 already present in the Intelligence Graph.
 
 ### 6.2 By humans
@@ -175,15 +175,15 @@ Plus the UI Knowledge surface (a symbol's knowledge panel, and a project-wide co
 
 ## 8. Benchmark / Acceptance
 
-| # | Criterion | Method |
-|---|---|---|
-| 1 | A decision, its implementation, its test, its commit and its proof are joined in one query | transcript |
-| 2 | Every node records its source | graph dump |
-| 3 | A contradiction between code and a decision is **surfaced** | seeded contradiction test |
-| 4 | Superseded nodes are retained with links | mutation + history test |
-| 5 | `unverified(scope)` names claims never proven | transcript |
-| 6 | The graph survives project export/import | two-machine transcript |
-| 7 | An agent uses the graph to justify a change | captured agent run |
+| #   | Criterion                                                                                  | Method                    |
+| --- | ------------------------------------------------------------------------------------------ | ------------------------- |
+| 1   | A decision, its implementation, its test, its commit and its proof are joined in one query | transcript                |
+| 2   | Every node records its source                                                              | graph dump                |
+| 3   | A contradiction between code and a decision is **surfaced**                                | seeded contradiction test |
+| 4   | Superseded nodes are retained with links                                                   | mutation + history test   |
+| 5   | `unverified(scope)` names claims never proven                                              | transcript                |
+| 6   | The graph survives project export/import                                                   | two-machine transcript    |
+| 7   | An agent uses the graph to justify a change                                                | captured agent run        |
 
 **Rung target: R3.**
 
@@ -191,13 +191,13 @@ Plus the UI Knowledge surface (a symbol's knowledge panel, and a project-wide co
 
 ## 9. Dependencies
 
-| Needs | From |
-|---|---|
-| Project identity and persistence | Phase 3A |
-| Code facts with provenance | Phase 2A/2B |
-| Decisions and approvals | Phase 3A/3B |
-| Ledger entries | Phase 1D |
-| Proof nodes | Phase 12 |
+| Needs                            | From        |
+| -------------------------------- | ----------- |
+| Project identity and persistence | Phase 3A    |
+| Code facts with provenance       | Phase 2A/2B |
+| Decisions and approvals          | Phase 3A/3B |
+| Ledger entries                   | Phase 1D    |
+| Proof nodes                      | Phase 12    |
 
 **Do not attempt this before Phase 3A.** The graph has nowhere to live and nothing to join.
 

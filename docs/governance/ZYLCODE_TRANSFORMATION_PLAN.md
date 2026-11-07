@@ -20,10 +20,10 @@ ecosystem vision stay. Each phase **consolidates** existing machinery
 
 Two ladders are live and must never be conflated:
 
-| Ladder | Meaning | Owner |
-|---|---|---|
-| **Capability rung R0–R5** (claimed → commissioned) | maturity of a *capability* | `ZYLCODE_PROOF_GRAPH.md` (GOVERNING) |
-| **Claim verification level R0–R7** (model output → formal) | evidence strength of *one claim* | Master Prompt §7 |
+| Ladder                                                     | Meaning                          | Owner                                |
+| ---------------------------------------------------------- | -------------------------------- | ------------------------------------ |
+| **Capability rung R0–R5** (claimed → commissioned)         | maturity of a _capability_       | `ZYLCODE_PROOF_GRAPH.md` (GOVERNING) |
+| **Claim verification level R0–R7** (model output → formal) | evidence strength of _one claim_ | Master Prompt §7                     |
 
 Rule: every artifact names its ladder explicitly. `R7 FORMALLY VERIFIED` may not be emitted
 before mechanical checking exists (§8). Until then the product language is
@@ -31,20 +31,20 @@ before mechanical checking exists (§8). Until then the product language is
 
 ---
 
-## Phase T1 — Claim model + Evidence Graph  (foundation; §4, §5)
+## Phase T1 — Claim model + Evidence Graph (foundation; §4, §5)
 
 The smallest coherent change everything else depends on.
 
 1. `core/claim.rs` — `Claim{statement,kind,status,source,evidence_refs,confidence,verification_level,created_at,verified_at}`
    with the seven epistemic states, **fail-closed rules**:
-   - `status = VERIFIED` requires ≥ 1 evidence ref *and* level ≥ R2; the API makes the
+   - `status = VERIFIED` requires ≥ 1 evidence ref _and_ level ≥ R2; the API makes the
      promotion refuse otherwise (§3: no evidence → cannot be PROVEN).
    - `CONTRADICTED` is reachable only through recorded contradicting evidence.
    - hash-chained persistence (`.zylcode/claims.json`, same conventions as `ProofEngine`).
 2. `core/evidence_graph.rs` — typed nodes (`INTENT SPECIFICATION PLAN DECISION ACTION
-   TOOL_CALL RESULT ARTIFACT VERIFICATION CLAIM`) + typed edges, each node carrying the §5
+TOOL_CALL RESULT ARTIFACT VERIFICATION CLAIM`) + typed edges, each node carrying the §5
    provenance fields (initiator, model, tool, inputs, outputs, files, environment, commit,
-   timestamps, hashes). Nodes reference *existing* evidence objects (LedgerEntry ids,
+   timestamps, hashes). Nodes reference _existing_ evidence objects (LedgerEntry ids,
    ProofRecord ids, tool JSONL ids) — no duplication.
 3. Persistence survives restart/crash (file-backed, hash-chained like `ProofEngine`).
 4. Tests: fail-closed promotion, contradiction path, chain-tamper detection, serde round-trip,

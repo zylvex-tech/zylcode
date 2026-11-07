@@ -43,9 +43,9 @@ const { invocation, intent } = await bridge.submitIntent({
   context: [{ path: "src/routes.rs", excerpt: "pub fn router() {}" }],
 });
 
-console.log(invocation.status);            // "succeeded" | "failed"
-console.log(invocation.response?.model);   // the SERVER's identity
-console.log(invocation.evidence);          // secret-free record
+console.log(invocation.status); // "succeeded" | "failed"
+console.log(invocation.response?.model); // the SERVER's identity
+console.log(invocation.evidence); // secret-free record
 console.log(intent?.summary);
 ```
 
@@ -64,15 +64,43 @@ const bridge = NatlasBridge.fromEnv();
 
 ---
 
+## Respan hosted gateway
+
+Set `RESPAN_API_KEY` (in the process environment — it is a **server secret**, never a
+browser-visible one) and the same `invoke()` call goes to Respan's hosted gateway instead of a
+local runtime. Respan logs every request it serves, so the call is traced without a tracing SDK.
+
+```bash
+export RESPAN_API_KEY=            # gateway key; leave unset to keep the N-ATLAS runtime
+export RESPAN_MODEL=gpt-5.5       # optional; the model the gateway is asked for
+export RESPAN_BASE_URL=           # optional; Respan Enterprise endpoint
+```
+
+```ts
+const bridge = NatlasBridge.fromEnv(); // gateway when RESPAN_API_KEY is set
+const inv = await bridge.invoke({
+  intent: "add a health endpoint",
+  system: INTENT_SYSTEM_PREAMBLE,
+});
+console.log(inv.evidence.provider); // "respan" — not "natlas"
+```
+
+This mirrors `RouterConfig::connect_respan_gateway` in `zylcode-core`: the endpoint and the
+credential change, the request body and the guarantees below do not. `evidence.provider` records
+which surface served the call, and the model identity still comes from the server's reply. Unset
+the key and the `NATLAS_*` variables above are read exactly as before.
+
+---
+
 ## What the SDK guarantees
 
-| Guarantee | How |
-|---|---|
-| **No fallback** | an unreachable runtime throws / returns a `TRANSPORT` failure — never a synthesised answer |
-| **Identity is not borrowed** | a reply that does not report a `model` is rejected |
-| **Strict contract** | a reply that does not satisfy the intent schema is rejected, not partially accepted |
-| **Secrets stay out of evidence** | redaction is applied and **counted** |
-| **No invented defaults** | required config has no defaults; missing values are listed |
+| Guarantee                        | How                                                                                        |
+| -------------------------------- | ------------------------------------------------------------------------------------------ |
+| **No fallback**                  | an unreachable runtime throws / returns a `TRANSPORT` failure — never a synthesised answer |
+| **Identity is not borrowed**     | a reply that does not report a `model` is rejected                                         |
+| **Strict contract**              | a reply that does not satisfy the intent schema is rejected, not partially accepted        |
+| **Secrets stay out of evidence** | redaction is applied and **counted**                                                       |
+| **No invented defaults**         | required config has no defaults; missing values are listed                                 |
 
 ---
 
@@ -104,7 +132,9 @@ The built-in offline demo is labelled `TEST DOUBLE` everywhere it appears.
 node --experimental-strip-types test/smoke.mjs
 ```
 
-10 checks, using an in-process stub server. The stub is a **test double**, not N-ATLAS.
+10 checks plus 4 gateway-selection checks, using an in-process stub server. The stub is a **test
+double**, not N-ATLAS; the gateway checks read configuration and prove the provider label, they do
+not call Respan.
 
 ---
 

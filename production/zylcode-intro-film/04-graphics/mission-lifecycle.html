@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>ZylCode — Mission Lifecycle</title>
+    <style>
+      :root {
+        --bg: #0b0f14;
+        --navy: #0d1524;
+        --panel: #111a2b;
+        --line: #1e2a3d;
+        --blue: #007bff;
+        --blue-soft: #3d9bff;
+        --amber: #ff9f1c;
+        --text: #e6edf7;
+        --muted: #7e8da5;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: var(--bg);
+        font-family: "Segoe UI", Inter, system-ui, sans-serif;
+        color: var(--text);
+      }
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        background:
+          radial-gradient(
+            1200px 700px at 15% -10%,
+            #13233c 0%,
+            rgba(19, 35, 60, 0) 60%
+          ),
+          radial-gradient(
+            900px 600px at 100% 110%,
+            #10203a 0%,
+            rgba(16, 32, 58, 0) 60%
+          ),
+          var(--bg);
+        overflow: hidden;
+      }
+      #stage::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(70, 110, 170, 0.07) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(70, 110, 170, 0.07) 1px, transparent 1px);
+        background-size: 64px 64px;
+        mask-image: radial-gradient(
+          1400px 900px at 50% 50%,
+          #000 40%,
+          transparent 100%
+        );
+      }
+      .label {
+        position: absolute;
+        top: 64px;
+        left: 80px;
+        font-size: 20px;
+        letter-spacing: 0.42em;
+        color: var(--blue-soft);
+        text-transform: uppercase;
+        font-weight: 600;
+      }
+      h1 {
+        position: absolute;
+        top: 112px;
+        left: 80px;
+        font-size: 74px;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+      }
+      h1 span {
+        color: var(--blue);
+      }
+      .sub {
+        position: absolute;
+        top: 214px;
+        left: 82px;
+        font-size: 26px;
+        color: var(--muted);
+        max-width: 1200px;
+      }
+      .rail {
+        position: absolute;
+        left: 80px;
+        right: 80px;
+        top: 560px;
+        height: 4px;
+        background: var(--line);
+        border-radius: 4px;
+      }
+      .rail .fill {
+        position: absolute;
+        left: 0;
+        top: 0;
+        height: 100%;
+        width: 0;
+        background: linear-gradient(90deg, var(--blue), var(--blue-soft));
+        border-radius: 4px;
+        box-shadow: 0 0 18px rgba(0, 123, 255, 0.65);
+        transition: width 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .steps {
+        position: absolute;
+        left: 80px;
+        right: 80px;
+        top: 452px;
+        display: flex;
+        justify-content: space-between;
+      }
+      .step {
+        width: 270px;
+        text-align: center;
+        opacity: 0.35;
+        transform: translateY(8px);
+        transition:
+          opacity 0.5s ease,
+          transform 0.5s ease;
+      }
+      .step.on {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      .dot {
+        width: 64px;
+        height: 64px;
+        margin: 0 auto 22px;
+        border-radius: 50%;
+        background: var(--panel);
+        border: 2px solid var(--line);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 26px;
+        font-weight: 700;
+        color: var(--muted);
+        transition: all 0.5s ease;
+      }
+      .step.on .dot {
+        border-color: var(--blue);
+        color: #fff;
+        background: #0a2545;
+        box-shadow:
+          0 0 0 8px rgba(0, 123, 255, 0.12),
+          0 0 30px rgba(0, 123, 255, 0.55);
+      }
+      .step.on .dot {
+        background: var(--blue);
+      }
+      .step h3 {
+        font-size: 24px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        margin-bottom: 10px;
+      }
+      .step p {
+        font-size: 17px;
+        line-height: 1.45;
+        color: var(--muted);
+      }
+      .step.approval.on .dot {
+        border-color: var(--amber);
+        background: var(--amber);
+        color: #101418;
+        box-shadow:
+          0 0 0 8px rgba(255, 159, 28, 0.12),
+          0 0 30px rgba(255, 159, 28, 0.5);
+      }
+      .step.approval h3 {
+        color: var(--amber);
+      }
+      .caption {
+        position: absolute;
+        left: 80px;
+        bottom: 78px;
+        font-size: 30px;
+        color: #c8d4e6;
+        border-left: 4px solid var(--blue);
+        padding-left: 24px;
+        opacity: 0;
+        transition: opacity 0.6s ease;
+      }
+      .caption.show {
+        opacity: 1;
+      }
+      .caption b {
+        color: var(--blue-soft);
+        font-weight: 600;
+      }
+      .brand {
+        position: absolute;
+        right: 80px;
+        bottom: 70px;
+        text-align: right;
+        color: var(--muted);
+        font-size: 18px;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+      }
+      .brand strong {
+        display: block;
+        color: var(--text);
+        font-size: 22px;
+        letter-spacing: 0.1em;
+        margin-bottom: 6px;
+      }
+      .scan {
+        position: absolute;
+        left: 0;
+        right: 0;
+        height: 2px;
+        top: 0;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(0, 123, 255, 0.55),
+          transparent
+        );
+        animation: scan 6s linear infinite;
+      }
+      @keyframes scan {
+        0% {
+          transform: translateY(0);
+        }
+        100% {
+          transform: translateY(1080px);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="stage">
+      <div class="scan"></div>
+      <div class="label">ZylCode · how work moves</div>
+      <h1>The mission <span>lifecycle</span></h1>
+      <div class="sub">
+        Every task passes through the same gates — and every gate leaves
+        evidence behind.
+      </div>
+
+      <div class="steps" id="steps">
+        <div class="step">
+          <div class="dot">1</div>
+          <h3>Intent</h3>
+          <p>A plain instruction becomes a scoped task</p>
+        </div>
+        <div class="step">
+          <div class="dot">2</div>
+          <h3>Plan</h3>
+          <p>Files, components and a verification path</p>
+        </div>
+        <div class="step">
+          <div class="dot">3</div>
+          <h3>Tool calls</h3>
+          <p>Real filesystem, search, git and shell</p>
+        </div>
+        <div class="step approval">
+          <div class="dot">4</div>
+          <h3>Approval</h3>
+          <p>Consequential changes wait for a human</p>
+        </div>
+        <div class="step">
+          <div class="dot">5</div>
+          <h3>Verify</h3>
+          <p>The real test suite decides, not the model</p>
+        </div>
+        <div class="step">
+          <div class="dot">6</div>
+          <h3>Evidence</h3>
+          <p>Hash-chained record you can inspect</p>
+        </div>
+      </div>
+      <div class="rail"><div class="fill" id="fill"></div></div>
+
+      <div class="caption" id="caption">
+        Suggestions are cheap. <b>Evidence is the product.</b>
+      </div>
+      <div class="brand">
+        <strong>ZYLCODE</strong>Engineered in Nigeria. Built for the world.
+      </div>
+    </div>
+    <script>
+      const steps = [...document.querySelectorAll(".step")];
+      const fill = document.getElementById("fill");
+      const caption = document.getElementById("caption");
+      const caps = [
+        "A sentence in becomes a scoped engineering task.",
+        "Files, components and a verification path — before anything runs.",
+        "The agent executes permitted tools against your repository.",
+        "Consequential changes stop and wait for a person.",
+        "The real test suite decides. Failures are shown, not hidden.",
+        "Evidence is recorded at every step — inspect it yourself.",
+      ];
+      const still = new URLSearchParams(location.search).get("still");
+      function setState(i) {
+        steps.forEach((s, n) => s.classList.toggle("on", n <= i));
+        fill.style.width = (i / (steps.length - 1)) * 100 + "%";
+        caption.classList.add("show");
+        caption.innerHTML = caps[i];
+      }
+      if (still === "final") {
+        setState(steps.length - 1);
+      } else {
+        let i = 0;
+        setState(0);
+        setInterval(() => {
+          i = (i + 1) % (steps.length + 2);
+          if (i < steps.length) setState(i);
+        }, 2600);
+      }
+    </script>
+  </body>
+</html>

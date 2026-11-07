@@ -62,13 +62,13 @@ exactly what is missing. It is never "published anyway".
 
 ## 4. Release Kinds and Required Proofs
 
-| Release kind | Required proofs (minimum) |
-|---|---|
-| **Development build** | compiles; unit tests |
-| **Internal alpha** | + integration tests; installs on a clean machine |
-| **Public beta** | + browser/runtime verification; packaging verified per platform |
-| **Stable release** | + R4 reproducibility; security scan; accessibility; upgrade path from previous stable |
-| **Store release (Play / App Store)** | + device-lab verification (Phases 10/11); store compliance checks |
+| Release kind                         | Required proofs (minimum)                                                             |
+| ------------------------------------ | ------------------------------------------------------------------------------------- |
+| **Development build**                | compiles; unit tests                                                                  |
+| **Internal alpha**                   | + integration tests; installs on a clean machine                                      |
+| **Public beta**                      | + browser/runtime verification; packaging verified per platform                       |
+| **Stable release**                   | + R4 reproducibility; security scan; accessibility; upgrade path from previous stable |
+| **Store release (Play / App Store)** | + device-lab verification (Phases 10/11); store compliance checks                     |
 
 Thresholds are declared per project, not hard-coded, and are recorded as Project decisions.
 
@@ -133,12 +133,12 @@ Plus the UI Ship surface.
 
 `EXTERNAL_BLOCKER` (e.g. a CI billing failure) must not stop delivery entirely.
 
-| Requirement | Detail |
-|---|---|
-| **Local release path** | the full pipeline must be runnable locally, not only in CI |
-| **Parity** | local and CI produce equivalent artifacts, verified by hash |
-| **Explicit status** | a release produced locally is marked as such in its evidence bundle |
-| **No silent downgrade** | a blocked CI does not lower the proof threshold |
+| Requirement             | Detail                                                              |
+| ----------------------- | ------------------------------------------------------------------- |
+| **Local release path**  | the full pipeline must be runnable locally, not only in CI          |
+| **Parity**              | local and CI produce equivalent artifacts, verified by hash         |
+| **Explicit status**     | a release produced locally is marked as such in its evidence bundle |
+| **No silent downgrade** | a blocked CI does not lower the proof threshold                     |
 
 > This is the direct lesson of the CI incident: when the remote channel is unavailable, local
 > reproduction becomes the **only** evidence — which makes it **more** important, not less.
@@ -147,15 +147,15 @@ Plus the UI Ship surface.
 
 ## 9. Benchmark / Acceptance
 
-| # | Criterion | Method |
-|---|---|---|
-| 1 | A tagged release produced end-to-end | transcript |
-| 2 | Complete release evidence bundle | bundle inspection |
-| 3 | A third party reproduces the release | independent run, hash comparison |
-| 4 | A release with insufficient proofs is **blocked**, naming what is missing | negative test |
-| 5 | Local and CI artifacts are hash-equivalent | hash comparison |
-| 6 | Installer installs on a **clean** machine | captured transcript |
-| 7 | Release artifacts are never garbage-collected | GC test |
+| #   | Criterion                                                                 | Method                           |
+| --- | ------------------------------------------------------------------------- | -------------------------------- |
+| 1   | A tagged release produced end-to-end                                      | transcript                       |
+| 2   | Complete release evidence bundle                                          | bundle inspection                |
+| 3   | A third party reproduces the release                                      | independent run, hash comparison |
+| 4   | A release with insufficient proofs is **blocked**, naming what is missing | negative test                    |
+| 5   | Local and CI artifacts are hash-equivalent                                | hash comparison                  |
+| 6   | Installer installs on a **clean** machine                                 | captured transcript              |
+| 7   | Release artifacts are never garbage-collected                             | GC test                          |
 
 **Rung target: R3, R4 preferred.**
 

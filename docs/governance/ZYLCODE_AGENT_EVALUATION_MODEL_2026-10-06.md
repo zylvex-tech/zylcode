@@ -13,17 +13,17 @@
 There is **no evaluation framework in this repository**. There is one end-to-end scenario (the First
 Mission) and a large test battery. Neither is an evaluation framework:
 
-* the test battery tests **the code**;
-* the First Mission proves **one workflow works**;
-* an evaluation framework measures **how well the agent behaves across many scenarios**, with
+- the test battery tests **the code**;
+- the First Mission proves **one workflow works**;
+- an evaluation framework measures **how well the agent behaves across many scenarios**, with
   repeatable fixtures and scored outcomes.
 
-The directive's question — *"Can it diagnose a failing test?"* — is not answered by a passing test
+The directive's question — _"Can it diagnose a failing test?"_ — is not answered by a passing test
 suite. It is answered by a fixture that fails in a known way and a scored attempt to fix it.
 
 **A critical prerequisite, stated up front:** most of the listed evaluations require a **live
-model**, which is `BLOCKED` (AGENT-01). An evaluation framework can be *built* now, but its
-model-dependent cases cannot be *scored* until a provider answers. Building the harness and
+model**, which is `BLOCKED` (AGENT-01). An evaluation framework can be _built_ now, but its
+model-dependent cases cannot be _scored_ until a provider answers. Building the harness and
 publishing empty scores would be a fabricated result — the exact failure this project exists to
 avoid.
 
@@ -36,7 +36,7 @@ produces none** — its competence is asserted, never measured. That is the larg
 epistemic hole in the product, because an agent that cannot be measured cannot be trusted with
 autonomy, and autonomy is the whole point.
 
-> *Acting ≠ having acted.* The same rule applies to competence: **a claim of capability that was not
+> _Acting ≠ having acted._ The same rule applies to competence: **a claim of capability that was not
 > measured is a defect.**
 
 ---
@@ -52,16 +52,16 @@ An evaluation case is a **fixture plus an oracle**:
   "fixture": {
     "repo": "fixtures/statslib",
     "setup": ["git checkout base"],
-    "injected_fault": { "file": "core.py", "replace": "…", "with": "…" }
+    "injected_fault": { "file": "core.py", "replace": "…", "with": "…" },
   },
   "task": "The suite fails. Find and fix the cause.",
   "oracle": {
     "must_pass": ["pytest -q"],
     "must_not_touch": ["docs/**", "unrelated/**"],
     "must_cite": ["the failing assertion's file:line"],
-    "budget": { "max_files_changed": 3, "max_steps": 30 }
+    "budget": { "max_files_changed": 3, "max_steps": 30 },
   },
-  "requires_provider": true
+  "requires_provider": true,
 }
 ```
 
@@ -80,22 +80,22 @@ An evaluation case is a **fixture plus an oracle**:
 
 Each row states what is needed and what is available today.
 
-| # | Question | Fixture needs | Provider? | Status |
-|---|---|---|---|---|
-| 1 | Can it diagnose a failing test? | fault-injected repo + failing suite | yes | **DESIGNED** |
-| 2 | Can it modify the correct file? | oracle file set | yes | **DESIGNED** |
-| 3 | Can it avoid unrelated files? | `must_not_touch` set | yes | **DESIGNED** |
-| 4 | Can it detect insufficient evidence? | a task whose evidence is withheld | **no** | **DESIGNED — runnable now** |
-| 5 | Can it refuse fabricated success? | a task whose only "success" is an assertion | **no** | **DESIGNED — runnable now** |
-| 6 | Can it preserve dirty owner work? | a repo with pre-existing uncommitted edits | **no** | **DESIGNED — runnable now** |
-| 7 | Can it recover after restart? | kill mid-task, resume | **no** | **DESIGNED — runnable now** |
-| 8 | Can it follow an ADR? | an accepted ADR + a task that tempts a contradiction | yes | **DESIGNED** (needs decision memory) |
-| 9 | Can it explain why a build failed? | a broken build + captured output | yes | **DESIGNED** |
-| 10 | Can it identify a regression? | a repo with a known-good baseline | yes | **DESIGNED** |
-| 11 | Can it generate a patch that passes tests? | the Best-of-N path | yes | **DESIGNED** |
+| #   | Question                                   | Fixture needs                                        | Provider? | Status                               |
+| --- | ------------------------------------------ | ---------------------------------------------------- | --------- | ------------------------------------ |
+| 1   | Can it diagnose a failing test?            | fault-injected repo + failing suite                  | yes       | **DESIGNED**                         |
+| 2   | Can it modify the correct file?            | oracle file set                                      | yes       | **DESIGNED**                         |
+| 3   | Can it avoid unrelated files?              | `must_not_touch` set                                 | yes       | **DESIGNED**                         |
+| 4   | Can it detect insufficient evidence?       | a task whose evidence is withheld                    | **no**    | **DESIGNED — runnable now**          |
+| 5   | Can it refuse fabricated success?          | a task whose only "success" is an assertion          | **no**    | **DESIGNED — runnable now**          |
+| 6   | Can it preserve dirty owner work?          | a repo with pre-existing uncommitted edits           | **no**    | **DESIGNED — runnable now**          |
+| 7   | Can it recover after restart?              | kill mid-task, resume                                | **no**    | **DESIGNED — runnable now**          |
+| 8   | Can it follow an ADR?                      | an accepted ADR + a task that tempts a contradiction | yes       | **DESIGNED** (needs decision memory) |
+| 9   | Can it explain why a build failed?         | a broken build + captured output                     | yes       | **DESIGNED**                         |
+| 10  | Can it identify a regression?              | a repo with a known-good baseline                    | yes       | **DESIGNED**                         |
+| 11  | Can it generate a patch that passes tests? | the Best-of-N path                                   | yes       | **DESIGNED**                         |
 
-**Five of eleven cases are runnable without a provider.** They are the ones that test *honesty*
-rather than *intelligence* — and honesty is the property this product cannot ship without. **They
+**Five of eleven cases are runnable without a provider.** They are the ones that test _honesty_
+rather than _intelligence_ — and honesty is the property this product cannot ship without. **They
 should be built first**, both because they are possible today and because they are the cases whose
 failure would be most damaging.
 
@@ -124,9 +124,9 @@ verification:
   "severity": "high",
   "location": { "file": "src/tools/shell.rs", "line": 118 },
   "evidence": [{ "kind": "tool_evidence", "id": "…" }],
-  "status": "open",              // open | remediated | accepted_risk | false_positive
+  "status": "open", // open | remediated | accepted_risk | false_positive
   "remediation": "…",
-  "verification": { "state": "not_run" }
+  "verification": { "state": "not_run" },
 }
 ```
 
@@ -136,34 +136,34 @@ reaches `remediated` only when a deterministic re-scan produced evidence.
 
 ### 4.3 The designed scan set
 
-| Analysis | Approach | Status |
-|---|---|---|
-| secret detection | entropy + known-pattern scan over the workspace | **DESIGNED** |
-| dependency vulnerability | lockfile + advisory source | **DESIGNED** |
-| SAST | language-specific rules; tree-sitter is already a dependency | **DESIGNED** |
-| dangerous API detection | AST query for `unsafe`, shell construction, `unwrap` on IO | **DESIGNED** |
-| injection / traversal | already **enforced** at the tool boundary (`resolve_within`) — analysis would *audit* it | **PARTIAL** |
-| supply-chain / licence | manifest + licence metadata | **DESIGNED** |
+| Analysis                 | Approach                                                                                 | Status       |
+| ------------------------ | ---------------------------------------------------------------------------------------- | ------------ |
+| secret detection         | entropy + known-pattern scan over the workspace                                          | **DESIGNED** |
+| dependency vulnerability | lockfile + advisory source                                                               | **DESIGNED** |
+| SAST                     | language-specific rules; tree-sitter is already a dependency                             | **DESIGNED** |
+| dangerous API detection  | AST query for `unsafe`, shell construction, `unwrap` on IO                               | **DESIGNED** |
+| injection / traversal    | already **enforced** at the tool boundary (`resolve_within`) — analysis would _audit_ it | **PARTIAL**  |
+| supply-chain / licence   | manifest + licence metadata                                                              | **DESIGNED** |
 
 ### 4.4 The gate rule
 
-> *Do not automatically modify security-sensitive code without the correct risk gate.*
+> _Do not automatically modify security-sensitive code without the correct risk gate._
 
 Architecturally: a security remediation is a factory task whose risk class is at least
 `Destructive`-adjacent, so it exceeds any default ceiling and **parks for human approval**. The
-`SECURITY_REVIEWER` role can *find*; only a human can *authorise the fix*.
+`SECURITY_REVIEWER` role can _find_; only a human can _authorise the fix_.
 
 ---
 
 ## 5. What exists today that resembles evaluation
 
-| Piece | What it actually is | What it is not |
-|---|---|---|
-| `first_mission_e2e.rs` | one end-to-end scenario with a real failure, repair, kill/resume | not a scored framework |
-| `first_mission_kill_resume.rs` | a real `abort()` + resume | not a general recovery evaluation |
-| the test battery (575 tests, 2026-09-28) | tests of the code | not tests of agent behaviour |
-| `repo_intelligence_benchmark.rs` | a retrieval benchmark with known answers | a genuine, narrow, deterministic evaluation |
-| `decision_proptest.rs` | property tests of the decision protocol | not behavioural scoring |
+| Piece                                    | What it actually is                                              | What it is not                              |
+| ---------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------- |
+| `first_mission_e2e.rs`                   | one end-to-end scenario with a real failure, repair, kill/resume | not a scored framework                      |
+| `first_mission_kill_resume.rs`           | a real `abort()` + resume                                        | not a general recovery evaluation           |
+| the test battery (575 tests, 2026-09-28) | tests of the code                                                | not tests of agent behaviour                |
+| `repo_intelligence_benchmark.rs`         | a retrieval benchmark with known answers                         | a genuine, narrow, deterministic evaluation |
+| `decision_proptest.rs`                   | property tests of the decision protocol                          | not behavioural scoring                     |
 
 The retrieval benchmark is worth noting as the **template**: known-answer fixtures, a computed
 metric, a stated threshold, and a determinism assertion. The evaluation framework should look like
@@ -176,10 +176,10 @@ that, generalised from retrieval to agent behaviour.
 The directive asks for evaluation "as a first-class system". It is not one, and it cannot become one
 overnight:
 
-* The **harness** can be built now — fixtures, oracles, scoring, and honest `SKIPPED — BLOCKED_PROVIDER`
+- The **harness** can be built now — fixtures, oracles, scoring, and honest `SKIPPED — BLOCKED_PROVIDER`
   reporting.
-* The **five provider-free cases** (§3, rows 4–7) can be built and scored now.
-* The **six provider-dependent cases** cannot be scored until `AGENT-01` closes.
+- The **five provider-free cases** (§3, rows 4–7) can be built and scored now.
+- The **six provider-dependent cases** cannot be scored until `AGENT-01` closes.
 
 **The correct first move is the five provider-free cases.** They measure the property that matters
-most and that no provider can supply: *does the agent refuse to claim what it did not do?*
+most and that no provider can supply: _does the agent refuse to claim what it did not do?_

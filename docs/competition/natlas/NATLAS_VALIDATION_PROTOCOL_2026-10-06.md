@@ -1,7 +1,7 @@
 # N-ATLAS VALIDATION PROTOCOL — 2026-10-06
 
 **Phase:** C0
-**Purpose:** define, *before* any N-ATLAS call is made, what will count as proof that the integration
+**Purpose:** define, _before_ any N-ATLAS call is made, what will count as proof that the integration
 works — so the standard cannot be lowered after the fact to fit whatever happens.
 
 ---
@@ -21,14 +21,14 @@ says what the honest status is, so "blocked" cannot quietly become "demonstrated
 Adapted from ZylCode's existing evidence model. A statement's rung is the highest one it can actually
 cite — never the one it would like to claim.
 
-| Rung | Requires | Applies to |
-|---|---|---|
-| **L0 — Asserted** | nothing | prose, intent, design |
-| **L1 — Parsed** | a deterministic parser accepted the value | response parsing, intent schema |
-| **L2 — Unit-tested** | a committed test that ran, using a **test double** | boundary behaviour |
-| **L3 — Integrated** | the real N-ATLAS transport returned a real response | the integration itself |
-| **L4 — Verified end-to-end** | L3 **and** a bounded action **and** a test whose real exit code was checked | the competition slice |
-| **L5 — Externally validated** | L4 **and** an independent human tester recorded in the beta log | real-world validation |
+| Rung                          | Requires                                                                    | Applies to                      |
+| ----------------------------- | --------------------------------------------------------------------------- | ------------------------------- |
+| **L0 — Asserted**             | nothing                                                                     | prose, intent, design           |
+| **L1 — Parsed**               | a deterministic parser accepted the value                                   | response parsing, intent schema |
+| **L2 — Unit-tested**          | a committed test that ran, using a **test double**                          | boundary behaviour              |
+| **L3 — Integrated**           | the real N-ATLAS transport returned a real response                         | the integration itself          |
+| **L4 — Verified end-to-end**  | L3 **and** a bounded action **and** a test whose real exit code was checked | the competition slice           |
+| **L5 — Externally validated** | L4 **and** an independent human tester recorded in the beta log             | real-world validation           |
 
 **The rule that matters:** a test-double result can reach **L2 and no further**. L3 requires a real
 call. No amount of mock coverage substitutes for it.
@@ -37,13 +37,13 @@ call. No amount of mock coverage substitutes for it.
 
 ## 3. What each competition claim will require
 
-| Claim | Minimum rung | Evidence required |
-|---|---|---|
-| "ZylCode can parse an N-ATLAS response" | L1 | parser tests |
-| "The boundary handles failure, timeout and malformed input correctly" | L2 | boundary tests (test double) |
-| "ZylCode is integrated with N-ATLAS" | **L3** | a captured real response with provider/model identity and a timestamp |
-| "An N-ATLAS response drove a real engineering action" | **L4** | L3 evidence + tool evidence + a verification claim whose exit code matched |
-| "The integration helped real developers" | **L5** | L4 evidence + ≥1 real tester record |
+| Claim                                                                 | Minimum rung | Evidence required                                                          |
+| --------------------------------------------------------------------- | ------------ | -------------------------------------------------------------------------- |
+| "ZylCode can parse an N-ATLAS response"                               | L1           | parser tests                                                               |
+| "The boundary handles failure, timeout and malformed input correctly" | L2           | boundary tests (test double)                                               |
+| "ZylCode is integrated with N-ATLAS"                                  | **L3**       | a captured real response with provider/model identity and a timestamp      |
+| "An N-ATLAS response drove a real engineering action"                 | **L4**       | L3 evidence + tool evidence + a verification claim whose exit code matched |
+| "The integration helped real developers"                              | **L5**       | L4 evidence + ≥1 real tester record                                        |
 
 Today the project can honestly claim **L2** for the boundary. It can claim nothing at L3 or above,
 because N-ATLAS has never been contacted.
@@ -57,7 +57,7 @@ These are not stylistic preferences. Each one has a specific failure it prevents
 1. **A test double is named.** It appears as `Mock*` / `TEST DOUBLE` in code and comments, and its
    results are labelled as such wherever they are reported.
 2. **No response is ever synthesised and presented as N-ATLAS.** The product router's synthetic
-   degradation path is explicitly *not* used for N-ATLAS (discovery §1.3).
+   degradation path is explicitly _not_ used for N-ATLAS (discovery §1.3).
 3. **No endpoint, auth scheme, model id or response shape is invented.** Where one is unknown, the
    state is `BLOCKED`, not a plausible guess.
 4. **A blocked result is never recorded as a failure of N-ATLAS.** "We could not reach it" and "it
@@ -95,9 +95,9 @@ A run that cannot complete step 7 is reported as **incomplete**, not as success.
 
 The competition branch must not weaken the product.
 
-* The existing test suite must pass unchanged. A new failure is a stop condition, not a detail.
-* Any test the competition work touches must be *added to*, never relaxed.
-* The branch must remain separable: removing `competition/` and one `lib.rs` line must leave the
+- The existing test suite must pass unchanged. A new failure is a stop condition, not a detail.
+- Any test the competition work touches must be _added to_, never relaxed.
+- The branch must remain separable: removing `competition/` and one `lib.rs` line must leave the
   product byte-identical to its pre-competition state.
 
 ### 6.1 A pre-existing flake was exposed, and it is recorded here rather than smoothed over
@@ -112,14 +112,14 @@ router::tests::d1_vector_cache_cross_prompt_contamination_guard
 
 It is a **test-isolation defect, not a regression from the competition work.** The evidence:
 
-| Check | Result |
-|---|---|
-| Does the competition module reference the router or the counter? | No — zero references. It cannot increment `NETWORK_EGRESS_COUNT`. |
-| `NETWORK_EGRESS_COUNT` | a **process-global** `static AtomicU64`, incremented only inside `call_provider` (`router.rs:1088`) |
-| The test alone | passes (1 passed / 0 failed) |
-| Full lib suite, single-threaded | passes (459 / 0) |
-| Full lib suite, parallel re-run, same configuration that failed | **passes** (459 / 0) |
-| Full lib suite, parallel, competition tests skipped | passes (441 / 0) |
+| Check                                                            | Result                                                                                              |
+| ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Does the competition module reference the router or the counter? | No — zero references. It cannot increment `NETWORK_EGRESS_COUNT`.                                   |
+| `NETWORK_EGRESS_COUNT`                                           | a **process-global** `static AtomicU64`, incremented only inside `call_provider` (`router.rs:1088`) |
+| The test alone                                                   | passes (1 passed / 0 failed)                                                                        |
+| Full lib suite, single-threaded                                  | passes (459 / 0)                                                                                    |
+| Full lib suite, parallel re-run, same configuration that failed  | **passes** (459 / 0)                                                                                |
+| Full lib suite, parallel, competition tests skipped              | passes (441 / 0)                                                                                    |
 
 The test reads the global counter before and after its own scenario and asserts the two are equal.
 Any sibling test that dispatches to a real provider concurrently increments the same counter, so the
@@ -158,9 +158,9 @@ The template is `BETA_TEST_EVIDENCE_TEMPLATE.md`, and it is **deliberately empty
 
 Stated plainly, so the claims are testable rather than rhetorical:
 
-* If the real N-ATLAS response does not match the ZylCode intent contract, the handoff claim is
-  false and the schema must change — the *contract*, not the evidence.
-* If the real wire format differs from every assumption, the transport is rewritten; the boundary
+- If the real N-ATLAS response does not match the ZylCode intent contract, the handoff claim is
+  false and the schema must change — the _contract_, not the evidence.
+- If the real wire format differs from every assumption, the transport is rewritten; the boundary
   above it is unaffected, which is the point of the design.
-* If the bounded slice cannot be verified with a real exit code, the end-to-end claim (L4) fails and
+- If the bounded slice cannot be verified with a real exit code, the end-to-end claim (L4) fails and
   must be withdrawn rather than softened.

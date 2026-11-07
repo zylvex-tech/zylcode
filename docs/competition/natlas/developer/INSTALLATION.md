@@ -6,13 +6,13 @@ How to install the ZylCode × N-ATLAS Developer Bridge toolkit on your machine.
 
 ## 1. Prerequisites
 
-| Tool | Version | Check |
-|---|---|---|
-| Rust | 1.97+ | `rustc --version` |
-| Node.js | ≥ 18 | `node --version` |
-| pnpm | ≥ 9 | `pnpm --version` |
-| Ollama | latest | `ollama --version` |
-| Hugging Face CLI | latest | `hf --version` |
+| Tool             | Version | Check              |
+| ---------------- | ------- | ------------------ |
+| Rust             | 1.97+   | `rustc --version`  |
+| Node.js          | ≥ 18    | `node --version`   |
+| pnpm             | ≥ 9     | `pnpm --version`   |
+| Ollama           | latest  | `ollama --version` |
+| Hugging Face CLI | latest  | `hf --version`     |
 
 Install the Hugging Face CLI if you do not have it:
 
@@ -96,12 +96,12 @@ import('./src/index.ts').then(async (m) => {
 
 ## Disk and memory budget
 
-| Item | Size |
-|---|---|
-| Repository + Rust `target/` | ~2–4 GB |
-| Node `node_modules` | ~200 MB |
+| Item                         | Size         |
+| ---------------------------- | ------------ |
+| Repository + Rust `target/`  | ~2–4 GB      |
+| Node `node_modules`          | ~200 MB      |
 | Official N-ATLAS safetensors | **~15.3 GB** |
-| …or quantized GGUF (Q4_K_M) | ~4.6 GB |
+| …or quantized GGUF (Q4_K_M)  | ~4.6 GB      |
 
 Keep at least **20 GB free** for the official route.
 

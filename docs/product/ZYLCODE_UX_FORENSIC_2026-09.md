@@ -1,4 +1,5 @@
 # ZYLCODE UX FORENSIC — 2026-09
+
 ## UX-01A — Current Product Experience Forensic
 
 **Executed by:** Buffy (Codebuff) — UX-01 unit, UX-01A phase.
@@ -12,13 +13,13 @@ to inherit.
 
 ## 1. State at inspection
 
-| Item | Value |
-|---|---|
-| Local HEAD | `da91fa116993d82ff7943fe66a7379fa6c581037` |
-| `origin/main` | `da91fa116993d82ff7943fe66a7379fa6c581037` (verified `git ls-remote`) |
-| Working tree | clean |
-| Branch | `main` |
-| Preview | live Vite dev server, `http://localhost:1421/` (pid 39428), used for live DOM/computed-style inspection |
+| Item          | Value                                                                                                   |
+| ------------- | ------------------------------------------------------------------------------------------------------- |
+| Local HEAD    | `da91fa116993d82ff7943fe66a7379fa6c581037`                                                              |
+| `origin/main` | `da91fa116993d82ff7943fe66a7379fa6c581037` (verified `git ls-remote`)                                   |
+| Working tree  | clean                                                                                                   |
+| Branch        | `main`                                                                                                  |
+| Preview       | live Vite dev server, `http://localhost:1421/` (pid 39428), used for live DOM/computed-style inspection |
 
 Inspection methods: full read of `src/App.tsx` (1,010 lines), `src/lib/{theme,events,runtime,mission,forge}.ts`, `src/components/*`, `src/styles/themes.css` (749 lines), `tailwind.config.js`, `src/index.css`; grep sweeps for navigation, status language, keyboard handlers, breakpoints, persistence; **live computed-style probes** in the running app; cross-check against `docs/capability-registry.json` (v1.4.1-audited) and `docs/governance/ZYLCODE_CAPABILITY_MODEL.md`.
 
@@ -57,7 +58,7 @@ Domain foundations present and tested: `lib/runtime.ts` (environment bridge,
 ## 3. Finding F1 — STOP MAKING THE ARCHITECTURE THE NAVIGATION (master prompt §1)
 
 **Confirmed, and worse than described.** The two-level navigation is not merely
-duplicated — the two levels are *inconsistent with each other*:
+duplicated — the two levels are _inconsistent with each other_:
 
 - Global nav `Missions` → sets `area="MISSIONS"`; project tab `Missions` →
   `projectTab="MISSIONS"`; `startMission` forces **both**. The same concept is
@@ -145,7 +146,7 @@ panels** (zero `onMouseDown` splitter code), **no breadcrumbs/tabs/symbols**.
 
 The 11 `lg:/md:/sm:` breakpoints in App.tsx are grid collapses, not workspace
 adaptivity. **Verdict:** category (G) missing — the IDE half of the product does
-not exist yet; the workspace currently *describes* work instead of hosting it.
+not exist yet; the workspace currently _describes_ work instead of hosting it.
 
 ---
 
@@ -168,21 +169,22 @@ is set before any backend confirmation and never derives from a plan.
 
 ## 8. Finding F6 — Claims audit (master prompt §37)
 
-| P1.3 claim | Forensic verdict |
-|---|---|
+| P1.3 claim                                           | Forensic verdict                                                                                                                                                                                                                                                                                                                                                                                |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Repository Intelligence — AVAILABLE (Home spotlight) | **MISLEADING as displayed.** Registry marks the 2A intelligence entries DISPUTED; the capability is reachable via `zylcode repo-context` (committed transcript, P1.2) but the product word AVAILABLE maps to the Capability Model's GREEN-rule territory (implies usable capability). Displayed without qualification. Requires rewording (e.g. "CLI-commissioned, audit pending") or demotion. |
-| WEB — AVAILABLE (RuntimeLab) | **MISLEADING.** What was proven: the ZylCode frontend is served by Vite. What the pill implies: projects can be built/run as web targets. That capability does not exist. |
-| RUN MISSION wired to real `process_intent_stream` | **PARTIALLY VERIFIED.** Code-verified: `safeInvoke(ENVIRONMENT, "process_intent_stream", …)` at App.tsx:563 through the safe bridge — the wiring is real. NOT evidenced: no end-to-end execution capture exists (browser preview correctly refuses; no desktop transcript committed). The claim's evidentiary status is R2-shaped (test exists in backend), not product-proven. |
-| Evidence Center renders actual mission evidence | **TRUE but EPHEMERAL.** Renders only real in-session data (verified). No persistence, no backend evidence store; all evidence evaporates on reload. "Evidence-first" products do not keep evidence in a React state array. |
-| Runtime real surfaces | **TRUTHFUL but NOISY.** Each target carries an accurate reason; the presentation (8 pill cards) is the problem, not the facts. |
-| Forge implemented | **ACCURATE AS SCOPED** (domain+parser+shell; marketplace explicitly not implemented) — but 32 identical concept cards is taxonomy, not a marketplace experience. |
-| 418/0 cargo + 48/48 vitest | **VERIFIED this session** by direct execution (fmt/check/clippy `-D warnings` green, guard 11/0, frontend build green). |
+| WEB — AVAILABLE (RuntimeLab)                         | **MISLEADING.** What was proven: the ZylCode frontend is served by Vite. What the pill implies: projects can be built/run as web targets. That capability does not exist.                                                                                                                                                                                                                       |
+| RUN MISSION wired to real `process_intent_stream`    | **PARTIALLY VERIFIED.** Code-verified: `safeInvoke(ENVIRONMENT, "process_intent_stream", …)` at App.tsx:563 through the safe bridge — the wiring is real. NOT evidenced: no end-to-end execution capture exists (browser preview correctly refuses; no desktop transcript committed). The claim's evidentiary status is R2-shaped (test exists in backend), not product-proven.                 |
+| Evidence Center renders actual mission evidence      | **TRUE but EPHEMERAL.** Renders only real in-session data (verified). No persistence, no backend evidence store; all evidence evaporates on reload. "Evidence-first" products do not keep evidence in a React state array.                                                                                                                                                                      |
+| Runtime real surfaces                                | **TRUTHFUL but NOISY.** Each target carries an accurate reason; the presentation (8 pill cards) is the problem, not the facts.                                                                                                                                                                                                                                                                  |
+| Forge implemented                                    | **ACCURATE AS SCOPED** (domain+parser+shell; marketplace explicitly not implemented) — but 32 identical concept cards is taxonomy, not a marketplace experience.                                                                                                                                                                                                                                |
+| 418/0 cargo + 48/48 vitest                           | **VERIFIED this session** by direct execution (fmt/check/clippy `-D warnings` green, guard 11/0, frontend build green).                                                                                                                                                                                                                                                                         |
 
 ---
 
 ## 9. Classification (master prompt §3 A–H)
 
 **A. Useful implementation to preserve**
+
 - `lib/runtime.ts` environment bridge + `safeInvoke`/`unwrapInvoke` semantics (the raw-invoke error class is genuinely gone; console verified clean)
 - `lib/events.ts` env-aware subscriptions + backlog
 - `lib/mission.ts` domain vocabulary (states, autonomy, evidence categories, NOT CAPTURED)
@@ -190,6 +192,7 @@ is set before any backend confirmation and never derives from a plan.
 - `Forge.tsx` ManifestValidator + TrustModel panels; `DiagnosticsPanel`; stream→mission fold logic; `TokenMetricsWidget` controlled state
 
 **B. Architectural plumbing to hide from normal users**
+
 - Developer Tools drawer (correctly placed already, keep), environment block on Overview (move to Developer Tools), circuit/bridges status strip items
 
 **C. Developer/debug UI** — McpInspector, ProviderSettings (correctly quarantined; keep quarantined)

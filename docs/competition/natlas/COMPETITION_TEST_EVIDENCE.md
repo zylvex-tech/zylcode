@@ -24,15 +24,15 @@ Host: MINGW64_NT-10.0-26200 (Windows) — x86_64
 
 ## 2. Rust gates
 
-| # | Command | Result |
-|---|---|---|
-| 1 | `cargo test -p zylcode-core --lib` | **498 passed; 0 failed; 0 ignored** |
-| 2 | `cargo test -p zylcode-core --lib competition::natlas::intent` | **18 passed; 0 failed; 480 filtered out** |
-| 3 | `cargo test -p zylcode-core --test natlas_multilingual` | **7 passed; 0 failed** |
-| 4 | `cargo test -p zylcode-core --test natlas_boundary` | **17 passed; 0 failed** |
-| 5 | `cargo test -p zylcode-core --test natlas_runtime` | **12 passed; 0 failed** |
-| 6 | `cargo test -p zylcode-core --test natlas_bridge` | **14 passed; 0 failed** |
-| 7 | `cargo clippy --workspace --all-targets -- -D warnings` | **exit 0** (no code warnings) |
+| #   | Command                                                        | Result                                    |
+| --- | -------------------------------------------------------------- | ----------------------------------------- |
+| 1   | `cargo test -p zylcode-core --lib`                             | **498 passed; 0 failed; 0 ignored**       |
+| 2   | `cargo test -p zylcode-core --lib competition::natlas::intent` | **18 passed; 0 failed; 480 filtered out** |
+| 3   | `cargo test -p zylcode-core --test natlas_multilingual`        | **7 passed; 0 failed**                    |
+| 4   | `cargo test -p zylcode-core --test natlas_boundary`            | **17 passed; 0 failed**                   |
+| 5   | `cargo test -p zylcode-core --test natlas_runtime`             | **12 passed; 0 failed**                   |
+| 6   | `cargo test -p zylcode-core --test natlas_bridge`              | **14 passed; 0 failed**                   |
+| 7   | `cargo clippy --workspace --all-targets -- -D warnings`        | **exit 0** (no code warnings)             |
 
 ### Competition-relevant total
 
@@ -74,10 +74,10 @@ test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fin
 
 ## 3. SDK gates
 
-| # | Command | Result |
-|---|---|---|
-| 8 | `npx tsc --noEmit` (in `apps/natlas-sdk`) | **exit 0** — no type errors |
-| 9 | `node --experimental-strip-types test/smoke.mjs` | **16 passed, 0 failed** |
+| #   | Command                                          | Result                      |
+| --- | ------------------------------------------------ | --------------------------- |
+| 8   | `npx tsc --noEmit` (in `apps/natlas-sdk`)        | **exit 0** — no type errors |
+| 9   | `node --experimental-strip-types test/smoke.mjs` | **16 passed, 0 failed**     |
 
 The 16 SDK tests include the four resilience tests added for NAT-A-001/003 and the
 language-evidence test added for NAT-A-004:
@@ -96,9 +96,9 @@ ok   invoke: a stated language is recorded in evidence; an unstated one is omitt
 
 ## 4. Repository guard gate
 
-| # | Command | Result |
-|---|---|---|
-| 10 | `python scripts/check_retracted_claims.py` | `OK: no NEW retracted claims (11 pre-existing baselined occurrence(s), 11 baseline line(s)).` |
+| #   | Command                                    | Result                                                                                        |
+| --- | ------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| 10  | `python scripts/check_retracted_claims.py` | `OK: no NEW retracted claims (11 pre-existing baselined occurrence(s), 11 baseline line(s)).` |
 
 This guard prevents a claim that was previously measured, found unsupported, and removed
 from silently re-entering the repository. It is wired into `.github/workflows/ci.yml`.
@@ -107,22 +107,22 @@ from silently re-entering the repository. It is wired into `.github/workflows/ci
 
 ## 5. What these gates prove — and what they do not
 
-| The gates prove | The gates do **not** prove |
-|---|---|
+| The gates prove                                                        | The gates do **not** prove                                                       |
+| ---------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
 | The Rust and TypeScript code compiles and its tests pass at `8216738`. | That the live endpoint returns multilingual output (see EV-028 — quota-blocked). |
-| Quota is classified as `QUOTA` and is non-retryable. | That ZeroGPU has budget. Classification is not capacity. |
-| A `language` tag round-trips from request to evidence. | That the model understands or generates that language. |
-| The strict-lint and retracted-claims guards hold. | That any capability is production-approved. |
+| Quota is classified as `QUOTA` and is non-retryable.                   | That ZeroGPU has budget. Classification is not capacity.                         |
+| A `language` tag round-trips from request to evidence.                 | That the model understands or generates that language.                           |
+| The strict-lint and retracted-claims guards hold.                      | That any capability is production-approved.                                      |
 
 ---
 
 ## 6. Not run
 
-| Gate | Status |
-|---|---|
-| GitHub Actions CI on the pushed commit | **NOT RUN** — the workflow exists; it runs on push. |
-| Cross-platform (Linux) test execution | **NOT RUN** — host is Windows only. |
-| Live `/v1/chat/completions` with a valid key | **NOT RUN** — `NATLAS_API_KEY` unavailable. |
-| ASR routes | **NOT RUN** — `asr_models_loaded: []`. |
+| Gate                                         | Status                                              |
+| -------------------------------------------- | --------------------------------------------------- |
+| GitHub Actions CI on the pushed commit       | **NOT RUN** — the workflow exists; it runs on push. |
+| Cross-platform (Linux) test execution        | **NOT RUN** — host is Windows only.                 |
+| Live `/v1/chat/completions` with a valid key | **NOT RUN** — `NATLAS_API_KEY` unavailable.         |
+| ASR routes                                   | **NOT RUN** — `asr_models_loaded: []`.              |
 
-*End of evidence document.*
+_End of evidence document._

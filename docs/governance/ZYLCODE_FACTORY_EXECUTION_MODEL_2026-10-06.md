@@ -73,32 +73,32 @@ evidence graph.
 
 ### 3.1 Node semantics
 
-| Field | Purpose |
-|---|---|
-| `id` | unique within the job |
-| `kind` | the logical role (see master architecture §3) |
-| `action` | **what actually runs** — tool, model, human, or annotation |
-| `depends_on` | ids that must reach a *success* state first |
-| `state` | one of nine states (below) |
-| `attempts` / `max_attempts` | bounded retry accounting |
-| `blocked_reason` | present **only** in `Blocked` |
-| `approved_by` | set when a human cleared an approval gate |
-| `evidence_node_id` / `claim_ids` / `failure_id` | links into the evidence stores |
-| `outcome` | short honest summary |
+| Field                                           | Purpose                                                    |
+| ----------------------------------------------- | ---------------------------------------------------------- |
+| `id`                                            | unique within the job                                      |
+| `kind`                                          | the logical role (see master architecture §3)              |
+| `action`                                        | **what actually runs** — tool, model, human, or annotation |
+| `depends_on`                                    | ids that must reach a _success_ state first                |
+| `state`                                         | one of nine states (below)                                 |
+| `attempts` / `max_attempts`                     | bounded retry accounting                                   |
+| `blocked_reason`                                | present **only** in `Blocked`                              |
+| `approved_by`                                   | set when a human cleared an approval gate                  |
+| `evidence_node_id` / `claim_ids` / `failure_id` | links into the evidence stores                             |
+| `outcome`                                       | short honest summary                                       |
 
 ### 3.2 The nine states and why they are not collapsed
 
-| State | Means | Must never be reported as |
-|---|---|---|
-| `Pending` | dependencies unmet | "in progress" |
-| `Ready` | dependencies met, not started | "running" |
-| `Running` | executing now | "done" |
-| `Succeeded` | ran and met its contract | — |
-| `Failed` | ran and did not meet its contract | "blocked" |
-| `Blocked` | **cannot run**; reason recorded | "failed" or "pending" |
-| `AwaitingApproval` | parked at a human gate | "blocked" |
-| `Cancelled` | explicitly cancelled (incl. by propagation) | "skipped" |
-| `Skipped` | deliberately not executed | "cancelled" |
+| State              | Means                                       | Must never be reported as |
+| ------------------ | ------------------------------------------- | ------------------------- |
+| `Pending`          | dependencies unmet                          | "in progress"             |
+| `Ready`            | dependencies met, not started               | "running"                 |
+| `Running`          | executing now                               | "done"                    |
+| `Succeeded`        | ran and met its contract                    | —                         |
+| `Failed`           | ran and did not meet its contract           | "blocked"                 |
+| `Blocked`          | **cannot run**; reason recorded             | "failed" or "pending"     |
+| `AwaitingApproval` | parked at a human gate                      | "blocked"                 |
+| `Cancelled`        | explicitly cancelled (incl. by propagation) | "skipped"                 |
+| `Skipped`          | deliberately not executed                   | "cancelled"               |
 
 ### 3.3 Graph invariants enforced before execution
 
@@ -128,17 +128,17 @@ PLAN → PATCH → FORMAT → TYPECHECK → UNIT TEST → INTEGRATION TEST → B
 
 ### 4.2 What the implemented slice actually enforces
 
-| Stage | Enforced by | Status |
-|---|---|---|
-| PLAN | `TaskGraph` + job document | **IMPLEMENTED** |
-| PATCH | `fs.write` through the gated dispatch | **IMPLEMENTED** |
-| FORMAT | — | **DESIGNED** |
-| TYPECHECK | `shell.execute` (e.g. `cargo check`) as a `Verify` task | **IMPLEMENTED as a pattern** |
-| UNIT / INTEGRATION TEST | `shell.execute` with an **exit-code expectation** | **IMPLEMENTED** |
-| BUILD | `delivery::build_workspace` | **IMPLEMENTED** (outside the runner) |
-| SECURITY CHECK | — | **DESIGNED** (no scanner exists) |
-| REVIEW | `TaskAction::Approval` | **IMPLEMENTED** |
-| EVIDENCE | evidence graph + claim store | **IMPLEMENTED** |
+| Stage                   | Enforced by                                             | Status                               |
+| ----------------------- | ------------------------------------------------------- | ------------------------------------ |
+| PLAN                    | `TaskGraph` + job document                              | **IMPLEMENTED**                      |
+| PATCH                   | `fs.write` through the gated dispatch                   | **IMPLEMENTED**                      |
+| FORMAT                  | —                                                       | **DESIGNED**                         |
+| TYPECHECK               | `shell.execute` (e.g. `cargo check`) as a `Verify` task | **IMPLEMENTED as a pattern**         |
+| UNIT / INTEGRATION TEST | `shell.execute` with an **exit-code expectation**       | **IMPLEMENTED**                      |
+| BUILD                   | `delivery::build_workspace`                             | **IMPLEMENTED** (outside the runner) |
+| SECURITY CHECK          | —                                                       | **DESIGNED** (no scanner exists)     |
+| REVIEW                  | `TaskAction::Approval`                                  | **IMPLEMENTED**                      |
+| EVIDENCE                | evidence graph + claim store                            | **IMPLEMENTED**                      |
 
 ### 4.3 The two rules that make "verified" mean something
 
@@ -148,7 +148,7 @@ The runner encodes both:
 
 1. **Exit code decides.** A `Verify` or `RunCommand` task compares the observed exit code against an
    explicit expectation. A match produces a claim at `R3TestVerified` promoted to `VERIFIED`. A
-   mismatch produces a **`CONTRADICTED`** claim plus a `Failure` record — the failure is *recorded*,
+   mismatch produces a **`CONTRADICTED`** claim plus a `Failure` record — the failure is _recorded_,
    not dropped.
 2. **Promotion is fail-closed.** `Claim::promote_verified()` refuses without at least one evidence
    reference and a level of `R2` or higher. The runner calls it; it cannot force it. If promotion is
@@ -160,22 +160,22 @@ The runner encodes both:
 
 ### 5.1 The autonomy gradient
 
-| Operation class | Intended treatment | Implemented? |
-|---|---|---|
-| routine safe read | agent may proceed | **yes** — `RiskLevel::Read` within the default threshold |
-| routine safe code edit | agent may proceed within the job's risk ceiling | **yes** — `RiskLevel::Write` if the caller sets that ceiling |
-| new dependency | policy check | **DESIGNED** |
-| schema migration | approval by risk | **DESIGNED** |
-| secret access | explicit permission | **DESIGNED** |
-| production deployment | human approval | **DESIGNED** |
-| destructive operation | human approval | **yes** — `RiskLevel::Destructive` exceeds any default ceiling → `RequireApproval` |
-| security-critical architecture | review gate | **DESIGNED** |
-| release | evidence gate | **DESIGNED** |
+| Operation class                | Intended treatment                              | Implemented?                                                                       |
+| ------------------------------ | ----------------------------------------------- | ---------------------------------------------------------------------------------- |
+| routine safe read              | agent may proceed                               | **yes** — `RiskLevel::Read` within the default threshold                           |
+| routine safe code edit         | agent may proceed within the job's risk ceiling | **yes** — `RiskLevel::Write` if the caller sets that ceiling                       |
+| new dependency                 | policy check                                    | **DESIGNED**                                                                       |
+| schema migration               | approval by risk                                | **DESIGNED**                                                                       |
+| secret access                  | explicit permission                             | **DESIGNED**                                                                       |
+| production deployment          | human approval                                  | **DESIGNED**                                                                       |
+| destructive operation          | human approval                                  | **yes** — `RiskLevel::Destructive` exceeds any default ceiling → `RequireApproval` |
+| security-critical architecture | review gate                                     | **DESIGNED**                                                                       |
+| release                        | evidence gate                                   | **DESIGNED**                                                                       |
 
 ### 5.2 How the gate actually works
 
 The gate is **not** a factory invention. It is the existing `zylcode_mcp` permission policy at the
-single dispatch chokepoint. The factory adds only the *durable parking*:
+single dispatch chokepoint. The factory adds only the _durable parking_:
 
 ```text
 dispatch() decides RequireApproval
@@ -187,13 +187,13 @@ dispatch() decides RequireApproval
 ```
 
 **Why this is not theatre:** the approval is (a) attributed to a named human, (b) persisted, (c)
-required by the *same* policy object that would otherwise deny, and (d) only effective for that
+required by the _same_ policy object that would otherwise deny, and (d) only effective for that
 task. Approving the wrong task id is **refused**.
 
 ### 5.3 The design rule the directive states
 
-> *Agents should not stop every few minutes for trivial decisions. But autonomy must not mean
-> uncontrolled mutation.*
+> _Agents should not stop every few minutes for trivial decisions. But autonomy must not mean
+> uncontrolled mutation._
 
 The mechanism that satisfies both halves is the **risk ceiling**, chosen deliberately by whoever
 constructs the runner's `ToolRuntime`. A factory job that only reads sets `Read`; a job that edits
@@ -206,18 +206,18 @@ without a human, and the ceiling is a single, auditable value.
 
 ### 6.1 What must survive, and what does
 
-| Failure | Behaviour | Status |
-|---|---|---|
-| application restart | job document + evidence stores are on disk; `FactoryRunner::open` resumes | **IMPLEMENTED** |
-| machine restart | same — no in-memory state is required to resume | **IMPLEMENTED** |
-| provider failure | `TaskAction::ModelTask` → `Blocked` / `BLOCKED_PROVIDER`; deterministic tasks continue | **IMPLEMENTED** |
-| tool failure | the task fails; its dependents are cancelled; a `Failure` record is written | **IMPLEMENTED** |
-| rate limit | **DESIGNED** (backoff policy) | — |
-| network loss | tool-level: `shell.execute` records the failure honestly | **IMPLEMENTED as a record** |
-| agent crash | last persisted transition is the resume point | **IMPLEMENTED** |
-| merge conflict | **DESIGNED** (parallel worktrees) | — |
-| test failure | `CONTRADICTED` claim + `Failure`; dependents cancelled | **IMPLEMENTED** |
-| partial output | a task is atomic in the document: it is `Running` until it records an outcome | **IMPLEMENTED** |
+| Failure             | Behaviour                                                                              | Status                      |
+| ------------------- | -------------------------------------------------------------------------------------- | --------------------------- |
+| application restart | job document + evidence stores are on disk; `FactoryRunner::open` resumes              | **IMPLEMENTED**             |
+| machine restart     | same — no in-memory state is required to resume                                        | **IMPLEMENTED**             |
+| provider failure    | `TaskAction::ModelTask` → `Blocked` / `BLOCKED_PROVIDER`; deterministic tasks continue | **IMPLEMENTED**             |
+| tool failure        | the task fails; its dependents are cancelled; a `Failure` record is written            | **IMPLEMENTED**             |
+| rate limit          | **DESIGNED** (backoff policy)                                                          | —                           |
+| network loss        | tool-level: `shell.execute` records the failure honestly                               | **IMPLEMENTED as a record** |
+| agent crash         | last persisted transition is the resume point                                          | **IMPLEMENTED**             |
+| merge conflict      | **DESIGNED** (parallel worktrees)                                                      | —                           |
+| test failure        | `CONTRADICTED` claim + `Failure`; dependents cancelled                                 | **IMPLEMENTED**             |
+| partial output      | a task is atomic in the document: it is `Running` until it records an outcome          | **IMPLEMENTED**             |
 
 ### 6.2 The recovery rule
 
@@ -227,7 +227,7 @@ The runner re-reads the graph from the job document. A task already `Succeeded` 
 (its `attempts` counter is the proof). The evidence spine is re-read from the evidence graph, so the
 provenance chain across a restart is unbroken rather than restarted.
 
-### 6.3 What is *not* recovered
+### 6.3 What is _not_ recovered
 
 **Rollback of a landed side effect.** If a `WriteFile` task succeeded and a later task failed, the
 runner does **not** revert the write. Compensation/rollback is **DESIGNED**. Claiming otherwise
@@ -239,7 +239,7 @@ past.
 ## 7. Execution ordering and the parallel question
 
 The runner executes ready tasks **sequentially in declaration order**. The graph records genuine
-dependencies, so parallel-safe tasks are *identifiable*; they are not *executed* in parallel.
+dependencies, so parallel-safe tasks are _identifiable_; they are not _executed_ in parallel.
 
 **Why sequential, deliberately.** Parallel execution requires isolation (worktrees exist) plus file
 ownership (does not exist) plus a merge strategy (does not exist). Running tasks concurrently
@@ -254,18 +254,18 @@ queue. Only the first exists.
 
 ## 8. Test coverage of this model
 
-| Behaviour | Test |
-|---|---|
-| dependency-ordered execution + real tools + evidence | `tests/factory_job_e2e.rs::the_slice_executes_in_dependency_order_with_real_tools_and_evidence` |
-| model task blocked, no claim invented | `::a_model_task_is_blocked_provider_and_never_faked` |
-| approval parks and resumes; wrong id refused | `::a_human_approval_gate_parks_and_then_resumes` |
-| failed dependency cancels dependents; contradicted claim | `::a_failed_dependency_cancels_its_dependents` |
-| policy refusal → approval → execution | `::a_policy_refusal_parks_for_approval_then_executes_after_approval` |
-| resume from store without repeating work | `::a_job_resumes_from_the_store_and_does_not_repeat_completed_work` |
-| invalid graph refused | `::an_invalid_graph_is_refused_before_anything_runs` |
-| DAG semantics (diamond, cycle, orphan, readiness) | `factory/graph.rs` unit tests (9) |
-| forward-only stage projection | `factory/job.rs` unit tests (7) |
-| atomic persistence, invalid-graph refusal, corrupt-file surfacing | `factory/store.rs` unit tests (7) |
+| Behaviour                                                         | Test                                                                                            |
+| ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| dependency-ordered execution + real tools + evidence              | `tests/factory_job_e2e.rs::the_slice_executes_in_dependency_order_with_real_tools_and_evidence` |
+| model task blocked, no claim invented                             | `::a_model_task_is_blocked_provider_and_never_faked`                                            |
+| approval parks and resumes; wrong id refused                      | `::a_human_approval_gate_parks_and_then_resumes`                                                |
+| failed dependency cancels dependents; contradicted claim          | `::a_failed_dependency_cancels_its_dependents`                                                  |
+| policy refusal → approval → execution                             | `::a_policy_refusal_parks_for_approval_then_executes_after_approval`                            |
+| resume from store without repeating work                          | `::a_job_resumes_from_the_store_and_does_not_repeat_completed_work`                             |
+| invalid graph refused                                             | `::an_invalid_graph_is_refused_before_anything_runs`                                            |
+| DAG semantics (diamond, cycle, orphan, readiness)                 | `factory/graph.rs` unit tests (9)                                                               |
+| forward-only stage projection                                     | `factory/job.rs` unit tests (7)                                                                 |
+| atomic persistence, invalid-graph refusal, corrupt-file surfacing | `factory/store.rs` unit tests (7)                                                               |
 
 The exact counts and command output are in the gate report. This table names the tests; it does not
 substitute for running them.

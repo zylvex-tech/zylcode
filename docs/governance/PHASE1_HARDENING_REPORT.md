@@ -13,10 +13,10 @@ run, not that the product is finished.
 
 ## 1. Original branch, HEAD SHA, working-tree status
 
-| Checkout | Branch | HEAD | State |
-|---|---|---|---|
-| `C:/Projects/zylcode` (the user's) | `competition/natlas-2026` | `c5c9138` | behind `origin/competition/natlas-2026` by 2, ahead 0 — **untouched, unmodified** |
-| `C:/Users/…/Worktrees/zylcode/origin-main-8cdd991f` (this work) | `hardening/phase1-security-and-reproducibility` | `7b1bb0e` | clean |
+| Checkout                                                        | Branch                                          | HEAD      | State                                                                             |
+| --------------------------------------------------------------- | ----------------------------------------------- | --------- | --------------------------------------------------------------------------------- |
+| `C:/Projects/zylcode` (the user's)                              | `competition/natlas-2026`                       | `c5c9138` | behind `origin/competition/natlas-2026` by 2, ahead 0 — **untouched, unmodified** |
+| `C:/Users/…/Worktrees/zylcode/origin-main-8cdd991f` (this work) | `hardening/phase1-security-and-reproducibility` | `7b1bb0e` | clean                                                                             |
 
 All work was done in a separate git worktree off `origin/main` precisely so
 the live `competition/natlas-2026` checkout was never disturbed. Verified
@@ -40,13 +40,13 @@ f4a390c  feat(desktop): add eslint 9 flat config and fix the defects it reveals
 
 ## 3. Files changed and why
 
-| Commit | Files | Why |
-|---|---|---|
-| `70721f7` | 4 (630+/14−) | Payment-gateway credential literal; natlas smoke fixtures; secret scanner |
-| `e9b4655` | 5 (164+/1−) | `Cargo.lock`, dompurify override, advisory register |
-| `30c46f9` | 79 (1829+/1174−) | Prettier config + mechanical formatting, isolated as its own commit |
-| `f4a390c` | 21 (447+/281−) | ESLint flat config, the defects it revealed, lint-warning register |
-| `7b1bb0e` | 1 (93+/3−) | CI gates |
+| Commit    | Files            | Why                                                                       |
+| --------- | ---------------- | ------------------------------------------------------------------------- |
+| `70721f7` | 4 (630+/14−)     | Payment-gateway credential literal; natlas smoke fixtures; secret scanner |
+| `e9b4655` | 5 (164+/1−)      | `Cargo.lock`, dompurify override, advisory register                       |
+| `30c46f9` | 79 (1829+/1174−) | Prettier config + mechanical formatting, isolated as its own commit       |
+| `f4a390c` | 21 (447+/281−)   | ESLint flat config, the defects it revealed, lint-warning register        |
+| `7b1bb0e` | 1 (93+/3−)       | CI gates                                                                  |
 
 Deliberately split: formatting-only noise (commit 3) is separable from real
 defects (commit 4) so a reviewer can skip the former and read the latter as
@@ -190,30 +190,30 @@ components (`PackDetail`, 93 lines; `DesktopRequired`).
 
 The 36 residual warnings are itemised by rule and file in
 `docs/governance/ACCEPTED_LINT_WARNINGS.md` with the reason each is accepted
-*for this codebase* and the change that makes the row stale.
+_for this codebase_ and the change that makes the row stale.
 
 ## 9. Rust and frontend test results
 
 **Passing, re-measured on the final tree:**
 
-| Check | Result |
-|---|---|
-| `cargo fmt --all -- --check` | exit 0 |
-| `cargo clippy --workspace --all-targets -- -D warnings` | exit 0, 0 warnings *(measured 09:48; see blockers)* |
-| `cargo audit` | exit 0, 5 warnings / 0 vulnerable |
-| `pnpm audit --prod` | exit 0, clean |
-| secret scan + `--selftest` | exit 0, 13 patterns detect |
-| `check_retracted_claims.py` | exit 0 |
-| desktop lint / format:check / typecheck / build | exit 0 / clean / 0 / 0 |
-| SDK typecheck + smoke | exit 0 / **16 passed, 0 failed** |
-| `pnpm install --frozen-lockfile` | exit 0, lockfile unchanged |
+| Check                                                   | Result                                              |
+| ------------------------------------------------------- | --------------------------------------------------- |
+| `cargo fmt --all -- --check`                            | exit 0                                              |
+| `cargo clippy --workspace --all-targets -- -D warnings` | exit 0, 0 warnings _(measured 09:48; see blockers)_ |
+| `cargo audit`                                           | exit 0, 5 warnings / 0 vulnerable                   |
+| `pnpm audit --prod`                                     | exit 0, clean                                       |
+| secret scan + `--selftest`                              | exit 0, 13 patterns detect                          |
+| `check_retracted_claims.py`                             | exit 0                                              |
+| desktop lint / format:check / typecheck / build         | exit 0 / clean / 0 / 0                              |
+| SDK typecheck + smoke                                   | exit 0 / **16 passed, 0 failed**                    |
+| `pnpm install --frozen-lockfile`                        | exit 0, lockfile unchanged                          |
 
 **Not passing, and why — stated plainly rather than claimed:**
 
 - **`cargo test --workspace --all-targets` did not execute.** The sandbox
   refuses to let `link.exe` write the test executable into
   `target/debug/deps/` (`LNK1104: cannot open file
-  'zylcode_mcp-*.exe'`). `cargo check` and `clippy` are metadata-only and
+'zylcode_mcp-*.exe'`). `cargo check` and `clippy` are metadata-only and
   pass; the failure is at the link step. An earlier session measured
   `cargo test -p zylcode-mcp --all-targets` at **189 passed, 0 failed** —
   that measurement was real but is **not reproducible now**, and the commit
@@ -264,7 +264,7 @@ branch was pushed, no PR was created, and no `main` was written to.
 Ordered by value per unit of risk:
 
 1. **Run the test suites on a normal checkout.** `cargo test --workspace
-   --all-targets` and `pnpm --filter zylcode-desktop test`. These are the
+--all-targets` and `pnpm --filter zylcode-desktop test`. These are the
    two gates this environment could not execute, and they are the only
    claims in this report that remain unverified. Expect the frontend flake
    to disappear outside this sandbox, since its cause is the host's fs shim.
@@ -288,5 +288,5 @@ Ordered by value per unit of risk:
 
 ---
 
-*No licensing offer, score improvement, or production-readiness claim is
-implied by anything in this report. CI gates passing means the gates run.*
+_No licensing offer, score improvement, or production-readiness claim is
+implied by anything in this report. CI gates passing means the gates run._

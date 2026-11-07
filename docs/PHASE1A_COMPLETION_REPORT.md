@@ -1,15 +1,19 @@
 # PHASE 1A COMPLETION REPORT
 
 ## PHASE
+
 Phase 1A: Real Tool Runtime Foundation
 
 ## STATUS
+
 **COMPLETE**
 
 ## IMPLEMENTATION
+
 Replaced mocked tool execution with real typed Tool Runtime.
 
 ### Changes Made
+
 1. **Created `crates/zylcode-mcp/src/real_tools.rs`**
    - `ToolEvidence` struct for execution tracking
    - `RealTool` trait for real execution interface
@@ -22,7 +26,7 @@ Replaced mocked tool execution with real typed Tool Runtime.
 2. **Updated `crates/zylcode-mcp/src/tool.rs`**
    - Modified `DynamicTool::call()` to route through `ToolRouter`
    - Unknown tools return `status: "unsupported_mock"` instead of fake success
-   - Known tools (fs.*, shell.*, git.*, search.*) execute real operations
+   - Known tools (fs._, shell._, git._, search._) execute real operations
 
 3. **Updated `crates/zylcode-mcp/src/lib.rs`**
    - Added `real_tools` module
@@ -39,6 +43,7 @@ Replaced mocked tool execution with real typed Tool Runtime.
 ## FILES
 
 ### Created
+
 - `crates/zylcode-mcp/src/real_tools.rs`
 - `docs/ZYLCODE_FORENSIC_BASELINE.md`
 - `docs/FORENSIC_AUDIT_SUMMARY.md`
@@ -47,12 +52,15 @@ Replaced mocked tool execution with real typed Tool Runtime.
 - `docs/capability-registry.json`
 
 ### Modified
+
 - `crates/zylcode-mcp/src/tool.rs`
 - `crates/zylcode-mcp/src/lib.rs`
 - `README.md`
 
 ## ARCHITECTURE
+
 ### New Components
+
 - **ToolRouter**: Routes tool IDs to real implementations
 - **FileSystemTool**: Real filesystem operations via `tokio::fs`
 - **ShellTool**: Real process execution via `tokio::process::Command`
@@ -61,6 +69,7 @@ Replaced mocked tool execution with real typed Tool Runtime.
 - **ToolEvidence**: Execution evidence recording
 
 ### Data Flow
+
 ```
 DynamicTool::call()
     ↓
@@ -74,15 +83,18 @@ ToolResult { output, evidence, changed_files }
 ## TESTS
 
 ### Unit Tests
+
 - `real_tools::tests::test_filesystem_tool_read` - ✅ PASS
 - `real_tools::tests::test_shell_tool_echo` - ✅ PASS
 - `real_tools::tests::test_git_tool_status` - ✅ PASS
 
 ### Integration Tests
+
 - `tool::tests::dynamic_tool_unsupported_mock` - ✅ PASS
 - `tool::tests::dynamic_tool_real_fs_read` - ✅ PASS
 
 ### Full Suite
+
 - **Total Tests**: 10
 - **Passed**: 10
 - **Failed**: 0
@@ -90,17 +102,20 @@ ToolResult { output, evidence, changed_files }
 ## VERIFICATION
 
 ### Commands Executed
+
 ```bash
 cargo test --package zylcode-mcp --lib tool
 cargo test --package zylcode-mcp --lib real_tools
 ```
 
 ### Results
+
 All tests pass. Real tool execution verified.
 
 ## RUNTIME EVIDENCE
 
 ### FileSystemTool
+
 ```rust
 let tool = FileSystemTool::new("fs.read", "Read file");
 let result = tool.execute(params, &context).await.unwrap();
@@ -110,6 +125,7 @@ let result = tool.execute(params, &context).await.unwrap();
 ```
 
 ### ShellTool
+
 ```rust
 let tool = ShellTool::new("shell.execute", "Execute command");
 let result = tool.execute(params, &context).await.unwrap();
@@ -118,6 +134,7 @@ let result = tool.execute(params, &context).await.unwrap();
 ```
 
 ### GitTool
+
 ```rust
 let tool = GitTool::new("git.status", "Git status");
 let result = tool.execute(params, &context).await.unwrap();
@@ -127,14 +144,14 @@ let result = tool.execute(params, &context).await.unwrap();
 
 ## CAPABILITY CHANGES
 
-| Capability | Previous | New | Evidence |
-|------------|----------|-----|----------|
-| file_read_write | RED (Mocked) | FUNCTIONAL | DynamicTool routes to FileSystemTool |
-| terminal_execution | RED (Mocked) | FUNCTIONAL | DynamicTool routes to ShellTool |
-| git_operations | RED (Mocked) | FUNCTIONAL | DynamicTool routes to GitTool |
-| tool_execution | RED (All mocked) | PARTIAL | Core tools real, others mock |
-| diff_changes | RED (Mocked) | FUNCTIONAL | GitTool returns real changed files |
-| test_execution | RED (Mocked) | FUNCTIONAL | ShellTool executes real test commands |
+| Capability         | Previous         | New        | Evidence                              |
+| ------------------ | ---------------- | ---------- | ------------------------------------- |
+| file_read_write    | RED (Mocked)     | FUNCTIONAL | DynamicTool routes to FileSystemTool  |
+| terminal_execution | RED (Mocked)     | FUNCTIONAL | DynamicTool routes to ShellTool       |
+| git_operations     | RED (Mocked)     | FUNCTIONAL | DynamicTool routes to GitTool         |
+| tool_execution     | RED (All mocked) | PARTIAL    | Core tools real, others mock          |
+| diff_changes       | RED (Mocked)     | FUNCTIONAL | GitTool returns real changed files    |
+| test_execution     | RED (Mocked)     | FUNCTIONAL | ShellTool executes real test commands |
 
 ## DOCUMENTATION UPDATED
 
@@ -179,6 +196,7 @@ let result = tool.execute(params, &context).await.unwrap();
 **Phase 1B: Agent Kernel - Iterative Reasoning Loop**
 
 Implement real agent loop:
+
 1. Context gathering from repository
 2. Task decomposition and planning
 3. Tool selection and execution

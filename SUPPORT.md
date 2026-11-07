@@ -11,14 +11,14 @@ SERVICE-DELIVERED`.
 
 ## Where to get help
 
-| Need | Where |
-|---|---|
-| Usage question | GitHub Discussions → **Help** |
-| Bug report | GitHub Issue → `bug_report` template |
-| Feature idea | GitHub Discussions → **Ideas**, or Issue → `feature_request` |
-| Architecture question | GitHub Discussions → **Architecture** |
-| Security vulnerability | `SECURITY.md` (private, **not** a public issue) |
-| Contributing process | `CONTRIBUTING.md` |
+| Need                   | Where                                                        |
+| ---------------------- | ------------------------------------------------------------ |
+| Usage question         | GitHub Discussions → **Help**                                |
+| Bug report             | GitHub Issue → `bug_report` template                         |
+| Feature idea           | GitHub Discussions → **Ideas**, or Issue → `feature_request` |
+| Architecture question  | GitHub Discussions → **Architecture**                        |
+| Security vulnerability | `SECURITY.md` (private, **not** a public issue)              |
+| Contributing process   | `CONTRIBUTING.md`                                            |
 
 ## Before asking
 

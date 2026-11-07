@@ -10,35 +10,35 @@ a prior claim could not be confirmed, it is recorded as a discrepancy, not recon
 
 ## 1. Remote SHA and clone provenance
 
-| Item | Value |
-|---|---|
-| Remote HEAD at execution (`git ls-remote origin refs/heads/main`) | `8c847154356745d4f4a6b01ee03b2d23ac3870f1` |
-| Clone source | `https://github.com/zylvex-tech/zylcode.git` |
-| Clone destination | `C:/Projects/zylcode-p11/zylcode` (brand-new; no prior ZylCode state on that path) |
-| Clone HEAD after checkout | `8c847154356745d4f4a6b01ee03b2d23ac3870f1` — **identical** |
-| Working tree after clone (`git status --porcelain \| wc -l`) | `0` |
-| Pre-existing stray directories | none — `target`, `node_modules`, `.wt`, `.zylcode` all absent |
+| Item                                                              | Value                                                                              |
+| ----------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Remote HEAD at execution (`git ls-remote origin refs/heads/main`) | `8c847154356745d4f4a6b01ee03b2d23ac3870f1`                                         |
+| Clone source                                                      | `https://github.com/zylvex-tech/zylcode.git`                                       |
+| Clone destination                                                 | `C:/Projects/zylcode-p11/zylcode` (brand-new; no prior ZylCode state on that path) |
+| Clone HEAD after checkout                                         | `8c847154356745d4f4a6b01ee03b2d23ac3870f1` — **identical**                         |
+| Working tree after clone (`git status --porcelain \| wc -l`)      | `0`                                                                                |
+| Pre-existing stray directories                                    | none — `target`, `node_modules`, `.wt`, `.zylcode` all absent                      |
 
 ---
 
 ## 2. Environment
 
-| Component | Version / state |
-|---|---|
-| OS | Windows (Git Bash) |
-| rustc / cargo | 1.97.1 (8bab26f4f 2026-07-14) / 1.97.1 |
-| Node | v24.21.0 — **deviation from CI's Node 20** (noted; frozen install still resolved) |
-| pnpm | 9.12.0 — matches CI's pnpm 9 |
-| `core.autocrlf` | `true` (ambient, unchanged) |
+| Component       | Version / state                                                                   |
+| --------------- | --------------------------------------------------------------------------------- |
+| OS              | Windows (Git Bash)                                                                |
+| rustc / cargo   | 1.97.1 (8bab26f4f 2026-07-14) / 1.97.1                                            |
+| Node            | v24.21.0 — **deviation from CI's Node 20** (noted; frozen install still resolved) |
+| pnpm            | 9.12.0 — matches CI's pnpm 9                                                      |
+| `core.autocrlf` | `true` (ambient, unchanged)                                                       |
 
 Ambient credential environment (presence only; values never printed):
 
-| Variable | State | Risk note |
-|---|---|---|
-| `OPENROUTER_API_KEY` | SET — placeholder value | the exact hazard the router hermeticity tests target |
-| `ANTHROPIC_API_KEY` | SET (51 chars, non-placeholder) | real-shaped ambient key present during tests |
-| `DEEPSEEK_API_KEY` | SET (35 chars, non-placeholder) | same |
-| `GITHUB_TOKEN` | SET (40 chars) | not used by the battery |
+| Variable             | State                           | Risk note                                            |
+| -------------------- | ------------------------------- | ---------------------------------------------------- |
+| `OPENROUTER_API_KEY` | SET — placeholder value         | the exact hazard the router hermeticity tests target |
+| `ANTHROPIC_API_KEY`  | SET (51 chars, non-placeholder) | real-shaped ambient key present during tests         |
+| `DEEPSEEK_API_KEY`   | SET (35 chars, non-placeholder) | same                                                 |
+| `GITHUB_TOKEN`       | SET (40 chars)                  | not used by the battery                              |
 
 The battery therefore ran **with ambient provider credentials present** — the
 hermeticity claims were tested under adversarial conditions, which strengthens them.
@@ -50,16 +50,16 @@ hermeticity claims were tested under adversarial conditions, which strengthens t
 All raw output preserved in `C:/Projects/zylcode-p11/evidence/` (files 01–08).
 Durations are wall-clock, cold start unless noted.
 
-| # | Command | Exit | Duration | Result |
-|---|---|---|---|---|
-| 1 | `cargo check --workspace --all-targets` | 0 | 244.9 s | PASS (cold; 4m04s) |
-| 2 | `cargo check --workspace --all-targets --all-features` | 0 | 3.5 s | PASS (warm) |
-| 3 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 | 34.4 s | PASS — zero warnings |
-| 4 | `cargo test --workspace --all-targets --no-fail-fast` | 0 | 530.9 s | **417 passed / 0 failed** |
-| 5 | `python scripts/check_retracted_claims.py` | 0 | 0.8 s | OK — 11 baselined / 0 new |
-| 6 | `pnpm install --frozen-lockfile` | 0 | 21.8 s | PASS — lockfile resolved cleanly |
-| 7 | `pnpm --filter zylcode-desktop build` | 0 | 23.8 s | PASS — dist emitted (index.js 305.81 kB) |
-| 8 | `cargo test -p zylcode-core --test repo_intelligence_benchmark -- --nocapture` | 0 | 103.1 s (incl. compile) | **2 passed / 0 failed** |
+| #   | Command                                                                        | Exit | Duration                | Result                                   |
+| --- | ------------------------------------------------------------------------------ | ---- | ----------------------- | ---------------------------------------- |
+| 1   | `cargo check --workspace --all-targets`                                        | 0    | 244.9 s                 | PASS (cold; 4m04s)                       |
+| 2   | `cargo check --workspace --all-targets --all-features`                         | 0    | 3.5 s                   | PASS (warm)                              |
+| 3   | `cargo clippy --workspace --all-targets -- -D warnings`                        | 0    | 34.4 s                  | PASS — zero warnings                     |
+| 4   | `cargo test --workspace --all-targets --no-fail-fast`                          | 0    | 530.9 s                 | **417 passed / 0 failed**                |
+| 5   | `python scripts/check_retracted_claims.py`                                     | 0    | 0.8 s                   | OK — 11 baselined / 0 new                |
+| 6   | `pnpm install --frozen-lockfile`                                               | 0    | 21.8 s                  | PASS — lockfile resolved cleanly         |
+| 7   | `pnpm --filter zylcode-desktop build`                                          | 0    | 23.8 s                  | PASS — dist emitted (index.js 305.81 kB) |
+| 8   | `cargo test -p zylcode-core --test repo_intelligence_benchmark -- --nocapture` | 0    | 103.1 s (incl. compile) | **2 passed / 0 failed**                  |
 
 Test count reproduced exactly: the builder claim of **417/0 is independently
 reproduced** on a clean clone.
@@ -70,34 +70,34 @@ reproduced** on a clean clone.
 
 Corpus contaminators actually present in the clone at benchmark time:
 
-| Directory | Files on disk |
-|---|---|
-| `target/` (full cold build output) | 10,392 |
-| `node_modules/` (frozen install) | 6,294 |
-| `.git/` | 28 |
-| **Total contaminating files** | **16,686+** |
+| Directory                          | Files on disk |
+| ---------------------------------- | ------------- |
+| `target/` (full cold build output) | 10,392        |
+| `node_modules/` (frozen install)   | 6,294         |
+| `.git/`                            | 28            |
+| **Total contaminating files**      | **16,686+**   |
 
 **Trap-file experiment:** `scanner_probe_trap.rs` was planted inside both `target/`
 and `node_modules/` before the benchmark run, then removed afterwards.
 
 Benchmark actuals on the contaminated tree:
 
-| Metric | Measured | Prior builder claim |
-|---|---|---|
-| Entries scanned | **330** | 344 (builder tree, extra untracked non-ignored files present) |
-| Files indexed | **284** | — (285 tracked files; 1 below the indexed count is `.gitattributes`-class non-source) |
-| Symbols extracted | **1,545** | 1,545 — **exact match** |
-| Packages | 5 | 5 |
-| Scan duration | **462.99 ms** | ~0.52 s — consistent |
-| Precision@10 | 0.23 (bound ≥ 0.20) | 0.24 |
-| Recall@10 | 0.43 (bound ≥ 0.30) | **0.58 — variance, see D3** |
+| Metric            | Measured            | Prior builder claim                                                                   |
+| ----------------- | ------------------- | ------------------------------------------------------------------------------------- |
+| Entries scanned   | **330**             | 344 (builder tree, extra untracked non-ignored files present)                         |
+| Files indexed     | **284**             | — (285 tracked files; 1 below the indexed count is `.gitattributes`-class non-source) |
+| Symbols extracted | **1,545**           | 1,545 — **exact match**                                                               |
+| Packages          | 5                   | 5                                                                                     |
+| Scan duration     | **462.99 ms**       | ~0.52 s — consistent                                                                  |
+| Precision@10      | 0.23 (bound ≥ 0.20) | 0.24                                                                                  |
+| Recall@10         | 0.43 (bound ≥ 0.30) | **0.58 — variance, see D3**                                                           |
 
 Exclusion proof:
 
 - Trap files: `grep -c "trap"` over the full benchmark output → **0** (never indexed).
 - Any `target/` or `node_modules/` path in output → exactly 1 match, which is cargo's
   own test-runner banner (`Running tests\repo_intelligence_benchmark.rs
-  (target\debug\deps\…)`), not scanner output.
+(target\debug\deps\…)`), not scanner output.
 - Conclusion: the scanner demonstrably excluded `target/`, `node_modules/`, `.git/`,
   and did not index the traps, despite 16,686 contaminating files on disk.
   **The Windows scanner fix is reproduced.** The historical failure mode (225 s scans

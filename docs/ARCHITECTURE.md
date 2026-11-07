@@ -4,7 +4,7 @@
 >
 > **Note on milestone labels:** this document uses **track names**
 > (`MULTIPROVIDER-1/-2`, `CTX-COMPRESSION`, `VECTOR-CACHE`) for feature-internal milestones.
-> These are *not* governance roadmap phase numbers. The roadmap lives in
+> These are _not_ governance roadmap phase numbers. The roadmap lives in
 > `roadmap/ZYLCODE_ROADMAP_V2.md`; see `governance/PHASE_NUMBERING_RECONCILIATION.md`.
 
 ## 1. Workspace Graph
@@ -65,17 +65,17 @@ React invoke("process_intent_stream", {prompt, model})
 
 ## 4. Milestone Map
 
-| Phase | Scope | Key Files | Status |
-|-------|-------|-----------|--------|
-| 6.1 | Native IPC events | `main.rs` `token_metrics`, `verify_logic` | ✅ |
-| 6.2 | React telemetry hooks | `useArtifactStream`, `TokenMetricsWidget` | ✅ |
-| 6.3 | SQLite + bundler | `init_telemetry_db`, `tauri.conf.json` | ✅ |
-| 7.1 | CI/CD | `.github/workflows/release.yml` | ✅ |
-| 7.2 | Multi-model routing & failover | `router.rs` ProviderKind/Config + telemetry | ✅ |
-| 7.3 | Provider Settings UI | `ProviderSettings.tsx` + 3 Tauri commands | ✅ |
-| 8.1 | Context compression | `compression.rs` + dispatch integration | ✅ |
-| 8.2 | Vector cache & similarity | `cache.rs` VectorCacheStore + mock_embed + cosine 0.88 | ✅ |
-| 8.3 | Tagged release v0.2.0 | Workspace 0.2.0 + tauri.conf + package.json + CI tag | ✅ |
+| Phase | Scope                          | Key Files                                              | Status |
+| ----- | ------------------------------ | ------------------------------------------------------ | ------ |
+| 6.1   | Native IPC events              | `main.rs` `token_metrics`, `verify_logic`              | ✅     |
+| 6.2   | React telemetry hooks          | `useArtifactStream`, `TokenMetricsWidget`              | ✅     |
+| 6.3   | SQLite + bundler               | `init_telemetry_db`, `tauri.conf.json`                 | ✅     |
+| 7.1   | CI/CD                          | `.github/workflows/release.yml`                        | ✅     |
+| 7.2   | Multi-model routing & failover | `router.rs` ProviderKind/Config + telemetry            | ✅     |
+| 7.3   | Provider Settings UI           | `ProviderSettings.tsx` + 3 Tauri commands              | ✅     |
+| 8.1   | Context compression            | `compression.rs` + dispatch integration                | ✅     |
+| 8.2   | Vector cache & similarity      | `cache.rs` VectorCacheStore + mock_embed + cosine 0.88 | ✅     |
+| 8.3   | Tagged release v0.2.0          | Workspace 0.2.0 + tauri.conf + package.json + CI tag   | ✅     |
 
 ## 5. Invariants
 

@@ -8,16 +8,16 @@ That principle applies to contributions as much as to the product.
 
 ## 0. Read First (required before any change)
 
-| Document | Why |
-|---|---|
-| `docs/governance/ZYLCODE_PRODUCT_CONSTITUTION_V2.md` | The supreme spec. Read before proposing anything architectural. |
-| `docs/governance/ZYLCODE_ARCHITECTURE_V2.md` | System topology and contracts. |
-| `docs/governance/ZYLCODE_MASTER_EXECUTION_PLAN.md` | The 16-phase / 6-epoch program and gates. |
-| `docs/governance/ZYLCODE_CAPABILITY_MODEL.md` | What a capability is and how status is computed. |
-| `docs/governance/ZYLCODE_PROOF_GRAPH.md` | R0–R5. The definition of "proven". |
-| `docs/governance/ZYLCODE_AGENT_OPERATING_PROTOCOL.md` | How agents work here; the pre-flight, marking and reporting rules. |
+| Document                                                 | Why                                                                           |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `docs/governance/ZYLCODE_PRODUCT_CONSTITUTION_V2.md`     | The supreme spec. Read before proposing anything architectural.               |
+| `docs/governance/ZYLCODE_ARCHITECTURE_V2.md`             | System topology and contracts.                                                |
+| `docs/governance/ZYLCODE_MASTER_EXECUTION_PLAN.md`       | The 16-phase / 6-epoch program and gates.                                     |
+| `docs/governance/ZYLCODE_CAPABILITY_MODEL.md`            | What a capability is and how status is computed.                              |
+| `docs/governance/ZYLCODE_PROOF_GRAPH.md`                 | R0–R5. The definition of "proven".                                            |
+| `docs/governance/ZYLCODE_AGENT_OPERATING_PROTOCOL.md`    | How agents work here; the pre-flight, marking and reporting rules.            |
 | `docs/governance/ZYLCODE_PUBLIC_COMMUNICATION_POLICY.md` | What may be said publicly (status vocabulary, screenshot rule, claim matrix). |
-| `docs/roadmap/ZYLCODE_ROADMAP_V2.md` | Per-phase detail and entry points. |
+| `docs/roadmap/ZYLCODE_ROADMAP_V2.md`                     | Per-phase detail and entry points.                                            |
 
 A change that contradicts a governing document is a **defect to be recorded**, not silently resolved
 in either direction. Investigate the discrepancy first; propose an amendment if the document is wrong.
@@ -26,12 +26,12 @@ in either direction. Investigate the discrepancy first; propose an amendment if 
 
 ## 1. Development Environment
 
-| Tool | Version | Source of the requirement |
-|---|---|---|
-| Rust | stable; MSRV **1.90** | `Cargo.toml` `rust-version = "1.90"`, `edition = "2021"`. No `rust-toolchain*` file, so stable is implied. |
-| Node | **22** (floor is 18) | `package.json` `engines.node = ">=18.0.0"`, but `apps/natlas-sdk/test/smoke.mjs` is TypeScript run directly via `node --experimental-strip-types`, which needs **≥ 22.6**. CI pins 22. |
-| pnpm | **9** (9.12.0) | `package.json` `packageManager = "pnpm@9.12.0"`. CI pins 9. |
-| Tauri | v2 | desktop shell (`apps/zylcode-desktop`). |
+| Tool  | Version               | Source of the requirement                                                                                                                                                              |
+| ----- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Rust  | stable; MSRV **1.90** | `Cargo.toml` `rust-version = "1.90"`, `edition = "2021"`. No `rust-toolchain*` file, so stable is implied.                                                                             |
+| Node  | **22** (floor is 18)  | `package.json` `engines.node = ">=18.0.0"`, but `apps/natlas-sdk/test/smoke.mjs` is TypeScript run directly via `node --experimental-strip-types`, which needs **≥ 22.6**. CI pins 22. |
+| pnpm  | **9** (9.12.0)        | `package.json` `packageManager = "pnpm@9.12.0"`. CI pins 9.                                                                                                                            |
+| Tauri | v2                    | desktop shell (`apps/zylcode-desktop`).                                                                                                                                                |
 
 ```bash
 git clone https://github.com/zylvex-tech/zylcode.git && cd zylcode
@@ -146,6 +146,7 @@ A claim without a reproduction block (commands, environment, raw output, SHA) is
 ## 5. Capability Registry
 
 Capabilities are registered in `docs/capability-registry.json`. Adding one requires:
+
 - a `rung` derived from evidence (never asserted by hand);
 - `entry_points`, `scope`, `evidence_commit`, `verified_at`, `limitations`;
 - a matching entry in the architecture status table.

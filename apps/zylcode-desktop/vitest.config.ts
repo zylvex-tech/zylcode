@@ -22,12 +22,7 @@ export default defineConfig({
       // cover — including them would move the denominator without moving the
       // evidence.
       include: ["src/**/*.{ts,tsx}"],
-      exclude: [
-        "**/*.d.ts",
-        "src/test/**",
-        "src/main.tsx",
-        "src/**/*.test.{ts,tsx}",
-      ],
+      exclude: ["**/*.d.ts", "src/test/**", "src/main.tsx", "src/**/*.test.{ts,tsx}"],
       all: true,
       // Enforced floor, not an aspiration: CI fails below these. They sit at
       // the measured value so the gate ratchets — coverage can only stay level

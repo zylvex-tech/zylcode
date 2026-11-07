@@ -1,113 +1,160 @@
 # ZylCode — Software Creation Operating System
 
 <p align="center">
-  <img src="docs/branding/zylcode-logo.png" alt="ZylCode logo" width="260">
+  <img src="docs/branding/zylcode-logo.png" alt="ZylCode logo" width="240">
 </p>
 
 [![CI](https://github.com/zylvex-tech/zylcode/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/zylvex-tech/zylcode/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
-ZylCode is an engineering software platform developed by **Zylvex Technologies
-Ltd.** It is intended to help transform ideas and instructions into
-structured, executable, testable, and verifiable deliverables: plan the work,
-execute it under human control, verify the result, and keep traceable evidence
-for every technical claim along the way.
+**Project status: 6 November 2026** · branch `fix/r05-input-validation` · head `fc69e4c` · pre-release
 
-It is local-first and bring-your-own-key: you run the desktop application and
-the CLI on your own machine, and model calls go through providers you
-configure yourself (`docs/PROVIDERS.md`).
+ZylCode is an engineering workbench developed by **Zylvex Technologies Ltd.** It
+turns an instruction into a plan, executes the plan through approval-gated tools,
+checks the result, and records evidence for every technical claim it makes.
 
-> **Early access:** join the [Developer Preview waitlist](https://site-0522a86bd09e48629a1e90f115711758.freebuff.page)
-> — pre-release, free / invite-only. No pricing is published during public
-> development (`docs/governance/ZYLCODE_COMMERCIAL_MODEL.md`).
+It runs on your machine and uses your own model keys: the desktop app, the CLI and
+the local intelligence service are all local processes, and model calls go to
+providers you configure yourself.
 
----
+> **Early access:** the [Developer Preview waitlist](https://site-0522a86bd09e48629a1e90f115711758.freebuff.page)
+> is open and pre-release / invite-only. No pricing is published during public
+> development ([`docs/governance/ZYLCODE_COMMERCIAL_MODEL.md`](docs/governance/ZYLCODE_COMMERCIAL_MODEL.md)).
 
-## Product Preview
-
-> **DEVELOPER PREVIEW** — the assets below are real captures of the ZylCode desktop
-> frontend running in **browser preview** mode (no Tauri backend attached), so
-> backend-driven panels show their honest `BLOCKED` state and a mission is *composed*,
-> not run. The first five assets are from the `v0.2.1` build (2026-10-26); the
-> numbered captures from `06` onward are the **`v0.2.3` build (2026-10-29)**.
-> Full capture record — starting commit, environment, redaction and
-> publication checks — in [`docs/media/zylcode/README.md`](docs/media/zylcode/README.md).
->
-> **Batch 3 (`11`–`13`, 2026-10-31) is the exception:** those three run against a
-> live `zylcode serve-intel`, so the explorer reads `AVAILABLE`, source control reads
-> the real branch, and the terminal executes real commands. Batches 1–2 have no
-> backend behind them — which is why `06`/`07` show `terminal service error: HTTP 501`
-> and batch 3 does not.
-
-ZylCode workbench with the backend live — explorer, terminal and status bar all reporting
-real state:
-
-![ZylCode workbench — live explorer, terminal running git log, mission lifecycle and capability spotlight](docs/media/zylcode/11-workbench-live-terminal.png)
-
-Missions, composer and the verify terminal on the same build, same session:
-
-![Missions surface — composer, mission list and a live terminal](docs/media/zylcode/12-missions-pipeline-live.png)
-
-**Live theming** — the whole shell re-themes on the fly, no reload:
-
-<video src="docs/media/zylcode/preview-theming.mp4" width="760" controls preload="metadata">
-  <a href="docs/media/zylcode/preview-theming.mp4">Download preview-theming.mp4</a>
-</video>
-
-**Panel and dock navigation** — the bottom panel dock and the right workspace:
-
-<video src="docs/media/zylcode/preview-navigation.mp4" width="760" controls preload="metadata">
-  <a href="docs/media/zylcode/preview-navigation.mp4">Download preview-navigation.mp4</a>
-</video>
-
-**Composing a mission** — the real Mission Composer, with real keystrokes:
-
-<video src="docs/media/zylcode/preview-mission-composer.mp4" width="760" controls preload="metadata">
-  <a href="docs/media/zylcode/preview-mission-composer.mp4">Download preview-mission-composer.mp4</a>
-</video>
-
-| Surface | Capture |
-|---|---|
-| Workbench, live backend (`v0.2.3`, batch 3) | ![Workbench](docs/media/zylcode/11-workbench-live-terminal.png) |
-| Missions & composer, live terminal (batch 3) | ![Missions surface](docs/media/zylcode/12-missions-pipeline-live.png) |
-| Source control reading the real branch (batch 3) | ![Source control](docs/media/zylcode/13-source-control-live.png) |
-| Workbench without a backend (batch 2) | ![Workbench](docs/media/zylcode/06-mission-lifecycle.png) |
-| Missions & composer without a backend (batch 2) | ![Missions surface](docs/media/zylcode/07-missions-pipeline.png) |
-| Provider fallback chain (honest runtime state) | ![Providers](docs/media/zylcode/08-provider-fallback.png) |
-| Evidence ledger (nothing captured, said plainly) | ![Evidence ledger](docs/media/zylcode/09-evidence-center.png) |
-| Live theme (Arctic Light, current build) | ![Arctic Light theme](docs/media/zylcode/10-theme-arctic-light.png) |
-| Mission Composer | ![Mission Composer](docs/media/zylcode/04-mission-composer.png) |
-| Light theme (Arctic Light, `v0.2.1` capture) | ![Arctic Light theme](docs/media/zylcode/02-theme-arctic-light.png) |
-| Alternate theme (Nord, `v0.2.1` capture) | ![Nord theme](docs/media/zylcode/03-theme-nord.png) |
-| Landing (earlier capture) | ![Earlier landing](docs/media/zylcode/01-landing.png) |
+![ZylCode workbench with a live backend — repository explorer, terminal running real git commands, mission list, capability spotlight and the status bar reporting branch and version](docs/media/zylcode/14-workbench-live.png)
 
 ---
 
-## Product Vision
+## What's new — 6 November 2026
 
-The long-term direction is an environment that carries a change all the way
-from intent to a verified artefact — a loop of **design → build → run →
-inspect → verify → ship**, with evidence recorded at each step.
+The model layer stopped pretending. Before this milestone the "streaming" path was a
+fake line-chunker in `router.rs` that emitted `{index, delta, done}` and nothing else;
+provider responses were parsed by string matching in the router, and there was no way
+to tell a real stream from an offline imitation.
 
-That direction is larger than what exists today. This README keeps three
-categories strictly apart, and every capability claim below is placed in one
-of them using repository evidence:
+**Providers now speak their own protocols.** Three commits on this branch (`ebd5098`,
+`a202a08`, `fc69e4c`) replace that with a provider boundary:
 
-| Category | Meaning |
-|---|---|
-| **Implemented and tested** | The code exists on this branch, is reachable from a product surface, and its tests pass in CI and in local runs referenced below. |
-| **Partially implemented** | Real code exists but is incomplete, disclosed as limited, or awaiting independent acceptance. |
-| **Planned** | Documented intent only — not operational, not claimed as working. |
+- **Real wire parsing, per provider.** Anthropic SSE (`content_block_delta`,
+  `message_delta` usage, `message_stop`), OpenAI-compatible SSE (`data:` frames and
+  `[DONE]`) and Ollama NDJSON are parsed in
+  [`anthropic.rs`](crates/zylcode-core/src/providers/anthropic.rs),
+  [`openai_compatible.rs`](crates/zylcode-core/src/providers/openai_compatible.rs) and
+  [`ollama.rs`](crates/zylcode-core/src/providers/ollama.rs), with shared framing in
+  [`sse.rs`](crates/zylcode-core/src/providers/sse.rs).
+- **One neutral contract.** [`streaming.rs`](crates/zylcode-core/src/providers/streaming.rs)
+  defines `StreamChunk` with `ChunkKind`, `FinishReason`, `Usage`, provider metadata,
+  structured `ProviderError`, and an explicit `synthetic` flag, so a consumer never has
+  to guess whether a chunk came from a model or from the offline path.
+- **Cancellation that actually aborts.** `CancelToken` is polled alongside the response
+  body and drops the `reqwest::Response` (closing the connection) instead of leaving the
+  request running behind a stopped reader.
+- **`router.rs` is orchestration again.** Failover, selection and the offline degrade
+  live there; request bodies, headers and completion parsing moved behind
+  `parse_completion` in each provider module.
+- **Capabilities are data, not marketing.** One table
+  ([`capabilities.rs`](crates/zylcode-core/src/providers/capabilities.rs)) describes all
+  eight providers, and it says `tools: false` for every one of them (see
+  [Limitations](#limitations-and-non-claims)).
 
-The authoritative, row-by-row capability ledger is
-[`docs/capability-registry.json`](docs/capability-registry.json). Where that
-registry records a capability as disputed, this README does not call it
-verified: builders do not certify their own work
-([`CONTRIBUTING.md`](CONTRIBUTING.md)).
+81 provider tests cover that boundary, including a loopback HTTP server
+([`test_server.rs`](crates/zylcode-core/src/providers/test_server.rs)) that speaks the
+providers' real protocols over real sockets.
 
 ---
 
-## Current Architecture
+## What it does today
+
+| Stage          | What happens                                                                                                       | State on this branch                                           |
+| -------------- | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------- |
+| **Understand** | Repository index: files, symbols, dependency graph; `zylcode repo-context` answers "what would this change touch?" | Working; benchmark 0.61 against a 0.60 floor (2026-10-29)      |
+| **Plan**       | Intent becomes a plan with explicit steps and tool intents                                                         | Working in the core; agent-loop e2e suites green               |
+| **Act**        | Tool calls run through the permission gate in `zylcode-mcp`; consequential ones need approval                      | Working; approval-enforcement tests green                      |
+| **Observe**    | Live terminal, source control, and streaming model output                                                          | Working; the captures below execute real commands              |
+| **Verify**     | Results are checked and recorded; a failed check stays visible as failed                                           | Working; the ledger keeps failures, it does not tidy them away |
+| **Evidence**   | Hash-chained records under `.zylcode/`; a broken chain is an error, never an empty screen                          | Working; ledger and tamper tests green                         |
+
+The desktop UI reaches all of that through 39 registered Tauri commands; the same core is
+also served to the browser preview by `zylcode serve-intel` on loopback.
+
+---
+
+## Capability matrix
+
+Every row states where it is proven, not just that code exists. Nothing here is a
+promise about a hosted service.
+
+| Capability                                      | Status                             | Evidence                                                                                                                                                            |
+| ----------------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Repository explorer over a live index           | **Verified**                       | Capture `14` (live tree); `serve-intel` warm index: 764 files / 3,187 symbols / 8 packages                                                                          |
+| Terminal executing real commands                | **Verified**                       | Capture `16` (`cargo test … providers::` → 81 passed); 51 terminal tests                                                                                            |
+| Provider streaming, Anthropic + OpenAI-style    | **Implemented, protocol-tested**   | `providers::anthropic`, `providers::openai_compatible`; loopback SSE tests                                                                                          |
+| Provider streaming, Ollama (local)              | **Implemented, protocol-tested**   | `providers::ollama`; loopback NDJSON tests                                                                                                                          |
+| Stream cancellation aborts the request          | **Implemented, tested**            | `test_server::Scenario::BodyThenHold` reports socket teardown when the client cancels                                                                               |
+| Provider failover across the whole chain        | **Implemented, tested**            | Router failover suites; capture `17` shows the live chain and measured outcomes                                                                                     |
+| Offline/synthetic output labelled as such       | **Implemented, tested**            | `StreamChunk.synthetic`, `providers::synthetic`; the offline provider advertises `streaming: false`                                                                 |
+| Evidence ledger, hash-chained                   | **Verified**                       | Capture `18` (40 entries, 13 sessions, chain intact); ledger tests                                                                                                  |
+| Mission compose → plan → gated tools → evidence | **Implemented and tested in core** | `agent_loop_e2e`, `factory_job_e2e`; the UI journey needs the desktop runtime, so the browser captures show composition only                                        |
+| Provider key editing / connection test UI       | **Partial**                        | Backend commands exist (`test_provider_connection`); editing is desktop-only — capture `17` is the read-only chain in preview                                       |
+| Native provider tool calling                    | **Not implemented**                | `tools: false` for all 8 providers; no request builder emits `tools`                                                                                                |
+| External MCP client (connect to MCP servers)    | **Not implemented**                | `zylcode-mcp` is an in-process registry + permission gate + executors; no JSON-RPC transport exists                                                                 |
+| Vision input / log probabilities                | **Not implemented**                | `vision: false`, `logprobs: false`; no request builder sends or surfaces them                                                                                       |
+| Computer-use automation                         | **Not implemented**                | Independent status report records the engine as simulation ([`docs/governance/MAIN_STATUS_REPORT_2026-10-11.md`](docs/governance/MAIN_STATUS_REPORT_2026-10-11.md)) |
+
+The authoritative row-by-row ledger, including which of these are disputed, is
+[`docs/capability-registry.json`](docs/capability-registry.json): 37 entries —
+22 GREEN, **12 DISPUTED**, 2 PARTIAL, 1 externally blocked. Builders do not certify
+their own work ([`CONTRIBUTING.md`](CONTRIBUTING.md)).
+
+---
+
+## More of the workbench
+
+Real captures only. All five are the same `v0.2.3` build at `fc69e4c`, running in
+browser-preview mode against a live `zylcode serve-intel`, at 1440×900 (2× DPR).
+Environment, redaction and per-asset reproduction steps are in
+[`docs/media/zylcode/README.md`](docs/media/zylcode/README.md).
+
+**A real engineering workflow — intent typed into the Mission Composer, with the live
+repository and terminal beside it:**
+
+![Mission Composer with a real typed intent](docs/media/zylcode/15-mission-intent.png)
+
+**Terminal and tool execution — the provider suite running for real, 81 tests, their
+names visible, not a mock-up:**
+
+![Terminal running the provider test suite](docs/media/zylcode/16-terminal-provider-tests.png)
+
+**Provider surface — the live fallback chain, models, which keys are required and which
+entries are enabled, plus the in-process tool runtime with its executors bound:**
+
+![Dev Tools providers tab with the live fallback chain and tool catalogue](docs/media/zylcode/17-provider-chain.png)
+
+**Verification and evidence — 40 hash-chained entries across 13 sessions, including the
+rows that failed:**
+
+![Evidence ledger with verified, recorded, approved and failed entries](docs/media/zylcode/18-evidence-ledger.png)
+
+Earlier captures — `v0.2.3` (2026-10-29/31) and `v0.2.1` (2026-10-26), including a
+workbench with **no** backend attached where panels show their honest `BLOCKED` state —
+are listed in the capture record. Selected ones:
+
+| Surface                               | Capture                                                          |
+| ------------------------------------- | ---------------------------------------------------------------- |
+| Workbench, live backend (batch 3)     | ![Workbench](docs/media/zylcode/11-workbench-live-terminal.png)  |
+| Missions + live terminal (batch 3)    | ![Missions](docs/media/zylcode/12-missions-pipeline-live.png)    |
+| Source control on the real branch     | ![Source control](docs/media/zylcode/13-source-control-live.png) |
+| Workbench without a backend (batch 2) | ![Workbench](docs/media/zylcode/06-mission-lifecycle.png)        |
+| Arctic Light theme (current build)    | ![Arctic Light](docs/media/zylcode/10-theme-arctic-light.png)    |
+
+Earlier recordings (2026-10-26 build): [live
+theming](docs/media/zylcode/preview-theming.mp4) ·
+[panel/dock navigation](docs/media/zylcode/preview-navigation.mp4) ·
+[mission composer](docs/media/zylcode/preview-mission-composer.mp4).
+
+---
+
+## Architecture
 
 ```
 zylcode/
@@ -115,320 +162,238 @@ zylcode/
 │   ├── zylcode-desktop/        Tauri v2 + React desktop application
 │   │   ├── src/                Panels: agent workspace, tool runner, repo
 │   │   │                       navigation & intel, terminal, git, settings
-│   │   └── src-tauri/          36 backend commands (process_intent,
+│   │   └── src-tauri/          39 registered backend commands (process_intent,
 │   │                           execute_tool, repo_context, nav_query,
 │   │                           git_status, file_content, …)
-│   └── natlas-sdk/             TypeScript SDK + zero-build playground for the
-│                               N-ATLAS bridge (integration workstream)
+│   └── natlas-sdk/             TypeScript SDK + playground for the N-ATLAS
+│                               bridge (a separate integration workstream)
 ├── crates/
-│   ├── zylcode-core/           Agent loop, planning, provider routing,
-│   │                           repository intelligence, factory runner,
-│   │                           evidence ledger, terminal, crash recovery
-│   ├── zylcode-mcp/            Tool registry, permission gate, evidence and
-│   │                           telemetry, real file/git/shell/search executors
+│   ├── zylcode-core/           Agent loop, planning, provider boundary,
+│   │   │                       router/failover, repository intelligence,
+│   │   │                       factory runner, evidence ledger, terminal,
+│   │   │                       crash recovery
+│   │   └── src/providers/      streaming.rs (neutral contract) · anthropic.rs
+│   │                           · openai_compatible.rs · ollama.rs · sse.rs
+│   │                           · compat.rs · capabilities.rs · synthetic.rs
+│   ├── zylcode-mcp/            In-process tool registry, permission gate,
+│   │                           evidence + telemetry, file/git/shell/search
+│   │                           executors
 │   ├── zylcode-nav/            Repository scanner, symbol index, dependency
 │   │                           graph, navigation query engine
-│   └── zylcode-cli/            `zylcode` binary: repo-context, the serve-intel
-│                               HTTP surface, missions, build helpers
+│   └── zylcode-cli/            `zylcode` binary: repo-context, serve-intel,
+│                               missions, build helpers
 ├── docs/                       Architecture, governance, roadmap, evidence
 └── .github/workflows/          CI (check, clippy, full test suite, build)
 ```
 
+**The provider boundary** — the part that changed this week:
+
+```
+router.rs            selects a provider, walks the fallback chain, degrades offline
+   │                 (no wire formats, no JSON field names)
+   ▼
+providers::anthropic │ openai_compatible │ ollama │ synthetic
+   │  builds the request, parses SSE / NDJSON / JSON, maps errors
+   ▼
+StreamChunk { index, kind, done, finish_reason, synthetic, tool_state, usage,
+              metadata, provider_ref, error }        ← the contract
+   │
+   ├─▶ agent loop / consumers that need the full chunk
+   └─▶ compat::StreamEvent { index, delta, done }     ← lossy IPC projection
+```
+
+That last hop is deliberately lossy: the desktop IPC payload predates this work and
+still carries only `{index, delta, done}`. `StreamChunk` is the source of truth and the
+projection is derived from it (`From<&StreamChunk>`), so finish reason, usage,
+tool-call deltas, structured errors and synthetic provenance exist on the chunk but are
+**not** currently visible in the UI.
+
 How the pieces relate:
 
-* **User-facing application** — the desktop app drives the same core engine
-  the CLI does, over two transports: Tauri IPC (36 commands; the UI currently
-  invokes the agent journey, tool execution, repository context/navigation,
-  git and file surfaces among them) and the loopback-only `zylcode
-  serve-intel` HTTP service used by the browser preview.
-* **Execution and verification** — tool calls run through the permission gate
-  in `zylcode-mcp`; consequential operations require approval; results are
-  verified and recorded in a hash-chained evidence store under `.zylcode/`.
-* **Repository intelligence** — `zylcode-nav` and the core intelligence
-  pipeline build a persisted index (files, symbols, dependencies) that feeds
-  the agent's context, the `zylcode repo-context` CLI command, and the
-  navigation/intel panels.
-* **AI/model integration** — a provider router with full-chain failover sends
-  requests to models you configure (API keys stay yours; no token markup).
-  The N-ATLAS bridge (below) is one model integration among the platform's
-  provider paths.
-
-Planned modules that are **not** part of the current operational architecture
-are tracked only in the roadmap (see *Project Status and Roadmap*).
+- **Application** — the desktop app drives the core over Tauri IPC (39 registered
+  commands) and, for the browser preview, over the loopback-only `serve-intel` HTTP
+  service.
+- **Execution and verification** — tool calls run through the permission gate in
+  `zylcode-mcp`; results are verified and written to the hash-chained ledger under
+  `.zylcode/`.
+- **Repository intelligence** — `zylcode-nav` builds the persisted index feeding agent
+  context, `zylcode repo-context`, and the navigation panels.
+- **Model integration** — the provider boundary above, with failover and your own keys.
+  N-ATLAS is one integration workstream, not the product's identity.
 
 ---
 
-## Core Engineering Principles
+## Verification — what was actually run
 
-These principles are implemented in code and exercised by tests; each entry
-states what is *verified* versus what remains a *design intention*.
+All rows measured on this head (`fc69e4c`) on 6 November 2026, on Windows, unless the
+row says otherwise.
 
-* **Structured engineering workflows** — an instruction becomes a plan, then
-  gated execution steps, then verification. *Verified:* the agent-loop and
-  factory end-to-end suites (`agent_loop_e2e`, `factory_job_e2e`) run in CI.
-* **Human approval before consequential operations** — tools carry risk
-  classifications; approval-gated operations fail closed without a grant.
-  *Verified:* approval-enforcement and permission-gate tests in the workspace
-  suite. *Intention:* approval UX breadth beyond the current gate paths.
-* **Controlled file modification and command execution** — file writes, shell
-  and git operations go through real executors behind the permission gate,
-  not ad-hoc side effects. *Verified:* executable-tool and fault-injection
-  suites (`executable_tools_e2e`, `zylcode-mcp` fault-injection tests).
-* **Testing and verification** — every change is checked by CI: workspace
-  compile, `clippy -D warnings`, the full Rust test suite, the
-  retracted-claim guard, and a frontend typecheck + build.
-* **Traceable evidence for technical claims** — evidence records are
-  hash-chained; a corrupted chain is an error, never a silent empty state.
-  *Verified:* evidence/ledger tests in the core suite. *Intention:* treating
-  this ledger as an independent, auditable attestation — acceptance is an
-  auditor's verdict, not a builder's claim.
-* **Explicit handling of model and runtime failures** — provider failover
-  walks the whole configured chain before degrading offline; quota and
-  transport failures are classified precisely and redacted before storage;
-  crash recovery re-reads persisted state. *Verified:* router,
-  `natlas_runtime`, `natlas_bridge`, and crash-recovery suites.
+| Check                                                                                    | Result                                                                     |
+| ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `cargo test -p zylcode-core --lib`                                                       | ✅ **694 passed, 0 failed**                                                |
+| `cargo test -p zylcode-core --lib providers::`                                           | ✅ **81 passed, 0 failed**                                                 |
+| `cargo test --workspace --all-targets`                                                   | ✅ **1,069 passed, 0 failed** across 31 test binaries                      |
+| `cargo clippy --workspace --all-targets -- -D warnings`                                  | ✅ exit 0                                                                  |
+| `cargo fmt --all -- --check`                                                             | ✅ clean                                                                   |
+| `pnpm --filter zylcode-desktop build` (tsc + vite)                                       | ✅ exit 0                                                                  |
+| `pnpm --filter zylcode-desktop test`                                                     | ✅ **764 passed in 67 files**, exit 0                                      |
+| `pnpm --filter zylcode-desktop test:coverage`                                            | ✅ 97.07 / 90.72 / 96.2 / 97.07 (stmts / branches / funcs / lines), exit 0 |
+| Rust coverage — `cargo llvm-cov … --fail-under-lines 78` (CI `Coverage` job, 2026-11-04) | ✅ 80.96% lines (42,381 total, 8,070 missed)                               |
+
+Two honesty notes on the rows above:
+
+1. **Protocol tests, not vendor calls.** The streaming suites talk real HTTP to a
+   loopback server that emits each provider's documented wire format; `reqwest`, framing
+   and socket teardown are real, but no request leaves the machine. No test in this
+   repository has yet exercised a live Anthropic, OpenAI or Ollama endpoint, so streaming
+   is proven against the protocol, not against a paid vendor account.
+2. **Rows are dated.** The Rust coverage figure and the repository-intelligence
+   benchmark (0.61, 2026-10-29) come from CI logs of their run date and were not
+   re-measured for this head.
 
 ---
 
-## Current Implementation Status
+## Getting started
 
-Everything in this section was re-verified on this branch head (`6469bae`)
-rather than copied from older documents. See [`docs/PROJECT_MASTER_STATUS.md`](docs/PROJECT_MASTER_STATUS.md)
-for the complete phase-by-phase project status.
-
-### Evidence
-
-| Check | When | Result |
-|---|---|---|
-| GitHub Actions CI on this commit — `cargo check --workspace --all-targets`, `cargo clippy … -D warnings`, `cargo test --workspace --all-targets`, retracted-claim guard, desktop typecheck + build | 2026-10-23 (run on PR #28 merge) | ✅ green (4 checks passed) |
-| `cargo test -p zylcode-core` (lib + integration targets) | 2026-10-23, local run on this branch head | ✅ **503 passed, 0 failed** |
-| `cargo test -p zylcode-mcp` (lib) | 2026-10-23, local run | ✅ **134 passed, 0 failed** |
-| `pnpm install --frozen-lockfile` | 2026-10-23, local | ✅ exit 0 |
-| `pnpm --filter zylcode-desktop build` (tsc + vite) | 2026-10-23, local | ✅ exit 0 |
-| `cargo audit` | 2026-10-23, local | ✅ **0 vulnerabilities**, 2 accepted warnings |
-
-The test suites include the agent-loop and factory end-to-end journeys,
-property tests, crash-recovery tests, N-ATLAS bridge suites, and the
-`serde-saphyr` regression tests — all green.
-
-### Implemented and tested on this branch
-
-* Desktop agent journey: prompt → gathered repository context → plan →
-  approval-gated tool execution → verification → evidence
-  (`AgentWorkspace`, `AgentTurnPanel`, `ToolRunnerPanel`).
-* Repository surfaces: navigation (references, call hierarchy, dependency and
-  impact views) and intelligence panels (`RepoNavPanel`, `RepoIntelPanel`),
-  backed by the persisted index and `zylcode repo-context`.
-* Real tool runtime: filesystem, search, git and shell executors behind the
-  permission gate with evidence recording (real executors, not mocks).
-* Provider routing with full-chain failover before any offline degrade.
-* Evidence ledger, claims/evidence graph, missions, terminal sessions,
-  project store, crash recovery — each with tests in the suites above.
-* N-ATLAS bridge: genuine `NCAIR1/N-ATLaS` transport, four languages, precise
-  failure states (see *N-ATLAS Integration*).
-
-### Partially implemented (stated as-is)
-
-* **Capability acceptance:** the capability registry on this branch
-  (`v1.4.1-audited`) records 37 entries — 22 GREEN, **12 DISPUTED**, 2
-  PARTIAL, 1 externally blocked. The Phase 2A re-acceptance by an independent
-  auditor is open (roadmap status: *Phase 2A — RE-OPENED*). GREEN entries
-  carry builder evidence; independent acceptance remains outstanding.
-* **Computer-use automation:** not a working capability on this branch. The
-  independent status assessment records the engine as simulation; nothing on
-  a screen is actually driven
-  ([`docs/governance/MAIN_STATUS_REPORT_2026-10-11.md`](docs/governance/MAIN_STATUS_REPORT_2026-10-11.md)).
-* **Surface depth:** the desktop UI wires the agent, tools, repository,
-  terminal and settings surfaces; several backend commands are not yet
-  surfaced in the UI — the gap is tracked in the status report above.
-* **Distribution:** no signed installers are published; installation from a
-  source checkout is the supported path (`INSTALLATION_GUIDE.md`).
-* **Known gaps since improved:** the 2026-10-11 independent status report is
-  the baseline; since it was written, the agent journey and tool runner were
-  wired into the UI and provider failover was completed (commits `3573495`,
-  `da3459e`, `12e2ba4`).
-
-### Planned (not operational)
-
-Phases beyond the current status board — repository reasoning (Phase 2B,
-blocked on 2A), project system, design canvas, extension platform, and
-verification-heavy ambitions — are **planned only**. See
-[`docs/roadmap/ZYLCODE_ROADMAP_V2.md`](docs/roadmap/ZYLCODE_ROADMAP_V2.md)
-(phase status board) and [`docs/STRATEGIC_PLAN.md`](docs/STRATEGIC_PLAN.md).
-
----
-
-## N-ATLAS Integration
-
-The **N-ATLAS developer bridge** is a specific integration and competition
-workstream inside ZylCode, not the product's identity: it routes instructions
-(in English, Yoruba, Hausa, Igbo — with Nigerian Pidgin validated as a
-non-target bonus) through the genuine `NCAIR1/N-ATLaS` model into ZylCode's
-approval-gated execution pipeline, recording the chain as evidence.
-
-* **Dedicated branch (kept intact):**
-  <https://github.com/zylvex-tech/zylcode/tree/competition/natlas-2026>
-* **Competition documentation and evidence** (kept intact, on this branch):
-  [`docs/competition/natlas/`](docs/competition/natlas/) — including
-  [`KNOWN_LIMITATIONS.md`](docs/competition/natlas/KNOWN_LIMITATIONS.md) and
-  [`LOCAL_RUNTIME_FALLBACK.md`](docs/competition/natlas/LOCAL_RUNTIME_FALLBACK.md).
-* **SDK and playground:** [`apps/natlas-sdk/`](apps/natlas-sdk/).
-
-**Attribution and model licence.** The N-ATLaS model (`NCAIR1/N-ATLaS`,
-Llama-3 8B SFT fine-tune) was developed by **Awarri Technologies** in
-collaboration with **FMCIDE** and **NCAIR** under the supervision of
-**NITDA**, under the *N-ATLaS Open-Source Research and Innovation License*
-(usage limit ≤ 1000 active end-users; attribution to Awarri + FMCIDE
-required). **No model weights are committed to this repository.** The model's
-licence is separate from this codebase's licence and is not modified by it.
-
----
-
-## Development and Testing
-
-Prerequisites: Rust stable (MSRV **1.90** — measured, see `Cargo.toml`),
-Node ≥ 18 (CI and the container use 22), pnpm ≥ 9 (locked at 9.12.0).
-Linux desktop builds need the usual Tauri system libraries (GTK/WebKit).
+Prerequisites: Rust stable (MSRV **1.90**, `Cargo.toml`), Node ≥ 18 (CI uses 22),
+pnpm ≥ 9 (locked at 9.12.0). Linux desktop builds need the usual Tauri libraries
+(GTK/WebKit).
 
 ```bash
 git clone https://github.com/zylvex-tech/zylcode.git
 cd zylcode
 pnpm install --frozen-lockfile
+
+pnpm --filter zylcode-desktop dev        # browser preview (Vite)
+pnpm --filter zylcode-desktop tauri dev  # desktop window (first run compiles Rust)
+
+cargo run -p zylcode-cli -- serve-intel  # read-only intelligence API on :17630
 ```
 
-### One-command environment (container)
+The last two are what the browser preview needs together: the UI proxies `/api` to the
+loopback service, which is how the explorer, terminal and evidence views in the captures
+above report real state. Without it they show `BLOCKED` rather than inventing data.
 
-If you would rather not install Rust, Node and the GTK/WebKit development
-libraries by hand, the repository ships the whole toolchain as an image —
-the same package list, Node version and pnpm version CI uses:
+A container with the whole toolchain is included
+(`docker compose run --rm dev`), plus a [`.devcontainer`](.devcontainer/devcontainer.json)
+for VS Code / Cursor. More detail:
+[`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md),
+[`docs/TUTORIALS.md`](docs/TUTORIALS.md),
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md),
+[`docs/VERIFICATION.md`](docs/VERIFICATION.md), and the re-runnable fresh-clone
+sequence in [`INSTALLATION_GUIDE.md`](INSTALLATION_GUIDE.md).
 
-```bash
-docker compose run --rm dev      # pnpm install --frozen-lockfile && cargo check --workspace
-```
-
-To bring up the backend the browser preview talks to, then the UI on the
-host:
-
-```bash
-docker compose up serve-intel     # read-only intelligence API on :17630
-pnpm --filter zylcode-desktop dev # UI on http://localhost:1420
-```
-
-The service binds loopback inside the container and is published only by the
-explicit `--host 0.0.0.0` in `docker-compose.yml`; a bare
-`zylcode serve-intel` on the host stays loopback-only.
-
-Opening the repository in VS Code / Cursor offers
-[`.devcontainer/devcontainer.json`](.devcontainer/devcontainer.json), which
-builds the same [`Dockerfile`](Dockerfile) and runs `pnpm install
---frozen-lockfile` on create. The desktop window itself is a host process —
-it needs a real display — so run `pnpm --filter zylcode-desktop tauri dev`
-on the host as usual.
-
-Run the desktop application:
-
-```bash
-pnpm --filter zylcode-desktop dev          # Vite dev server (browser preview)
-pnpm --filter zylcode-desktop tauri dev    # desktop window (Tauri + Vite; first
-                                           # run compiles the Rust backend)
-```
-
-Build and test the frontend (typecheck + production bundle; unit tests):
-
-```bash
-pnpm --filter zylcode-desktop build          # typecheck + production bundle
-pnpm --filter zylcode-desktop test           # verified: 453 passed (2026-10-29)
-pnpm --filter zylcode-desktop test:coverage  # the same run, plus the coverage gate
-```
-
-Run and check the Rust workspace (what CI runs on every push to `main`):
+### Tests and quality gates
 
 ```bash
 cargo test --workspace --all-targets
 cargo clippy --workspace --all-targets -- -D warnings
-cargo fmt --check
-python scripts/check_retracted_claims.py   # guards retracted claims from returning
+cargo fmt --all -- --check
+python scripts/check_retracted_claims.py   # keeps retracted claims from returning
+
+pnpm --filter zylcode-desktop build
+pnpm --filter zylcode-desktop test
+pnpm --filter zylcode-desktop test:coverage
 ```
 
-Quick CLI checks:
+These are floors, not aspirations — CI fails below them, and each floor sits just under
+its measured value so a new untested file turns the run red instead of being absorbed.
 
-```bash
-cargo run -p zylcode-cli -- --help
-cargo run -p zylcode-cli -- repo-context "which files would need inspection to change X"
-cargo run -p zylcode-cli -- serve-intel   # loopback HTTP API for the browser preview
-```
+| Gate                                   | Floor                | Measured                                         |
+| -------------------------------------- | -------------------- | ------------------------------------------------ |
+| Frontend coverage — lines & statements | 70%                  | **97.07%** (764 tests, 67 files — 2026-11-06)    |
+| Frontend coverage — branches           | 83%                  | **90.72%** (2026-11-06)                          |
+| Frontend coverage — functions          | 80%                  | **96.2%** (2026-11-06)                           |
+| Rust coverage — lines                  | 78%                  | **80.96%** (CI `Coverage` job, 2026-11-04)       |
+| Repository-intelligence benchmark      | 0.60 precision floor | **0.61** (recall 0.95 — 2026-10-29)              |
+| Workspace tests                        | 0 failures           | **1,069 passed** across 31 binaries (2026-11-06) |
 
-More detail: [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md),
-[`docs/TUTORIALS.md`](docs/TUTORIALS.md),
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md),
-[`docs/VERIFICATION.md`](docs/VERIFICATION.md).
-
-### Quality gates
-
-These are floors, not aspirations: CI fails below them, and each floor sits
-just under its measured value so it ratchets — a new untested file turns the
-run red instead of being absorbed.
-
-| Gate | Floor | Measured (2026-10-29) |
-|---|---|---|
-| Frontend coverage — lines & statements | 70% | **70.16%** (453 tests, 46 files) |
-| Frontend coverage — branches | 83% | **83.25%** |
-| Frontend coverage — functions | 80% | **80.61%** |
-| Rust coverage — lines | 78% | 80.53% (measured 2026-10-22) |
-| Repository-intelligence benchmark | 0.60 precision floor | **0.61** (recall 0.95, gate exit 0) |
-| Lint / format / lints | 0 errors | `eslint` 0 errors · `cargo fmt --check` clean · `clippy --workspace --all-targets -- -D warnings` clean |
-| Workspace tests | 0 failures | 564 core lib tests + full workspace green |
-
-Defined in [`apps/zylcode-desktop/vitest.config.ts`](apps/zylcode-desktop/vitest.config.ts)
-and enforced by [`.github/workflows/coverage.yml`](.github/workflows/coverage.yml)
-(frontend job) and [`ci.yml`](.github/workflows/ci.yml) (Rust job); the
-benchmark floor lives in
+Gates live in [`.github/workflows/coverage.yml`](.github/workflows/coverage.yml) (Rust
+`coverage`, vitest `frontend-coverage`) and
+[`apps/zylcode-desktop/vitest.config.ts`](apps/zylcode-desktop/vitest.config.ts);
+[`ci.yml`](.github/workflows/ci.yml) runs tests, clippy, fmt and the
+retracted-claim guard. The benchmark floor sits in
 [`crates/zylcode-core/tests/repo_intelligence_benchmark.rs`](crates/zylcode-core/tests/repo_intelligence_benchmark.rs).
 
 ---
 
-## Project Status and Roadmap
+## Limitations and non-claims
 
-* **Status now:** a working desktop shell and CLI over a tested engineering
-  core — CI green on this branch; 564 core lib tests and 453 frontend tests
-  passing locally on the current head, frontend coverage gated at 70%
-  (measured 70.16%), and the repository-intelligence benchmark at 0.61
-  against its 0.60 floor; independent acceptance of earlier intelligence
-  claims still open (12 registry entries disputed).
-* **In progress:** Phase 2A re-acceptance evidence
-  ([`docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md`](docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md)),
-  honest distribution (source-install path today, signed installers later).
-* **Planned:** everything marked planned in
-  [`docs/roadmap/ZYLCODE_ROADMAP_V2.md`](docs/roadmap/ZYLCODE_ROADMAP_V2.md)
-  — nothing there is claimed as working here.
-* **Early access:** the [Developer Preview waitlist](https://site-0522a86bd09e48629a1e90f115711758.freebuff.page)
-  is open; the preview will be free / invite-only.
+Things a reader might reasonably assume, which this repository does **not** do yet:
 
----
-
-## Contributing, Security, and Licensing
-
-* **Contributing:** [`CONTRIBUTING.md`](CONTRIBUTING.md) — including the
-  evidence rule: builders do not certify their own work.
-* **Code of conduct:** [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
-* **Security:** [`SECURITY.md`](SECURITY.md).
-* **Support:** [`SUPPORT.md`](SUPPORT.md).
-* **License:** this codebase is licensed under the **Apache License 2.0** —
-  see [`LICENSE`](LICENSE). (Earlier revisions of this README said "MIT";
-  the repository's actual licence file and GitHub licence metadata both say
-  Apache-2.0.) The N-ATLaS model remains under its own licence, described in
-  the N-ATLAS Integration section.
+- **No native tool calling.** `tools: false` for every provider. The APIs support it;
+  this client builds no `tools` block and translates no tool-call stream. Tool execution
+  happens through ZylCode's own in-process gate, which is a different (and working) thing.
+- **No external MCP client.** `zylcode-mcp` is a tool registry, permission gate and
+  executor set inside the process. There is no JSON-RPC transport, no server discovery and
+  no `initialize` handshake anywhere in the tree. You cannot point ZylCode at an MCP server.
+- **Streaming is not fully surfaced.** The IPC projection carries only
+  `{index, delta, done}`; finish reason, usage, tool deltas, structured errors and the
+  `synthetic` flag stop at the boundary. The UI cannot yet show why a response ended.
+- **Provider editing is desktop-only.** The browser preview renders the live chain
+  read-only (capture `17`); changing keys or testing a connection needs the Tauri runtime.
+- **Acceptance is not self-granted.** 12 of 37 registry entries are disputed and Phase 2A
+  re-acceptance is open; independent acceptance remains outstanding.
+- **Computer use is simulation.** Nothing drives a screen
+  ([`docs/governance/MAIN_STATUS_REPORT_2026-10-11.md`](docs/governance/MAIN_STATUS_REPORT_2026-10-11.md)).
+- **No signed installers.** Source checkout is the supported path today.
+- **No published website or pricing.** The waitlist link above is the only public URL in
+  this repository; nothing else should be inferred from it.
 
 ---
 
-## Company
+## Project status and roadmap
 
-ZylCode is developed by **Zylvex Technologies Ltd.** Repository, governance
-and evidence live in this repository; there are no customer logos,
-endorsements, or partnership claims here because none are verified in the
+- **Now:** a working desktop shell and CLI over a tested core: provider streaming with
+  real wire parsing, request-aborting cancellation, failover, an evidence ledger that
+  keeps its failures; 1,069 Rust tests, 764 frontend tests, clippy/fmt clean on this head.
+- **In progress:** Phase 2A re-acceptance evidence
+  ([`docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md`](docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md));
+  surfacing the full `StreamChunk` across IPC; honest distribution.
+- **Planned:** everything in
+  [`docs/roadmap/ZYLCODE_ROADMAP_V2.md`](docs/roadmap/ZYLCODE_ROADMAP_V2.md) —
+  repository reasoning (Phase 2B, blocked on 2A), project system, design canvas,
+  extension platform. None of it is claimed as working here.
+- **Early access:** [Developer Preview waitlist](https://site-0522a86bd09e48629a1e90f115711758.freebuff.page)
+  — free / invite-only for the first cohort.
+
+Full phase-by-phase status: [`docs/PROJECT_MASTER_STATUS.md`](docs/PROJECT_MASTER_STATUS.md).
+
+---
+
+## N-ATLAS integration
+
+The **N-ATLAS developer bridge** is a specific integration and competition workstream,
+not the product's identity: it routes instructions (English, Yoruba, Hausa, Igbo — with
+Nigerian Pidgin validated as a non-target bonus) through the genuine `NCAIR1/N-ATLaS`
+model into the approval-gated pipeline, recording the chain as evidence.
+
+- **Dedicated branch:** <https://github.com/zylvex-tech/zylcode/tree/competition/natlas-2026>
+- **Documentation and evidence on this branch:** [`docs/competition/natlas/`](docs/competition/natlas/),
+  including [`KNOWN_LIMITATIONS.md`](docs/competition/natlas/KNOWN_LIMITATIONS.md) and
+  [`LOCAL_RUNTIME_FALLBACK.md`](docs/competition/natlas/LOCAL_RUNTIME_FALLBACK.md).
+- **SDK and playground:** [`apps/natlas-sdk/`](apps/natlas-sdk/).
+
+**Attribution and model licence.** The N-ATLaS model (`NCAIR1/N-ATLaS`, a Llama-3 8B SFT
+fine-tune) was developed by **Awarri Technologies** with **FMCIDE** and **NCAIR** under
+the supervision of **NITDA**, under the _N-ATLaS Open-Source Research and Innovation
+License_ (≤ 1,000 active end-users; attribution to Awarri + FMCIDE required). **No model
+weights are committed here**, and the model's licence is separate from this codebase's.
+
+---
+
+## Contributing, security, licensing
+
+- **Contributing:** [`CONTRIBUTING.md`](CONTRIBUTING.md) — including the evidence rule:
+  builders do not certify their own work.
+- **Code of conduct:** [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
+- **Security:** [`SECURITY.md`](SECURITY.md) · **Support:** [`SUPPORT.md`](SUPPORT.md).
+- **License:** **Apache License 2.0** — see [`LICENSE`](LICENSE). (Earlier revisions of
+  this README said "MIT"; the licence file and GitHub metadata both say Apache-2.0.)
+
+ZylCode is developed by **Zylvex Technologies Ltd.** There are no customer logos,
+endorsements or partnership claims on this page, because none are verified in this
 repository.
-
----
 
 <p align="center">
   <strong>Built with evidence. Verified with honesty.</strong><br>

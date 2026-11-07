@@ -23,17 +23,17 @@ have produced the exact failure the directive forbids.
 
 ### 1.1 What exists
 
-| Concern | Where | Shape |
-|---|---|---|
-| Provider identity | `crates/zylcode-core/src/router.rs` | `ModelProvider` (closed enum: `OpenRouter`, `DeepSeek`, `Anthropic`, `LocalOllama`, `SyntheticOffline`) and a second `ProviderKind` (`Anthropic`, `OpenRouter`, `Ollama`, `SyntheticOffline`) |
-| Per-provider config | `router.rs::ProviderConfig` | `kind`, `model`, `endpoint`, `timeout_ms`, `enabled`, `fallback_order`, `requires_api_key` |
-| Router config | `router.rs::RouterConfig` | `primary_provider`, `fallback_provider`, `api_keys: HashMap`, `base_url_overrides: HashMap`, `provider_configs: Vec<ProviderConfig>` |
-| Credential resolution | `RouterConfig::api_key` / `api_key_for_kind` | config map, then env (`OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`, …) |
-| HTTP dispatch | `TokenRouter::call_provider` | builds a per-provider JSON body, sets auth headers, `self.http.post(url)` |
-| Response extraction | `TokenRouter::extract_text_and_usage` | per-provider `match` (Anthropic / Ollama / OpenAI-compatible) |
-| Public entry | `TokenRouter::dispatch_prompt` | trimming → speculative cache → provider call → fallback |
-| Scoring | `provider_scorecard.rs` | measured provider health, feeds routing |
-| Capability model | `model_capabilities.rs` | declarative capability records |
+| Concern               | Where                                        | Shape                                                                                                                                                                                         |
+| --------------------- | -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Provider identity     | `crates/zylcode-core/src/router.rs`          | `ModelProvider` (closed enum: `OpenRouter`, `DeepSeek`, `Anthropic`, `LocalOllama`, `SyntheticOffline`) and a second `ProviderKind` (`Anthropic`, `OpenRouter`, `Ollama`, `SyntheticOffline`) |
+| Per-provider config   | `router.rs::ProviderConfig`                  | `kind`, `model`, `endpoint`, `timeout_ms`, `enabled`, `fallback_order`, `requires_api_key`                                                                                                    |
+| Router config         | `router.rs::RouterConfig`                    | `primary_provider`, `fallback_provider`, `api_keys: HashMap`, `base_url_overrides: HashMap`, `provider_configs: Vec<ProviderConfig>`                                                          |
+| Credential resolution | `RouterConfig::api_key` / `api_key_for_kind` | config map, then env (`OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`, …)                                                                                                                           |
+| HTTP dispatch         | `TokenRouter::call_provider`                 | builds a per-provider JSON body, sets auth headers, `self.http.post(url)`                                                                                                                     |
+| Response extraction   | `TokenRouter::extract_text_and_usage`        | per-provider `match` (Anthropic / Ollama / OpenAI-compatible)                                                                                                                                 |
+| Public entry          | `TokenRouter::dispatch_prompt`               | trimming → speculative cache → provider call → fallback                                                                                                                                       |
+| Scoring               | `provider_scorecard.rs`                      | measured provider health, feeds routing                                                                                                                                                       |
+| Capability model      | `model_capabilities.rs`                      | declarative capability records                                                                                                                                                                |
 
 There is **no provider trait**. Provider selection is a `match` on a closed enum. Adding a provider
 means editing `router.rs`.
@@ -67,11 +67,11 @@ this path is disqualified.
 
 ## 2. Seam options considered
 
-| Option | Description | Verdict |
-|---|---|---|
-| **A** | Add a `Natlas` variant to `ModelProvider` / `ProviderKind` and teach `call_provider` about it | **REJECTED.** Modifies a 1 806-line, heavily-tested core module; inherits the three fabrication paths; conflates N-ATLAS with the product's fallback semantics; and requires inventing the wire format *inside* a file the directive says to leave alone. |
-| **B** | Point an existing provider's `endpoint` override at N-ATLAS and treat it as that provider | **REJECTED.** This is relabelling another provider as N-ATLAS — explicitly forbidden. It would also mis-report model identity in evidence. |
-| **C** | A new, isolated `competition::natlas` boundary over a `NatlasTransport` trait, reusing the evidence and factory subsystems | **SELECTED.** Additive. No existing module is edited except one `pub mod` line. Failure is a first-class, labelled state. The wire format is confined to one trait implementation that does not exist yet. |
+| Option | Description                                                                                                                | Verdict                                                                                                                                                                                                                                                   |
+| ------ | -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **A**  | Add a `Natlas` variant to `ModelProvider` / `ProviderKind` and teach `call_provider` about it                              | **REJECTED.** Modifies a 1 806-line, heavily-tested core module; inherits the three fabrication paths; conflates N-ATLAS with the product's fallback semantics; and requires inventing the wire format _inside_ a file the directive says to leave alone. |
+| **B**  | Point an existing provider's `endpoint` override at N-ATLAS and treat it as that provider                                  | **REJECTED.** This is relabelling another provider as N-ATLAS — explicitly forbidden. It would also mis-report model identity in evidence.                                                                                                                |
+| **C**  | A new, isolated `competition::natlas` boundary over a `NatlasTransport` trait, reusing the evidence and factory subsystems | **SELECTED.** Additive. No existing module is edited except one `pub mod` line. Failure is a first-class, labelled state. The wire format is confined to one trait implementation that does not exist yet.                                                |
 
 ### 2.1 The selected seam, precisely
 
@@ -95,46 +95,46 @@ NatlasClient::invoke(&NatlasRequest)
 
 ### 3.1 Existing — read for this discovery, **not modified**
 
-| Path | Used for |
-|---|---|
-| `crates/zylcode-core/src/router.rs` | the provider architecture being deliberately *not* extended |
-| `crates/zylcode-core/src/model_capabilities.rs` | capability model shape |
-| `crates/zylcode-core/src/provider_scorecard.rs` | measured provider health (not used in C0) |
-| `crates/zylcode-core/src/claim.rs` | `EvidenceKind` for evidence refs |
-| `crates/zylcode-core/src/evidence_graph.rs` | `EvidenceNode`, `NodeKind`, `EvidenceGraph` |
-| `crates/zylcode-core/src/factory/graph.rs` | `TaskGraph`, `TaskNode`, `TaskKind`, `TaskAction` |
-| `crates/zylcode-core/src/failure.rs` | failure taxonomy (design reference) |
-| `crates/zylcode-core/src/intelligence/*` | repository context source for a real request |
-| `crates/zylcode-mcp/src/*` | the gated tool dispatch the factory uses |
+| Path                                            | Used for                                                    |
+| ----------------------------------------------- | ----------------------------------------------------------- |
+| `crates/zylcode-core/src/router.rs`             | the provider architecture being deliberately _not_ extended |
+| `crates/zylcode-core/src/model_capabilities.rs` | capability model shape                                      |
+| `crates/zylcode-core/src/provider_scorecard.rs` | measured provider health (not used in C0)                   |
+| `crates/zylcode-core/src/claim.rs`              | `EvidenceKind` for evidence refs                            |
+| `crates/zylcode-core/src/evidence_graph.rs`     | `EvidenceNode`, `NodeKind`, `EvidenceGraph`                 |
+| `crates/zylcode-core/src/factory/graph.rs`      | `TaskGraph`, `TaskNode`, `TaskKind`, `TaskAction`           |
+| `crates/zylcode-core/src/failure.rs`            | failure taxonomy (design reference)                         |
+| `crates/zylcode-core/src/intelligence/*`        | repository context source for a real request                |
+| `crates/zylcode-mcp/src/*`                      | the gated tool dispatch the factory uses                    |
 
 ### 3.2 New — created in Phase C0
 
-| Path | Purpose |
-|---|---|
-| `crates/zylcode-core/src/competition/mod.rs` | competition namespace |
-| `crates/zylcode-core/src/competition/natlas/mod.rs` | boundary module + runtime status |
-| `…/natlas/config.rs` | `NatlasConfig`, `RedactedNatlasConfig`, `NatlasConfigError` |
-| `…/natlas/types.rs` | `NatlasRequest`, `NatlasResponse`, `NatlasError`, `NatlasStatus`, `NatlasUsage` |
-| `…/natlas/transport.rs` | `NatlasTransport` trait, `BlockedNatlasTransport` |
-| `…/natlas/client.rs` | `NatlasClient`, `interpret_raw`, `parse_canonical_response` |
-| `…/natlas/evidence.rs` | `NatlasEvidence`, `redact_secrets` |
-| `…/natlas/intent.rs` | `NatlasEngineeringIntent` → `TaskGraph` handoff |
-| `crates/zylcode-core/tests/natlas_boundary.rs` | deterministic boundary tests (test double) |
-| `crates/zylcode-core/src/lib.rs` | **one added line:** `pub mod competition;` |
+| Path                                                | Purpose                                                                         |
+| --------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `crates/zylcode-core/src/competition/mod.rs`        | competition namespace                                                           |
+| `crates/zylcode-core/src/competition/natlas/mod.rs` | boundary module + runtime status                                                |
+| `…/natlas/config.rs`                                | `NatlasConfig`, `RedactedNatlasConfig`, `NatlasConfigError`                     |
+| `…/natlas/types.rs`                                 | `NatlasRequest`, `NatlasResponse`, `NatlasError`, `NatlasStatus`, `NatlasUsage` |
+| `…/natlas/transport.rs`                             | `NatlasTransport` trait, `BlockedNatlasTransport`                               |
+| `…/natlas/client.rs`                                | `NatlasClient`, `interpret_raw`, `parse_canonical_response`                     |
+| `…/natlas/evidence.rs`                              | `NatlasEvidence`, `redact_secrets`                                              |
+| `…/natlas/intent.rs`                                | `NatlasEngineeringIntent` → `TaskGraph` handoff                                 |
+| `crates/zylcode-core/tests/natlas_boundary.rs`      | deterministic boundary tests (test double)                                      |
+| `crates/zylcode-core/src/lib.rs`                    | **one added line:** `pub mod competition;`                                      |
 
 ---
 
 ## 4. What can be reused unchanged
 
-| Existing capability | Reused as |
-|---|---|
-| `evidence_graph::{EvidenceNode, NodeKind, EvidenceGraph}` | an N-ATLAS call is recorded as a `Decision` node carrying provider/model identity; the graph stays hash-chained and traversable |
-| `claim::{EvidenceKind}` | the N-ATLAS evidence reference kind on graph nodes |
-| `factory::graph::{TaskGraph, TaskNode, TaskKind, TaskAction}` | the **handoff target**: a parsed intent becomes a validated, dependency-chained graph the existing `FactoryRunner` consumes |
-| `factory::runner::FactoryRunner` | executes the graph, records evidence, honours approval gates — **unmodified** |
-| `intelligence/*` | supplies the repository context that goes into `NatlasRequest.context` |
-| `zylcode_mcp::dispatch` | the gated tool path the factory uses for the bounded action |
-| `serde`, `chrono`, `tokio`, `reqwest` | already workspace dependencies; **no new dependency was added** |
+| Existing capability                                           | Reused as                                                                                                                       |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `evidence_graph::{EvidenceNode, NodeKind, EvidenceGraph}`     | an N-ATLAS call is recorded as a `Decision` node carrying provider/model identity; the graph stays hash-chained and traversable |
+| `claim::{EvidenceKind}`                                       | the N-ATLAS evidence reference kind on graph nodes                                                                              |
+| `factory::graph::{TaskGraph, TaskNode, TaskKind, TaskAction}` | the **handoff target**: a parsed intent becomes a validated, dependency-chained graph the existing `FactoryRunner` consumes     |
+| `factory::runner::FactoryRunner`                              | executes the graph, records evidence, honours approval gates — **unmodified**                                                   |
+| `intelligence/*`                                              | supplies the repository context that goes into `NatlasRequest.context`                                                          |
+| `zylcode_mcp::dispatch`                                       | the gated tool path the factory uses for the bounded action                                                                     |
+| `serde`, `chrono`, `tokio`, `reqwest`                         | already workspace dependencies; **no new dependency was added**                                                                 |
 
 The design principle: **one fact, one home.** Evidence lives in the evidence graph and the claim
 store; the N-ATLAS module produces records and references, and does not duplicate those stores.
@@ -143,14 +143,14 @@ store; the N-ATLAS module produces records and references, and does not duplicat
 
 ## 5. What must NOT be modified
 
-* `router.rs`, `router/*`, `model_capabilities.rs`, `provider_scorecard.rs` — the product's provider
+- `router.rs`, `router/*`, `model_capabilities.rs`, `provider_scorecard.rs` — the product's provider
   path stays exactly as it is. The competition integration is additive.
-* `factory/*`, `claim.rs`, `evidence_graph.rs`, `failure.rs` — reused, not edited.
-* The pre-existing **foreign working-tree changes** (`ci.yml`, `release.yml`, `agent.rs`, `cli.rs`,
+- `factory/*`, `claim.rs`, `evidence_graph.rs`, `failure.rs` — reused, not edited.
+- The pre-existing **foreign working-tree changes** (`ci.yml`, `release.yml`, `agent.rs`, `cli.rs`,
   `router.rs`, `terminal.rs`, and the untracked `RECONCILIATION_FORENSIC_REPORT.md`, `tasks/`,
   `vc_inspect.py`, `run_tests.bat`, `COMPLETE_AUDIT_REPORT.html`, `.git-msg.txt`,
   `filesystem.rs.backup`). They are not this phase's work and must not be staged or committed.
-* `main`. All competition work stays on `competition/natlas-2026`.
+- `main`. All competition work stays on `competition/natlas-2026`.
 
 ---
 
@@ -159,29 +159,29 @@ store; the N-ATLAS module produces records and references, and does not duplicat
 None of the following is known to this project. Each is recorded as an unknown rather than filled
 with a plausible guess:
 
-| # | Unknown | Why it blocks |
-|---|---|---|
-| U1 | Base URL / hostname | required before any call |
-| U2 | Request path | deliberately **required** in config so it is never defaulted to a guess |
-| U3 | Authentication scheme (header name, prefix, token format) | cannot be invented |
-| U4 | Request body schema | cannot be invented |
-| U5 | Response schema (where the text, usage and request id live) | the parser expects **our** contract; the N-ATLAS→ours translation is unimplemented |
-| U6 | Model identifiers | must not be invented; `NATLAS_MODEL` is required |
-| U7 | Rate limits, quotas, max context | affects batching and trimming |
-| U8 | Streaming support | affects whether `dispatch_stream`-style handling is needed |
-| U9 | Whether an official SDK exists | would change the transport implementation |
-| U10 | Terms of use, data residency, permitted use | an institutional/legal prerequisite, not an engineering one |
-| U11 | Whether access is gated behind approval or a competition credential | the immediate blocker |
+| #   | Unknown                                                             | Why it blocks                                                                      |
+| --- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| U1  | Base URL / hostname                                                 | required before any call                                                           |
+| U2  | Request path                                                        | deliberately **required** in config so it is never defaulted to a guess            |
+| U3  | Authentication scheme (header name, prefix, token format)           | cannot be invented                                                                 |
+| U4  | Request body schema                                                 | cannot be invented                                                                 |
+| U5  | Response schema (where the text, usage and request id live)         | the parser expects **our** contract; the N-ATLAS→ours translation is unimplemented |
+| U6  | Model identifiers                                                   | must not be invented; `NATLAS_MODEL` is required                                   |
+| U7  | Rate limits, quotas, max context                                    | affects batching and trimming                                                      |
+| U8  | Streaming support                                                   | affects whether `dispatch_stream`-style handling is needed                         |
+| U9  | Whether an official SDK exists                                      | would change the transport implementation                                          |
+| U10 | Terms of use, data residency, permitted use                         | an institutional/legal prerequisite, not an engineering one                        |
+| U11 | Whether access is gated behind approval or a competition credential | the immediate blocker                                                              |
 
 ---
 
 ## 7. Blockers
 
-| Blocker | State | Consequence |
-|---|---|---|
+| Blocker                                                        | State                     | Consequence                                             |
+| -------------------------------------------------------------- | ------------------------- | ------------------------------------------------------- |
 | No N-ATLAS documentation, endpoint or credentials (U1–U6, U11) | **BLOCKED_NATLAS_ACCESS** | no real transport; runtime integration cannot be proven |
-| Unknown auth scheme (U3) | blocked | a transport written today would be a guess |
-| Unknown request/response schema (U4, U5) | blocked | wire translation is unimplemented by design |
+| Unknown auth scheme (U3)                                       | blocked                   | a transport written today would be a guess              |
+| Unknown request/response schema (U4, U5)                       | blocked                   | wire translation is unimplemented by design             |
 
 **Nothing was invented to route around these.** The boundary exists; the runtime is blocked and
 labelled. This is the directive's stated preference over fabrication.

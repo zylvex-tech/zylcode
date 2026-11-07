@@ -11,11 +11,13 @@
 ### 1. Forensic Audit Complete
 
 **Files Created**:
+
 - `docs/ZYLCODE_FORENSIC_BASELINE.md` - Detailed forensic audit
 - `docs/capability-registry.json` - Machine-readable capability registry
 - `docs/FORENSIC_AUDIT_SUMMARY.md` - Summary of findings
 
 **Key Findings**:
+
 - ZylCode is a provider configuration dashboard with mocked agent capabilities
 - 30 MCP tools are defined but execution is mocked
 - Real LLM calls work, but tool execution doesn't
@@ -28,6 +30,7 @@
 **Components Implemented**:
 
 #### ToolEvidence
+
 - Invocation ID
 - Tool ID
 - Session ID
@@ -41,28 +44,33 @@
 - Approval decision
 
 #### RealTool Trait
+
 - `id()` - Tool identifier
 - `description()` - Tool description
 - `permissions()` - Tool permissions
 - `execute()` - Real execution with evidence
 
 #### FileSystemTool
+
 - **read** - Read file contents
 - **write** - Write file contents
 - **list** - List directory entries
 - **Evidence**: Records file operations, changed files
 
 #### ShellTool
+
 - **execute** - Run shell commands
 - **Evidence**: Records command, args, exit code, stdout, stderr
 - **Timeout**: Configurable timeout with proper handling
 
 #### GitTool
+
 - **subcommand** - Git subcommands (status, diff, commit, etc.)
 - **Evidence**: Records git operations, changed files
 - **Parsing**: Extracts changed files from git output
 
 #### SearchTool
+
 - **filename** - Find files by name pattern
 - **text** - Search text in files
 - **Evidence**: Records search patterns and results
@@ -77,6 +85,7 @@
 ### 4. Tests Passing
 
 All 3 tests pass:
+
 - `test_filesystem_tool_read` - Reads Cargo.toml successfully
 - `test_shell_tool_echo` - Executes echo command (Windows/Linux compatible)
 - `test_git_tool_status` - Runs git status successfully
@@ -91,6 +100,7 @@ All 3 tests pass:
 **Target**: Route to real tool execution based on tool type
 
 **Plan**:
+
 1. Create `ToolRouter` that maps tool IDs to real implementations
 2. Update `DynamicTool::call()` to use real execution
 3. Add fallback to mock for unknown tools
@@ -101,6 +111,7 @@ All 3 tests pass:
 **Target**: Log all tool executions to evidence ledger
 
 **Plan**:
+
 1. Create `EvidenceLedger` for persistent storage
 2. Log all tool executions
 3. Add query capabilities for evidence
@@ -111,6 +122,7 @@ All 3 tests pass:
 **Target**: Complete agent workflow works
 
 **Plan**:
+
 1. Create test project
 2. Implement agent loop: read → plan → execute → verify
 3. Test file read/write
@@ -183,6 +195,7 @@ ToolEvidence {
 ### Evidence-Based Validation
 
 **GREEN** when:
+
 - Tool executes real operation
 - Evidence records execution details
 - Changed files are tracked
@@ -190,6 +203,7 @@ ToolEvidence {
 - Exit code is recorded
 
 **RED** when:
+
 - Tool returns mock success
 - No evidence recorded
 - No real side effects
@@ -217,17 +231,17 @@ pub struct ToolRouter {
 impl ToolRouter {
     pub fn new() -> Self {
         let mut tools = HashMap::new();
-        
+
         // Register real tools
         tools.insert("fs.read".to_string(), Box::new(FileSystemTool::new("fs.read", "Read file")));
         tools.insert("fs.write".to_string(), Box::new(FileSystemTool::new("fs.write", "Write file")));
         tools.insert("shell.execute".to_string(), Box::new(ShellTool::new("shell.execute", "Execute command")));
         tools.insert("git.status".to_string(), Box::new(GitTool::new("git.status", "Git status")));
         tools.insert("search.find".to_string(), Box::new(SearchTool::new("search.find", "Find files")));
-        
+
         Self { tools }
     }
-    
+
     pub async fn execute(&self, tool_id: &str, params: Value, context: &ToolContext) -> Result<ToolResult> {
         if let Some(tool) = self.tools.get(tool_id) {
             tool.execute(params, context).await
@@ -257,7 +271,7 @@ Update the existing `DynamicTool::call()` to use real execution when available:
 async fn call(&self, params: Value) -> Result<Value> {
     // Check if we have a real implementation for this tool
     let real_tool = get_real_tool(&self.config.id);
-    
+
     if let Some(tool) = real_tool {
         let context = ToolContext {
             working_directory: std::env::current_dir()?,
@@ -266,7 +280,7 @@ async fn call(&self, params: Value) -> Result<Value> {
             session_id: None,
             approval_required: false,
         };
-        
+
         let result = tool.execute(params, &context).await?;
         Ok(result.output)
     } else {
@@ -291,15 +305,15 @@ async fn test_end_to_end_workflow() {
     // 1. Read a file
     let fs_tool = FileSystemTool::new("fs.read", "Read file");
     let context = ToolContext::default();
-    
+
     let params = serde_json::json!({
         "action": "read",
         "path": "Cargo.toml"
     });
-    
+
     let result = fs_tool.execute(params, &context).await.unwrap();
     assert!(result.success);
-    
+
     // 2. Modify the file
     let fs_tool = FileSystemTool::new("fs.write", "Write file");
     let params = serde_json::json!({
@@ -307,22 +321,22 @@ async fn test_end_to_end_workflow() {
         "path": "test.txt",
         "content": "Hello, ZylCode!"
     });
-    
+
     let result = fs_tool.execute(params, &context).await.unwrap();
     assert!(result.success);
     assert!(!result.changed_files.is_empty());
-    
+
     // 3. Run a command
     let shell_tool = ShellTool::new("shell.execute", "Execute command");
     let params = serde_json::json!({
         "command": "cat",
         "args": ["test.txt"]
     });
-    
+
     let result = shell_tool.execute(params, &context).await.unwrap();
     assert!(result.success);
     assert!(result.output.get("stdout").unwrap().as_str().unwrap().contains("Hello, ZylCode!"));
-    
+
     // 4. Clean up
     std::fs::remove_file("test.txt").unwrap();
 }

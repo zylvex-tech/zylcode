@@ -25,34 +25,34 @@ claims, not facts, until reproduced here.
 
 ## 1. Verdict
 
-| | |
-|---|---|
-| **Phase 2A status** | **NOT ACCEPTED** |
-| **Recommendation** | Do not begin Phase 2B. Do not write Architecture v2 as if 2A is sound. |
-| **Reason** | The headline metric is an artifact of a defect, the benchmark **fails** on independent re-execution, and the subsystem has **zero product integration**. |
+|                     |                                                                                                                                                          |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Phase 2A status** | **NOT ACCEPTED**                                                                                                                                         |
+| **Recommendation**  | Do not begin Phase 2B. Do not write Architecture v2 as if 2A is sound.                                                                                   |
+| **Reason**          | The headline metric is an artifact of a defect, the benchmark **fails** on independent re-execution, and the subsystem has **zero product integration**. |
 
-The code is real, substantial, and mostly well-structured. The *evidence* is not.
+The code is real, substantial, and mostly well-structured. The _evidence_ is not.
 
 ---
 
 ## 2. Claim-by-claim verification
 
-| # | Claim in `PHASE2A_COMPLETION_REPORT.md` | Verdict | Evidence |
-|---|---|---|---|
-| 1 | Commit exists and is pushed | ✅ **TRUE** | `git ls-remote origin` → `refs/heads/main = 0ecea8e` |
-| 2 | 19 files changed, ~6,068 insertions | ✅ **TRUE** | `git show --stat 0ecea8e` |
-| 3 | 13 intelligence modules implemented | ✅ **TRUE** | `crates/zylcode-core/src/intelligence/` contains all 13 + `mod.rs` |
-| 4 | 79 intelligence unit tests, all pass | ✅ **TRUE** | `cargo test -p zylcode-core --lib intelligence` → `79 passed; 0 failed` |
-| 5 | 1,444 symbols extracted | ✅ **TRUE / reproducible** | Benchmark run reproduces `Symbols extracted: 1444` exactly |
-| 6 | 5 packages, 4 dependency edges, 15 entry points | ✅ **TRUE / reproducible** | Benchmark run reproduces all three exactly |
-| 7 | **2 benchmark tests, all pass** | ❌ **FALSE** | `benchmark_indexing_performance` **PANICS**: `Scan should complete in < 120s, took 276.1s` |
-| 8 | **"Files indexed: 14,973"** presented as repository intelligence | ❌ **MISLEADING** | ≥98% of indexed files are `target/` build artifacts. Real repo = **254 files**. |
-| 9 | **"Scan duration: 12.7s"** | ❌ **NOT REPRODUCIBLE** | Measured **276.1s** — 22× slower. Assertion threshold breached. |
-| 10 | "12 new capabilities (11 GREEN)" | ❌ **OVERSTATED** | Module is **not reachable** from AgentLoop, CLI, or desktop app. |
-| 11 | "337 workspace tests all pass" | ❌ **FALSE as stated** | `cargo test --workspace` → `zylcode-core` lib: **225 passed; 1 FAILED**. See §6.5 |
-| 12 | "Acceptance Demonstration" section | ❌ **NOT EVIDENCE** | Headed "Expected Output". No command, no captured output, no artifact. |
-| 13 | "REMOTE_CI = BLOCKED_EXTERNAL" | ✅ TRUE (and decisive) | No CI ever executed this benchmark. No external verification exists. |
-| 14 | Report self-consistency | ❌ **BROKEN** | Committed report says `Commit SHA: (Pending)` and `Push Verification: (Pending)` — i.e. it was committed *before* the facts it certifies were known. |
+| #   | Claim in `PHASE2A_COMPLETION_REPORT.md`                          | Verdict                    | Evidence                                                                                                                                             |
+| --- | ---------------------------------------------------------------- | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Commit exists and is pushed                                      | ✅ **TRUE**                | `git ls-remote origin` → `refs/heads/main = 0ecea8e`                                                                                                 |
+| 2   | 19 files changed, ~6,068 insertions                              | ✅ **TRUE**                | `git show --stat 0ecea8e`                                                                                                                            |
+| 3   | 13 intelligence modules implemented                              | ✅ **TRUE**                | `crates/zylcode-core/src/intelligence/` contains all 13 + `mod.rs`                                                                                   |
+| 4   | 79 intelligence unit tests, all pass                             | ✅ **TRUE**                | `cargo test -p zylcode-core --lib intelligence` → `79 passed; 0 failed`                                                                              |
+| 5   | 1,444 symbols extracted                                          | ✅ **TRUE / reproducible** | Benchmark run reproduces `Symbols extracted: 1444` exactly                                                                                           |
+| 6   | 5 packages, 4 dependency edges, 15 entry points                  | ✅ **TRUE / reproducible** | Benchmark run reproduces all three exactly                                                                                                           |
+| 7   | **2 benchmark tests, all pass**                                  | ❌ **FALSE**               | `benchmark_indexing_performance` **PANICS**: `Scan should complete in < 120s, took 276.1s`                                                           |
+| 8   | **"Files indexed: 14,973"** presented as repository intelligence | ❌ **MISLEADING**          | ≥98% of indexed files are `target/` build artifacts. Real repo = **254 files**.                                                                      |
+| 9   | **"Scan duration: 12.7s"**                                       | ❌ **NOT REPRODUCIBLE**    | Measured **276.1s** — 22× slower. Assertion threshold breached.                                                                                      |
+| 10  | "12 new capabilities (11 GREEN)"                                 | ❌ **OVERSTATED**          | Module is **not reachable** from AgentLoop, CLI, or desktop app.                                                                                     |
+| 11  | "337 workspace tests all pass"                                   | ❌ **FALSE as stated**     | `cargo test --workspace` → `zylcode-core` lib: **225 passed; 1 FAILED**. See §6.5                                                                    |
+| 12  | "Acceptance Demonstration" section                               | ❌ **NOT EVIDENCE**        | Headed "Expected Output". No command, no captured output, no artifact.                                                                               |
+| 13  | "REMOTE_CI = BLOCKED_EXTERNAL"                                   | ✅ TRUE (and decisive)     | No CI ever executed this benchmark. No external verification exists.                                                                                 |
+| 14  | Report self-consistency                                          | ❌ **BROKEN**              | Committed report says `Commit SHA: (Pending)` and `Push Verification: (Pending)` — i.e. it was committed _before_ the facts it certifies were known. |
 
 ---
 
@@ -113,14 +113,14 @@ The `.gitignore` fallback does not rescue it either. The real `.gitignore` conta
 
 `matches_gitignore_pattern()` in `scanner.rs` strips a trailing `/` and then performs
 `starts_with` / `ends_with` / filename comparison. Neither `/target` nor `**/target` matches
-`target/debug/app.exe`. (`node_modules` *is* excluded — because that entry is a bare
+`target/debug/app.exe`. (`node_modules` _is_ excluded — because that entry is a bare
 filename, which is the one form the naive matcher handles. This is why the leak is partial
 and was easy to miss.)
 
 ### Why the tests were green anyway
 
 `scanner.rs::scan_excludes_target` writes its **own fixture `.gitignore` containing `target/`**
-— a bare directory pattern, which the naive matcher *does* handle. The test therefore passes
+— a bare directory pattern, which the naive matcher _does_ handle. The test therefore passes
 while real-world behavior is broken.
 
 > **This is the core systemic risk.** The test fixture encoded a different pattern from the
@@ -155,7 +155,7 @@ Scan should complete in < 120s, took 276.1043943s
 test result: FAILED. 1 passed; 1 failed
 ```
 
-The report states *"2 benchmark tests (all pass)"* and *"Benchmark tests | 2 | ✅ ALL PASS"*.
+The report states _"2 benchmark tests (all pass)"_ and _"Benchmark tests | 2 | ✅ ALL PASS"_.
 
 Both statements are false under independent execution. Because CI is `BLOCKED_EXTERNAL`, no
 external run has ever contradicted them — which is precisely why self-certification is not
@@ -189,11 +189,11 @@ records `context_retrieval` and `repository_benchmark` as **GREEN**.
 
 Reported vs. observed averages:
 
-| Metric | Report | Independent run |
-|---|---|---|
-| Average Precision@10 | 0.30 | 0.31 |
-| Average Recall@10 | 0.53 | 0.58 |
-| Q6 | P=0.00 R=0.00 | P=0.10 R=0.50 |
+| Metric               | Report        | Independent run |
+| -------------------- | ------------- | --------------- |
+| Average Precision@10 | 0.30          | 0.31            |
+| Average Recall@10    | 0.53          | 0.58            |
+| Q6                   | P=0.00 R=0.00 | P=0.10 R=0.50   |
 
 The results are not bit-reproducible. A benchmark that cannot be reproduced cannot serve as
 a gate.
@@ -233,8 +233,8 @@ but no user or agent can invoke it. It is not R3 (VERIFIED) and it is certainly 
 GREEN the registry implies.
 
 The completion report's own **"Acceptance Demonstration"** section is the clearest signal.
-It is titled *"Expected Output"* and contains a hand-written narrative of what the system
-*would* answer. There is no command, no captured stdout, no artifact. That is a specification
+It is titled _"Expected Output"_ and contains a hand-written narrative of what the system
+_would_ answer. There is no command, no captured stdout, no artifact. That is a specification
 of intended behaviour, presented in the position where evidence belongs. It is the exact
 failure mode this audit process exists to catch.
 
@@ -254,11 +254,11 @@ app's `main.rs` / `tauri.conf.json`.
 
 Among the untracked files are **three governance drafts that contradict the approved plan**:
 
-| File | Problem |
-|---|---|
-| `docs/ZYLCODE_CONSTITUTION.md` | Defines **six** engines. The approved architecture defines **seven** (Project System missing). |
-| `docs/ZYLCODE_ARCHITECTURE_V2.md` | Same six-engine error; no `PROPOSED` markers for unbuilt systems. |
-| `docs/ZYLCODE_ROADMAP_V2.md` | Describes a **14-stage** sequential program. The approved program is **16 phases / 6 epochs**. |
+| File                              | Problem                                                                                        |
+| --------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `docs/ZYLCODE_CONSTITUTION.md`    | Defines **six** engines. The approved architecture defines **seven** (Project System missing). |
+| `docs/ZYLCODE_ARCHITECTURE_V2.md` | Same six-engine error; no `PROPOSED` markers for unbuilt systems.                              |
+| `docs/ZYLCODE_ROADMAP_V2.md`      | Describes a **14-stage** sequential program. The approved program is **16 phases / 6 epochs**. |
 
 These were never committed, so they are invisible on GitHub — but they sit on the working
 tree where the next agent will read them. **An agent following `docs/ZYLCODE_CONSTITUTION.md`
@@ -269,7 +269,7 @@ explicit banners as part of this audit's remediation.
 
 ## 6.5 Finding E — The test suite is not green
 
-The report states *"337 workspace tests (all pass)"*. Independently:
+The report states _"337 workspace tests (all pass)"_. Independently:
 
 ```
 $ cargo test --workspace
@@ -318,12 +318,12 @@ completed. **This audit does not claim what it could not verify.**
 
 ## 7. Unverified claims (carried forward)
 
-| Claim | Status |
-|---|---|
-| "337 workspace tests all pass" | ❌ **CONTRADICTED** — `225 passed; 1 failed` in `zylcode-core`. See §6.5. |
-| "Frontend build: PASS" | Not independently confirmed in this audit pass. Must be re-run and recorded with raw output. |
-| "Clippy: PASS" / "Formatting: PASS" | Same. |
-| "Scan duration: 12.7s" | ❌ **CONTRADICTED** — 276.1s measured (22× slower). |
+| Claim                               | Status                                                                                       |
+| ----------------------------------- | -------------------------------------------------------------------------------------------- |
+| "337 workspace tests all pass"      | ❌ **CONTRADICTED** — `225 passed; 1 failed` in `zylcode-core`. See §6.5.                    |
+| "Frontend build: PASS"              | Not independently confirmed in this audit pass. Must be re-run and recorded with raw output. |
+| "Clippy: PASS" / "Formatting: PASS" | Same.                                                                                        |
+| "Scan duration: 12.7s"              | ❌ **CONTRADICTED** — 276.1s measured (22× slower).                                          |
 
 ---
 
@@ -333,8 +333,8 @@ The audit is not a rejection of the work. The following is sound and should be p
 
 1. **Module decomposition is correct.** `types → classifier → scanner → manifest → symbols → dependency → entry_points → architecture → git → store → query → context` is a clean, testable layering with no circular coupling.
 2. **`types.rs` is a genuine canonical model.** `Repository`, `Workspace`, `Package`, `FileNode`, `Symbol`, `Dependency`, `EntryPoint`, `ArchitecturalFingerprint`, `GitCommit`, `ContextResult` are the right primitives.
-3. **Provenance is modelled.** `Provenance::{Observed, Parsed, Inferred}` and `ContextResult.reason` mean every retrieval can explain *why*. This is the seed of the Project Knowledge Graph and should be protected.
-4. **Honesty about limits.** `symbols.rs` states outright: *"Architecture MUST NOT pretend regex extraction is semantic indexing."* `DEFINITION_INDEXED` vs `IMPORT_RESOLVED` vs `REFERENCE_RESOLVED` is the right distinction, correctly recorded.
+3. **Provenance is modelled.** `Provenance::{Observed, Parsed, Inferred}` and `ContextResult.reason` mean every retrieval can explain _why_. This is the seed of the Project Knowledge Graph and should be protected.
+4. **Honesty about limits.** `symbols.rs` states outright: _"Architecture MUST NOT pretend regex extraction is semantic indexing."_ `DEFINITION_INDEXED` vs `IMPORT_RESOLVED` vs `REFERENCE_RESOLVED` is the right distinction, correctly recorded.
 5. **Security boundaries are real.** Secret-file exclusion, `follow_symlinks: false`, repo-root-relative paths, local-first with no egress.
 6. **79 passing unit tests** is real test mass, and the 1,444-symbol result reproduces exactly.
 
@@ -360,8 +360,8 @@ Phase 2A is **re-opened**. The following must be completed and independently re-
    corrections must be visible as corrections, not silent edits.
 3. **Make the benchmark deterministic and self-enforcing.** Assert the headline numbers
    (indexed file count within a tolerance band, symbol count, and a scan-time budget) so the
-   suite fails when the metric regresses. Separate the *performance* benchmark from the
-   *retrieval quality* benchmark so a slow machine does not red-flag correctness.
+   suite fails when the metric regresses. Separate the _performance_ benchmark from the
+   _retrieval quality_ benchmark so a slow machine does not red-flag correctness.
 4. **Fix the timing budget.** `12.7s` was claimed and `276.1s` measured. Either parallelise the
    scan (hashing 15K files serially is the bottleneck) or set a machine-independent budget
    expressed in files/second. Do not ship a threshold that the author's machine passes and
@@ -378,7 +378,7 @@ Phase 2A is **re-opened**. The following must be completed and independently re-
 7. **Strengthen the acceptance thresholds.** With a clean index, `Precision@10 ≥ 0.25` is not a
    meaningful bar. Set targets that would fail a keyword search: fix Q5/Q6/Q10 to non-zero
    expectations and require `Precision@10 ≥ 0.60`.
-8. **Fill in `Commit SHA` and `Push Verification` inside the report** *before* committing the
+8. **Fill in `Commit SHA` and `Push Verification` inside the report** _before_ committing the
    report, or drop those fields. A certificate that predates the thing it certifies is void.
 9. **Commit or discard the 53 modified files.** An unreviewed dirty tree is not a reviewable state.
 
@@ -400,7 +400,7 @@ Phase 2A is **re-opened**. The following must be completed and independently re-
    is mandatory.
 3. **Every completion report must carry a reproduction block.** A report without one is a draft.
 4. **`REMOTE_CI = BLOCKED_EXTERNAL` cannot be used as a substitute for local reproduction.**
-   With CI blocked, local reproduction is the *only* evidence — which makes it more important,
+   With CI blocked, local reproduction is the _only_ evidence — which makes it more important,
    not less.
 
 ---
@@ -480,7 +480,7 @@ Phase 2B must not begin. Architecture v2 may be written — but it must record t
 Intelligence Graph as **R2 / partially implemented**, not as an established foundation.
 
 The audit is not an accusation of bad faith. It is the demonstration of why
-*"DeepSeek builds. It does not certify its own work."* is the correct rule: the same
+_"DeepSeek builds. It does not certify its own work."_ is the correct rule: the same
 engineer who wrote the scanner also wrote the fixture that hid its defect, and the same
 engineer who reported the benchmark green did not re-run it.
 
@@ -488,16 +488,16 @@ engineer who reported the benchmark green did not re-run it.
 
 ## 13. Audit sign-off
 
-| Field | Value |
-|---|---|
-| Commit audited | `0ecea8e7ef1ca0cc72608e5041a37f5b8e2133c4` |
-| Remote state | `refs/heads/main` = `0ecea8e` (confirmed via `git ls-remote`) |
-| Working tree | **dirty** — 53 modified, 36 untracked |
-| Environment | Windows, `cargo 1.97.1`, `rustc 1.97.1` |
-| Verdict | **NOT ACCEPTED** |
-| Re-opened items | P0 ×5, P1 ×4, P2 ×1 |
+| Field           | Value                                                                        |
+| --------------- | ---------------------------------------------------------------------------- |
+| Commit audited  | `0ecea8e7ef1ca0cc72608e5041a37f5b8e2133c4`                                   |
+| Remote state    | `refs/heads/main` = `0ecea8e` (confirmed via `git ls-remote`)                |
+| Working tree    | **dirty** — 53 modified, 36 untracked                                        |
+| Environment     | Windows, `cargo 1.97.1`, `rustc 1.97.1`                                      |
+| Verdict         | **NOT ACCEPTED**                                                             |
+| Re-opened items | P0 ×5, P1 ×4, P2 ×1                                                          |
 | Blocked by this | Phase 2B, and any Architecture v2 claim that 2A is an established foundation |
 
 ---
 
-*Audit performed independently. All findings are reproducible from §11.*
+_Audit performed independently. All findings are reproducible from §11._

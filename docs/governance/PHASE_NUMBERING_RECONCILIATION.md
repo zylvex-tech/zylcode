@@ -19,7 +19,7 @@ without resolving the scheme. The Phase 2A failure was preceded by exactly this:
 defined an R0–R5 ladder with different meanings from the governance package, and a green test
 certified the wrong thing.
 
-Phase numbers are worse than the ladder case, because the ladder was at least *called* R0–R5 in
+Phase numbers are worse than the ladder case, because the ladder was at least _called_ R0–R5 in
 both places. Here, two documents both say "Phase 12" and mean unrelated work.
 
 ---
@@ -72,13 +72,13 @@ Appendix A explicitly documents a renumbering:
 
 **Status: SUPERSEDED.** Its content is largely absorbed into the governance package:
 
-| Strategic Plan topic | Now lives in |
-|---|---|
-| Verification rungs | `ZYLCODE_PROOF_GRAPH.md` (R0–R5, more rigorous) |
-| Permission gate | Trust foundation §5.2; Phase 7B prerequisite |
-| Global phase mapping | `ZYLCODE_MASTER_EXECUTION_PLAN.md` |
-| Monetization / tiers | **Not yet a governance document** — see §5 |
-| Offline / air-gapped mode | `docs/AIR_GAPPED.md` (separate) |
+| Strategic Plan topic      | Now lives in                                    |
+| ------------------------- | ----------------------------------------------- |
+| Verification rungs        | `ZYLCODE_PROOF_GRAPH.md` (R0–R5, more rigorous) |
+| Permission gate           | Trust foundation §5.2; Phase 7B prerequisite    |
+| Global phase mapping      | `ZYLCODE_MASTER_EXECUTION_PLAN.md`              |
+| Monetization / tiers      | **Not yet a governance document** — see §5      |
+| Offline / air-gapped mode | `docs/AIR_GAPPED.md` (separate)                 |
 
 ---
 
@@ -86,14 +86,14 @@ Appendix A explicitly documents a renumbering:
 
 Phases 9–14 collide in **six of six cases**:
 
-| # | Governance roadmap (A) | Strategic Plan (C) |
-|---|---|---|
-| **9** | Visual Intelligence & Self-Repair | Plan Commit + README Fix |
-| **10** | Android Device Lab | Rungs 1–2 (First Shippable Verification) |
-| **11** | macOS/iOS Worker | Rung 3 (Permission Gate) |
-| **12** | Proof Engine v2 | Rung 4 (Z3/Dafny Proofs) |
-| **13** | Delivery Engine | Offline Mode |
-| **14** | Multi-Agent Engineering | Cost/Rung UI + Benchmark |
+| #      | Governance roadmap (A)            | Strategic Plan (C)                       |
+| ------ | --------------------------------- | ---------------------------------------- |
+| **9**  | Visual Intelligence & Self-Repair | Plan Commit + README Fix                 |
+| **10** | Android Device Lab                | Rungs 1–2 (First Shippable Verification) |
+| **11** | macOS/iOS Worker                  | Rung 3 (Permission Gate)                 |
+| **12** | Proof Engine v2                   | Rung 4 (Z3/Dafny Proofs)                 |
+| **13** | Delivery Engine                   | Offline Mode                             |
+| **14** | Multi-Agent Engineering           | Cost/Rung UI + Benchmark                 |
 
 Additionally, `docs/ARCHITECTURE.md` uses **`Phase 8.1` / `Phase 8.2`** for
 `ContextCompressor` and `VectorCacheStore`, colliding with the governance roadmap's
@@ -109,9 +109,9 @@ part of the browser phase.
 
 Not carelessness. These are **three different axes** wearing one label:
 
-- **Scheme A** sequences *product capability* — what ZylCode can do.
-- **Scheme B** sequenced *a feature's internal milestones* — steps within multi-provider routing.
-- **Scheme C** sequenced *a remediation plan* — verification rungs and monetization, written at a
+- **Scheme A** sequences _product capability_ — what ZylCode can do.
+- **Scheme B** sequenced _a feature's internal milestones_ — steps within multi-provider routing.
+- **Scheme C** sequenced _a remediation plan_ — verification rungs and monetization, written at a
   time when the product roadmap was not settled.
 
 Each is internally coherent. The defect is that all three used the token `Phase N` with no
@@ -129,12 +129,12 @@ invalidate the audit trail.
 
 Replace milestone labels with names that cannot collide. Suggested mapping:
 
-| Old | New |
-|---|---|
-| `Phase 7.2` | `MULTIPROVIDER-1` (multi-provider routing) |
+| Old         | New                                            |
+| ----------- | ---------------------------------------------- |
+| `Phase 7.2` | `MULTIPROVIDER-1` (multi-provider routing)     |
 | `Phase 7.3` | `MULTIPROVIDER-2` (provider configuration IPC) |
-| `Phase 8.1` | `CTX-COMPRESSION` (ContextCompressor) |
-| `Phase 8.2` | `VECTOR-CACHE` (VectorCacheStore) |
+| `Phase 8.1` | `CTX-COMPRESSION` (ContextCompressor)          |
+| `Phase 8.2` | `VECTOR-CACHE` (VectorCacheStore)              |
 
 Touch: `docs/API.md:23`, `docs/ARCHITECTURE.md:14,20,21`, `docs/PROVIDERS.md:1,72`,
 `apps/zylcode-desktop/src-tauri/src/main.rs:281`, `crates/zylcode-core/src/router.rs:63,205`.
@@ -156,7 +156,7 @@ README. It must not keep that claim. Recommended:
 4. Update the README link to present it as history.
 
 Do **not** move it to `docs/governance/superseded/` — that directory is reserved for
-never-committed drafts, and this file *was* committed and *did* drive work. A distinct banner is
+never-committed drafts, and this file _was_ committed and _did_ drive work. A distinct banner is
 more honest than filing it with documents that never existed.
 
 ### 5.3 Scheme A — hold numbering stable
@@ -200,14 +200,14 @@ cheaply and prevents another agent from re-deriving pricing strategy from a stal
   no paywalling a user's own evidence), the tier table, and the pricing gate.
 - **Constitution Amendment 1** — registers it in §9.1 and records the change append-only per §13.
 - **Gate restated as a capability state.** The former gate ("no pricing page until Phase 10
-  ships") referenced an obsolete phase number. It is now: *no pricing until a capability exists
-  at **R3** in the area a tier claims to sell.* Capability states do not drift when phases are
+  ships") referenced an obsolete phase number. It is now: _no pricing until a capability exists
+  at **R3** in the area a tier claims to sell._ Capability states do not drift when phases are
   renumbered — this is the general rule, and it is the same defect class as §2 of this document.
 - **Tier ladder corrected.** The original tiers referenced a four-rung ladder from the superseded
   plan; they are restated against the authoritative **R0–R5** ladder.
 
 Option 1 (absorbing pricing into the Constitution) was **rejected**: pricing changes on a business
-cadence while the Constitution should not. The Constitution now *references* the commercial model
+cadence while the Constitution should not. The Constitution now _references_ the commercial model
 rather than containing it.
 
 `STRATEGIC_PLAN.md` §5 carries a pointer to the governing document; its reasoning is retained as

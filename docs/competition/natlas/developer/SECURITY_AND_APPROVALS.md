@@ -7,7 +7,7 @@ failure can never masquerade as a success.
 
 ## 1. The approval gate is real
 
-A model's output is *prose until proven otherwise*. Before anything touches the filesystem, a
+A model's output is _prose until proven otherwise_. Before anything touches the filesystem, a
 human must approve a concrete, bounded operation.
 
 - The intent schema includes an explicit `approve` step.
@@ -22,7 +22,7 @@ There is **no** path in which model output executes directly.
 
 The model proposes; it does not execute.
 
-- A `test` step becomes a *note* unless a concrete command is supplied — ZylCode will not invent a
+- A `test` step becomes a _note_ unless a concrete command is supplied — ZylCode will not invent a
   command and run it.
 - Executable actions go through the single chokepoint `zylcode_mcp::dispatch()`, behind a
   `PermissionGate` with a risk ceiling (`RECOMMENDED_RISK_CEILING = RiskLevel::Write`).
@@ -34,14 +34,14 @@ The model proposes; it does not execute.
 
 This is the core safety property, and it is enforced in code:
 
-| Situation | What happens |
-|---|---|
-| Runtime unreachable | `NatlasError::Transport` — **no** synthesised answer |
-| Runtime times out | `NatlasError::Timeout` |
-| Non-2xx status | `NatlasError::HttpStatus` with a body excerpt |
-| Reply malformed | `NatlasError::MalformedResponse` |
-| Reply omits model identity | **rejected** — identity cannot be borrowed |
-| Config incomplete | `NatlasError::NotConfigured`, listing every missing variable |
+| Situation                  | What happens                                                 |
+| -------------------------- | ------------------------------------------------------------ |
+| Runtime unreachable        | `NatlasError::Transport` — **no** synthesised answer         |
+| Runtime times out          | `NatlasError::Timeout`                                       |
+| Non-2xx status             | `NatlasError::HttpStatus` with a body excerpt                |
+| Reply malformed            | `NatlasError::MalformedResponse`                             |
+| Reply omits model identity | **rejected** — identity cannot be borrowed                   |
+| Config incomplete          | `NatlasError::NotConfigured`, listing every missing variable |
 
 The transport layer contains **no branch that returns a fabricated response**. A test asserts that
 an absent runtime never produces a `Succeeded` status.
@@ -75,12 +75,12 @@ an absent runtime never produces a `Succeeded` status.
 
 ## 6. What the model is trusted to do
 
-| Trusted | Not trusted |
-|---|---|
-| Propose a plan | Execute anything |
-| Name a file it would change | Write to it |
-| Suggest a test | Run an arbitrary command |
-| Return JSON | Have that JSON trusted without validation |
+| Trusted                     | Not trusted                               |
+| --------------------------- | ----------------------------------------- |
+| Propose a plan              | Execute anything                          |
+| Name a file it would change | Write to it                               |
+| Suggest a test              | Run an arbitrary command                  |
+| Return JSON                 | Have that JSON trusted without validation |
 
 Every model output crosses a **strict schema** before it has any effect. A reply that does not
 satisfy the contract is rejected outright.

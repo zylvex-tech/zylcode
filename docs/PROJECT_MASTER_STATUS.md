@@ -28,35 +28,35 @@ surfaces" and "get Phase 2A accepted."**
 ZylCode is built in **16 phases across 6 epochs**. A phase must be **ACCEPTED**  
 (not merely implemented) before dependents may begin.
 
-| Phase  | Title                                  | Status                         | Rung | Blocks                 |
-| ------ | -------------------------------------- | ------------------------------ | ---- | ---------------------- |
+| Phase  | Title                                  | Status                          | Rung | Blocks                 |
+| ------ | -------------------------------------- | ------------------------------- | ---- | ---------------------- |
 | **1A** | Real Tool Runtime                      | ✅ **ACCEPTED**                 | R3   | 1B                     |
 | **1B** | Agent Execution Loop                   | ✅ **ACCEPTED**                 | R3   | 1C                     |
 | **1C** | Model-Driven Autonomous Agent          | ✅ **ACCEPTED WITH CONDITIONS** | R3   | 1D                     |
 | **1D** | Durable Memory, Evidence & Recovery    | ✅ **ACCEPTED WITH CONDITIONS** | R3   | 2A                     |
 | **2A** | Repository Intelligence Foundation     | ❌ **NOT ACCEPTED — RE-OPENED** | R2   | 2B                     |
-| **2B** | Repository Reasoning & Impact Analysis | 🚫 **BLOCKED on 2A**           | —    | 3A                     |
-| **3A** | ZylCode Project System                 | ⏸ **NOT STARTED**              | —    | 3B, 4, 5, 6A, 8A       |
-| **3B** | Mission Engine                         | ⏸ **NOT STARTED**              | —    | 4, 14                  |
-| **4**  | Model Platform / Model Democracy       | ⏸ **NOT STARTED**              | —    | 14                     |
-| **5**  | Extension Platform                     | ⏸ **NOT STARTED**              | —    | 6A, 7A, 10, 11, 13, 15 |
-| **6A** | Artifact System                        | ⏸ **NOT STARTED**              | —    | 6B, 7A, 9              |
-| **6B** | Live Preview Runtime                   | ⏸ **NOT STARTED**              | —    | 7A                     |
-| **7A** | Browser Runtime                        | ⏸ **NOT STARTED**              | —    | 7B, 9, 12              |
-| **7B** | Computer Use Foundation                | ⏸ **NOT STARTED**              | —    | 7C, 7D                 |
-| **7C** | Computer Use Reliability               | ⏸ **NOT STARTED**              | —    | 7D                     |
-| **7D** | Application Adapters                   | ⏸ **NOT STARTED**              | —    | 9, 12                  |
-| **8A** | Design Foundation                      | ⏸ **NOT STARTED**              | —    | 8B, 8C                 |
-| **8B** | Professional Design Canvas             | ⏸ **NOT STARTED**              | —    | 9                      |
-| **8C** | Design ↔ Code                          | ⏸ **NOT STARTED**              | —    | 9                      |
-| **9**  | Visual Intelligence & Self-Repair      | ⏸ **NOT STARTED**              | —    | 12, 16                 |
-| **10** | Android Device Lab                     | ⏸ **NOT STARTED**              | —    | 12, 13, 16             |
-| **11** | macOS/iOS Worker                       | ⏸ **NOT STARTED**              | —    | 12, 13                 |
-| **12** | Proof Engine v2                        | ⏸ **NOT STARTED**              | —    | 13, 16                 |
-| **13** | Delivery Engine                        | ⏸ **NOT STARTED**              | —    | 16                     |
-| **14** | Multi-Agent Engineering                | ⏸ **NOT STARTED**              | —    | 15, 16                 |
-| **15** | Marketplace and Ecosystem              | ⏸ **NOT STARTED**              | —    | 16                     |
-| **16** | Public Commissioning                   | ⏸ **NOT STARTED**              | —    | —                      |
+| **2B** | Repository Reasoning & Impact Analysis | 🚫 **BLOCKED on 2A**            | —    | 3A                     |
+| **3A** | ZylCode Project System                 | ⏸ **NOT STARTED**               | —    | 3B, 4, 5, 6A, 8A       |
+| **3B** | Mission Engine                         | ⏸ **NOT STARTED**               | —    | 4, 14                  |
+| **4**  | Model Platform / Model Democracy       | ⏸ **NOT STARTED**               | —    | 14                     |
+| **5**  | Extension Platform                     | ⏸ **NOT STARTED**               | —    | 6A, 7A, 10, 11, 13, 15 |
+| **6A** | Artifact System                        | ⏸ **NOT STARTED**               | —    | 6B, 7A, 9              |
+| **6B** | Live Preview Runtime                   | ⏸ **NOT STARTED**               | —    | 7A                     |
+| **7A** | Browser Runtime                        | ⏸ **NOT STARTED**               | —    | 7B, 9, 12              |
+| **7B** | Computer Use Foundation                | ⏸ **NOT STARTED**               | —    | 7C, 7D                 |
+| **7C** | Computer Use Reliability               | ⏸ **NOT STARTED**               | —    | 7D                     |
+| **7D** | Application Adapters                   | ⏸ **NOT STARTED**               | —    | 9, 12                  |
+| **8A** | Design Foundation                      | ⏸ **NOT STARTED**               | —    | 8B, 8C                 |
+| **8B** | Professional Design Canvas             | ⏸ **NOT STARTED**               | —    | 9                      |
+| **8C** | Design ↔ Code                          | ⏸ **NOT STARTED**               | —    | 9                      |
+| **9**  | Visual Intelligence & Self-Repair      | ⏸ **NOT STARTED**               | —    | 12, 16                 |
+| **10** | Android Device Lab                     | ⏸ **NOT STARTED**               | —    | 12, 13, 16             |
+| **11** | macOS/iOS Worker                       | ⏸ **NOT STARTED**               | —    | 12, 13                 |
+| **12** | Proof Engine v2                        | ⏸ **NOT STARTED**               | —    | 13, 16                 |
+| **13** | Delivery Engine                        | ⏸ **NOT STARTED**               | —    | 16                     |
+| **14** | Multi-Agent Engineering                | ⏸ **NOT STARTED**               | —    | 15, 16                 |
+| **15** | Marketplace and Ecosystem              | ⏸ **NOT STARTED**               | —    | 16                     |
+| **16** | Public Commissioning                   | ⏸ **NOT STARTED**               | —    | —                      |
 
 **Rung legend:** R0 = simulation · R1 = scaffold · R2 = library/test · R3 =  
 product surface + evidence · R4 = independent audit · R5 = computed from evidence
@@ -247,7 +247,6 @@ P1 remediation items still open:
 | 13    | Delivery Engine — installers, signing, deployment     |
 | 14–16 | Multi-Agent, Marketplace, Public Commissioning        |
 
-
 ## 8. The Most Logical Next Step
 
 > **Start Phase 2A P1 remediation.**
@@ -336,4 +335,4 @@ python scripts/check_retracted_claims.py
 
 > **Built with evidence. Verified with honesty.**
 >
-> *ZylCode — Software Creation Operating System · Zylvex Technologies Ltd.*
+> _ZylCode — Software Creation Operating System · Zylvex Technologies Ltd._

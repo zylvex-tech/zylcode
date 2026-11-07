@@ -80,5 +80,5 @@ environment cannot authenticate to GitHub, so the audit reports the target state
 checklist for the owner to apply. This is correct behaviour: a contribution must not fabricate that it
 performed an action it could not perform.
 
-(PF-02 — the OSS community foundation files — *is* committable and is delivered in the same batch as
+(PF-02 — the OSS community foundation files — _is_ committable and is delivered in the same batch as
 documentation.)

@@ -13,18 +13,18 @@
 
 ## 1. Required public-facing files
 
-| File | Present | Notes |
-|---|---|---|
-| `README.md` | ✅ | 664 lines, exists at root |
-| `LICENSE` | ✅ | **Apache-2.0** — already in place |
-| `CONTRIBUTING.md` | ✅ | 134 lines |
-| `SECURITY.md` | ✅ | 41 lines |
+| File              | Present | Notes                             |
+| ----------------- | ------- | --------------------------------- |
+| `README.md`       | ✅      | 664 lines, exists at root         |
+| `LICENSE`         | ✅      | **Apache-2.0** — already in place |
+| `CONTRIBUTING.md` | ✅      | 134 lines                         |
+| `SECURITY.md`     | ✅      | 41 lines                          |
 
 **GATE PUBLIC-2 (licence): already resolved.** ZylCode's source is Apache-2.0. No licence choice
 is required from the owner, so no licence gate is triggered.
 
 > **Important distinction.** The **N-ATLAS model weights are a separate work** under the N-ATLaS
-> "Open-Source Research and Innovation License". They are *not* Apache-2.0 and must never be
+> "Open-Source Research and Innovation License". They are _not_ Apache-2.0 and must never be
 > committed here or relicensed under Apache-2.0. See
 > `NATLAS_RUNTIME_FEASIBILITY_2026-10-06.md` §7.
 
@@ -38,10 +38,10 @@ Method: pattern scan across all **tracked** files.
 git grep -nIE "(sk-[A-Za-z0-9]{20,}|hf_[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----)"
 ```
 
-| Finding | Assessment |
-|---|---|
-| `apps/zylcode-desktop/src/lib/forge.test.ts:107` — a `sk-abcdef…` string | **Not a credential.** It is a fixture inside a test named *"rejects manifests containing secret-shaped strings"* — the test exists to prove the system rejects such strings. Deliberate, synthetic, and correct to keep. |
-| `apps/zylcode-desktop/src/components/TokenMetricsWidget.tsx` | **False positive** — the word "token" in a UI component filename, not a credential. |
+| Finding                                                                  | Assessment                                                                                                                                                                                                               |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `apps/zylcode-desktop/src/lib/forge.test.ts:107` — a `sk-abcdef…` string | **Not a credential.** It is a fixture inside a test named _"rejects manifests containing secret-shaped strings"_ — the test exists to prove the system rejects such strings. Deliberate, synthetic, and correct to keep. |
+| `apps/zylcode-desktop/src/components/TokenMetricsWidget.tsx`             | **False positive** — the word "token" in a UI component filename, not a credential.                                                                                                                                      |
 
 **Result: no credentials, keys, tokens or private keys are present in tracked files.**
 
@@ -62,14 +62,14 @@ accidental.
 
 Appended to `.gitignore`:
 
-| Rule | Why |
-|---|---|
-| `*.gguf`, `*.safetensors`, `*.pt`, `*.pth`, `*.onnx`, `*.bin` | model weights must never be committed |
-| `/models/`, `/n-atlas/` | conventional local weight directories |
-| `Modelfile`, `Modelfile.*` | may embed absolute local paths |
-| `.hf/`, `.huggingface/` | Hugging Face cache and **credentials** |
-| `.natlas/` | local runtime scratch |
-| `docs/competition/natlas/evidence/` | runtime evidence may embed repository content |
+| Rule                                                          | Why                                           |
+| ------------------------------------------------------------- | --------------------------------------------- |
+| `*.gguf`, `*.safetensors`, `*.pt`, `*.pth`, `*.onnx`, `*.bin` | model weights must never be committed         |
+| `/models/`, `/n-atlas/`                                       | conventional local weight directories         |
+| `Modelfile`, `Modelfile.*`                                    | may embed absolute local paths                |
+| `.hf/`, `.huggingface/`                                       | Hugging Face cache and **credentials**        |
+| `.natlas/`                                                    | local runtime scratch                         |
+| `docs/competition/natlas/evidence/`                           | runtime evidence may embed repository content |
 
 > Scoping note: the evidence rule is deliberately narrowed to the competition evidence directory,
 > because `docs/governance/evidence/` contains **tracked** files that must not be affected.
@@ -78,12 +78,12 @@ Appended to `.gitignore`:
 
 ## 5. Personal-path and proprietary-content audit
 
-| Check | Result |
-|---|---|
-| Absolute user paths in tracked source | none found in the competition work |
-| Proprietary/third-party binaries | none added |
-| Internal-only documents in the competition directory | none |
-| Evidence containing sensitive data | none committed; the ignore rule prevents it |
+| Check                                                | Result                                      |
+| ---------------------------------------------------- | ------------------------------------------- |
+| Absolute user paths in tracked source                | none found in the competition work          |
+| Proprietary/third-party binaries                     | none added                                  |
+| Internal-only documents in the competition directory | none                                        |
+| Evidence containing sensitive data                   | none committed; the ignore rule prevents it |
 
 > **Known pre-existing working-tree items (NOT committed, NOT this phase's work):**
 > `.git-msg.txt`, `COMPLETE_AUDIT_REPORT.html`, `run_tests.bat`, `vc_inspect.py`, `tasks/`,
@@ -108,10 +108,10 @@ This is a licence obligation, not a courtesy.
 
 ## 7. Verdict
 
-| Gate | State |
-|---|---|
-| PUBLIC-1 — content audit clean | ✅ for the competition work; ⚠️ owner should review the pre-existing untracked files listed in §5 before publishing |
-| PUBLIC-2 — open-source licence resolved | ✅ Apache-2.0 already present |
-| PUBLIC-3 — `CONTRIBUTING.md` exists | ✅ |
+| Gate                                    | State                                                                                                               |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| PUBLIC-1 — content audit clean          | ✅ for the competition work; ⚠️ owner should review the pre-existing untracked files listed in §5 before publishing |
+| PUBLIC-2 — open-source licence resolved | ✅ Apache-2.0 already present                                                                                       |
+| PUBLIC-3 — `CONTRIBUTING.md` exists     | ✅                                                                                                                  |
 
 **The branch is publishable after the owner reviews §5.** No push was performed.

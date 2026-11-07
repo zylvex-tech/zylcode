@@ -9,9 +9,9 @@
 ## Why this document exists
 
 The live demonstration endpoint runs on Hugging Face **ZeroGPU**, which is a
-*shared, quota-metered* pool. When the pool's budget for the day is spent, the
+_shared, quota-metered_ pool. When the pool's budget for the day is spent, the
 endpoint answers with an HTTP `503` whose body names the quota (for example,
-*"You have exceeded your GPU quota"*).
+_"You have exceeded your GPU quota"_).
 
 That is **not a bug in ZylCode and not a bug in N-ATLAS**. It is a statement
 about a shared resource. The client classifies it as `QUOTA` and — deliberately
@@ -37,7 +37,7 @@ It does **not** mean substituting a different model and calling the result
 N-ATLAS. If you run a local runtime with a **non-N-ATLAS** model, every result
 is that model's output, and it must be labelled as such — it is **not**
 competition evidence for N-ATLAS integration. The fallback exists to keep the
-*harness* exercisable while the shared quota resets, not to manufacture a
+_harness_ exercisable while the shared quota resets, not to manufacture a
 N-ATLAS result.
 
 > **Rule.** A local run against a non-N-ATLAS model is evidence about ZylCode's
@@ -81,7 +81,7 @@ export NATLAS_TIMEOUT_MS=120000   # optional; defaults to 60000
 ```
 
 The JavaScript SDK reads the **same** names via `configFromEnv()`, and the
-browser playground exposes the same four fields in its *Runtime configuration*
+browser playground exposes the same four fields in its _Runtime configuration_
 panel (its default is already `http://127.0.0.1:11434`).
 
 ### 3. Probe, then invoke
@@ -105,14 +105,14 @@ configured name.
 
 ## What you will observe
 
-| State | Meaning | What to do |
-|---|---|---|
-| `OK` | The runtime answered and the model reported its identity | Proceed |
-| `WARMING` / `LOADING` | The runtime is starting up | Wait; retry |
-| `QUOTA` | Shared GPU budget spent (live Space only) | Use this fallback, or wait for reset |
-| `AUTH_FAILURE` | 401/403 | Check `NATLAS_API_KEY` |
-| `UNAVAILABLE` | Nothing answered (DNS, refused, proxy) | Check the base URL and proxy settings |
-| `FAILED` | A non-transient error | Inspect the recorded body excerpt |
+| State                 | Meaning                                                  | What to do                            |
+| --------------------- | -------------------------------------------------------- | ------------------------------------- |
+| `OK`                  | The runtime answered and the model reported its identity | Proceed                               |
+| `WARMING` / `LOADING` | The runtime is starting up                               | Wait; retry                           |
+| `QUOTA`               | Shared GPU budget spent (live Space only)                | Use this fallback, or wait for reset  |
+| `AUTH_FAILURE`        | 401/403                                                  | Check `NATLAS_API_KEY`                |
+| `UNAVAILABLE`         | Nothing answered (DNS, refused, proxy)                   | Check the base URL and proxy settings |
+| `FAILED`              | A non-transient error                                    | Inspect the recorded body excerpt     |
 
 ---
 

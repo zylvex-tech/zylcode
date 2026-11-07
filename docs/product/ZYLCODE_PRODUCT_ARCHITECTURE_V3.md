@@ -63,12 +63,12 @@ but every area renders its truthful status (§8) — navigation is not a claim.
 
 The current harness surfaces move out of the primary experience:
 
-| Before (primary) | After |
-|---|---|
-| Stream & Tool Panel | Developer Tools drawer (raw stream, model override) |
-| MCP Activity | Diagnostics → MCP Activity |
-| Provider Settings / fallback chain | Settings → Providers |
-| Generate / Verify buttons | Mission Composer → RUN MISSION; verification inside missions |
+| Before (primary)                   | After                                                        |
+| ---------------------------------- | ------------------------------------------------------------ |
+| Stream & Tool Panel                | Developer Tools drawer (raw stream, model override)          |
+| MCP Activity                       | Diagnostics → MCP Activity                                   |
+| Provider Settings / fallback chain | Settings → Providers                                         |
+| Generate / Verify buttons          | Mission Composer → RUN MISSION; verification inside missions |
 
 Developer Tools, Diagnostics, and the Evidence Inspector remain first-class —
 engineers live there too — but they no longer dominate the normal product
@@ -110,14 +110,14 @@ backend that cannot yet fill a field render that field as NOT CAPTURED.
 Replaces "Describe what you want to build..." with a composer that has real
 affordances and no fake selectors:
 
-| Affordance | Initial truth |
-|---|---|
-| `+ Context` | Files the composer will attach; real file picker in desktop runtime; manual entries in browser preview |
-| `@ Files` | Real: current project file tree (browser preview: workspace picker disabled with status) |
-| `# History` | Real: recent missions from the session |
-| `/ Commands` | LIMITED: only commands that exist |
-| `$ Skills` | Real list from backend when commissioned; otherwise COMING SOON (disabled) |
-| `⚡ Capabilities` | Real list from capability registry (R2+/R3 entries; others absent) |
+| Affordance        | Initial truth                                                                                          |
+| ----------------- | ------------------------------------------------------------------------------------------------------ |
+| `+ Context`       | Files the composer will attach; real file picker in desktop runtime; manual entries in browser preview |
+| `@ Files`         | Real: current project file tree (browser preview: workspace picker disabled with status)               |
+| `# History`       | Real: recent missions from the session                                                                 |
+| `/ Commands`      | LIMITED: only commands that exist                                                                      |
+| `$ Skills`        | Real list from backend when commissioned; otherwise COMING SOON (disabled)                             |
+| `⚡ Capabilities` | Real list from capability registry (R2+/R3 entries; others absent)                                     |
 
 Controls: model (free-text override, as today — real), reasoning, autonomy
 (§8), environment (real: current worktree), branch/worktree (real git state
@@ -127,7 +127,7 @@ Primary action: **RUN MISSION**. Simple questions may behave conversationally;
 engineering requests become missions. Autonomy modes and permission policy
 follow the product's permission engine — see below.
 
-*Current implementation, captured in browser preview* (a mission is composed, not
+_Current implementation, captured in browser preview_ (a mission is composed, not
 run — `RUN MISSION` needs the desktop backend). Capture record:
 [`docs/media/zylcode/README.md`](../media/zylcode/README.md).
 
@@ -192,21 +192,22 @@ LEFT: project navigation. CENTER: primary work surface. RIGHT: context dock
 runtime/status/evidence strip.
 
 Useful combinations: Code + Agent, Design + Preview, Mission + Proof, Browser
-+ Agent, Runtime + Logs. Not a mechanical VS Code recreation — optimized for
-AI-assisted software creation. (Full docking/drag-resize is future; v3
-implements fixed-region dock with selectable right-dock modules.)
+
+- Agent, Runtime + Logs. Not a mechanical VS Code recreation — optimized for
+  AI-assisted software creation. (Full docking/drag-resize is future; v3
+  implements fixed-region dock with selectable right-dock modules.)
 
 ## 10. Runtime Lab
 
 Product shell for runtime targets:
 
-| Target | Initial status |
-|---|---|
-| WEB | AVAILABLE — real: Vite preview / dev server of the current project |
-| DESKTOP | LIMITED — real: Tauri shell exists; in-browser preview shows desktop-runtime-required state |
-| TERMINAL | LIMITED — real: CLI exists (`zylcode` binary; repo-context etc.) |
-| ANDROID / IOS / CONTAINER / REMOTE | NOT INSTALLED / COMING SOON — truthful, no fake controls |
-| LOGS | AVAILABLE where real log streams exist; otherwise NOT CAPTURED |
+| Target                             | Initial status                                                                              |
+| ---------------------------------- | ------------------------------------------------------------------------------------------- |
+| WEB                                | AVAILABLE — real: Vite preview / dev server of the current project                          |
+| DESKTOP                            | LIMITED — real: Tauri shell exists; in-browser preview shows desktop-runtime-required state |
+| TERMINAL                           | LIMITED — real: CLI exists (`zylcode` binary; repo-context etc.)                            |
+| ANDROID / IOS / CONTAINER / REMOTE | NOT INSTALLED / COMING SOON — truthful, no fake controls                                    |
+| LOGS                               | AVAILABLE where real log streams exist; otherwise NOT CAPTURED                              |
 
 Long-term abstraction: Mission → Runtime Target → Launch → Observe → Interact
 → Verify → Evidence. The current Preview tab evolves into Runtime; it is not
@@ -217,7 +218,8 @@ discarded.
 Typed runtime environment detection:
 
 ```ts
-type RuntimeEnvironment = "TAURI_DESKTOP" | "BROWSER_PREVIEW" | "TEST" | "UNKNOWN";
+type RuntimeEnvironment =
+  "TAURI_DESKTOP" | "BROWSER_PREVIEW" | "TEST" | "UNKNOWN";
 ```
 
 Detection order: `TAURI_DESKTOP` when the `__TAURI_INTERNALS__` global exists;
@@ -234,9 +236,9 @@ Rules:
    runtime.
 5. Add tests for all four environments and the fallback rendering.
 
-*Rule 2 as implemented* — captured with no Tauri backend attached: the explorer
+_Rule 2 as implemented_ — captured with no Tauri backend attached: the explorer
 and the terminal render their controlled `BLOCKED` state with an actionable hint
-(*"start `zylcode serve-intel` to browse the repository tree"*), not raw
+(_"start `zylcode serve-intel` to browse the repository tree"_), not raw
 JavaScript exception text. The backend request is refused at the bridge, so no
 Tauri IPC is attempted at all.
 
@@ -289,37 +291,44 @@ checkout, no licensing backend, no fake plugins.
 
 ```jsonc
 {
-  "id": "com.zylvex.pack.example",        // reverse-DNS, unique
+  "id": "com.zylvex.pack.example", // reverse-DNS, unique
   "name": "Example Pack",
-  "publisher": "zylvex",                   // publisher id
-  "version": "1.0.0",                      // semver
+  "publisher": "zylvex", // publisher id
+  "version": "1.0.0", // semver
   "description": "…",
-  "category": "testing",                   // §16 taxonomy slug
+  "category": "testing", // §16 taxonomy slug
   "supported_platforms": ["windows", "macos", "linux", "web"],
-  "skills": ["..."], "commands": ["..."], "agents": ["..."],
-  "mcp_servers": ["..."], "hooks": ["..."], "templates": ["..."],
+  "skills": ["..."],
+  "commands": ["..."],
+  "agents": ["..."],
+  "mcp_servers": ["..."],
+  "hooks": ["..."],
+  "templates": ["..."],
   "runtime_adapters": ["..."],
   "permissions": {
-    "filesystem": "read-write",  // none|read|write|read-write
+    "filesystem": "read-write", // none|read|write|read-write
     "shell": "execute",
     "network": ["github.com"],
     "git": "read-commit",
     "browser": "control",
     "secrets": ["github-credential"],
-    "external_services": ["aws"]
+    "external_services": ["aws"],
   },
   "commercial": {
-    "model": "free",           // §14 enum
-    "trial": null, "price": null, "currency": null,
-    "billing_period": null, "seats": null
+    "model": "free", // §14 enum
+    "trial": null,
+    "price": null,
+    "currency": null,
+    "billing_period": null,
+    "seats": null,
   },
   "evidence": {
-    "test_status": "passed",   // none|partial|passed
+    "test_status": "passed", // none|partial|passed
     "verification_rung": "R2", // R0..R5 or "unverified"
     "verified_version": null,
     "verified_commit": null,
-    "platforms_verified": []
-  }
+    "platforms_verified": [],
+  },
 }
 ```
 

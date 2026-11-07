@@ -10,7 +10,7 @@ expected to have. `PROPOSED` means nothing was built.
 
 ## 1. The concept
 
-**ZylCode × N-ATLAS Developer Bridge** is *not* an N-ATLAS chat interface. A chat interface would
+**ZylCode × N-ATLAS Developer Bridge** is _not_ an N-ATLAS chat interface. A chat interface would
 put a model in front of a developer and stop. This puts a model **inside** an engineering workflow
 that already knows how to plan, execute, verify and prove.
 
@@ -41,25 +41,25 @@ AI-native software-engineering workflow.**
 
 ## 2. Component map and honest status
 
-| Layer | Component | Status |
-|---|---|---|
-| Intake | Developer intent capture (CLI / desktop / factory job) | `IMPLEMENTED` (product) |
-| Boundary | `NatlasConfig` | `IMPLEMENTED` · `TESTED` |
-| Boundary | `NatlasTransport` trait | `IMPLEMENTED` |
-| Boundary | `BlockedNatlasTransport` (C0 runtime) | `IMPLEMENTED` · `TESTED` |
-| Boundary | **Real N-ATLAS transport** | **`BLOCKED_NATLAS_ACCESS`** |
-| Boundary | `NatlasClient` (timeout, interpret, evidence) | `IMPLEMENTED` · `TESTED` (test double) |
-| Boundary | `parse_canonical_response` | `IMPLEMENTED` · `TESTED` |
-| Intent | `NatlasEngineeringIntent::parse` | `IMPLEMENTED` · `TESTED` |
-| Intent | `to_task_graph()` handoff | `IMPLEMENTED` · `TESTED` |
-| Context | Repository intelligence (`intelligence/*`) | `IMPLEMENTED` · `TESTED` (product) |
-| Workflow | `factory::TaskGraph` + `FactoryRunner` | `IMPLEMENTED` · `TESTED` (product) |
-| Execution | Gated tool dispatch (`zylcode_mcp::dispatch`) | `IMPLEMENTED` · `TESTED` (product) |
-| Verification | Factory `Verify` action → claim promotion | `IMPLEMENTED` · `TESTED` (product) |
-| Evidence | `NatlasEvidence` + JSONL + evidence-graph node | `IMPLEMENTED` · `TESTED` |
-| Evidence | Claim store linkage | `IMPLEMENTED` (product); N-ATLAS linkage `TESTED` via test double |
-| Validation | External beta testing | `PROPOSED` — no testers yet |
-| Submission | Competition video / final entry | **not started** (explicitly out of C0 scope) |
+| Layer        | Component                                              | Status                                                            |
+| ------------ | ------------------------------------------------------ | ----------------------------------------------------------------- |
+| Intake       | Developer intent capture (CLI / desktop / factory job) | `IMPLEMENTED` (product)                                           |
+| Boundary     | `NatlasConfig`                                         | `IMPLEMENTED` · `TESTED`                                          |
+| Boundary     | `NatlasTransport` trait                                | `IMPLEMENTED`                                                     |
+| Boundary     | `BlockedNatlasTransport` (C0 runtime)                  | `IMPLEMENTED` · `TESTED`                                          |
+| Boundary     | **Real N-ATLAS transport**                             | **`BLOCKED_NATLAS_ACCESS`**                                       |
+| Boundary     | `NatlasClient` (timeout, interpret, evidence)          | `IMPLEMENTED` · `TESTED` (test double)                            |
+| Boundary     | `parse_canonical_response`                             | `IMPLEMENTED` · `TESTED`                                          |
+| Intent       | `NatlasEngineeringIntent::parse`                       | `IMPLEMENTED` · `TESTED`                                          |
+| Intent       | `to_task_graph()` handoff                              | `IMPLEMENTED` · `TESTED`                                          |
+| Context      | Repository intelligence (`intelligence/*`)             | `IMPLEMENTED` · `TESTED` (product)                                |
+| Workflow     | `factory::TaskGraph` + `FactoryRunner`                 | `IMPLEMENTED` · `TESTED` (product)                                |
+| Execution    | Gated tool dispatch (`zylcode_mcp::dispatch`)          | `IMPLEMENTED` · `TESTED` (product)                                |
+| Verification | Factory `Verify` action → claim promotion              | `IMPLEMENTED` · `TESTED` (product)                                |
+| Evidence     | `NatlasEvidence` + JSONL + evidence-graph node         | `IMPLEMENTED` · `TESTED`                                          |
+| Evidence     | Claim store linkage                                    | `IMPLEMENTED` (product); N-ATLAS linkage `TESTED` via test double |
+| Validation   | External beta testing                                  | `PROPOSED` — no testers yet                                       |
+| Submission   | Competition video / final entry                        | **not started** (explicitly out of C0 scope)                      |
 
 ---
 
@@ -81,16 +81,16 @@ isolated to one implementation.**
 
 ### 3.2 Types
 
-| Type | Role |
-|---|---|
-| `NatlasConfig` | `base_url`, `request_path`, `model`, `api_key`, `timeout_ms` — all external, none defaulted |
-| `RedactedNatlasConfig` | log-safe view; carries key *presence and length* only |
-| `NatlasRequest` | `intent`, `system`, `context[]`, `max_tokens` |
-| `NatlasContextChunk` | one repository excerpt with its path |
-| `NatlasResponse` | `text`, `model`, `request_id`, `usage`, `finish_reason` |
-| `NatlasError` | `NotConfigured`, `BlockedNatlasAccess`, `Transport`, `Timeout`, `HttpStatus`, `MalformedResponse` |
-| `NatlasStatus` | `NotConfigured`, `BlockedNatlasAccess`, `Succeeded`, `Failed` |
-| `NatlasEvidence` | the non-secret record of one invocation |
+| Type                   | Role                                                                                              |
+| ---------------------- | ------------------------------------------------------------------------------------------------- |
+| `NatlasConfig`         | `base_url`, `request_path`, `model`, `api_key`, `timeout_ms` — all external, none defaulted       |
+| `RedactedNatlasConfig` | log-safe view; carries key _presence and length_ only                                             |
+| `NatlasRequest`        | `intent`, `system`, `context[]`, `max_tokens`                                                     |
+| `NatlasContextChunk`   | one repository excerpt with its path                                                              |
+| `NatlasResponse`       | `text`, `model`, `request_id`, `usage`, `finish_reason`                                           |
+| `NatlasError`          | `NotConfigured`, `BlockedNatlasAccess`, `Transport`, `Timeout`, `HttpStatus`, `MalformedResponse` |
+| `NatlasStatus`         | `NotConfigured`, `BlockedNatlasAccess`, `Succeeded`, `Failed`                                     |
+| `NatlasEvidence`       | the non-secret record of one invocation                                                           |
 
 `NatlasError` has **no catch-all variant**. A failure that cannot be stated cannot be reported
 honestly, so the type does not permit one.
@@ -162,12 +162,12 @@ uses, so the N-ATLAS trail is traversable back to the originating intent.
 
 ## 7. What is deliberately not built
 
-* A real N-ATLAS transport — blocked on the interface.
-* Any wire-format assumption.
-* Autonomous repository modification.
-* A UI surface for the bridge (`PROPOSED`).
-* Streaming responses (`PROPOSED`).
-* Multi-provider routing for N-ATLAS (`PROPOSED`; and it must never inherit the synthetic path).
+- A real N-ATLAS transport — blocked on the interface.
+- Any wire-format assumption.
+- Autonomous repository modification.
+- A UI surface for the bridge (`PROPOSED`).
+- Streaming responses (`PROPOSED`).
+- Multi-provider routing for N-ATLAS (`PROPOSED`; and it must never inherit the synthetic path).
 
 ## 8. Non-goals
 

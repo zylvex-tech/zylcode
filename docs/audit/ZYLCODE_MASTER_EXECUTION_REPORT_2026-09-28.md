@@ -66,36 +66,36 @@ HTTP service (`/api/*`, proxied by Vite). Most panels talk HTTP; a few talk IPC.
 Full 50-row map with evidence codes: `docs/audit/ZYLCODE_MASTER_BASELINE_2026-09-28.md`.
 Summary of highest-interest rows:
 
-| Area | Verdict |
-|---|---|
-| Shell / themes / dock / panel | IMPLEMENTED · UI_WIRED · RUNTIME_VERIFIED (all 8 themes live) |
-| Repository indexing + intelligence | IMPLEMENTED · TESTED (46 tests) · RUNTIME_VERIFIED (444→447 files, 2111 symbols, 6 packages) |
-| Tool runtime (12 executors, binding, default-deny gate) | IMPLEMENTED · TESTED (Gate-0 invariants all confirmed) |
-| Evidence stack (ledger, proofs, tool JSONL, claims, graph, record/package) | IMPLEMENTED · TESTED · EVIDENCE_RECORDED |
-| Session persistence + crash recovery | IMPLEMENTED · TESTED · RUNTIME_VERIFIED (real abort + resume) |
-| First Mission §36 end-to-end | IMPLEMENTED · TESTED · RUNTIME_VERIFIED |
-| Live LLM completion | **BLOCKED** (egress proven, no completion) |
-| True streaming / provider-native tool calling | NOT_IMPLEMENTED |
-| Editor save/apply-patch backend | **NOT_IMPLEMENTED (G-03)** — first implementation slice |
-| Tauri project IPC | orphan file, NOT reachable (G-02) |
-| Multi-agent, UI builder, updater, crash reporting, entitlements | NOT_IMPLEMENTED (all honestly labelled in UI) |
-| CI | workflow files implemented, execution BLOCKED (billing) |
+| Area                                                                       | Verdict                                                                                      |
+| -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Shell / themes / dock / panel                                              | IMPLEMENTED · UI_WIRED · RUNTIME_VERIFIED (all 8 themes live)                                |
+| Repository indexing + intelligence                                         | IMPLEMENTED · TESTED (46 tests) · RUNTIME_VERIFIED (444→447 files, 2111 symbols, 6 packages) |
+| Tool runtime (12 executors, binding, default-deny gate)                    | IMPLEMENTED · TESTED (Gate-0 invariants all confirmed)                                       |
+| Evidence stack (ledger, proofs, tool JSONL, claims, graph, record/package) | IMPLEMENTED · TESTED · EVIDENCE_RECORDED                                                     |
+| Session persistence + crash recovery                                       | IMPLEMENTED · TESTED · RUNTIME_VERIFIED (real abort + resume)                                |
+| First Mission §36 end-to-end                                               | IMPLEMENTED · TESTED · RUNTIME_VERIFIED                                                      |
+| Live LLM completion                                                        | **BLOCKED** (egress proven, no completion)                                                   |
+| True streaming / provider-native tool calling                              | NOT_IMPLEMENTED                                                                              |
+| Editor save/apply-patch backend                                            | **NOT_IMPLEMENTED (G-03)** — first implementation slice                                      |
+| Tauri project IPC                                                          | orphan file, NOT reachable (G-02)                                                            |
+| Multi-agent, UI builder, updater, crash reporting, entitlements            | NOT_IMPLEMENTED (all honestly labelled in UI)                                                |
+| CI                                                                         | workflow files implemented, execution BLOCKED (billing)                                      |
 
 ---
 
 ## 4. Test totals (exact, this session)
 
-| Command | Discovered | Passed | Failed | Ignored | Duration |
-|---|---|---|---|---|---|
-| `cargo test --workspace --all-targets --no-fail-fast` | 575 | **575** | **0** | 0 | ≈84s in-test (17 binaries; longest: core lib 382 tests / 33.2s) |
-| `cargo clippy --workspace --all-targets -- -D warnings` | — | 0 warnings | 0 | — | pass |
-| `python scripts/check_retracted_claims.py` | 11 baselined lines | 0 new claims | — | — | pass |
-| `pnpm test` (desktop, vitest) | 54 | **54** | **0** | 0 | 50.3s |
-| `pnpm typecheck` (`tsc --noEmit`) | — | 0 errors | 0 | — | pass |
-| `pnpm build` (`tsc && vite build`) | — | OK | — | — | 8.80s |
-| `cargo test -p zylcode-core --test live_commissioning -- --ignored` (network) | 1 | 1 (classification probe) | 0 | 0 | 2.0s + real provider round-trips |
-| Remote CI (`.github/workflows/ci.yml`) | — | **BLOCKED** (billing) | — | — | not run |
-| Installed-app run (`tauri build` + launch) | — | **UNVERIFIED** | — | — | not run |
+| Command                                                                       | Discovered         | Passed                   | Failed | Ignored | Duration                                                        |
+| ----------------------------------------------------------------------------- | ------------------ | ------------------------ | ------ | ------- | --------------------------------------------------------------- |
+| `cargo test --workspace --all-targets --no-fail-fast`                         | 575                | **575**                  | **0**  | 0       | ≈84s in-test (17 binaries; longest: core lib 382 tests / 33.2s) |
+| `cargo clippy --workspace --all-targets -- -D warnings`                       | —                  | 0 warnings               | 0      | —       | pass                                                            |
+| `python scripts/check_retracted_claims.py`                                    | 11 baselined lines | 0 new claims             | —      | —       | pass                                                            |
+| `pnpm test` (desktop, vitest)                                                 | 54                 | **54**                   | **0**  | 0       | 50.3s                                                           |
+| `pnpm typecheck` (`tsc --noEmit`)                                             | —                  | 0 errors                 | 0      | —       | pass                                                            |
+| `pnpm build` (`tsc && vite build`)                                            | —                  | OK                       | —      | —       | 8.80s                                                           |
+| `cargo test -p zylcode-core --test live_commissioning -- --ignored` (network) | 1                  | 1 (classification probe) | 0      | 0       | 2.0s + real provider round-trips                                |
+| Remote CI (`.github/workflows/ci.yml`)                                        | —                  | **BLOCKED** (billing)    | —      | —       | not run                                                         |
+| Installed-app run (`tauri build` + launch)                                    | —                  | **UNVERIFIED**           | —      | —       | not run                                                         |
 
 Focused verification ran first (claim/evidence/first-mission suites during
 development), then the broadest safe worktree verification above.
@@ -107,8 +107,8 @@ development), then the broadest safe worktree verification above.
 Full register with execution-path inspection: `docs/audit/ZYLCODE_STUB_MOCK_GAP_REGISTER_2026-09-28.md`.
 Top findings:
 
-1. **G-01 (HIGH)** — the router's on-disk vector cache answered a *live provider
-   probe in 0.01s with a persisted "Synthetic offline response"* (char/bigram
+1. **G-01 (HIGH)** — the router's on-disk vector cache answered a _live provider
+   probe in 0.01s with a persisted "Synthetic offline response"_ (char/bigram
    `mock_embed`, 0.88 threshold, checked before egress). Observed at runtime
    today; `without_vector_cache` is the escape hatch and is now used by the probe.
 2. **G-02 (HIGH)** — `src-tauri/commands/project.rs` (8 commands) is never
@@ -133,25 +133,25 @@ Top findings:
 17 stages, each marked **PROVEN** (runtime or test evidence this session),
 **PARTIAL**, **BLOCKED**, or **NOT WIRED**.
 
-| # | Stage | Verdict | Evidence |
-|---|---|---|---|
-| 1 | Open real repository | **PROVEN (GUI)** | serve-intel opened `C:\Projects\zylcode`; Explorer rendered 447 files |
-| 2 | Index / understand repository | **PROVEN (GUI)** | live index: 444→447 files, 2111 symbols, 6 packages; 46 module tests |
-| 3 | User creates mission | **PROVEN (GUI surface)** | MissionComposer + `POST /api/missions` (route live, 200s); UI tests 6 |
-| 4 | Agent receives mission | **PARTIAL** | queue drain exists (`/api/missions/run-next`), but the drain runs **Best-of-N verification of the working tree**, not an agent that reads the mission as instructions. `AgentLoop` exists as a library, tested — **not wired to the mission queue** |
-| 5 | Model creates plan | **BLOCKED** (GUI: not wired; library: needs live completion) | Plan-mode uses deterministic `build_plan`; model planning needs a provider completion (BLOCKED §7 provider) |
-| 6 | Required approval occurs | **PARTIAL** | permission gate default-deny + property tests PROVEN at library level; MissionComposer autonomy selector **not observed gating the drain** (UNVERIFIED) |
-| 7 | Tool is called | **PROVEN (library/runtime)** | 12 executors + dispatch through gate; integration tests; terminal 200 |
-| 8 | Real file is read | **PROVEN (GUI)** | `/api/files` live tree; EditorPane serves `/api/file-content` |
-| 9 | Real file is modified | **PROVEN (CLI/library)** — **NOT WIRED (GUI editor)** | First Mission rewrote `statslib/core.py` with evidence (e2e); **G-03**: editor save has no backend |
-| 10 | Diff is produced | **PROVEN (partial)** | SourceControl diffstat from real git (+/−); unified diff viewer depth UNVERIFIED |
-| 11 | Test/build executed | **PROVEN** | drain runs `cargo test` for real (1800s budget, evidence in ledger); First Mission ran `python -m unittest` |
-| 12 | Result inspected | **PROVEN** | exit codes + signature sets recorded per run (First Mission payloads) |
-| 13 | Failure reasoned about | **PROVEN (library)** | diagnosis parsed from captured output (`AssertionError…`), structured Failure object |
-| 14 | Correction applied | **PROVEN (library)** | specification-directed replace → artifact hash |
-| 15 | Verification runs again | **PROVEN** | same command re-run, exit 0, failure promoted to RECOVERED fail-closed |
-| 16 | Evidence recorded | **PROVEN** | ledger prev-hash chain + evidence graph + claims chain, all verified; `verify_ledger_chain` over exported `ledger.jsonl` |
-| 17 | Session/mission reopened | **PROVEN** | real `abort()` mid-step + resume reconciled and completed (CLI e2e, this session) |
+| #   | Stage                         | Verdict                                                      | Evidence                                                                                                                                                                                                                                            |
+| --- | ----------------------------- | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Open real repository          | **PROVEN (GUI)**                                             | serve-intel opened `C:\Projects\zylcode`; Explorer rendered 447 files                                                                                                                                                                               |
+| 2   | Index / understand repository | **PROVEN (GUI)**                                             | live index: 444→447 files, 2111 symbols, 6 packages; 46 module tests                                                                                                                                                                                |
+| 3   | User creates mission          | **PROVEN (GUI surface)**                                     | MissionComposer + `POST /api/missions` (route live, 200s); UI tests 6                                                                                                                                                                               |
+| 4   | Agent receives mission        | **PARTIAL**                                                  | queue drain exists (`/api/missions/run-next`), but the drain runs **Best-of-N verification of the working tree**, not an agent that reads the mission as instructions. `AgentLoop` exists as a library, tested — **not wired to the mission queue** |
+| 5   | Model creates plan            | **BLOCKED** (GUI: not wired; library: needs live completion) | Plan-mode uses deterministic `build_plan`; model planning needs a provider completion (BLOCKED §7 provider)                                                                                                                                         |
+| 6   | Required approval occurs      | **PARTIAL**                                                  | permission gate default-deny + property tests PROVEN at library level; MissionComposer autonomy selector **not observed gating the drain** (UNVERIFIED)                                                                                             |
+| 7   | Tool is called                | **PROVEN (library/runtime)**                                 | 12 executors + dispatch through gate; integration tests; terminal 200                                                                                                                                                                               |
+| 8   | Real file is read             | **PROVEN (GUI)**                                             | `/api/files` live tree; EditorPane serves `/api/file-content`                                                                                                                                                                                       |
+| 9   | Real file is modified         | **PROVEN (CLI/library)** — **NOT WIRED (GUI editor)**        | First Mission rewrote `statslib/core.py` with evidence (e2e); **G-03**: editor save has no backend                                                                                                                                                  |
+| 10  | Diff is produced              | **PROVEN (partial)**                                         | SourceControl diffstat from real git (+/−); unified diff viewer depth UNVERIFIED                                                                                                                                                                    |
+| 11  | Test/build executed           | **PROVEN**                                                   | drain runs `cargo test` for real (1800s budget, evidence in ledger); First Mission ran `python -m unittest`                                                                                                                                         |
+| 12  | Result inspected              | **PROVEN**                                                   | exit codes + signature sets recorded per run (First Mission payloads)                                                                                                                                                                               |
+| 13  | Failure reasoned about        | **PROVEN (library)**                                         | diagnosis parsed from captured output (`AssertionError…`), structured Failure object                                                                                                                                                                |
+| 14  | Correction applied            | **PROVEN (library)**                                         | specification-directed replace → artifact hash                                                                                                                                                                                                      |
+| 15  | Verification runs again       | **PROVEN**                                                   | same command re-run, exit 0, failure promoted to RECOVERED fail-closed                                                                                                                                                                              |
+| 16  | Evidence recorded             | **PROVEN**                                                   | ledger prev-hash chain + evidence graph + claims chain, all verified; `verify_ledger_chain` over exported `ledger.jsonl`                                                                                                                            |
+| 17  | Session/mission reopened      | **PROVEN**                                                   | real `abort()` mid-step + resume reconciled and completed (CLI e2e, this session)                                                                                                                                                                   |
 
 **Verdict:** the complete chain is PROVEN end-to-end **through the library/CLI
 path** (First Mission, 1/17 steps dependent on nothing external). Through the
@@ -165,7 +165,7 @@ identified, not guessed.
 ## 7. Repository-intelligence state
 
 - 15 modules (`scanner, symbols, dependency, manifest, entry_points, git, query,
-  context, api, canvas, persisted, store, classifier, architecture, types`) —
+context, api, canvas, persisted, store, classifier, architecture, types`) —
   **46 unit tests** counted across modules, all green in the battery.
 - Live runtime: index warm at server start; Explorer/Search/RepoIntel panels
   consume it; benchmark `repo_intelligence_benchmark.rs` (2 tests) with
@@ -179,12 +179,12 @@ identified, not guessed.
 
 ## 8. Provider state (§11 — never collapsed into "provider works")
 
-| Provider | configured | authenticated | request sent | HTTP response | completion | classification |
-|---|---|---|---|---|---|---|
-| DeepSeek `deepseek-chat` | YES (key in env, value not shown) | YES (key recognized) | YES | **402 Insufficient Balance** (1.08s, real `request_id`) | NO | **BLOCKED — account balance** |
-| OpenRouter free tier | YES (23-char value, **not `sk-or-…` format**) | NO | YES | **401 Missing Authentication header** (0.27s) | NO | **BLOCKED — invalid credential** |
-| Anthropic `claude-3-5-haiku-latest` | YES (51-char `sk-…`) | NO | YES | **401 API key is invalid** (0.69s) | NO | **BLOCKED — invalid credential** |
-| Ollama local | — | — | — | not running (`/api/tags` unreachable) | NO | **BLOCKED — not installed/running** |
+| Provider                            | configured                                    | authenticated        | request sent | HTTP response                                           | completion | classification                      |
+| ----------------------------------- | --------------------------------------------- | -------------------- | ------------ | ------------------------------------------------------- | ---------- | ----------------------------------- |
+| DeepSeek `deepseek-chat`            | YES (key in env, value not shown)             | YES (key recognized) | YES          | **402 Insufficient Balance** (1.08s, real `request_id`) | NO         | **BLOCKED — account balance**       |
+| OpenRouter free tier                | YES (23-char value, **not `sk-or-…` format**) | NO                   | YES          | **401 Missing Authentication header** (0.27s)           | NO         | **BLOCKED — invalid credential**    |
+| Anthropic `claude-3-5-haiku-latest` | YES (51-char `sk-…`)                          | NO                   | YES          | **401 API key is invalid** (0.69s)                      | NO         | **BLOCKED — invalid credential**    |
+| Ollama local                        | —                                             | —                    | —            | not running (`/api/tags` unreachable)                   | NO         | **BLOCKED — not installed/running** |
 
 - Egress pipeline itself is **RUNTIME_VERIFIED**: three distinguishable real
   provider answers prove env-key → auth header → HTTPS → provider works.
@@ -207,15 +207,15 @@ the kernel **not wired into the mission queue** (G-09 context).
 
 ## 10. Memory state
 
-| Kind | State |
-|---|---|
-| Execution ledger (hash-chained, sqlite) | IMPLEMENTED · TESTED · EVIDENCE_RECORDED |
-| Mission history | IMPLEMENTED (persisted queue, survives restart) |
-| Project facts / derived intel | IMPLEMENTED · TESTED (content-hash invalidation) |
-| Settings/preferences | IMPLEMENTED · TESTED · UI_WIRED |
-| Chat history | IMPLEMENTED within sessions (frontend state); cross-session UNVERIFIED |
-| Architectural decisions | partial via Claim/Proof stores (new, TESTED) |
-| Explicit provenance + staleness for ALL memory kinds | UNVERIFIED (intel only) |
+| Kind                                                 | State                                                                  |
+| ---------------------------------------------------- | ---------------------------------------------------------------------- |
+| Execution ledger (hash-chained, sqlite)              | IMPLEMENTED · TESTED · EVIDENCE_RECORDED                               |
+| Mission history                                      | IMPLEMENTED (persisted queue, survives restart)                        |
+| Project facts / derived intel                        | IMPLEMENTED · TESTED (content-hash invalidation)                       |
+| Settings/preferences                                 | IMPLEMENTED · TESTED · UI_WIRED                                        |
+| Chat history                                         | IMPLEMENTED within sessions (frontend state); cross-session UNVERIFIED |
+| Architectural decisions                              | partial via Claim/Proof stores (new, TESTED)                           |
+| Explicit provenance + staleness for ALL memory kinds | UNVERIFIED (intel only)                                                |
 
 ## 11. MCP state
 
@@ -260,12 +260,14 @@ performed (mandate §16).
 ## 15. Files changed in this session
 
 Modified (tracked):
+
 - `crates/zylcode-cli/Cargo.toml` (+3: dev-dep tempfile)
 - `crates/zylcode-cli/src/main.rs` (+101: `mission` subcommand, `MissionArgs`,
   `handle_mission` — completes the earlier T3 wiring)
 - `crates/zylcode-core/src/lib.rs` (+2: module exports)
 
 New (untracked):
+
 - `crates/zylcode-core/src/failure.rs`, `first_mission.rs`,
   `tests/first_mission_e2e.rs`, `tests/fixtures/*` (carried from T3, verified)
 - `crates/zylcode-cli/tests/first_mission_kill_resume.rs`
@@ -281,15 +283,15 @@ untouched; **nothing committed** (§1).
 
 ## 16. Blockers
 
-| Blocker | Class | Effect |
-|---|---|---|
-| GitHub Actions billing lock | BLOCKED_EXTERNAL | remote CI/release evidence unavailable; local battery is authority |
-| DeepSeek account balance (402) | BLOCKED_EXTERNAL | no live completion |
-| OpenRouter + Anthropic credentials invalid (401) | BLOCKED_EXTERNAL (fixable by user) | no live completion |
-| Ollama not running | BLOCKED_EXTERNAL | local-model path unavailable |
-| Gate-0 `865c142` merge never executed | OWNER_DECISION | diverged history persists |
-| No commit authorisation for this mandate | PROCESS | all work left uncommitted |
-| Preview screenshot compositing unavailable | TOOLING | visual verification done via a11y snapshots/DOM/network instead |
+| Blocker                                          | Class                              | Effect                                                             |
+| ------------------------------------------------ | ---------------------------------- | ------------------------------------------------------------------ |
+| GitHub Actions billing lock                      | BLOCKED_EXTERNAL                   | remote CI/release evidence unavailable; local battery is authority |
+| DeepSeek account balance (402)                   | BLOCKED_EXTERNAL                   | no live completion                                                 |
+| OpenRouter + Anthropic credentials invalid (401) | BLOCKED_EXTERNAL (fixable by user) | no live completion                                                 |
+| Ollama not running                               | BLOCKED_EXTERNAL                   | local-model path unavailable                                       |
+| Gate-0 `865c142` merge never executed            | OWNER_DECISION                     | diverged history persists                                          |
+| No commit authorisation for this mandate         | PROCESS                            | all work left uncommitted                                          |
+| Preview screenshot compositing unavailable       | TOOLING                            | visual verification done via a11y snapshots/DOM/network instead    |
 
 ## 17. Regressions
 

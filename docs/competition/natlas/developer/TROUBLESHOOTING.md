@@ -68,11 +68,11 @@ this transport speaks.
 
 Several distinct causes, all stated in the detail:
 
-| Detail | Meaning |
-|---|---|
-| `reply was not valid JSON` | the runtime returned non-JSON (often an HTML error page) |
-| `reply has no choices` | not an OpenAI-compatible chat reply |
-| `reply content is empty` | the model returned nothing |
+| Detail                            | Meaning                                                            |
+| --------------------------------- | ------------------------------------------------------------------ |
+| `reply was not valid JSON`        | the runtime returned non-JSON (often an HTML error page)           |
+| `reply has no choices`            | not an OpenAI-compatible chat reply                                |
+| `reply content is empty`          | the model returned nothing                                         |
 | `did not report a model identity` | **the reply is rejected on purpose** — identity cannot be borrowed |
 
 ---

@@ -11,10 +11,10 @@ releases at this time.
 
 Please report privately:
 
-1. **GitHub Security Advisories (preferred).** Use the repository's *Security → Report a
-   vulnerability* flow. This is GitHub-native, keeps the report private, and requires no shared email
+1. **GitHub Security Advisories (preferred).** Use the repository's _Security → Report a
+   vulnerability_ flow. This is GitHub-native, keeps the report private, and requires no shared email
    address.
-2. **Email (proposed — verify before activation).** `security@zylforge.com` is the *intended*
+2. **Email (proposed — verify before activation).** `security@zylforge.com` is the _intended_
    disclosure address. **It is not verified as reachable in this document.** Before relying on it,
    confirm the mailbox exists and is monitored. Until then, use the GitHub Advisory channel above.
 
@@ -25,6 +25,7 @@ specific response time or resolution SLA.** Any statement about response speed w
 cannot currently meet, and the project's own governance forbids publishing unsupported claims.
 
 What we can commit to:
+
 - Treating every private report as confidential.
 - Not weaponizing a report against the reporter.
 - Coordinating disclosure with the reporter where feasible.

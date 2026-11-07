@@ -1,4 +1,5 @@
 # ZYLCODE — N-ATLAS 2026 COMPETITION
+
 # PHASE C0 FINAL REPORT — BRANCH ISOLATION, DISCOVERY & SAFE SCAFFOLD
 
 - **Date:** 2026-10-06
@@ -40,6 +41,7 @@ The branch was created at that exact commit; `main` was left untouched.
 ## 4. Files created (15)
 
 **Implementation (8) — `crates/zylcode-core/src/competition/`**
+
 1. `mod.rs`
 2. `natlas/mod.rs`
 3. `natlas/config.rs`
@@ -49,16 +51,9 @@ The branch was created at that exact commit; `main` was left untouched.
 7. `natlas/evidence.rs`
 8. `natlas/intent.rs`
 
-**Tests (1)**
-9. `crates/zylcode-core/tests/natlas_boundary.rs`
+**Tests (1)** 9. `crates/zylcode-core/tests/natlas_boundary.rs`
 
-**Documentation (6) — `docs/competition/natlas/`**
-10. `README.md`
-11. `NATLAS_INTEGRATION_DISCOVERY_2026-10-06.md`
-12. `NATLAS_COMPETITION_ARCHITECTURE_2026-10-06.md`
-13. `NATLAS_VALIDATION_PROTOCOL_2026-10-06.md`
-14. `NATLAS_EVIDENCE_CHECKLIST_2026-10-06.md`
-15. `BETA_TEST_EVIDENCE_TEMPLATE.md` (deliberately empty — 0 rows)
+**Documentation (6) — `docs/competition/natlas/`** 10. `README.md` 11. `NATLAS_INTEGRATION_DISCOVERY_2026-10-06.md` 12. `NATLAS_COMPETITION_ARCHITECTURE_2026-10-06.md` 13. `NATLAS_VALIDATION_PROTOCOL_2026-10-06.md` 14. `NATLAS_EVIDENCE_CHECKLIST_2026-10-06.md` 15. `BETA_TEST_EVIDENCE_TEMPLATE.md` (deliberately empty — 0 rows)
 
 ## 5. Files modified (1)
 
@@ -73,13 +68,13 @@ The branch was created at that exact commit; `main` was left untouched.
 
 Four engineering commits (plus this closing report commit):
 
-| # | SHA | Message |
-|---|-----|---------|
-| 1 | `dfa47a1` | `feat(competition): isolated N-ATLAS integration boundary` |
-| 2 | `f79c142` | `test(competition): deterministic N-ATLAS boundary tests with a named test double` |
-| 3 | `9d6a78b` | `docs(competition): N-ATLAS discovery, architecture, validation and evidence` |
-| 4 | `f4724b9` | `docs(competition): record the pre-existing router test flake exposed by this branch` |
-| 5 | *(this file)* | `docs(competition): Phase C0 final report` |
+| #   | SHA           | Message                                                                               |
+| --- | ------------- | ------------------------------------------------------------------------------------- |
+| 1   | `dfa47a1`     | `feat(competition): isolated N-ATLAS integration boundary`                            |
+| 2   | `f79c142`     | `test(competition): deterministic N-ATLAS boundary tests with a named test double`    |
+| 3   | `9d6a78b`     | `docs(competition): N-ATLAS discovery, architecture, validation and evidence`         |
+| 4   | `f4724b9`     | `docs(competition): record the pre-existing router test flake exposed by this branch` |
+| 5   | _(this file)_ | `docs(competition): Phase C0 final report`                                            |
 
 All five are narrow and coherent. No historical commit was amended.
 
@@ -107,13 +102,13 @@ cargo clippy -p zylcode-core -- -D warnings
 
 ## 9. Exact pass / fail / ignored totals
 
-| Suite | Passed | Failed | Ignored |
-|-------|--------|--------|---------|
-| `--lib competition::` | **18** | 0 | 0 |
-| `--test natlas_boundary` | **17** | 0 | 0 |
-| **Competition total** | **35** | **0** | **0** |
-| Full `zylcode-core` lib suite | 459 | 0 | — |
-| Clippy `-D warnings` | clean | — | — |
+| Suite                         | Passed | Failed | Ignored |
+| ----------------------------- | ------ | ------ | ------- |
+| `--lib competition::`         | **18** | 0      | 0       |
+| `--test natlas_boundary`      | **17** | 0      | 0       |
+| **Competition total**         | **35** | **0**  | **0**   |
+| Full `zylcode-core` lib suite | 459    | 0      | —       |
+| Clippy `-D warnings`          | clean  | —      | —       |
 
 Full-phase battery earlier in the phase: **764 passed / 1 failed / 1 ignored**. The single
 failure is the **pre-existing, intermittently-flaky**
@@ -136,13 +131,13 @@ NatlasTransport::send(&self, config: &NatlasConfig, request: &NatlasRequest)
     -> Result<NatlasRawResponse, NatlasError>
 ```
 
-A **new, additive boundary** — *not* a modification of the existing provider router.
+A **new, additive boundary** — _not_ a modification of the existing provider router.
 
 - **Rejected:** extending the closed `ModelProvider` enum (would inherit the router's three
   silent synthetic-degradation paths — i.e. the fabrication hazard).
 - **Rejected:** endpoint-override on the existing router (would amount to relabelling another
   provider as N-ATLAS).
-- **Selected:** an isolated transport trait whose wire translation is the *only* blocked part,
+- **Selected:** an isolated transport trait whose wire translation is the _only_ blocked part,
   while parsing, evidence, redaction and the factory handoff are ZylCode's own contract and are
   deterministically testable today.
 
@@ -185,23 +180,24 @@ No existing test was weakened. No test was deleted.
 
 ## 14. Competition submission gaps remaining
 
-| Gap | Status |
-|-----|--------|
-| Real N-ATLAS runtime integration | ⛔ blocked — awaiting credentials + contract |
-| End-to-end slice against a live N-ATLAS | ⛔ not possible yet |
-| External beta testers (real humans) | 🚫 **not fabricated** — template only, 0 rows |
-| Demonstration video | 🚫 out of scope for C0 |
-| Screenshots / benchmarks | 🚫 none fabricated |
-| Competition compliance claim | 🚫 not made |
-| Public deployment | 🚫 not done |
+| Gap                                     | Status                                        |
+| --------------------------------------- | --------------------------------------------- |
+| Real N-ATLAS runtime integration        | ⛔ blocked — awaiting credentials + contract  |
+| End-to-end slice against a live N-ATLAS | ⛔ not possible yet                           |
+| External beta testers (real humans)     | 🚫 **not fabricated** — template only, 0 rows |
+| Demonstration video                     | 🚫 out of scope for C0                        |
+| Screenshots / benchmarks                | 🚫 none fabricated                            |
+| Competition compliance claim            | 🚫 not made                                   |
+| Public deployment                       | 🚫 not done                                   |
 
 ## 15. Exact recommended Phase C1
 
 **Phase C1 — Contract Ingestion & First Live Invocation (gated on owner-supplied N-ATLAS access).**
 
 Scope, in order:
+
 1. Owner supplies the N-ATLAS contract details and a test credential (item 12).
-2. Implement a single concrete `HttpNatlasTransport` (one new file) that maps the *documented*
+2. Implement a single concrete `HttpNatlasTransport` (one new file) that maps the _documented_
    contract to `NatlasRawResponse`. No other module changes.
 3. Add contract-conformance tests using recorded, non-secret fixture bytes supplied by N-ATLAS.
 4. Perform **one** live invocation against the sandbox; capture full `NatlasEvidence` with

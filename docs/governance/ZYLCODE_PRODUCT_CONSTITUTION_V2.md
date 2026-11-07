@@ -96,7 +96,7 @@ The differentiator is the closed loop, not any single engine.
 
 Product decisions are governed by one workflow, not by a feature list.
 
-A developer opens ZylCode and says: *"New Project → Build a SaaS analytics dashboard."*
+A developer opens ZylCode and says: _"New Project → Build a SaaS analytics dashboard."_
 
 ```
  0– 5s   Project created, intent captured
@@ -140,15 +140,15 @@ Two of them are additions made after the original six-engine draft, and neither 
   obligations; those obligations must be visible at the architecture layer or they will be
   forgotten in the implementation layer.
 
-| # | System | Responsibility |
-|---|---|---|
-| **1** | **Project System** | Persistent project / workspace / product identity and shared state |
-| **2** | **Agent Kernel** | Reasoning, planning, tools, workflows, models, permissions, memory |
-| **3** | **Intelligence Graph** | Repository, symbols, dependencies, architecture, history, runtime knowledge |
-| **4** | **Vision Studio** | UI/UX design, design systems, prototypes, and design↔code |
-| **5** | **Execution Engine** | Shell, browser, desktop, containers, Android, iOS, cloud |
-| **6** | **Proof Engine** | Build / test / runtime / visual / security / evidence verification |
-| **7** | **Delivery Engine** | Git, CI, packaging, deployment, app stores, releases |
+| #     | System                  | Responsibility                                                                               |
+| ----- | ----------------------- | -------------------------------------------------------------------------------------------- |
+| **1** | **Project System**      | Persistent project / workspace / product identity and shared state                           |
+| **2** | **Agent Kernel**        | Reasoning, planning, tools, workflows, models, permissions, memory                           |
+| **3** | **Intelligence Graph**  | Repository, symbols, dependencies, architecture, history, runtime knowledge                  |
+| **4** | **Vision Studio**       | UI/UX design, design systems, prototypes, and design↔code                                    |
+| **5** | **Execution Engine**    | Shell, browser, desktop, containers, Android, iOS, cloud                                     |
+| **6** | **Proof Engine**        | Build / test / runtime / visual / security / evidence verification                           |
+| **7** | **Delivery Engine**     | Git, CI, packaging, deployment, app stores, releases                                         |
 | **8** | **Computer-Use Engine** | Perceiving and driving real desktop applications, under permission, with replayable evidence |
 
 ### 2.0.1 The acting principle (v2.1)
@@ -200,7 +200,7 @@ carry its provenance and the method that produced it.
 ### 2.2 Cross-Cutting Platforms
 
 - **Extension Platform** — the ABI through which tools, skills, agents, MCP servers, model
-  providers, runtimes, design libraries and verification providers are added *without*
+  providers, runtimes, design libraries and verification providers are added _without_
   modifying core.
 - **Model Platform** — capability-based model routing across providers and local models.
 - **Artifact Bus** — the canonical channel by which agents, runtimes and the Proof Engine
@@ -221,31 +221,31 @@ This is the defining law of ZylCode.
 
 > **A claim is not a fact until it is independently reproducible.**
 
-ZylCode is *evidence-first* not as a slogan but as an engineering constraint. This applies to
+ZylCode is _evidence-first_ not as a slogan but as an engineering constraint. This applies to
 ZylCode's own development with the same force as it applies to the software ZylCode builds.
 
 ### 3.1 The Proof Ladder
 
 Every capability, in every system, carries a proof rung:
 
-| Rung | Name | Meaning |
-|---|---|---|
-| **R0** | **CLAIMED** | Asserted in documentation or a report. No artifact. |
-| **R1** | **OBSERVED** | Seen once, informally. No reproducible procedure. |
-| **R2** | **EXECUTED** | Ran under automated test or script. Not reachable by a user or agent. |
-| **R3** | **VERIFIED** | Reachable and usable through a product surface, with captured evidence. |
+| Rung   | Name             | Meaning                                                                  |
+| ------ | ---------------- | ------------------------------------------------------------------------ |
+| **R0** | **CLAIMED**      | Asserted in documentation or a report. No artifact.                      |
+| **R1** | **OBSERVED**     | Seen once, informally. No reproducible procedure.                        |
+| **R2** | **EXECUTED**     | Ran under automated test or script. Not reachable by a user or agent.    |
+| **R3** | **VERIFIED**     | Reachable and usable through a product surface, with captured evidence.  |
 | **R4** | **REPRODUCIBLE** | A third party re-runs a committed procedure and obtains the same result. |
-| **R5** | **COMMISSIONED** | Independently audited by a party that did not build it. Accepted. |
+| **R5** | **COMMISSIONED** | Independently audited by a party that did not build it. Accepted.        |
 
 **The full definition is `ZYLCODE_PROOF_GRAPH.md`. It governs all capability claims.**
 
-Rungs apply to *any* capability — a UI feature, a parser, a deployment path, a model route —
+Rungs apply to _any_ capability — a UI feature, a parser, a deployment path, a model route —
 not only to source code. The former build-centric ladder in `README.md` is superseded by this
 one for governance purposes.
 
 ### 3.2 Non-Negotiable Rules
 
-1. **Builders do not certify their own work.** A phase is complete when an *independent* audit
+1. **Builders do not certify their own work.** A phase is complete when an _independent_ audit
    accepts it, not when the author reports it done.
 2. **Unit tests are R2, never R3.** A tested module that no user or agent can reach is not a
    capability. It is a library.
@@ -255,7 +255,7 @@ one for governance purposes.
    dominated by build output is not a count of repository files. See the Phase 2A audit.
 5. **Never silently correct a published number.** Corrections are visible as corrections.
 6. **Absence of CI is not permission to lower the bar.** When remote CI is unavailable, local
-   reproduction becomes the *only* evidence, and therefore becomes *more* important.
+   reproduction becomes the _only_ evidence, and therefore becomes _more_ important.
 7. **Fail closed.** Unsupported input returns an explicit `UNSUPPORTED_*` status. It never
    silently degrades to a plausible-looking wrong answer.
 
@@ -265,7 +265,7 @@ A system's rung cannot exceed the rung of the weakest link in its critical path.
 
 > If the scanner is R2 and the query API is R3, the Intelligence Graph is **R2**.
 
-Capability status is determined by the *lowest* proven component, not the highest.
+Capability status is determined by the _lowest_ proven component, not the highest.
 
 ---
 
@@ -328,7 +328,7 @@ are the contract; the Proof Engine is the enforcement.
 
 > **A dropdown is not Model Democracy.**
 
-The system must not merely ask *"which model do you want?"* It must reason:
+The system must not merely ask _"which model do you want?"_ It must reason:
 
 ```
 Task
@@ -512,7 +512,7 @@ explicit authorization. Permissions are **fail-closed**: absence of a grant is d
 ### 10.2 Recovery
 
 Execution is durable. A crash mid-mission must be resumable without re-executing completed,
-non-idempotent work. Ambiguous post-crash states are *reconciled against external truth*
+non-idempotent work. Ambiguous post-crash states are _reconciled against external truth_
 (e.g. git state), never guessed.
 
 ### 10.3 Local-first / sovereignty
@@ -524,7 +524,7 @@ No repository content leaves the machine without explicit user action.
 
 Secret files are excluded from the intelligence index. This exclusion is a security control
 and is subject to the same proof requirements as any other capability — it must be verified
-against the *real* repository, not a fixture.
+against the _real_ repository, not a fixture.
 
 ---
 
@@ -573,7 +573,7 @@ traceable to evidence at the claimed rung.
   document since marked superseded, with obsolete phase numbering. The gap had two consequences:
   a future agent could invent pricing terms with nothing to check them against, and §11
   (Truth-in-Advertising) had no standard to apply to a pricing claim.
-- **What this amendment does *not* do:** it does not adopt the tiers. It records them as
+- **What this amendment does _not_ do:** it does not adopt the tiers. It records them as
   PROPOSED and **not advertised**, and it binds them to a gate.
 - **Evidence:** `docs/governance/ZYLCODE_COMMERCIAL_MODEL.md`;
   `docs/governance/PHASE_NUMBERING_RECONCILIATION.md` §6 (where the gap was identified).
@@ -583,8 +583,8 @@ traceable to evidence at the claimed rung.
   (referenced an obsolete phase number). Restated as a capability state, which does not drift when
   phases are renumbered.
 
-*(Amendment 1 is the first amendment; the body of this Constitution above is the initial ratified
-version, unaltered.)*
+_(Amendment 1 is the first amendment; the body of this Constitution above is the initial ratified
+version, unaltered.)_
 
 **Amendment 2 — 2026-09-16 — Public communication + public foundation program**
 
@@ -594,7 +594,7 @@ version, unaltered.)*
 - **Rationale:** Public development — GitHub, community, devlog, website, design system, cloud
   architecture, release communication — has grown significant enough to need an operational policy of
   its own, distinct from the engineering roadmap. The Constitution's §11 (Truth-in-Advertising)
-  governs truth broadly; the policy governs truth *publicly* (status vocabulary, the screenshot rule,
+  governs truth broadly; the policy governs truth _publicly_ (status vocabulary, the screenshot rule,
   the Public Claim Matrix). The Foundation Plan coordinates the work as **named tracks**
   (`PUBLIC-FOUNDATION`, `DESIGN-SYSTEM`, `CLOUD-PLATFORM`) that run in parallel with, but outside,
   the 16-phase engineering roadmap — directly obeying Protocol §4.7 (a phase number belongs to the
@@ -603,7 +603,7 @@ version, unaltered.)*
   capability registry, never hand-asserted. The public-foundation program is **not** a phase, and may
   not be numbered as one.
 - **Evidence:** the public communication policy and the public foundation plan; `PHASE_NUMBERING_
-  RECONCILIATION.md` §6 (now resolved) for why the tracks avoid a third numbering collision.
+RECONCILIATION.md` §6 (now resolved) for why the tracks avoid a third numbering collision.
 
 ---
 

@@ -56,11 +56,11 @@ developer-visible result
 
 Phase C0 evaluated three seams and chose the third:
 
-| Option | Verdict |
-|---|---|
+| Option                                           | Verdict                                                                                                          |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
 | Extend the product's closed `ModelProvider` enum | **Rejected** — inherits the router's silent synthetic-degradation paths, which is exactly the fabrication hazard |
-| Override the router's endpoint | **Rejected** — amounts to relabelling another provider as N-ATLAS |
-| **A new, isolated `NatlasTransport` boundary** | **Selected** — additive, testable, and unable to fake a success |
+| Override the router's endpoint                   | **Rejected** — amounts to relabelling another provider as N-ATLAS                                                |
+| **A new, isolated `NatlasTransport` boundary**   | **Selected** — additive, testable, and unable to fake a success                                                  |
 
 ---
 
@@ -82,11 +82,11 @@ redaction, the intent handoff. Everything **below** it is the network.
 
 ### Implementations
 
-| Type | Purpose | State |
-|---|---|---|
-| `BlockedNatlasTransport` | the truthful blocked state | `IMPLEMENTED` · `TESTED` |
-| `LocalNatlasTransport` | real call to a local, OpenAI-compatible runtime | `IMPLEMENTED` · `TESTED` |
-| `HttpNatlasTransport` | remote adapter; **contract UNVERIFIED** | `IMPLEMENTED` · `CONTRACT_UNVERIFIED` |
+| Type                     | Purpose                                         | State                                 |
+| ------------------------ | ----------------------------------------------- | ------------------------------------- |
+| `BlockedNatlasTransport` | the truthful blocked state                      | `IMPLEMENTED` · `TESTED`              |
+| `LocalNatlasTransport`   | real call to a local, OpenAI-compatible runtime | `IMPLEMENTED` · `TESTED`              |
+| `HttpNatlasTransport`    | remote adapter; **contract UNVERIFIED**         | `IMPLEMENTED` · `CONTRACT_UNVERIFIED` |
 
 There is **no fallback between them**. Choosing a transport is an explicit act.
 
@@ -105,20 +105,20 @@ N-ATLAS response schema.
 
 ## Layers and their honest status
 
-| Layer | Where | Status |
-|---|---|---|
-| Configuration (env-only, no invented defaults) | `natlas/config.rs` | `TESTED` |
-| Request / response / error / status types | `natlas/types.rs` | `TESTED` |
-| Boundary trait | `natlas/transport.rs` | `IMPLEMENTED` |
-| Local transport | `natlas/local.rs` | `TESTED` |
-| Remote adapter | `natlas/remote.rs` | `IMPLEMENTED` · `CONTRACT_UNVERIFIED` |
-| Client: invoke -> interpret -> evidence | `natlas/client.rs` | `TESTED` |
-| Evidence + redaction | `natlas/evidence.rs` | `TESTED` |
-| Intent -> TaskGraph handoff | `natlas/intent.rs` | `TESTED` |
-| Runtime probe | `natlas/local.rs` | `TESTED` |
-| Developer SDK | `apps/natlas-sdk/src/index.ts` | `TESTED` |
-| Playground | `apps/natlas-sdk/playground/` | `IMPLEMENTED` |
-| **Genuine N-ATLAS invocation** | — | **`BLOCKED_NATLAS_ACCESS`** |
+| Layer                                          | Where                          | Status                                |
+| ---------------------------------------------- | ------------------------------ | ------------------------------------- |
+| Configuration (env-only, no invented defaults) | `natlas/config.rs`             | `TESTED`                              |
+| Request / response / error / status types      | `natlas/types.rs`              | `TESTED`                              |
+| Boundary trait                                 | `natlas/transport.rs`          | `IMPLEMENTED`                         |
+| Local transport                                | `natlas/local.rs`              | `TESTED`                              |
+| Remote adapter                                 | `natlas/remote.rs`             | `IMPLEMENTED` · `CONTRACT_UNVERIFIED` |
+| Client: invoke -> interpret -> evidence        | `natlas/client.rs`             | `TESTED`                              |
+| Evidence + redaction                           | `natlas/evidence.rs`           | `TESTED`                              |
+| Intent -> TaskGraph handoff                    | `natlas/intent.rs`             | `TESTED`                              |
+| Runtime probe                                  | `natlas/local.rs`              | `TESTED`                              |
+| Developer SDK                                  | `apps/natlas-sdk/src/index.ts` | `TESTED`                              |
+| Playground                                     | `apps/natlas-sdk/playground/`  | `IMPLEMENTED`                         |
+| **Genuine N-ATLAS invocation**                 | —                              | **`BLOCKED_NATLAS_ACCESS`**           |
 
 ---
 

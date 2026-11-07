@@ -197,7 +197,14 @@ async fn live_provider_commissioning_probe() {
             "OVERALL: no provider HTTP outcome at all → live commissioning UNVERIFIED/ BLOCKED"
         );
     }
-    eprintln!("STREAMING: not established — dispatch_stream re-chunks a completed response post-hoc (no SSE).");
+    // `dispatch_stream` now drives real provider streams (SSE for Anthropic and
+    // OpenAI-compatible, NDJSON for Ollama) with cancellation that aborts the HTTP
+    // request. This probe still does not exercise it, because that needs credentials,
+    // so the honest statement is "implemented, not exercised here".
+    eprintln!(
+        "STREAMING: implemented — real SSE/NDJSON provider streams with request-aborting \
+         cancellation; not exercised by this probe (needs live credentials)."
+    );
     eprintln!("PROVIDER-NATIVE TOOL CALLING: not established — request bodies carry no `tools` parameter.");
     eprintln!("MULTIMODAL: not established — not probed.");
     // Deliberately no pass/fail assertion on the classification: external

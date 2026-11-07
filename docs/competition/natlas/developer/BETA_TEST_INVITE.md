@@ -19,11 +19,13 @@ take about 60–90 minutes. You don't need to be a Nigerian-language speaker —
 love coverage in your language.
 
 What you'd do:
+
 1. Follow [BETA_TEST_GUIDE.md](BETA_TEST_GUIDE.md) — it's written so you shouldn't need to ask us anything.
 2. Run ten short tests (A–J) on your own small repository.
 3. Record results in [BETA_TEST_EVIDENCE_TEMPLATE.md](BETA_TEST_EVIDENCE_TEMPLATE.md) — one row per test.
 
 Three rules:
+
 - **Don't fabricate.** If something fails, write that it failed.
 - **Don't paste secrets** (redact your Hugging Face token).
 - **Stop and tell us** if anything executes without your approval.

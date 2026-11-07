@@ -16,15 +16,15 @@ There is **no institutional, education or provider-policy code in this repositor
 
 What exists and is relevant:
 
-| Existing piece | Relevance |
-|---|---|
-| `PermissionPolicy` (tool-scoped, per-runtime) | the *shape* an institutional policy would extend |
-| Provider registry with `requires_api_key` | the list a provider policy would filter |
-| `ToolEvidence::actor` | the attribution a multi-user mode would need to bind to a request |
-| `claim` / `evidence_graph` | the evidence a supervisor review would inspect |
+| Existing piece                                | Relevance                                                         |
+| --------------------------------------------- | ----------------------------------------------------------------- |
+| `PermissionPolicy` (tool-scoped, per-runtime) | the _shape_ an institutional policy would extend                  |
+| Provider registry with `requires_api_key`     | the list a provider policy would filter                           |
+| `ToolEvidence::actor`                         | the attribution a multi-user mode would need to bind to a request |
+| `claim` / `evidence_graph`                    | the evidence a supervisor review would inspect                    |
 
-**The directive's own warning is taken literally:** *"Do not build enterprise theatre. Define the
-actual needs first."* This document defines needs and stops.
+**The directive's own warning is taken literally:** _"Do not build enterprise theatre. Define the
+actual needs first."_ This document defines needs and stops.
 
 ---
 
@@ -32,26 +32,26 @@ actual needs first."* This document defines needs and stops.
 
 The directive supplies a test, not a customer:
 
-> *Could ZylCode eventually support: a university software laboratory; a research group; an
+> _Could ZylCode eventually support: a university software laboratory; a research group; an
 > engineering software project; an AI/robotics research team; indigenous software development;
 > student software engineering; faculty-led research; reproducible computational research;
-> secure/private development; collaborative human/AI engineering; research-to-product translation?*
+> secure/private development; collaborative human/AI engineering; research-to-product translation?_
 
 Mapped to architecture:
 
-| Requirement | Needs | Status |
-|---|---|---|
-| university software laboratory | org/role model, shared projects | **NOT_IMPLEMENTED** |
-| research group | research workspace | **NOT_IMPLEMENTED** |
-| engineering software project | factory job | **IMPLEMENTED** |
-| AI/robotics research team | reproducible research | **NOT_IMPLEMENTED** |
-| indigenous software development | offline/local mode, low bandwidth | **PARTIAL** |
-| student software engineering | education mode | **NOT_IMPLEMENTED** |
-| faculty-led research | supervisor review | **NOT_IMPLEMENTED** |
-| reproducible computational research | reproduction capture | **NOT_IMPLEMENTED** |
-| secure/private development | provider policy, offline | **NOT_IMPLEMENTED** |
-| collaborative human/AI engineering | HITL gates | **IMPLEMENTED** (single-user) |
-| research-to-product translation | provenance linking | **NOT_IMPLEMENTED** |
+| Requirement                         | Needs                             | Status                        |
+| ----------------------------------- | --------------------------------- | ----------------------------- |
+| university software laboratory      | org/role model, shared projects   | **NOT_IMPLEMENTED**           |
+| research group                      | research workspace                | **NOT_IMPLEMENTED**           |
+| engineering software project        | factory job                       | **IMPLEMENTED**               |
+| AI/robotics research team           | reproducible research             | **NOT_IMPLEMENTED**           |
+| indigenous software development     | offline/local mode, low bandwidth | **PARTIAL**                   |
+| student software engineering        | education mode                    | **NOT_IMPLEMENTED**           |
+| faculty-led research                | supervisor review                 | **NOT_IMPLEMENTED**           |
+| reproducible computational research | reproduction capture              | **NOT_IMPLEMENTED**           |
+| secure/private development          | provider policy, offline          | **NOT_IMPLEMENTED**           |
+| collaborative human/AI engineering  | HITL gates                        | **IMPLEMENTED** (single-user) |
+| research-to-product translation     | provenance linking                | **NOT_IMPLEMENTED**           |
 
 **Three of eleven are implemented.** The institutional mode is genuinely early.
 
@@ -77,12 +77,12 @@ Organisation
 These are the acceptance criteria for institutional mode. Each must be expressible as **data**,
 not prose:
 
-| Institutional sentence | Policy object |
-|---|---|
-| "Students may use these providers and tools." | provider allow-list + tool allow-list, scoped to a role |
-| "Research Group A must operate locally." | provider policy with `offline: true` / `residency: local` |
+| Institutional sentence                                | Policy object                                                                      |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| "Students may use these providers and tools."         | provider allow-list + tool allow-list, scoped to a role                            |
+| "Research Group A must operate locally."              | provider policy with `offline: true` / `residency: local`                          |
 | "Production deployment requires supervisor approval." | risk gate: `Destructive`/`Release` ⇒ `RequireApproval`, approver role = supervisor |
-| "This project must retain reproducibility evidence." | retention policy on the evidence graph + artifact bus |
+| "This project must retain reproducibility evidence."  | retention policy on the evidence graph + artifact bus                              |
 
 **None of these exist as data.** The design is that they become fields on a policy object evaluated
 at the **existing** permission chokepoint — the institutional layer must not introduce a second
@@ -90,9 +90,9 @@ enforcement point, because two enforcement points is the same as none.
 
 ### 2.3 What institutional mode must NOT become
 
-* A dashboard of vanity metrics.
-* A per-seat licence gate pretending to be a policy engine.
-* A surveillance system (§3.4).
+- A dashboard of vanity metrics.
+- A per-seat licence gate pretending to be a policy engine.
+- A surveillance system (§3.4).
 
 ---
 
@@ -102,19 +102,19 @@ enforcement point, because two enforcement points is the same as none.
 
 The directive's modes, as a policy-controlled **assistance level**:
 
-| Mode | Agent behaviour | Evidence produced |
-|---|---|---|
-| `EXPLAIN` | explains; produces no solution code | explanation artifact |
-| `GUIDE` | asks leading questions; produces no solution code | dialogue + hints |
-| `PAIR` | co-edits; the student drives | diff with co-author attribution |
-| `ASSESS` | evaluates the student's attempt; produces no code | assessment record |
-| `REVIEW` | critiques the student's work | review notes |
-| `AUTONOMOUS` | solves; the default for non-education use | full factory evidence |
+| Mode         | Agent behaviour                                   | Evidence produced               |
+| ------------ | ------------------------------------------------- | ------------------------------- |
+| `EXPLAIN`    | explains; produces no solution code               | explanation artifact            |
+| `GUIDE`      | asks leading questions; produces no solution code | dialogue + hints                |
+| `PAIR`       | co-edits; the student drives                      | diff with co-author attribution |
+| `ASSESS`     | evaluates the student's attempt; produces no code | assessment record               |
+| `REVIEW`     | critiques the student's work                      | review notes                    |
+| `AUTONOMOUS` | solves; the default for non-education use         | full factory evidence           |
 
 ### 3.2 The rule that makes it education rather than cheating
 
-> *A student should not automatically receive a finished solution when the institution wants guided
-> learning.*
+> _A student should not automatically receive a finished solution when the institution wants guided
+> learning._
 
 Architecturally this is a **capability restriction**, enforced at the same chokepoint as the
 permission gate: in `EXPLAIN`/`GUIDE`/`ASSESS`, the `fs.write` executor is **refused for
@@ -133,7 +133,7 @@ the **agent** produced.
 
 ### 3.4 The prohibition
 
-> *Do not implement surveillance-oriented behaviour.*
+> _Do not implement surveillance-oriented behaviour._
 
 Concretely, this rules out: keystroke capture, always-on screen recording, idle-time scoring,
 "productivity" ranking of students. The learning evidence above is **submitted work plus its
@@ -158,14 +158,14 @@ first-class mode, and it is the only mode that is fully working today.
 
 > **LOCAL MODEL AVAILABILITY MUST NOT BE MISREPRESENTED AS CLOUD-GATE COMPLIANCE.**
 
-> *Provider capability and governance are separate concerns.*
+> _Provider capability and governance are separate concerns._
 
 This is enforced in the architecture by keeping two things apart:
 
-| Concept | Answers | Where |
-|---|---|---|
-| **Capability** | can this model do the task? | `model_capabilities.rs` |
-| **Governance** | is this model *permitted* here? | a policy object (**not implemented**) |
+| Concept        | Answers                         | Where                                 |
+| -------------- | ------------------------------- | ------------------------------------- |
+| **Capability** | can this model do the task?     | `model_capabilities.rs`               |
+| **Governance** | is this model _permitted_ here? | a policy object (**not implemented**) |
 
 A local model may be capable and permitted; it is still **not** evidence that a cloud provider was
 commissioned. `AGENT-01` requires a real cloud provider turn; a local model can never close it.
@@ -183,7 +183,7 @@ the project to accidentally lie to itself.
   "offline_mode": true,
   "model_capability_requirements": { "min_context": 32000, "tools": true },
   "logging_policy": "local-only",
-  "retention_policy": { "evidence_days": 3650 }
+  "retention_policy": { "evidence_days": 3650 },
 }
 ```
 
@@ -195,8 +195,8 @@ Evaluated at provider selection and at the tool chokepoint. **Not implemented.**
 
 Institutional mode implies multiple humans. Today ZylCode is a **single-user desktop application**:
 
-* no authentication, no user model, no server-side tenancy;
-* `ToolEvidence::actor` is a per-process task-local value, adequate for attributing an agent run,
+- no authentication, no user model, no server-side tenancy;
+- `ToolEvidence::actor` is a per-process task-local value, adequate for attributing an agent run,
   inadequate for attributing a request from one of forty students.
 
 **Therefore institutional mode is blocked on a service architecture that does not exist.** Building
@@ -207,19 +207,19 @@ forbids. The correct order is: service identity → request-scoped actor → the
 
 ## 6. Status summary
 
-| Capability | Status |
-|---|---|
-| Organisation / lab / course / research-group model | **NOT_IMPLEMENTED** |
-| Members, roles, templates | **NOT_IMPLEMENTED** |
-| Institutional policy objects (4 sentences above) | **NOT_IMPLEMENTED** |
-| Resource limits | **NOT_IMPLEMENTED** |
-| Supervisor review surface | **NOT_IMPLEMENTED** |
-| Education assistance levels | **NOT_IMPLEMENTED** |
-| Solution-write refusal in guided modes | **NOT_IMPLEMENTED** |
-| Learning-evidence record | **NOT_IMPLEMENTED** |
-| Provider policy (residency/offline/retention) | **NOT_IMPLEMENTED** |
-| Offline / no-AI deterministic mode | **PARTIAL** — the deterministic half works; no policy layer |
-| Multi-user identity | **NOT_IMPLEMENTED** |
+| Capability                                         | Status                                                      |
+| -------------------------------------------------- | ----------------------------------------------------------- |
+| Organisation / lab / course / research-group model | **NOT_IMPLEMENTED**                                         |
+| Members, roles, templates                          | **NOT_IMPLEMENTED**                                         |
+| Institutional policy objects (4 sentences above)   | **NOT_IMPLEMENTED**                                         |
+| Resource limits                                    | **NOT_IMPLEMENTED**                                         |
+| Supervisor review surface                          | **NOT_IMPLEMENTED**                                         |
+| Education assistance levels                        | **NOT_IMPLEMENTED**                                         |
+| Solution-write refusal in guided modes             | **NOT_IMPLEMENTED**                                         |
+| Learning-evidence record                           | **NOT_IMPLEMENTED**                                         |
+| Provider policy (residency/offline/retention)      | **NOT_IMPLEMENTED**                                         |
+| Offline / no-AI deterministic mode                 | **PARTIAL** — the deterministic half works; no policy layer |
+| Multi-user identity                                | **NOT_IMPLEMENTED**                                         |
 
 **Recommended sequencing, when funded:** (1) request-scoped actor identity; (2) provider policy
 object; (3) the four institutional policy sentences as data; (4) education assistance levels. Steps

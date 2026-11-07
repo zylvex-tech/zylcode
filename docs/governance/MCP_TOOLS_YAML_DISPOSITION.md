@@ -7,8 +7,8 @@ the canonical catalogue is committed in its place. The original is preserved
 untouched in the primary working tree (see §6).
 
 Authority: owner decision, Option C — controlled consolidation, unit 6.
-Requirement: *"No executable product capability may depend exclusively on an
-untracked developer-local file."*
+Requirement: _"No executable product capability may depend exclusively on an
+untracked developer-local file."_
 
 ---
 
@@ -17,12 +17,12 @@ untracked developer-local file."*
 It is not incidental configuration. It is the **live tool surface of the shipped
 desktop application**:
 
-| Site | Code |
-|---|---|
-| `crates/zylcode-mcp/src/lib.rs:73` | `env ZYLCODE_MCP_CONFIG`, default `"mcp.tools.yaml"` |
-| `apps/zylcode-desktop/src-tauri/src/main.rs:433` | `register_from_default_location(reg.as_ref())` |
-| `apps/zylcode-desktop/src-tauri/src/main.rs:727` | `register_from_default_location(reg.as_ref())` |
-| `apps/zylcode-desktop/src/components/McpInspector.tsx:87` | UI: *"No tools registered. Add `mcp.tools.yaml` → hot-reload."* |
+| Site                                                      | Code                                                            |
+| --------------------------------------------------------- | --------------------------------------------------------------- |
+| `crates/zylcode-mcp/src/lib.rs:73`                        | `env ZYLCODE_MCP_CONFIG`, default `"mcp.tools.yaml"`            |
+| `apps/zylcode-desktop/src-tauri/src/main.rs:433`          | `register_from_default_location(reg.as_ref())`                  |
+| `apps/zylcode-desktop/src-tauri/src/main.rs:727`          | `register_from_default_location(reg.as_ref())`                  |
+| `apps/zylcode-desktop/src/components/McpInspector.tsx:87` | UI: _"No tools registered. Add `mcp.tools.yaml` → hot-reload."_ |
 
 It is loaded by `register_from_default_location` → `register_from_config_file` →
 `register_from_config`, which wraps each entry in a `DynamicTool`.
@@ -34,13 +34,13 @@ nothing, and `.gitignore` has no entry. It was simply never added.
 
 ## 2. Comparison against the canonical catalogue and the executor factory
 
-| Measure | Value |
-|---|---|
-| Entries in the untracked file | **30** |
+| Measure                           | Value  |
+| --------------------------------- | ------ |
+| Entries in the untracked file     | **30** |
 | Real executors in `get_real_tool` | **12** |
-| Entries that have a real executor | **9** |
-| **Entries with no executor** | **21** |
-| Executors absent from the file | **3** |
+| Entries that have a real executor | **9**  |
+| **Entries with no executor**      | **21** |
+| Executors absent from the file    | **3**  |
 
 **The 9 that work:** `fs.read`, `fs.write`, `fs.list`, `git.status`, `git.diff`,
 `git.commit`, `npm.run`, `search.find`, `search.grep`
@@ -61,9 +61,9 @@ nothing, and `.gitignore` has no entry. It was simply never added.
 
 ### 2.1 Two entries reference files that do not exist
 
-| id | command | reality |
-|---|---|---|
-| `ai.train` | `python train.py --model {{model}}` | `train.py` does not exist in the repository |
+| id            | command                                | reality                                        |
+| ------------- | -------------------------------------- | ---------------------------------------------- |
+| `ai.train`    | `python train.py --model {{model}}`    | `train.py` does not exist in the repository    |
 | `ai.evaluate` | `python evaluate.py --model {{model}}` | `evaluate.py` does not exist in the repository |
 
 These are the same defect class as the bridge simulator: a tool present in the
@@ -83,8 +83,8 @@ The real executor **ignores these**. `GitTool` is bound to `git commit` by its
 tool id and builds its own argument vector from `message` / `files`. The same is
 true for `npm.run` (`npm run` + caller args), `cargo.test`, and the rest.
 
-That is now enforced rather than incidental: the security commit *"bind tool IDs
-to permitted operations"* made a caller-supplied program or subcommand a
+That is now enforced rather than incidental: the security commit _"bind tool IDs
+to permitted operations"_ made a caller-supplied program or subcommand a
 hard refusal. So the `command` field is schema-compatibility ballast, and a
 reader who believes it is the executed command is misled.
 
@@ -93,7 +93,7 @@ reader who believes it is the executed command is misled.
 ## 3. What changed underneath this file
 
 Before this consolidation, a `DynamicTool` whose id had no executor returned
-`Ok({"status": "unsupported_mock", "echo": params})` — a *successful* result for
+`Ok({"status": "unsupported_mock", "echo": params})` — a _successful_ result for
 a call that executed nothing. The 21 non-executable entries therefore appeared to
 work.
 
@@ -109,13 +109,13 @@ defect reappearing in configuration form.
 
 ## 4. Options considered
 
-| Option | Assessment |
-|---|---|
-| **COMMIT** the file as-is | **Rejected.** Ships 21 entries that now fail closed, plus 2 references to non-existent scripts. Converts a fabricated *implementation* into a fabricated *configuration*. |
-| **REGENERATE** from the catalogue | **Chosen.** Every entry then has a real executor by construction, and the file can be checked against the catalogue mechanically. |
-| **REPLACE** the mechanism | **Rejected as unnecessary.** `register_from_config_file` works correctly; the loader is not the problem. Replacing it would be churn. |
-| **REMOVE** the file | **Rejected.** The product would register zero tools. The UI already tells users to add this file; removing the mechanism without a replacement leaves the desktop app inert. |
-| **QUARANTINE** (leave untracked) | **Rejected.** This is the status quo and is precisely the criterion that fails. An untracked file is not shipped, not reviewed, and not reproducible. |
+| Option                            | Assessment                                                                                                                                                                   |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **COMMIT** the file as-is         | **Rejected.** Ships 21 entries that now fail closed, plus 2 references to non-existent scripts. Converts a fabricated _implementation_ into a fabricated _configuration_.    |
+| **REGENERATE** from the catalogue | **Chosen.** Every entry then has a real executor by construction, and the file can be checked against the catalogue mechanically.                                            |
+| **REPLACE** the mechanism         | **Rejected as unnecessary.** `register_from_config_file` works correctly; the loader is not the problem. Replacing it would be churn.                                        |
+| **REMOVE** the file               | **Rejected.** The product would register zero tools. The UI already tells users to add this file; removing the mechanism without a replacement leaves the desktop app inert. |
+| **QUARANTINE** (leave untracked)  | **Rejected.** This is the status quo and is precisely the criterion that fails. An untracked file is not shipped, not reviewed, and not reproducible.                        |
 
 ---
 
@@ -124,15 +124,15 @@ defect reappearing in configuration form.
 Committed as `mcp.tools.yaml` at the repository root, derived from
 `Catalogue::canonical().executable_ids()`:
 
-* exactly the **20** ids that have a real executor (12 general-purpose plus the 8
+- exactly the **20** ids that have a real executor (12 general-purpose plus the 8
   read-only `nav.*` repository-intelligence tools);
-* `command: "builtin"` throughout, because the executors are bound by id and no
+- `command: "builtin"` throughout, because the executors are bound by id and no
   caller-supplied program is honoured — the field is present only because
   `McpToolConfig` requires it;
-* the 21 unsupported entries retained under a top-level `proposed:` key, which
+- the 21 unsupported entries retained under a top-level `proposed:` key, which
   the loader does not read, so their schemas are preserved without presenting
   them as executable;
-* the two broken script references recorded, not enabled.
+- the two broken script references recorded, not enabled.
 
 Invariant to check mechanically:
 

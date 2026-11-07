@@ -36,71 +36,71 @@ _Copy this block once per tester. **Leave empty until a real tester runs it.**_
 
 ### Tester `T-___`
 
-| Field | Value |
-|---|---|
-| Name or agreed identifier | |
-| Consent to be named / anonymised use of evidence | |
-| **External or core team** | |
-| Technical background | |
-| Location / timezone | |
-| Operating system | |
-| CPU / system RAM | |
-| GPU / VRAM | |
-| Runtime (Ollama version, model tag) | |
-| Repository used | |
-| Repository size | |
-| Language(s) covered | |
-| Session start (ISO 8601) | |
-| Session end (ISO 8601) | |
-| Total elapsed (measured) | |
+| Field                                            | Value |
+| ------------------------------------------------ | ----- |
+| Name or agreed identifier                        |       |
+| Consent to be named / anonymised use of evidence |       |
+| **External or core team**                        |       |
+| Technical background                             |       |
+| Location / timezone                              |       |
+| Operating system                                 |       |
+| CPU / system RAM                                 |       |
+| GPU / VRAM                                       |       |
+| Runtime (Ollama version, model tag)              |       |
+| Repository used                                  |       |
+| Repository size                                  |       |
+| Language(s) covered                              |       |
+| Session start (ISO 8601)                         |       |
+| Session end (ISO 8601)                           |       |
+| Total elapsed (measured)                         |       |
 
 #### Test results
 
-| Test | What it checks | Outcome | Elapsed | N-ATLAS evidence id | Verification result | Notes |
-|---|---|---|---|---|---|---|
-| **A** | Installation / onboarding | | | | | |
-| **B** | Connection — is the runtime genuinely N-ATLAS? | | | | | |
-| **C** | Repository workflow | | | | | |
-| **D** | Developer task | | | | | |
-| **E** | N-ATLAS interpretation → structured intent | | | | | |
-| **F** | Approval gate understood and exercised | | | | | |
-| **G** | Controlled execution | | | | | |
-| **H** | Verification — actual result exposed | | | | | |
-| **I** | Evidence record located | | | | | |
-| **J** | Usability — explain success/failure/confusion | | | | | |
+| Test  | What it checks                                 | Outcome | Elapsed | N-ATLAS evidence id | Verification result | Notes |
+| ----- | ---------------------------------------------- | ------- | ------- | ------------------- | ------------------- | ----- |
+| **A** | Installation / onboarding                      |         |         |                     |                     |       |
+| **B** | Connection — is the runtime genuinely N-ATLAS? |         |         |                     |                     |       |
+| **C** | Repository workflow                            |         |         |                     |                     |       |
+| **D** | Developer task                                 |         |         |                     |                     |       |
+| **E** | N-ATLAS interpretation → structured intent     |         |         |                     |                     |       |
+| **F** | Approval gate understood and exercised         |         |         |                     |                     |       |
+| **G** | Controlled execution                           |         |         |                     |                     |       |
+| **H** | Verification — actual result exposed           |         |         |                     |                     |       |
+| **I** | Evidence record located                        |         |         |                     |                     |       |
+| **J** | Usability — explain success/failure/confusion  |         |         |                     |                     |       |
 
 #### Exact task and prompt
 
-| Field | Value |
-|---|---|
-| Exact instruction given (verbatim) | |
-| Language of the instruction | |
-| Repository context sent (paths) | |
-| Raw model response location | |
-| Parsed intent result | |
-| Was the intent contract satisfied? | |
-| Operation proposed | |
-| Operation approved / rejected | |
-| Observed language quality | |
-| Failure / limitations observed | |
+| Field                              | Value |
+| ---------------------------------- | ----- |
+| Exact instruction given (verbatim) |       |
+| Language of the instruction        |       |
+| Repository context sent (paths)    |       |
+| Raw model response location        |       |
+| Parsed intent result               |       |
+| Was the intent contract satisfied? |       |
+| Operation proposed                 |       |
+| Operation approved / rejected      |       |
+| Observed language quality          |       |
+| Failure / limitations observed     |       |
 
 #### Feedback
 
-| Field | Value |
-|---|---|
-| Rating (1–5) | |
-| Observations | |
-| Verbatim feedback | |
-| Issues discovered | |
-| Resolution | |
+| Field             | Value |
+| ----------------- | ----- |
+| Rating (1–5)      |       |
+| Observations      |       |
+| Verbatim feedback |       |
+| Issues discovered |       |
+| Resolution        |       |
 
 ---
 
 ## Log index
 
-| # | Tester | External? | Date | Languages | Tests attempted | Tests passed | Evidence ids |
-|---|---|---|---|---|---|---|---|
-| — | — | — | — | — | — | — | — |
+| #   | Tester | External? | Date | Languages | Tests attempted | Tests passed | Evidence ids |
+| --- | ------ | --------- | ---- | --------- | --------------- | ------------ | ------------ |
+| —   | —      | —         | —    | —         | —               | —            | —            |
 
 **Tester blocks recorded: 0**
 
@@ -108,17 +108,17 @@ _Copy this block once per tester. **Leave empty until a real tester runs it.**_
 
 ## Summary (to be completed only when real tester blocks exist)
 
-| Metric | Value |
-|---|---|
-| External testers | **0** |
-| Core-team members counted as external | **0** (must remain 0) |
-| Tests attempted (A–J) | 0 |
-| Tests succeeded | 0 |
-| Tests failed | 0 |
-| Median elapsed time | not measured |
-| Mean rating | not measured |
-| Languages validated with genuine N-ATLAS | none |
-| Issues discovered | 0 |
-| Issues resolved | 0 |
+| Metric                                   | Value                 |
+| ---------------------------------------- | --------------------- |
+| External testers                         | **0**                 |
+| Core-team members counted as external    | **0** (must remain 0) |
+| Tests attempted (A–J)                    | 0                     |
+| Tests succeeded                          | 0                     |
+| Tests failed                             | 0                     |
+| Median elapsed time                      | not measured          |
+| Mean rating                              | not measured          |
+| Languages validated with genuine N-ATLAS | none                  |
+| Issues discovered                        | 0                     |
+| Issues resolved                          | 0                     |
 
 **Do not fill this summary until the log above contains real tester blocks.**

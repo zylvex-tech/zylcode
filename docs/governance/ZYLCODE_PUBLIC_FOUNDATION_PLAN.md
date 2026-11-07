@@ -6,7 +6,7 @@
 **Governing docs:** `ZYLCODE_COMMERCIAL_MODEL.md` · `ZYLCODE_PUBLIC_COMMUNICATION_POLICY.md` ·
 `ZYLCODE_AGENT_OPERATING_PROTOCOL.md` §4.7–§4.8. Full set in §9.
 
-> **This plan sits *alongside* the 16-phase engineering roadmap, not inside it.**
+> **This plan sits _alongside_ the 16-phase engineering roadmap, not inside it.**
 > The engineering roadmap (`ZYLCODE_ROADMAP_V2.md`) owns product capability. This plan owns public
 > identity: GitHub, community, development log, design system, website, cloud architecture, and
 > release communication. The two run in parallel. Neither is gated on the other except where §7
@@ -48,42 +48,42 @@ Zylvex Technologies Ltd            (parent technology company)
 
 ### 3.1 `PUBLIC-FOUNDATION` — public, community, web, release communication
 
-| Milestone | Work | Gate to start |
-|---|---|---|
-| **PUBLIC-FOUNDATION-01** | GitHub About/topics/metadata audit + reconciliation | Metadata access — **NOW** |
-| **PUBLIC-FOUNDATION-02** | OSS community foundation (CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, SUPPORT, issue/PR templates) | Repo access — **NOW** |
-| **PUBLIC-FOUNDATION-03** | Development-log infrastructure (`docs/devlog/`) + editorial | None — **NOW** |
-| **PUBLIC-FOUNDATION-04** | Website truth audit → **Public Claim Matrix** | Access to current sites/repos — **NOW** |
-| **PUBLIC-FOUNDATION-05** | Unified design system (foundations + components) | Brand assets/decisions — **NOW** |
-| **PUBLIC-FOUNDATION-06** | Penpot MCP commissioning (read-only first) | MCP/account connection — **NOW** |
-| **PUBLIC-FOUNDATION-07** | ZylForge.com information architecture | PUBLIC-FOUNDATION-04 |
-| **PUBLIC-FOUNDATION-08** | Website UX/UI design (Penpot) | IA + Claim Matrix + Penpot commissioned |
-| **PUBLIC-FOUNDATION-09** | Website implementation | Key designs accepted |
-| **PUBLIC-FOUNDATION-10** | Developer Preview funnel (signup, privacy, confirmation) | Privacy/contact workflow — **NOW** |
-| **PUBLIC-FOUNDATION-11** | Public benchmark specification + **foundation** (repository later) | None — **NOW** |
-| **PUBLIC-FOUNDATION-12** | Developer Preview launch readiness | Release gates for the preview build |
+| Milestone                | Work                                                                                            | Gate to start                           |
+| ------------------------ | ----------------------------------------------------------------------------------------------- | --------------------------------------- |
+| **PUBLIC-FOUNDATION-01** | GitHub About/topics/metadata audit + reconciliation                                             | Metadata access — **NOW**               |
+| **PUBLIC-FOUNDATION-02** | OSS community foundation (CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, SUPPORT, issue/PR templates) | Repo access — **NOW**                   |
+| **PUBLIC-FOUNDATION-03** | Development-log infrastructure (`docs/devlog/`) + editorial                                     | None — **NOW**                          |
+| **PUBLIC-FOUNDATION-04** | Website truth audit → **Public Claim Matrix**                                                   | Access to current sites/repos — **NOW** |
+| **PUBLIC-FOUNDATION-05** | Unified design system (foundations + components)                                                | Brand assets/decisions — **NOW**        |
+| **PUBLIC-FOUNDATION-06** | Penpot MCP commissioning (read-only first)                                                      | MCP/account connection — **NOW**        |
+| **PUBLIC-FOUNDATION-07** | ZylForge.com information architecture                                                           | PUBLIC-FOUNDATION-04                    |
+| **PUBLIC-FOUNDATION-08** | Website UX/UI design (Penpot)                                                                   | IA + Claim Matrix + Penpot commissioned |
+| **PUBLIC-FOUNDATION-09** | Website implementation                                                                          | Key designs accepted                    |
+| **PUBLIC-FOUNDATION-10** | Developer Preview funnel (signup, privacy, confirmation)                                        | Privacy/contact workflow — **NOW**      |
+| **PUBLIC-FOUNDATION-11** | Public benchmark specification + **foundation** (repository later)                              | None — **NOW**                          |
+| **PUBLIC-FOUNDATION-12** | Developer Preview launch readiness                                                              | Release gates for the preview build     |
 
 ### 3.2 `DESIGN-SYSTEM` — the design program (replaces any "Phase 7" design conflation)
 
-| Milestone | Work |
-|---|---|
-| **DESIGN-SYSTEM-01** | Brand foundations |
-| **DESIGN-SYSTEM-02** | Semantic tokens (W3C DTCG) |
-| **DESIGN-SYSTEM-03** | Core component library |
-| **DESIGN-SYSTEM-04** | Penpot MCP commissioning |
-| **DESIGN-SYSTEM-05** | ZylForge.com UX |
-| **DESIGN-SYSTEM-06** | ZylCode UX (concepts, labelled) |
-| **DESIGN-SYSTEM-07** | ZylForge Engineering UX |
+| Milestone            | Work                               |
+| -------------------- | ---------------------------------- |
+| **DESIGN-SYSTEM-01** | Brand foundations                  |
+| **DESIGN-SYSTEM-02** | Semantic tokens (W3C DTCG)         |
+| **DESIGN-SYSTEM-03** | Core component library             |
+| **DESIGN-SYSTEM-04** | Penpot MCP commissioning           |
+| **DESIGN-SYSTEM-05** | ZylForge.com UX                    |
+| **DESIGN-SYSTEM-06** | ZylCode UX (concepts, labelled)    |
+| **DESIGN-SYSTEM-07** | ZylForge Engineering UX            |
 | **DESIGN-SYSTEM-08** | Design ↔ implementation validation |
 
 **Later:** feeds governing **Vision Studio 8A–9**. It does **not** replace that phase.
 
 ### 3.3 `CLOUD-PLATFORM` — web/cloud architecture (not a roadmap phase)
 
-| Milestone | Work |
-|---|---|
-| **CLOUD-PLATFORM-01** | Cloudflare edge only (DNS, TLS, CDN, WAF, DDoS) for the public site |
-| **CLOUD-PLATFORM-02** | ZylForge.com static + contact/funnel backend |
+| Milestone             | Work                                                                                                          |
+| --------------------- | ------------------------------------------------------------------------------------------------------------- |
+| **CLOUD-PLATFORM-01** | Cloudflare edge only (DNS, TLS, CDN, WAF, DDoS) for the public site                                           |
+| **CLOUD-PLATFORM-02** | ZylForge.com static + contact/funnel backend                                                                  |
 | **CLOUD-PLATFORM-03** | AWS only when backend requirements justify it (identity, services, storage, marketplace backend, remote jobs) |
 
 **Rule (carried from the master prompt):** do not provision expensive AWS infrastructure for
@@ -101,25 +101,25 @@ label feature-internal milestones and live in source comments. They are not road
 The gating is **per-work-item**, not per-program. A large block of public-foundation work starts
 immediately; the part that could outrun engineering is held.
 
-| Track | Start | Gate |
-|---|---|---|
-| GitHub About/topics | **NOW** | Metadata access |
-| Community files | **NOW** | Repository access |
-| Discussions | **NOW** | GitHub admin access |
-| Devlog infrastructure | **NOW** | None |
-| Screen-recording protocol | **NOW** | None |
-| Website truth audit | **NOW** | Site/repo access |
-| ZylForge.com IA | **NOW** | Truth audit |
-| Design system | **NOW** | Brand decisions |
-| Penpot commissioning | **NOW** | MCP/account connection |
-| ZylCode concept UI | **NOW** | Must be labelled `CONCEPT` |
-| Public benchmark spec | **NOW** | None |
-| Public benchmark *claims* | **LATER** | Reproducible independent runs |
-| Website UX/UI | After IA + Claim Matrix | Penpot commissioned |
-| Website implementation | After key designs accepted | IA/design accepted |
-| Developer Preview signup | **NOW** | Privacy/contact workflow |
-| Developer Preview download | **LATER** | Release gates |
-| Paid ZylCode | **LATER** | Relevant commercial gate (Commercial Model §4) |
+| Track                      | Start                      | Gate                                           |
+| -------------------------- | -------------------------- | ---------------------------------------------- |
+| GitHub About/topics        | **NOW**                    | Metadata access                                |
+| Community files            | **NOW**                    | Repository access                              |
+| Discussions                | **NOW**                    | GitHub admin access                            |
+| Devlog infrastructure      | **NOW**                    | None                                           |
+| Screen-recording protocol  | **NOW**                    | None                                           |
+| Website truth audit        | **NOW**                    | Site/repo access                               |
+| ZylForge.com IA            | **NOW**                    | Truth audit                                    |
+| Design system              | **NOW**                    | Brand decisions                                |
+| Penpot commissioning       | **NOW**                    | MCP/account connection                         |
+| ZylCode concept UI         | **NOW**                    | Must be labelled `CONCEPT`                     |
+| Public benchmark spec      | **NOW**                    | None                                           |
+| Public benchmark _claims_  | **LATER**                  | Reproducible independent runs                  |
+| Website UX/UI              | After IA + Claim Matrix    | Penpot commissioned                            |
+| Website implementation     | After key designs accepted | IA/design accepted                             |
+| Developer Preview signup   | **NOW**                    | Privacy/contact workflow                       |
+| Developer Preview download | **LATER**                  | Release gates                                  |
+| Paid ZylCode               | **LATER**                  | Relevant commercial gate (Commercial Model §4) |
 
 This gives parallelism **without** letting the marketing surface outrun engineering.
 
@@ -207,7 +207,7 @@ Most software sites hide maturity. ZylForge **exposes** it — this is aligned w
 ## 7. Engineering Unlocks (explicit, narrow)
 
 The engineering roadmap **does not block** website design or community building. It unlocks
-*specific* public *activities*, and only those.
+_specific_ public _activities_, and only those.
 
 ```
 Engineering Phase 2A            → does NOT block website design
@@ -227,11 +227,11 @@ devlog, or the community. Conflating the two is the error this plan prevents.
 
 The three products share an **interaction grammar** ending in **Evidence**:
 
-| Product | Grammar |
-|---|---|
-| ZylCode | `Project → Mission → Work → Evidence` |
-| ZylForge Engineering | `Project → Engineering Task → Work → Evidence` |
-| Website | `Product → Capability → Demonstration → Evidence` |
+| Product              | Grammar                                           |
+| -------------------- | ------------------------------------------------- |
+| ZylCode              | `Project → Mission → Work → Evidence`             |
+| ZylForge Engineering | `Project → Engineering Task → Work → Evidence`    |
+| Website              | `Product → Capability → Demonstration → Evidence` |
 
 **Evidence is the common endpoint.** This is the strongest unifying characteristic of the ZylForge
 design language, and it is constitutional: the product's whole claim is verifiable work. The website
@@ -243,18 +243,18 @@ should make the evidence link first-class on every capability card.
 
 This plan coordinates the following. All are authoritative; none is a phase.
 
-| Document | Owns |
-|---|---|
-| `ZYLCODE_PRODUCT_CONSTITUTION_V2.md` | Supreme spec |
-| `ZYLCODE_ARCHITECTURE_V2.md` | System topology |
-| `ZYLCODE_MASTER_EXECUTION_PLAN.md` | 16-phase engineering program |
-| `ZYLCODE_ROADMAP_V2.md` | Per-phase engineering detail |
-| `ZYLCODE_CAPABILITY_MODEL.md` | Capability/status vocabulary (R0–R5) |
-| `ZYLCODE_PROOF_GRAPH.md` | Proof ladder |
-| `ZYLCODE_COMMERCIAL_MODEL.md` | Commercial activation ladder (Level 0 permitted now) |
+| Document                                 | Owns                                                                        |
+| ---------------------------------------- | --------------------------------------------------------------------------- |
+| `ZYLCODE_PRODUCT_CONSTITUTION_V2.md`     | Supreme spec                                                                |
+| `ZYLCODE_ARCHITECTURE_V2.md`             | System topology                                                             |
+| `ZYLCODE_MASTER_EXECUTION_PLAN.md`       | 16-phase engineering program                                                |
+| `ZYLCODE_ROADMAP_V2.md`                  | Per-phase engineering detail                                                |
+| `ZYLCODE_CAPABILITY_MODEL.md`            | Capability/status vocabulary (R0–R5)                                        |
+| `ZYLCODE_PROOF_GRAPH.md`                 | Proof ladder                                                                |
+| `ZYLCODE_COMMERCIAL_MODEL.md`            | Commercial activation ladder (Level 0 permitted now)                        |
 | `ZYLCODE_PUBLIC_COMMUNICATION_POLICY.md` | What may be said publicly, status vocabulary, screenshot rule, claim matrix |
-| `ZYLCODE_PUBLIC_FOUNDATION_PLAN.md` | This plan (tracks + gates) |
-| `ZYLCODE_AGENT_OPERATING_PROTOCOL.md` | How agents work (§4.7 phase rule, §4.8 superseded-doc rule) |
+| `ZYLCODE_PUBLIC_FOUNDATION_PLAN.md`      | This plan (tracks + gates)                                                  |
+| `ZYLCODE_AGENT_OPERATING_PROTOCOL.md`    | How agents work (§4.7 phase rule, §4.8 superseded-doc rule)                 |
 
 The execution prompt given to the implementation agent is
 `docs/governance/DEEPSEEK_PUBLIC_FOUNDATION_PROMPT_V1.md`.

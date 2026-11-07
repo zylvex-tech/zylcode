@@ -15,18 +15,18 @@ inspect). No result is reported as passing on the strength of an earlier commit.
 
 ## 1. Executive summary
 
-| # | Question | Result | Classification |
-|---|---|---|---|
-| 1 | Are PR #23 and PR #24 merged into `main`? | Yes — `main` @ `3bd5059` | **VERIFIED** |
-| 2 | Is the router egress-spy fix present in `main`'s tree? | Yes | **VERIFIED** |
-| 3 | Is the `lru`/Tokio dependency fix present in `main`'s tree? | Yes | **VERIFIED** |
-| 4 | Did CI pass on the **final `main` commit**? | Yes — CI run #120 and Coverage run #16, both `success` | **VERIFIED** |
-| 5 | Did any check fail anywhere in the merge chain? | Yes — CI run #118 on the intermediate merge commit `184e178`, macOS job | **VERIFIED (failure, since superseded)** |
-| 6 | Are the `lru` unsound advisories resolved? | Yes — `lru` 0.18.5, both advisories absent from the audit | **VERIFIED** |
-| 7 | Is the Tokio yanked-release issue resolved? | Yes — Tokio 1.54.1, no `yanked` warnings | **VERIFIED** |
-| 8 | Are any *vulnerable* advisories outstanding? | No — 0 vulnerabilities, 3 informational warnings | **VERIFIED** |
-| 9 | Is `main` protected by branch protection or a ruleset? | **No at audit time** — remediated 2026-10-22 14:19 UTC, see §5.2 | **FAILED (then) / REMEDIATED (now)** |
-| 10 | Is the repository ready for a DataFactor re-submission? | Substantially, with two governance gaps (§6) | **VERIFIED (conditional)** |
+| #   | Question                                                    | Result                                                                  | Classification                           |
+| --- | ----------------------------------------------------------- | ----------------------------------------------------------------------- | ---------------------------------------- |
+| 1   | Are PR #23 and PR #24 merged into `main`?                   | Yes — `main` @ `3bd5059`                                                | **VERIFIED**                             |
+| 2   | Is the router egress-spy fix present in `main`'s tree?      | Yes                                                                     | **VERIFIED**                             |
+| 3   | Is the `lru`/Tokio dependency fix present in `main`'s tree? | Yes                                                                     | **VERIFIED**                             |
+| 4   | Did CI pass on the **final `main` commit**?                 | Yes — CI run #120 and Coverage run #16, both `success`                  | **VERIFIED**                             |
+| 5   | Did any check fail anywhere in the merge chain?             | Yes — CI run #118 on the intermediate merge commit `184e178`, macOS job | **VERIFIED (failure, since superseded)** |
+| 6   | Are the `lru` unsound advisories resolved?                  | Yes — `lru` 0.18.5, both advisories absent from the audit               | **VERIFIED**                             |
+| 7   | Is the Tokio yanked-release issue resolved?                 | Yes — Tokio 1.54.1, no `yanked` warnings                                | **VERIFIED**                             |
+| 8   | Are any _vulnerable_ advisories outstanding?                | No — 0 vulnerabilities, 3 informational warnings                        | **VERIFIED**                             |
+| 9   | Is `main` protected by branch protection or a ruleset?      | **No at audit time** — remediated 2026-10-22 14:19 UTC, see §5.2        | **FAILED (then) / REMEDIATED (now)**     |
+| 10  | Is the repository ready for a DataFactor re-submission?     | Substantially, with two governance gaps (§6)                            | **VERIFIED (conditional)**               |
 
 **The one-sentence answer:** both fixes are merged, CI is green on the resulting
 `main` commit with 840 passing tests on each of three operating systems and zero
@@ -34,7 +34,6 @@ Clippy lints, the dependency exposure that blocked the earlier review is closed,
 the remaining risks are governance-shaped rather than code-shaped — `main` is
 unprotected, and one flaky macOS test was observed on an intermediate commit before
 the fix landed.
-
 
 ---
 
@@ -53,9 +52,9 @@ ea23092  Merge pull request #22 from zylvex-tech/ci/coverage-fetch-depth
 
 ### 2.2 Pull requests
 
-| PR | Title | State | Merged at (UTC) | Head SHA | Merge commit |
-|---|---|---|---|---|---|
-| #23 | `fix: isolate router egress spy across parallel tests` | MERGED | 2026-10-22T11:32:49Z | `1aaca56fdba9c6168fcce8db3af72c19fc71c380` | `3bd50599e70942a7bc00c50e4f83f12db8fdebce` |
+| PR  | Title                                                                                    | State  | Merged at (UTC)      | Head SHA                                   | Merge commit                               |
+| --- | ---------------------------------------------------------------------------------------- | ------ | -------------------- | ------------------------------------------ | ------------------------------------------ |
+| #23 | `fix: isolate router egress spy across parallel tests`                                   | MERGED | 2026-10-22T11:32:49Z | `1aaca56fdba9c6168fcce8db3af72c19fc71c380` | `3bd50599e70942a7bc00c50e4f83f12db8fdebce` |
 | #24 | `fix(deps): move lru off 0.12.5 (two unsound advisories) and tokio off a yanked release` | MERGED | 2026-10-22T11:18:19Z | `f0c729b0477c005ce7bfb37a202565d06dcd58f7` | `184e178c0d33a8241b6a21b5529d10e6625733d5` |
 
 Both were merged with the **merge-commit** strategy (not squash, not rebase), so the
@@ -64,16 +63,16 @@ CI comparison in §3 possible.
 
 ### 2.3 Both changes are present in `main`'s tree — VERIFIED
 
-| Change | Evidence in `main`'s tree | Classification |
-|---|---|---|
-| `lru` requirement | `Cargo.toml:67` → `lru = "0.18"` | **VERIFIED** |
-| `lru` resolution | `Cargo.lock` → `lru` **0.18.5** (blob `8a02bffb…`) | **VERIFIED** |
-| Tokio resolution | `Cargo.lock` → `tokio` **1.54.1** | **VERIFIED** |
-| `tokio` requirement | `Cargo.toml:37` unchanged at `version = "1.38"` | **VERIFIED** |
-| Router egress spy | `thread_local!` with `const { Cell::new(0) }` in `crates/zylcode-core/src/router.rs` | **VERIFIED** |
-| Egress increment site | 1 increment site, gated by `#[cfg(test)]` | **VERIFIED** |
-| Egress assertions | 4 assertion sites, all intact | **VERIFIED** |
-| `.env.example` | present, 5,200 bytes, 19 variables, all empty placeholders | **VERIFIED** |
+| Change                | Evidence in `main`'s tree                                                            | Classification |
+| --------------------- | ------------------------------------------------------------------------------------ | -------------- |
+| `lru` requirement     | `Cargo.toml:67` → `lru = "0.18"`                                                     | **VERIFIED**   |
+| `lru` resolution      | `Cargo.lock` → `lru` **0.18.5** (blob `8a02bffb…`)                                   | **VERIFIED**   |
+| Tokio resolution      | `Cargo.lock` → `tokio` **1.54.1**                                                    | **VERIFIED**   |
+| `tokio` requirement   | `Cargo.toml:37` unchanged at `version = "1.38"`                                      | **VERIFIED**   |
+| Router egress spy     | `thread_local!` with `const { Cell::new(0) }` in `crates/zylcode-core/src/router.rs` | **VERIFIED**   |
+| Egress increment site | 1 increment site, gated by `#[cfg(test)]`                                            | **VERIFIED**   |
+| Egress assertions     | 4 assertion sites, all intact                                                        | **VERIFIED**   |
+| `.env.example`        | present, 5,200 bytes, 19 variables, all empty placeholders                           | **VERIFIED**   |
 
 `main`'s `Cargo.lock` and `Cargo.toml` blobs (`8a02bffb…`, `6acc2db…`) are
 **byte-identical** to those of `f0c729b`, confirming PR #24's content reached `main`
@@ -82,12 +81,11 @@ unaltered. Dependency count fell from 598 to **595** packages: `allocator-api2`
 
 ### 2.4 Untouched by this changeset
 
-| Item | State | Classification |
-|---|---|---|
-| `competition/natlas-2026` | unchanged at `2fb7a817ab036c2e46c6f04406331930d34e5677` | **VERIFIED** |
-| Both feature branches | still present on the remote, not deleted | **VERIFIED** |
-| Force-pushes / history rewrites | none performed | **VERIFIED** |
-
+| Item                            | State                                                   | Classification |
+| ------------------------------- | ------------------------------------------------------- | -------------- |
+| `competition/natlas-2026`       | unchanged at `2fb7a817ab036c2e46c6f04406331930d34e5677` | **VERIFIED**   |
+| Both feature branches           | still present on the remote, not deleted                | **VERIFIED**   |
+| Force-pushes / history rewrites | none performed                                          | **VERIFIED**   |
 
 ---
 
@@ -99,10 +97,10 @@ claims and they are reported separately below.
 
 ### 3.1 Workflow runs triggered by the `3bd5059` push
 
-| Workflow | Run | Event | Conclusion | Created (UTC) | Finished (UTC) |
-|---|---|---|---|---|---|
-| CI | #120 (`39771400143`) | `push` | **success** | 11:32:53 | 12:00:13 |
-| Coverage | #16 (`39771400207`) | `push` | **success** | 11:32:53 | 11:38:49 |
+| Workflow | Run                  | Event  | Conclusion  | Created (UTC) | Finished (UTC) |
+| -------- | -------------------- | ------ | ----------- | ------------- | -------------- |
+| CI       | #120 (`39771400143`) | `push` | **success** | 11:32:53      | 12:00:13       |
+| Coverage | #16 (`39771400207`)  | `push` | **success** | 11:32:53      | 11:38:49       |
 
 No `release` workflow ran: `ci.yml` and `coverage.yml` both filter on `branches:`
 only, and the historical `release.yml` filters on `tags:` only, so a branch push
@@ -110,12 +108,12 @@ correctly triggers exactly these two.
 
 ### 3.2 Check runs attached to `3bd5059` — VERIFIED
 
-| Check run | Conclusion | Completed (UTC) |
-|---|---|---|
-| `check / test / frontend (ubuntu-22.04)` | **success** | 12:00:12 |
-| `check / test / frontend (windows-latest)` | **success** | 11:41:21 |
-| `check / test / frontend (macos-latest)` | **success** | 11:39:21 |
-| `coverage` | **success** | 11:38:49 |
+| Check run                                  | Conclusion  | Completed (UTC) |
+| ------------------------------------------ | ----------- | --------------- |
+| `check / test / frontend (ubuntu-22.04)`   | **success** | 12:00:12        |
+| `check / test / frontend (windows-latest)` | **success** | 11:41:21        |
+| `check / test / frontend (macos-latest)`   | **success** | 11:39:21        |
+| `coverage`                                 | **success** | 11:38:49        |
 
 **Honest timing note.** When the check-run set was first queried at 11:55:28Z, the
 `ubuntu-22.04` job was still `in_progress` with no conclusion. It was **not** reported
@@ -128,21 +126,21 @@ as passing at that point. It was re-queried until it completed at 12:00:12Z with
 The Linux job is the strictest of the three: `cargo clippy -- -D warnings` is
 `continue-on-error` on Windows and macOS but a **hard gate** on Linux.
 
-| Step | Observed output | Classification |
-|---|---|---|
-| `cargo check --workspace --all-targets` | `Finished dev profile` | **VERIFIED** |
-| `cargo clippy --workspace --all-targets -- -D warnings` | `Finished dev profile` — **0 lints** | **VERIFIED** |
-| `cargo fmt --all -- --check` | no diff emitted | **VERIFIED** |
-| `cargo test --workspace --all-targets` | **840 passed, 0 failed** across 30 test binaries | **VERIFIED** |
-| `check_retracted_claims.py` | `OK: no NEW retracted claims (11 pre-existing baselined occurrence(s), 11 baseline line(s))` | **VERIFIED** |
-| `cargo audit` | `3 allowed warnings found`, 0 vulnerabilities, exit 0 | **VERIFIED** |
-| `pnpm audit --prod` | `No known vulnerabilities found` | **VERIFIED** |
-| `check_hardcoded_secrets.py` | `secret scan: clean -- no credential-shaped literal in tracked files.` | **VERIFIED** |
-| `pnpm --filter zylcode-desktop lint` | warnings only (36 accepted, itemised in `ACCEPTED_LINT_WARNINGS.md`); 0 errors | **VERIFIED** |
-| `pnpm --filter zylcode-desktop format:check` | `Checking formatting...` — no violations | **VERIFIED** |
-| `pnpm --filter @zylvex/natlas-bridge typecheck` | exit 0 | **VERIFIED** |
-| `node --experimental-strip-types apps/natlas-sdk/test/smoke.mjs` | 16 assertions, all `ok` | **VERIFIED** |
-| `pnpm --filter zylcode-desktop build` | `✓ 470 modules transformed.` / `✓ built in 2.76s` | **VERIFIED** |
+| Step                                                             | Observed output                                                                              | Classification |
+| ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | -------------- |
+| `cargo check --workspace --all-targets`                          | `Finished dev profile`                                                                       | **VERIFIED**   |
+| `cargo clippy --workspace --all-targets -- -D warnings`          | `Finished dev profile` — **0 lints**                                                         | **VERIFIED**   |
+| `cargo fmt --all -- --check`                                     | no diff emitted                                                                              | **VERIFIED**   |
+| `cargo test --workspace --all-targets`                           | **840 passed, 0 failed** across 30 test binaries                                             | **VERIFIED**   |
+| `check_retracted_claims.py`                                      | `OK: no NEW retracted claims (11 pre-existing baselined occurrence(s), 11 baseline line(s))` | **VERIFIED**   |
+| `cargo audit`                                                    | `3 allowed warnings found`, 0 vulnerabilities, exit 0                                        | **VERIFIED**   |
+| `pnpm audit --prod`                                              | `No known vulnerabilities found`                                                             | **VERIFIED**   |
+| `check_hardcoded_secrets.py`                                     | `secret scan: clean -- no credential-shaped literal in tracked files.`                       | **VERIFIED**   |
+| `pnpm --filter zylcode-desktop lint`                             | warnings only (36 accepted, itemised in `ACCEPTED_LINT_WARNINGS.md`); 0 errors               | **VERIFIED**   |
+| `pnpm --filter zylcode-desktop format:check`                     | `Checking formatting...` — no violations                                                     | **VERIFIED**   |
+| `pnpm --filter @zylvex/natlas-bridge typecheck`                  | exit 0                                                                                       | **VERIFIED**   |
+| `node --experimental-strip-types apps/natlas-sdk/test/smoke.mjs` | 16 assertions, all `ok`                                                                      | **VERIFIED**   |
+| `pnpm --filter zylcode-desktop build`                            | `✓ 470 modules transformed.` / `✓ built in 2.76s`                                            | **VERIFIED**   |
 
 Test counts are **identical on all three operating systems**: 840 passed, 0 failed on
 ubuntu-22.04, windows-latest and macos-latest. `zylcode-core`'s lib binary alone
@@ -153,11 +151,11 @@ reports **497 passed; 0 failed**.
 The gate is `cargo llvm-cov --workspace --summary-only --fail-under-lines 78`.
 The `TOTAL` row of run #16 on `3bd5059` reads:
 
-| Metric | Total | Missed | Cover |
-|---|---|---|---|
-| **Lines** (the gated metric) | 40,133 | 7,815 | **80.53%** |
-| Regions | 60,570 | 11,730 | 80.63% |
-| Functions | 4,176 | 1,080 | 74.14% |
+| Metric                       | Total  | Missed | Cover      |
+| ---------------------------- | ------ | ------ | ---------- |
+| **Lines** (the gated metric) | 40,133 | 7,815  | **80.53%** |
+| Regions                      | 60,570 | 11,730 | 80.63%     |
+| Functions                    | 4,176  | 1,080  | 74.14%     |
 
 **Correction.** `PHASE2_VERIFICATION_REPORT.md` §6 records "80.63% lines
 (60,576 / 11,731)". That is **mislabelled**: 80.63% is the **Regions** figure. The
@@ -175,12 +173,12 @@ The lowest-covered files are `crates/zylcode-nav/src/model.rs` (38.98% lines),
 CI run **#118** (`39769570784`), triggered by the push of the **intermediate** merge
 commit `184e178`, **failed**:
 
-| Check run on `184e178` | Conclusion |
-|---|---|
-| `check / test / frontend (macos-latest)` | **failure** |
-| `check / test / frontend (ubuntu-22.04)` | success |
-| `check / test / frontend (windows-latest)` | success |
-| `coverage` | success |
+| Check run on `184e178`                     | Conclusion  |
+| ------------------------------------------ | ----------- |
+| `check / test / frontend (macos-latest)`   | **failure** |
+| `check / test / frontend (ubuntu-22.04)`   | success     |
+| `check / test / frontend (windows-latest)` | success     |
+| `coverage`                                 | success     |
 
 The failing step was `Cargo test (workspace)`. The failing test was:
 
@@ -209,7 +207,6 @@ because three other tests on other threads had incremented the same global.
 So PR #23 is not merely theoretically justified — it closed a failure that was
 **observed in CI on this repository's own history**.
 
-
 ---
 
 ## 4. Dependency audit results
@@ -232,11 +229,11 @@ warnings found`, 595 crate dependencies. Two independent executions, same answer
 
 ### 4.2 The three advisories this audit was asked to confirm resolved
 
-| Item | Status | Evidence |
-|---|---|---|
-| **RUSTSEC-2026-0002** (`lru` `IterMut` unsound) | **RESOLVED** | `lru` resolves to 0.18.5; advisory absent from the audit output |
-| **RUSTSEC-2026-0253** (`lru` `pop()` panic-safety unsound) | **RESOLVED** | `lru` resolves to 0.18.5; advisory absent from the audit output |
-| **Tokio yanked release** | **RESOLVED** | `tokio` resolves to 1.54.1; the audit emits **no `yanked` category at all** |
+| Item                                                       | Status       | Evidence                                                                    |
+| ---------------------------------------------------------- | ------------ | --------------------------------------------------------------------------- |
+| **RUSTSEC-2026-0002** (`lru` `IterMut` unsound)            | **RESOLVED** | `lru` resolves to 0.18.5; advisory absent from the audit output             |
+| **RUSTSEC-2026-0253** (`lru` `pop()` panic-safety unsound) | **RESOLVED** | `lru` resolves to 0.18.5; advisory absent from the audit output             |
+| **Tokio yanked release**                                   | **RESOLVED** | `tokio` resolves to 1.54.1; the audit emits **no `yanked` category at all** |
 
 All three are **VERIFIED resolved**.
 
@@ -250,15 +247,15 @@ build and 840 tests confirm empirically.
 
 #### RUSTSEC-2024-0429 — `glib` 0.18.5 — **unsound**
 
-| Field | Value |
-|---|---|
-| Advisory | RUSTSEC-2024-0429 (alias GHSA-wrw7-89jp-8q8g) |
-| Affected dependency | `glib` 0.18.5 |
-| Class | unsound |
-| Affected functions | `glib::VariantStrIter::{next, next_back, nth, nth_back, last}` — `>=0.15.0, <0.20.0` |
-| Fixed version | **`>= 0.20.0`** (latest published is **0.22.10**) |
-| Dependency path | `zylcode-desktop` → `tauri` 2.12.4 → `gtk` 0.18.2 / `webkit2gtk` / `wry` / `tao` → `glib` 0.18.5 |
-| Platform | **Linux only.** Not reachable on Windows or macOS — `cargo tree -i glib` on the current platform prints "nothing to print". It *is* compiled on the ubuntu-22.04 CI job, which installs `libgtk-3-dev` and `libwebkit2gtk-4.1-dev`. |
+| Field               | Value                                                                                                                                                                                                                               |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Advisory            | RUSTSEC-2024-0429 (alias GHSA-wrw7-89jp-8q8g)                                                                                                                                                                                       |
+| Affected dependency | `glib` 0.18.5                                                                                                                                                                                                                       |
+| Class               | unsound                                                                                                                                                                                                                             |
+| Affected functions  | `glib::VariantStrIter::{next, next_back, nth, nth_back, last}` — `>=0.15.0, <0.20.0`                                                                                                                                                |
+| Fixed version       | **`>= 0.20.0`** (latest published is **0.22.10**)                                                                                                                                                                                   |
+| Dependency path     | `zylcode-desktop` → `tauri` 2.12.4 → `gtk` 0.18.2 / `webkit2gtk` / `wry` / `tao` → `glib` 0.18.5                                                                                                                                    |
+| Platform            | **Linux only.** Not reachable on Windows or macOS — `cargo tree -i glib` on the current platform prints "nothing to print". It _is_ compiled on the ubuntu-22.04 CI job, which installs `libgtk-3-dev` and `libwebkit2gtk-4.1-dev`. |
 
 **Root cause (from the advisory):** `VariantStrIter::impl_get` passed `&p` — an
 immutable reference to a `*mut c_char` initialised to `NULL` — as an out-argument to
@@ -279,13 +276,13 @@ ZylCode's own source. The exposure is confined to whatever Tauri itself does wit
 
 #### RUSTSEC-2024-0449 — `unsafe-libyaml` 0.2.11 — **unmaintained**
 
-| Field | Value |
-|---|---|
-| Advisory | RUSTSEC-2024-0449 |
-| Affected dependency | `unsafe-libyaml` 0.2.11 |
-| Class | unmaintained |
-| Fixed version | **none exists** — the repository was archived read-only on 2024-03-25 and 0.2.11 is the final release |
-| Dependency path | `zylcode-core` **and** `zylcode-mcp` → `serde_yaml` 0.9.34+deprecated → `unsafe-libyaml` 0.2.11 |
+| Field               | Value                                                                                                 |
+| ------------------- | ----------------------------------------------------------------------------------------------------- |
+| Advisory            | RUSTSEC-2024-0449                                                                                     |
+| Affected dependency | `unsafe-libyaml` 0.2.11                                                                               |
+| Class               | unmaintained                                                                                          |
+| Fixed version       | **none exists** — the repository was archived read-only on 2024-03-25 and 0.2.11 is the final release |
+| Dependency path     | `zylcode-core` **and** `zylcode-mcp` → `serde_yaml` 0.9.34+deprecated → `unsafe-libyaml` 0.2.11       |
 
 `unsafe-libyaml` is a c2rust machine translation of libyaml's C code into unsafe
 Rust. Bugs found in it will not be fixed upstream. `serde_yaml` itself is deprecated
@@ -310,13 +307,13 @@ the user already controls.
 
 #### RUSTSEC-2024-0370 — `proc-macro-error` 1.0.4 — **unmaintained**
 
-| Field | Value |
-|---|---|
-| Advisory | RUSTSEC-2024-0370 |
-| Affected dependency | `proc-macro-error` 1.0.4 |
-| Class | unmaintained |
-| Fixed version | **none exists** — the maintainer is unreachable, no release in 4 years |
-| Dependency path | `zylcode-desktop` → `tauri` 2.12.4 → `glib` 0.18.5 → `glib-macros` 0.18.5 (proc-macro) → `proc-macro-error` 1.0.4 |
+| Field               | Value                                                                                                             |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Advisory            | RUSTSEC-2024-0370                                                                                                 |
+| Affected dependency | `proc-macro-error` 1.0.4                                                                                          |
+| Class               | unmaintained                                                                                                      |
+| Fixed version       | **none exists** — the maintainer is unreachable, no release in 4 years                                            |
+| Dependency path     | `zylcode-desktop` → `tauri` 2.12.4 → `glib` 0.18.5 → `glib-macros` 0.18.5 (proc-macro) → `proc-macro-error` 1.0.4 |
 
 **Practical remediation:** no direct action available. It rides on the same
 `tauri` bump as `glib`, and even then only if a future `glib-macros` drops it. The
@@ -343,8 +340,8 @@ Two places still asserted the pre-remediation state:
 
 1. `docs/governance/ACCEPTED_ADVISORIES.md` listed **five** advisories, including
    RUSTSEC-2026-0002 and RUSTSEC-2026-0253 on `lru` 0.12.5. Both rows are now removed.
-2. `.github/workflows/ci.yml` carried the comment *"the workspace has 5 accepted
-   advisories … RUSTSEC-2026-0002 and -2026-0253 (lru)"*. Corrected to three.
+2. `.github/workflows/ci.yml` carried the comment _"the workspace has 5 accepted
+   advisories … RUSTSEC-2026-0002 and -2026-0253 (lru)"_. Corrected to three.
 
 One further inaccuracy in `ACCEPTED_ADVISORIES.md` is worth recording, because it was
 **false when written**: the file claimed `grep -rn "IterMut\|\.pop()" crates/`
@@ -354,16 +351,15 @@ returned no matches, and that `pop()` "is not on a path ZylCode calls". In fact
 dependency is upgraded), but the claim itself was wrong and is corrected here so it
 does not survive as a precedent for how reachability is asserted.
 
-
 ---
 
 ## 5. Branch-protection assessment — **FAILED**
 
-| Check | Result | Classification |
-|---|---|---|
-| `GET /repos/{owner}/{repo}/branches/main/protection` | **HTTP 404 — "Branch not protected"** | **FAILED** |
-| `GET /repos/{owner}/{repo}/rulesets` | `[]` — no rulesets exist | **FAILED** |
-| `GET /repos/{owner}/{repo}/rules/branches` | **HTTP 404 — Not Found** | **FAILED** |
+| Check                                                | Result                                | Classification |
+| ---------------------------------------------------- | ------------------------------------- | -------------- |
+| `GET /repos/{owner}/{repo}/branches/main/protection` | **HTTP 404 — "Branch not protected"** | **FAILED**     |
+| `GET /repos/{owner}/{repo}/rulesets`                 | `[]` — no rulesets exist              | **FAILED**     |
+| `GET /repos/{owner}/{repo}/rules/branches`           | **HTTP 404 — Not Found**              | **FAILED**     |
 
 `main` has **no branch protection and no ruleset of any kind**. Concretely, this
 means nothing in the repository's configuration prevented either merge from landing
@@ -380,16 +376,16 @@ forced anyone to notice.
 The check names below are taken from the actual check runs observed in §3.2, not
 invented:
 
-| Setting | Recommended value | Rationale |
-|---|---|---|
-| Require a pull request before merging | **on**, 1 approval | Direct pushes to `main` are currently possible |
-| Require status checks to pass | **on** | The single highest-value control |
-| Required checks | `check / test / frontend (ubuntu-22.04)`, `check / test / frontend (windows-latest)`, `check / test / frontend (macos-latest)`, `coverage` | These four are the complete set of check runs that actually exist on a push to `main` |
-| Require branches to be up to date | **on** | Prevents merging on a stale base, which is how the `184e178` red build would have been missed |
-| Require conversation resolution | **on** | Review findings should not be silently ignorable |
-| Do not allow bypassing the above | **on** | Otherwise the rules are advisory |
-| Allow force pushes | **off** | Already the practice; make it structural |
-| Allow deletions | **off** | `main` should be undeletable |
+| Setting                               | Recommended value                                                                                                                          | Rationale                                                                                     |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| Require a pull request before merging | **on**, 1 approval                                                                                                                         | Direct pushes to `main` are currently possible                                                |
+| Require status checks to pass         | **on**                                                                                                                                     | The single highest-value control                                                              |
+| Required checks                       | `check / test / frontend (ubuntu-22.04)`, `check / test / frontend (windows-latest)`, `check / test / frontend (macos-latest)`, `coverage` | These four are the complete set of check runs that actually exist on a push to `main`         |
+| Require branches to be up to date     | **on**                                                                                                                                     | Prevents merging on a stale base, which is how the `184e178` red build would have been missed |
+| Require conversation resolution       | **on**                                                                                                                                     | Review findings should not be silently ignorable                                              |
+| Do not allow bypassing the above      | **on**                                                                                                                                     | Otherwise the rules are advisory                                                              |
+| Allow force pushes                    | **off**                                                                                                                                    | Already the practice; make it structural                                                      |
+| Allow deletions                       | **off**                                                                                                                                    | `main` should be undeletable                                                                  |
 
 **Note on the flaky macOS test.** If `check / test / frontend (macos-latest)` is made
 a required check while that test remains flaky, required checks will intermittently
@@ -407,27 +403,27 @@ as written; this section records what changed.
 
 **Applied configuration — verified by readback:**
 
-| Setting | Value | Verified |
-|---|---|---|
-| Require a pull request before merging | **on**, 1 approval | yes |
-| Require status checks to pass | **on** | yes |
-| Required checks | `check / test / frontend (ubuntu-22.04)`, `check / test / frontend (windows-latest)`, `check / test / frontend (macos-latest)`, `coverage` | yes |
-| Require branches to be up to date | **on** (`strict: true`) | yes |
-| Require conversation resolution | **on** | yes |
-| Do not allow bypassing the above | **on** (`enforce_admins: true`) | yes |
-| Allow force pushes | **off** | yes |
-| Allow deletions | **off** | yes |
-| Required linear history | **off** — deliberate: this repo merges with merge commits | yes |
+| Setting                               | Value                                                                                                                                      | Verified |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | -------- |
+| Require a pull request before merging | **on**, 1 approval                                                                                                                         | yes      |
+| Require status checks to pass         | **on**                                                                                                                                     | yes      |
+| Required checks                       | `check / test / frontend (ubuntu-22.04)`, `check / test / frontend (windows-latest)`, `check / test / frontend (macos-latest)`, `coverage` | yes      |
+| Require branches to be up to date     | **on** (`strict: true`)                                                                                                                    | yes      |
+| Require conversation resolution       | **on**                                                                                                                                     | yes      |
+| Do not allow bypassing the above      | **on** (`enforce_admins: true`)                                                                                                            | yes      |
+| Allow force pushes                    | **off**                                                                                                                                    | yes      |
+| Allow deletions                       | **off**                                                                                                                                    | yes      |
+| Required linear history               | **off** — deliberate: this repo merges with merge commits                                                                                  | yes      |
 
 **The macOS question was settled with data, not assumption.** The reviewer's caution
 was that one green run does not establish stability. Rather than assume either way,
 the macOS job conclusion was pulled for the last 16 CI runs:
 
-| Outcome | Count | Detail |
-|---|---|---|
-| success | 12 | — |
-| failure | 2 | `184e178` (the flaky egress guard, **pre-PR #23**) and `67f9910` (**PR #14, `rusqlite` 0.31 to 0.40**) |
-| consecutive successes since PR #23 | **5** | `3bd5059`, `7ea578d`, `33b1ad3`, `4e24e2a`, `794fc46` |
+| Outcome                            | Count | Detail                                                                                                 |
+| ---------------------------------- | ----- | ------------------------------------------------------------------------------------------------------ |
+| success                            | 12    | —                                                                                                      |
+| failure                            | 2     | `184e178` (the flaky egress guard, **pre-PR #23**) and `67f9910` (**PR #14, `rusqlite` 0.31 to 0.40**) |
+| consecutive successes since PR #23 | **5** | `3bd5059`, `7ea578d`, `33b1ad3`, `4e24e2a`, `794fc46`                                                  |
 
 Critically, the second failure is **not flakiness** — it is a deterministic compile
 error, `error[E0277]: the trait bound u64: FromSql is not satisfied`, which fails
@@ -436,7 +432,7 @@ exists to catch. The only genuinely flaky failure in the entire history is the o
 PR #23 structurally eliminated, by making the egress counter thread-local so
 cross-test interference is impossible by construction rather than improbable.
 
-**One check was deliberately *not* required: `Dependabot`.** It is reported on
+**One check was deliberately _not_ required: `Dependabot`.** It is reported on
 `4e24e2a` but **not** on `3bd5059`. Requiring a check that does not run on every
 commit would block merges waiting for a status that never arrives.
 
@@ -452,18 +448,18 @@ in §7.
 
 No score is claimed, predicted or implied here. This is a readiness list only.
 
-| # | Item | Status | Classification |
-|---|---|---|---|
-| 1 | Known dependency-security blocker closed | `lru` 0.18.5, Tokio 1.54.1, 0 vulnerabilities | **VERIFIED** |
-| 2 | Full CI green on the final `main` commit | 840 tests × 3 OSes, 0 Clippy lints, all 13 steps pass | **VERIFIED** |
-| 3 | Coverage gate met | 80.53% lines vs 78% floor | **VERIFIED** |
-| 4 | Secret scanning clean | `secret scan: clean` | **VERIFIED** |
-| 5 | Production JS audit clean | `No known vulnerabilities found` | **VERIFIED** |
-| 6 | Test-isolation defect demonstrably fixed | Same test failed pre-fix, passes post-fix | **VERIFIED** |
-| 7 | Governance docs consistent with reality | `ACCEPTED_ADVISORIES.md` and `ci.yml` comment corrected in this changeset | **VERIFIED** |
-| 8 | `main` protected | **Not protected — no ruleset** | **FAILED** |
-| 9 | macOS test flakiness addressed | Observed once on `184e178`; root cause understood and fixed, but no re-run evidence of stability across repeated runs | **PARTIAL** |
-| 10 | `PHASE2_VERIFICATION_REPORT.md` §6 mislabel corrected | Corrected in this report (§3.4); the original file is left as the historical record | **VERIFIED (correction recorded)** |
+| #   | Item                                                  | Status                                                                                                                | Classification                     |
+| --- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| 1   | Known dependency-security blocker closed              | `lru` 0.18.5, Tokio 1.54.1, 0 vulnerabilities                                                                         | **VERIFIED**                       |
+| 2   | Full CI green on the final `main` commit              | 840 tests × 3 OSes, 0 Clippy lints, all 13 steps pass                                                                 | **VERIFIED**                       |
+| 3   | Coverage gate met                                     | 80.53% lines vs 78% floor                                                                                             | **VERIFIED**                       |
+| 4   | Secret scanning clean                                 | `secret scan: clean`                                                                                                  | **VERIFIED**                       |
+| 5   | Production JS audit clean                             | `No known vulnerabilities found`                                                                                      | **VERIFIED**                       |
+| 6   | Test-isolation defect demonstrably fixed              | Same test failed pre-fix, passes post-fix                                                                             | **VERIFIED**                       |
+| 7   | Governance docs consistent with reality               | `ACCEPTED_ADVISORIES.md` and `ci.yml` comment corrected in this changeset                                             | **VERIFIED**                       |
+| 8   | `main` protected                                      | **Not protected — no ruleset**                                                                                        | **FAILED**                         |
+| 9   | macOS test flakiness addressed                        | Observed once on `184e178`; root cause understood and fixed, but no re-run evidence of stability across repeated runs | **PARTIAL**                        |
+| 10  | `PHASE2_VERIFICATION_REPORT.md` §6 mislabel corrected | Corrected in this report (§3.4); the original file is left as the historical record                                   | **VERIFIED (correction recorded)** |
 
 **Readiness judgement:** items 1–7 and 10 are satisfied. Item 8 is a configuration
 change the owner must make in GitHub settings — it cannot be made from a commit. Item
@@ -540,7 +536,7 @@ solid engineering evidence and an unguarded `main`.
   claim (0 matches) were re-run against `main`'s tree rather than carried forward
   from an earlier report.
 - **Not verified:** whether `tauri` 2.12.5 vendors `glib >= 0.20`; whether the macOS
-  suite is stable across repeated runs; the *contents* of any of the 15 open
+  suite is stable across repeated runs; the _contents_ of any of the 15 open
   Dependabot PRs — their per-head-SHA check status was queried (§7 item 7), but no
   PR was reviewed for behavioural impact.
 - **No score is asserted** for DataFactor, and none should be inferred from this

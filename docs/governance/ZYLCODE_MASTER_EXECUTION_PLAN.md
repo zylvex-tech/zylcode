@@ -23,11 +23,11 @@ Discovering a contract error at Stage 10 means rewriting every phase built on it
 
 This plan therefore distinguishes three kinds of work:
 
-| Kind | Examples | Behaviour |
-|---|---|---|
-| **Foundations** | Project System, Extension ABI, design representation, runtime contract | Must be *correct* before dependents are built. Hard gates. |
-| **Product surfaces** | Design canvas, Artifacts, Live Preview, Device Lab | Built once foundations exist. |
-| **Continuous maturity** | Proof Engine, Model Platform, Intelligence Graph, Security | Never "done". Each phase raises their floor. |
+| Kind                    | Examples                                                               | Behaviour                                                  |
+| ----------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------- |
+| **Foundations**         | Project System, Extension ABI, design representation, runtime contract | Must be _correct_ before dependents are built. Hard gates. |
+| **Product surfaces**    | Design canvas, Artifacts, Live Preview, Device Lab                     | Built once foundations exist.                              |
+| **Continuous maturity** | Proof Engine, Model Platform, Intelligence Graph, Security             | Never "done". Each phase raises their floor.               |
 
 A phase is not "finished forever". It is **closed at a rung** and reopened later at a higher rung.
 
@@ -48,16 +48,16 @@ The differentiator is the **closed loop**. See Constitution §1.3.
 
 ## 2. The Eight Core Systems
 
-| # | System | Responsibility |
-|---|---|---|
-| 1 | **Project System** | Persistent project/workspace/product identity and shared state |
-| 2 | **Agent Kernel** | Reasoning, planning, tools, workflows, models, permissions, memory |
-| 3 | **Intelligence Graph** | Repository, symbols, dependencies, architecture, history, runtime knowledge |
-| 4 | **Vision Studio** | UI/UX design, design systems, prototypes and design↔code |
-| 5 | **Execution Engine** | Shell, browser, desktop, containers, Android, iOS, cloud |
-| 6 | **Proof Engine** | Build/test/runtime/visual/security/evidence verification |
-| 7 | **Delivery Engine** | Git, CI, packaging, deployment, app stores, releases |
-| 8 | **Computer-Use Engine** | Real desktop/app perception and control, under permission, with replayable evidence (v2.1) |
+| #   | System                  | Responsibility                                                                             |
+| --- | ----------------------- | ------------------------------------------------------------------------------------------ |
+| 1   | **Project System**      | Persistent project/workspace/product identity and shared state                             |
+| 2   | **Agent Kernel**        | Reasoning, planning, tools, workflows, models, permissions, memory                         |
+| 3   | **Intelligence Graph**  | Repository, symbols, dependencies, architecture, history, runtime knowledge                |
+| 4   | **Vision Studio**       | UI/UX design, design systems, prototypes and design↔code                                   |
+| 5   | **Execution Engine**    | Shell, browser, desktop, containers, Android, iOS, cloud                                   |
+| 6   | **Proof Engine**        | Build/test/runtime/visual/security/evidence verification                                   |
+| 7   | **Delivery Engine**     | Git, CI, packaging, deployment, app stores, releases                                       |
+| 8   | **Computer-Use Engine** | Real desktop/app perception and control, under permission, with replayable evidence (v2.1) |
 
 Cross-cutting platforms: **Extension Platform · Model Platform · Artifact Bus**
 Trust foundation: **Evidence Ledger · Permissions · Recovery · Audit**
@@ -242,7 +242,7 @@ releases · deployment history
 
 **This is the next major leap in autonomy.**
 
-Instead of *"Ask AI"*, ZylCode presents **Mission**.
+Instead of _"Ask AI"_, ZylCode presents **Mission**.
 
 ```
 MISSION      Implement password reset.
@@ -598,7 +598,7 @@ install APK · launch · tap/type/swipe · inspect crash · Gradle build/test ·
 
 > **The agent must be able to build and actually use the Android application.**
 
-Not "compile successfully". *Use it.*
+Not "compile successfully". _Use it._
 
 ---
 
@@ -763,13 +763,13 @@ This is a long-term differentiator and is the natural extension of the `Provenan
 
 No phase begins before its dependencies are **ACCEPTED**, not merely "reported complete".
 
-| Gate | Meaning | Who decides |
-|---|---|---|
-| **G0 Design** | Spec exists, marked PROPOSED/implemented accurately | Product owner |
-| **G1 Implementation** | Code committed, reachable from a product surface | Builder |
-| **G2 Self-evidence** | Reproduction block present with raw output | Builder |
-| **G3 Independent audit** | Third party reproduces and inspects | Auditor |
-| **G4 Acceptance** | ACCEPTED / ACCEPTED WITH CONDITIONS / NOT ACCEPTED | Product owner |
+| Gate                     | Meaning                                             | Who decides   |
+| ------------------------ | --------------------------------------------------- | ------------- |
+| **G0 Design**            | Spec exists, marked PROPOSED/implemented accurately | Product owner |
+| **G1 Implementation**    | Code committed, reachable from a product surface    | Builder       |
+| **G2 Self-evidence**     | Reproduction block present with raw output          | Builder       |
+| **G3 Independent audit** | Third party reproduces and inspects                 | Auditor       |
+| **G4 Acceptance**        | ACCEPTED / ACCEPTED WITH CONDITIONS / NOT ACCEPTED  | Product owner |
 
 **A phase that fails G3 is RE-OPENED.** Phase 2A is currently at G3 → **NOT ACCEPTED**.
 
@@ -779,14 +779,14 @@ No phase begins before its dependencies are **ACCEPTED**, not merely "reported c
 
 These never "close". Each phase must raise their floor.
 
-| Track | Raised by |
-|---|---|
-| **Proof Engine** | 1D, 2A, 6B, 7, 9, 10, 12, 13 |
-| **Intelligence Graph** | 2A, 2B, 3A, 8C, 14 |
-| **Model Platform** | 1C, 4, 14, 16 |
-| **Security** | every phase; extensions add attack surface |
-| **Performance** | 2A (scan), 6B (preview), 10 (device), 16 (benchmark) |
-| **Evidence integrity** | every phase; this is the product's core promise |
+| Track                  | Raised by                                            |
+| ---------------------- | ---------------------------------------------------- |
+| **Proof Engine**       | 1D, 2A, 6B, 7, 9, 10, 12, 13                         |
+| **Intelligence Graph** | 2A, 2B, 3A, 8C, 14                                   |
+| **Model Platform**     | 1C, 4, 14, 16                                        |
+| **Security**           | every phase; extensions add attack surface           |
+| **Performance**        | 2A (scan), 6B (preview), 10 (device), 16 (benchmark) |
+| **Evidence integrity** | every phase; this is the product's core promise      |
 
 ---
 
@@ -804,13 +804,13 @@ These never "close". Each phase must raise their floor.
 
 ## 8. Immediate Actions
 
-| # | Action | Owner | Status |
-|---|---|---|---|
-| 1 | Audit `0ecea8e` | Independent auditor | ✔ **DONE — NOT ACCEPTED** |
-| 2 | Publish governance package (Constitution, Architecture, Plan, Capability Model, Proof Graph, Roadmap, 9 architecture specs) | Product owner | ✔ **DONE** |
-| 3 | Supersede the six-engine / 14-stage drafts | Product owner | ✔ **DONE** |
-| 4 | Issue remediation order to DeepSeek for Phase 2A P0 items | Product owner | **NEXT** |
-| 5 | Re-audit Phase 2A | Independent auditor | blocked on #4 |
-| 6 | Only then: authorize Phase 2B | Product owner | blocked on #5 |
+| #   | Action                                                                                                                      | Owner               | Status                    |
+| --- | --------------------------------------------------------------------------------------------------------------------------- | ------------------- | ------------------------- |
+| 1   | Audit `0ecea8e`                                                                                                             | Independent auditor | ✔ **DONE — NOT ACCEPTED** |
+| 2   | Publish governance package (Constitution, Architecture, Plan, Capability Model, Proof Graph, Roadmap, 9 architecture specs) | Product owner       | ✔ **DONE**                |
+| 3   | Supersede the six-engine / 14-stage drafts                                                                                  | Product owner       | ✔ **DONE**                |
+| 4   | Issue remediation order to DeepSeek for Phase 2A P0 items                                                                   | Product owner       | **NEXT**                  |
+| 5   | Re-audit Phase 2A                                                                                                           | Independent auditor | blocked on #4             |
+| 6   | Only then: authorize Phase 2B                                                                                               | Product owner       | blocked on #5             |
 
 **Phase 2B does not begin until Phase 2A is re-accepted.**

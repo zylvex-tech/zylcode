@@ -73,6 +73,7 @@ async fn call(&self, params: Value) -> Result<Value> {
 **File**: `crates/zylcode-core/src/pipeline.rs:138-199`
 
 The pipeline:
+
 1. Builds execution plan
 2. Calls LLM once
 3. Parses artifacts
@@ -86,6 +87,7 @@ The pipeline:
 **File**: `crates/zylcode-core/src/router.rs:775-863`
 
 The `call_provider()` method makes real HTTP calls to:
+
 - Anthropic API
 - Ollama localhost:11434
 - OpenRouter API
@@ -96,12 +98,12 @@ The `call_provider()` method makes real HTTP calls to:
 
 ## CAPABILITY STATUS
 
-| Category | Count | Percentage |
-|----------|-------|------------|
-| GREEN (Working) | 6 | 30% |
-| YELLOW (Partial) | 0 | 0% |
-| RED (Mocked/Missing) | 14 | 70% |
-| **TOTAL** | **20** | **100%** |
+| Category             | Count  | Percentage |
+| -------------------- | ------ | ---------- |
+| GREEN (Working)      | 6      | 30%        |
+| YELLOW (Partial)     | 0      | 0%         |
+| RED (Mocked/Missing) | 14     | 70%        |
+| **TOTAL**            | **20** | **100%**   |
 
 ---
 
@@ -124,6 +126,7 @@ There is **NO REAL CODING AGENT** behind the UI.
 **Objective**: Replace mocked tool execution with real typed Tool Runtime.
 
 **Scope**:
+
 1. Create `ToolRuntime` trait with real execution
 2. Implement `FileSystemTool` with real file operations
 3. Implement `ShellTool` with real process execution

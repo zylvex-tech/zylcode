@@ -13,6 +13,7 @@ use std::time::Duration;
 use tracing::{info, warn};
 
 use crate::cache::{mock_embed, prompt_hash, VectorCacheStore};
+use crate::providers::streaming::StreamChunk;
 pub use cache::SpeculativeCache;
 
 // Test-only spy: counts every attempt to send an HTTP request to a model
@@ -91,6 +92,13 @@ fn env_nonempty(name: &str) -> Option<String> {
 pub enum ModelProvider {
     OpenRouter,
     DeepSeek,
+    /// OpenAI's own API (`/v1/chat/completions`, `OPENAI_API_KEY`).
+    OpenAi,
+    /// Any OpenAI-compatible endpoint that is not one of the named providers
+    /// (a self-hosted gateway, vLLM, LM Studio, a corporate proxy). It has no
+    /// default base URL: the configured endpoint is the only source of one, so
+    /// a request cannot silently go to a default host the user never chose.
+    OpenAiCompatible,
     Anthropic,
     LocalOllama,
     /// The Respan hosted gateway: OpenAI-compatible chat completions at
@@ -105,6 +113,8 @@ impl std::fmt::Display for ModelProvider {
         match self {
             Self::OpenRouter => write!(f, "openrouter"),
             Self::DeepSeek => write!(f, "deepseek"),
+            Self::OpenAi => write!(f, "openai"),
+            Self::OpenAiCompatible => write!(f, "openai-compatible"),
             Self::Anthropic => write!(f, "anthropic"),
             Self::LocalOllama => write!(f, "ollama"),
             Self::Respan => write!(f, "respan"),
@@ -119,6 +129,9 @@ impl ModelProvider {
         match self {
             Self::OpenRouter => "https://openrouter.ai/api/v1",
             Self::DeepSeek => "https://api.deepseek.com/v1",
+            Self::OpenAi => "https://api.openai.com/v1",
+            // Deliberately empty: see the variant documentation.
+            Self::OpenAiCompatible => "",
             Self::Anthropic => "https://api.anthropic.com",
             Self::LocalOllama => "http://localhost:11434",
             // No trailing slash: `completions_path` supplies the leading one.
@@ -146,7 +159,12 @@ impl ModelProvider {
 pub enum ProviderKind {
     Anthropic,
     OpenRouter,
+    OpenAi,
+    DeepSeek,
     Ollama,
+    /// A user-supplied OpenAI-compatible endpoint. Requires an endpoint and a
+    /// model, because neither has a defensible default.
+    Custom,
     SyntheticOffline,
 }
 
@@ -155,7 +173,10 @@ impl std::fmt::Display for ProviderKind {
         match self {
             Self::Anthropic => write!(f, "anthropic"),
             Self::OpenRouter => write!(f, "openrouter"),
+            Self::OpenAi => write!(f, "openai"),
+            Self::DeepSeek => write!(f, "deepseek"),
             Self::Ollama => write!(f, "ollama"),
+            Self::Custom => write!(f, "custom"),
             Self::SyntheticOffline => write!(f, "synthetic-offline"),
         }
     }
@@ -167,7 +188,11 @@ impl ProviderKind {
         match self {
             Self::Anthropic => "https://api.anthropic.com",
             Self::OpenRouter => "https://openrouter.ai/api/v1",
+            Self::OpenAi => "https://api.openai.com/v1",
+            Self::DeepSeek => "https://api.deepseek.com/v1",
             Self::Ollama => "http://localhost:11434",
+            // No default: the configured endpoint is the only source.
+            Self::Custom => "",
             Self::SyntheticOffline => "",
         }
     }
@@ -176,10 +201,52 @@ impl ProviderKind {
     pub fn completions_path(&self) -> &'static str {
         match self {
             Self::Anthropic => "/v1/messages",
-            Self::OpenRouter => "/chat/completions",
             Self::Ollama => "/api/chat",
             Self::SyntheticOffline => "",
+            _ => "/chat/completions",
         }
+    }
+
+    /// Every kind, in the order the settings surface lists them.
+    pub fn all() -> [ProviderKind; 7] {
+        [
+            Self::Anthropic,
+            Self::OpenAi,
+            Self::OpenRouter,
+            Self::DeepSeek,
+            Self::Ollama,
+            Self::Custom,
+            Self::SyntheticOffline,
+        ]
+    }
+
+    /// The dispatch provider name this kind maps to.
+    ///
+    /// This string is the key used in [`RouterConfig::api_keys`] and, one level
+    /// up, the account name in the OS credential store. Returning `None` means
+    /// the kind has no dispatcher, so a key for it could never be used.
+    pub fn dispatch_name(&self) -> Option<String> {
+        kind_to_model_provider(self).map(|p| p.to_string())
+    }
+
+    /// Environment variable that can supply this kind's credential.
+    ///
+    /// One definition, used by key resolution, by the probe's source report and
+    /// by the settings surface's "where does this key come from?" line.
+    pub fn env_var(&self) -> Option<&'static str> {
+        match self {
+            Self::Anthropic => Some("ANTHROPIC_API_KEY"),
+            Self::OpenRouter => Some("OPENROUTER_API_KEY"),
+            Self::OpenAi => Some("OPENAI_API_KEY"),
+            Self::DeepSeek => Some("DEEPSEEK_API_KEY"),
+            Self::Custom => Some("OPENAI_COMPATIBLE_API_KEY"),
+            Self::Ollama | Self::SyntheticOffline => None,
+        }
+    }
+
+    /// Whether this kind cannot work without a credential.
+    pub fn requires_api_key(&self) -> bool {
+        !matches!(self, Self::Ollama | Self::SyntheticOffline)
     }
 }
 
@@ -219,12 +286,34 @@ fn default_provider_timeout_ms() -> u64 {
 /// and the dispatch path is provider enums. `SyntheticOffline` maps
 /// identity-wise and is honoured unconditionally by `call_provider`, which
 /// is what makes it a sound last chain entry.
+/// One chain entry resolved into the terms the dispatcher speaks.
+///
+/// `provider_configs` is keyed by the user-facing [`ProviderKind`]; dispatch is
+/// keyed by [`ModelProvider`]. This is the single place the two are reconciled.
 fn kind_to_model_provider(kind: &ProviderKind) -> Option<ModelProvider> {
     match kind {
         ProviderKind::Anthropic => Some(ModelProvider::Anthropic),
         ProviderKind::OpenRouter => Some(ModelProvider::OpenRouter),
+        ProviderKind::OpenAi => Some(ModelProvider::OpenAi),
+        ProviderKind::DeepSeek => Some(ModelProvider::DeepSeek),
         ProviderKind::Ollama => Some(ModelProvider::LocalOllama),
+        ProviderKind::Custom => Some(ModelProvider::OpenAiCompatible),
         ProviderKind::SyntheticOffline => Some(ModelProvider::SyntheticOffline),
+    }
+}
+
+/// Normalise a configured endpoint into a base URL.
+///
+/// Accepts either a base (`https://host/v1`) or a full completions URL
+/// (`https://host/v1/chat/completions`); the known path for the provider is
+/// stripped so `call_provider` cannot append it twice. Anything else is used
+/// verbatim, because a gateway with a non-standard path is the whole reason the
+/// field exists.
+fn endpoint_base_url(endpoint: &str, provider: &ModelProvider) -> String {
+    let trimmed = endpoint.trim().trim_end_matches('/');
+    match trimmed.strip_suffix(provider.completions_path()) {
+        Some(base) if !base.is_empty() => base.trim_end_matches('/').to_string(),
+        _ => trimmed.to_string(),
     }
 }
 
@@ -232,7 +321,11 @@ fn default_provider_configs() -> Vec<ProviderConfig> {
     vec![
         ProviderConfig {
             kind: ProviderKind::Anthropic,
-            model: "anthropic/claude-3.5-sonnet".to_string(),
+            // Native Anthropic model id. The OpenRouter-style slug that used to
+            // sit here (`anthropic/claude-3.5-sonnet`) is not an id the native
+            // API accepts, so the default configuration could not connect even
+            // with a valid key.
+            model: "claude-sonnet-4-5".to_string(),
             endpoint: String::new(),
             timeout_ms: default_provider_timeout_ms(),
             enabled: true,
@@ -250,11 +343,46 @@ fn default_provider_configs() -> Vec<ProviderConfig> {
         },
         ProviderConfig {
             kind: ProviderKind::OpenRouter,
-            model: "openrouter/gpt-4o-mini".to_string(),
+            // OpenRouter addresses models as `vendor/model`; the previous value
+            // repeated the provider name (`openrouter/gpt-4o-mini`), which
+            // OpenRouter does not serve.
+            model: "openai/gpt-4o-mini".to_string(),
             endpoint: String::new(),
             timeout_ms: default_provider_timeout_ms(),
             enabled: true,
             fallback_order: 2,
+            requires_api_key: true,
+        },
+        // Available but not attempted until the operator enables them: adding
+        // a provider to the list must not change what an existing install
+        // tries first.
+        ProviderConfig {
+            kind: ProviderKind::OpenAi,
+            model: "gpt-4o-mini".to_string(),
+            endpoint: String::new(),
+            timeout_ms: default_provider_timeout_ms(),
+            enabled: false,
+            fallback_order: 3,
+            requires_api_key: true,
+        },
+        ProviderConfig {
+            kind: ProviderKind::DeepSeek,
+            model: "deepseek-chat".to_string(),
+            endpoint: String::new(),
+            timeout_ms: default_provider_timeout_ms(),
+            enabled: false,
+            fallback_order: 4,
+            requires_api_key: true,
+        },
+        ProviderConfig {
+            kind: ProviderKind::Custom,
+            // Both must be supplied by the operator; there is no defensible
+            // default host or model for "some OpenAI-compatible endpoint".
+            model: String::new(),
+            endpoint: String::new(),
+            timeout_ms: default_provider_timeout_ms(),
+            enabled: false,
+            fallback_order: 5,
             requires_api_key: true,
         },
         ProviderConfig {
@@ -263,7 +391,7 @@ fn default_provider_configs() -> Vec<ProviderConfig> {
             endpoint: String::new(),
             timeout_ms: default_provider_timeout_ms(),
             enabled: true,
-            fallback_order: 3,
+            fallback_order: 6,
             requires_api_key: false,
         },
     ]
@@ -336,44 +464,10 @@ impl Default for RouterConfig {
             fallback_model: "llama3.1".to_string(),
             api_keys: Default::default(),
             base_url_overrides: Default::default(),
-            provider_configs: vec![
-                ProviderConfig {
-                    kind: ProviderKind::Anthropic,
-                    model: "anthropic/claude-3.5-sonnet".to_string(),
-                    endpoint: String::new(),
-                    timeout_ms: default_provider_timeout_ms(),
-                    enabled: true,
-                    fallback_order: 0,
-                    requires_api_key: true,
-                },
-                ProviderConfig {
-                    kind: ProviderKind::Ollama,
-                    model: "llama3.1".to_string(),
-                    endpoint: String::new(),
-                    timeout_ms: default_provider_timeout_ms(),
-                    enabled: true,
-                    fallback_order: 1,
-                    requires_api_key: false,
-                },
-                ProviderConfig {
-                    kind: ProviderKind::OpenRouter,
-                    model: "openrouter/gpt-4o-mini".to_string(),
-                    endpoint: String::new(),
-                    timeout_ms: default_provider_timeout_ms(),
-                    enabled: true,
-                    fallback_order: 2,
-                    requires_api_key: true,
-                },
-                ProviderConfig {
-                    kind: ProviderKind::SyntheticOffline,
-                    model: "synthetic-offline".to_string(),
-                    endpoint: String::new(),
-                    timeout_ms: default_provider_timeout_ms(),
-                    enabled: true,
-                    fallback_order: 3,
-                    requires_api_key: false,
-                },
-            ],
+            // One list, one source of truth: the default chain is defined by
+            // `default_provider_configs` so a default router and the settings
+            // surface cannot drift apart.
+            provider_configs: default_provider_configs(),
             timeout_ms: default_timeout_ms(),
             max_retries: default_max_retries(),
             context_window_tokens: default_context_window_tokens(),
@@ -426,6 +520,75 @@ impl RouterConfig {
         crate::provider_scorecard::ProviderScorecard::open(&path).map(|sc| sc.ranking())
     }
 
+    /// Re-derive the fields dispatch reads from the ordered provider chain, so
+    /// `provider_configs` is the single source of truth for what a request does.
+    ///
+    /// `dispatch_prompt` attempts `primary_*`, then `fallback_*`, then walks the
+    /// remaining enabled entries in `provider_configs`. Those three steps have
+    /// to agree with the list the settings surface shows, or reordering an entry
+    /// changes a screen and nothing else.
+    ///
+    /// - entries are sorted by `fallback_order` (stable, so equal orders keep the
+    ///   order the user arranged them in);
+    /// - the first two **dispatchable** enabled entries become the primary and
+    ///   the legacy fallback; an entry whose kind has no dispatcher, or whose
+    ///   model is blank, is skipped rather than becoming an unnamed primary;
+    /// - a non-empty `endpoint` becomes that provider's base-URL override, and
+    ///   clearing it removes the override so the provider's default applies;
+    /// - with no dispatchable entry the legacy pair is left alone: an empty
+    ///   chain is not a reason to silently drop the provider the process started
+    ///   with, and `from_env` builds such a configuration.
+    pub fn apply_provider_chain(&mut self) {
+        self.provider_configs.sort_by_key(|c| c.fallback_order);
+
+        for entry in &self.provider_configs {
+            let Some(provider) = kind_to_model_provider(&entry.kind) else {
+                continue;
+            };
+            let key = provider.to_string();
+            if entry.endpoint.trim().is_empty() {
+                self.base_url_overrides.remove(&key);
+            } else {
+                self.base_url_overrides
+                    .insert(key, endpoint_base_url(&entry.endpoint, &provider));
+            }
+        }
+
+        let mut dispatchable = self
+            .provider_configs
+            .iter()
+            .filter(|c| c.enabled)
+            .filter_map(|c| {
+                let provider = kind_to_model_provider(&c.kind)?;
+                let model = c.model.trim().to_string();
+                // The synthetic provider has no model to name; every real one
+                // must name a model or the request cannot be built.
+                (provider == ModelProvider::SyntheticOffline || !model.is_empty())
+                    .then_some((provider, model))
+            });
+
+        let Some((primary_provider, primary_model)) = dispatchable.next() else {
+            return;
+        };
+        self.primary_provider = primary_provider;
+        self.primary_model = primary_model;
+        if let Some((fallback_provider, fallback_model)) = dispatchable.next() {
+            self.fallback_provider = fallback_provider;
+            self.fallback_model = fallback_model;
+        }
+    }
+
+    /// Effective timeout for one provider: its own entry when it names one,
+    /// otherwise the router-wide timeout.
+    pub fn provider_timeout_ms(&self, provider: &ModelProvider) -> u64 {
+        self.provider_configs
+            .iter()
+            .find(|c| kind_to_model_provider(&c.kind).as_ref() == Some(provider))
+            .map(|c| c.timeout_ms)
+            .filter(|ms| *ms > 0)
+            .unwrap_or(self.timeout_ms)
+    }
+
     /// Resolve the base URL for a provider (override or default).
     ///
     /// The Respan gateway also honours `RESPAN_BASE_URL`, which is how Respan
@@ -465,6 +628,8 @@ impl RouterConfig {
         let env_key = match provider {
             ModelProvider::OpenRouter => "OPENROUTER_API_KEY",
             ModelProvider::DeepSeek => "DEEPSEEK_API_KEY",
+            ModelProvider::OpenAi => "OPENAI_API_KEY",
+            ModelProvider::OpenAiCompatible => "OPENAI_COMPATIBLE_API_KEY",
             ModelProvider::Anthropic => "ANTHROPIC_API_KEY",
             ModelProvider::LocalOllama => return None,
             ModelProvider::Respan => "RESPAN_API_KEY",
@@ -479,7 +644,10 @@ impl RouterConfig {
         let env_key = match kind {
             ProviderKind::Anthropic => "ANTHROPIC_API_KEY",
             ProviderKind::OpenRouter => "OPENROUTER_API_KEY",
+            ProviderKind::OpenAi => "OPENAI_API_KEY",
+            ProviderKind::DeepSeek => "DEEPSEEK_API_KEY",
             ProviderKind::Ollama => return None, // Ollama has no API key requirement,
+            ProviderKind::Custom => "OPENAI_COMPATIBLE_API_KEY",
             ProviderKind::SyntheticOffline => return None,
         };
         // First check explicit API keys keyed by the kind display name.
@@ -601,9 +769,16 @@ fn provider_pricing(provider: &ProviderKind) -> (f64, f64) {
         // OpenRouter routes through various providers; use a blended mid-range
         // estimate (GPT-4o-mini class) so cost is conservative.
         ProviderKind::OpenRouter => (0.15, 0.60),
-        // DeepSeek V3 (deepseek-chat) pricing
+        // GPT-4o-mini list pricing.
+        ProviderKind::OpenAi => (0.15, 0.60),
+        // DeepSeek V3 (deepseek-chat), cache-miss pricing.
+        ProviderKind::DeepSeek => (0.27, 1.10),
+        // A custom endpoint's price is unknown to us; the same blended
+        // mid-range estimate is used so the figure is never reported as free.
+        ProviderKind::Custom => (0.15, 0.60),
+        // Local inference — no API cost.
         ProviderKind::Ollama => (0.0, 0.0),
-        // Local / synthetic — no API cost.
+        // Synthetic — no API cost.
         ProviderKind::SyntheticOffline => (0.0, 0.0),
     }
 }
@@ -627,7 +802,14 @@ pub struct TokenRouter {
     /// Measurement-based routing memory: per-provider outcomes that reorder
     /// the configured fallback chain once enough samples exist.
     scorecard: Arc<crate::provider_scorecard::ProviderScorecard>,
-    config: RouterConfig,
+    /// Live router settings, shared by every clone of this router (the agent
+    /// dispatches through a clone taken at construction, so a copied field
+    /// would leave the settings panel editing state nothing reads).
+    ///
+    /// Each request takes one snapshot on entry via [`TokenRouter::config`], so
+    /// a change saved mid-request cannot swap provider or model half-way
+    /// through that request.
+    config: Arc<std::sync::RwLock<RouterConfig>>,
     metrics: Arc<TokenMetrics>,
     http: reqwest::Client,
     cache: Arc<SpeculativeCache>,
@@ -637,7 +819,7 @@ pub struct TokenRouter {
 impl std::fmt::Debug for TokenRouter {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("TokenRouter")
-            .field("config", &self.config)
+            .field("config", &self.config())
             .field("metrics", &self.metrics.snapshot())
             .field("cache_len", &self.cache.len())
             .field("vector_cache", &self.vector_cache.is_some())
@@ -649,7 +831,7 @@ impl Clone for TokenRouter {
     fn clone(&self) -> Self {
         Self {
             scorecard: Arc::clone(&self.scorecard),
-            config: self.config.clone(),
+            config: Arc::clone(&self.config),
             metrics: Arc::clone(&self.metrics),
             http: self.http.clone(),
             cache: Arc::clone(&self.cache),
@@ -677,7 +859,7 @@ impl TokenRouter {
                             .expect("temp-dir scorecard must open")
                     }),
             ),
-            config,
+            config: std::sync::Arc::new(std::sync::RwLock::new(config)),
             metrics: Arc::new(TokenMetrics::default()),
             cache: Arc::new(SpeculativeCache::with_defaults()),
             http,
@@ -714,7 +896,7 @@ impl TokenRouter {
                             .expect("temp-dir scorecard must open")
                     }),
             ),
-            config,
+            config: std::sync::Arc::new(std::sync::RwLock::new(config)),
             metrics,
             http,
             cache: Arc::new(SpeculativeCache::with_defaults()),
@@ -748,7 +930,7 @@ impl TokenRouter {
                             .expect("temp-dir scorecard must open")
                     }),
             ),
-            config,
+            config: std::sync::Arc::new(std::sync::RwLock::new(config)),
             metrics: Arc::new(TokenMetrics::default()),
             cache: Arc::new(SpeculativeCache::with_defaults()),
             http,
@@ -771,7 +953,7 @@ impl TokenRouter {
                             .expect("temp-dir scorecard must open")
                     }),
             ),
-            config,
+            config: std::sync::Arc::new(std::sync::RwLock::new(config)),
             metrics: Arc::new(TokenMetrics::default()),
             cache,
             http,
@@ -789,8 +971,73 @@ impl TokenRouter {
         self.vector_cache.clone()
     }
 
-    pub fn config(&self) -> &RouterConfig {
-        &self.config
+    /// A snapshot of the live configuration.
+    ///
+    /// Owned rather than borrowed: the settings surface can replace the whole
+    /// configuration at any moment, so a reference would either have to hold
+    /// the read lock across an await (blocking every writer) or outlive the
+    /// guard that protects it.
+    pub fn config(&self) -> RouterConfig {
+        self.config
+            .read()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .clone()
+    }
+
+    /// Install a configuration that the next request will actually use.
+    ///
+    /// This is the write-through path for the settings surface. The provider
+    /// chain is normalised first ([`RouterConfig::apply_provider_chain`]) so no
+    /// caller can install a chain whose on-screen order disagrees with the
+    /// order dispatch attempts.
+    pub fn set_config(&self, mut config: RouterConfig) {
+        config.apply_provider_chain();
+        *self
+            .config
+            .write()
+            .unwrap_or_else(|poisoned| poisoned.into_inner()) = config;
+    }
+
+    /// Probe one provider exactly as it is configured right now.
+    ///
+    /// The settings surface uses this for "test the saved configuration": the
+    /// chain entry supplies the model, endpoint and timeout, and the credential
+    /// is whatever dispatch would resolve at request time — including one that
+    /// only exists in process memory because the OS store supplied it.
+    pub async fn probe_saved(&self, kind: &ProviderKind) -> crate::router::ProviderProbe {
+        let cfg = self.config();
+        let timeout = cfg
+            .provider_configs
+            .iter()
+            .find(|c| c.kind == *kind)
+            .map(|c| c.timeout_ms)
+            .filter(|ms| *ms > 0)
+            .unwrap_or(cfg.timeout_ms);
+        crate::router::probe_provider_with_config(&cfg, kind, None, None, timeout).await
+    }
+
+    /// Replace the in-memory credential map without touching the chain.
+    ///
+    /// Startup uses this to load credentials from the OS store into a
+    /// configuration that came from the environment. Going through
+    /// `update_config` here would re-derive the provider chain and override the
+    /// provider the environment selected — adding OpenAI/DeepSeek/Custom to the
+    /// default list would then change what an existing install tries first.
+    pub fn set_api_keys(&self, keys: std::collections::HashMap<String, String>) {
+        self.config
+            .write()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .api_keys = keys;
+    }
+
+    /// Mutate the live configuration in place, then normalise the chain.
+    pub fn update_config<F: FnOnce(&mut RouterConfig)>(&self, update: F) {
+        let mut guard = self
+            .config
+            .write()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        update(&mut guard);
+        guard.apply_provider_chain();
     }
 
     /// The provider scorecard's measured records (best first). Read-only
@@ -818,8 +1065,12 @@ impl TokenRouter {
     /// Adaptive trimming + CTX-COMPRESSION context compression applied first, then
     /// speculative cache is probed before any HTTP egress.
     pub async fn dispatch_prompt(&self, prompt: &str, system: &str) -> Result<String> {
+        // One snapshot per request: a settings change saved while this
+        // request is in flight applies to the next one, never half-way
+        // through this one.
+        let cfg = self.config();
         // CTX-COMPRESSION: Context compression against token budget before provider dispatch.
-        let budget = self.config.context_window_tokens as usize;
+        let budget = cfg.context_window_tokens as usize;
         let (prompt_owned, system_owned) = {
             let est = |s: &str| s.len().div_ceil(4);
             if est(prompt) + est(system) > budget {
@@ -828,12 +1079,7 @@ impl TokenRouter {
                 (p, s)
             } else {
                 // Budget already satisfied — just trim head as before
-                trim_to_window(
-                    prompt,
-                    system,
-                    self.config.context_window_tokens,
-                    self.config.trim_strategy,
-                )
+                trim_to_window(prompt, system, cfg.context_window_tokens, cfg.trim_strategy)
             }
         };
         let prompt = prompt_owned.as_str();
@@ -841,13 +1087,13 @@ impl TokenRouter {
 
         // Speculative cache probe (hash includes model so fallback model
         // differences don't collide). Record saved tokens on hit.
-        let primary_model = self.config.primary_model.clone();
+        let primary_model = cfg.primary_model.clone();
         let cache_key = SpeculativeCache::hash_key(prompt, system, &primary_model);
 
         if let Some(cached) = self.cache.get(cache_key) {
             let saved = (cached.len() / 4) as u64;
             self.metrics.record_saved(saved);
-            info!(cache_hit = true, saved_tokens = saved, provider = %self.config.primary_provider, "speculative cache hit");
+            info!(cache_hit = true, saved_tokens = saved, provider = %cfg.primary_provider, "speculative cache hit");
             return Ok(cached);
         }
 
@@ -866,7 +1112,7 @@ impl TokenRouter {
         // (so repeat prompts still hit the cache and record saved tokens) and
         // *before* the on-disk vector cache (so no persisted state can satisfy
         // the request).
-        if self.config.primary_provider == ModelProvider::SyntheticOffline {
+        if cfg.primary_provider == ModelProvider::SyntheticOffline {
             let synthetic = Self::synthetic_response(prompt, system);
             let inp = ((prompt.len() + system.len()) / 4) as u64;
             let out = (synthetic.len() / 4) as u64;
@@ -877,7 +1123,7 @@ impl TokenRouter {
             // real provider — the scorecard drives routing and must only
             // reflect outcomes a named provider actually delivered.)
             self.scorecard
-                .record(&self.config.primary_provider.to_string(), true, 0);
+                .record(&cfg.primary_provider.to_string(), true, 0);
             self.cache.insert(cache_key, synthetic.clone());
             if let Some(vstore) = &self.vector_cache {
                 let emb = mock_embed(prompt, 32);
@@ -938,15 +1184,15 @@ impl TokenRouter {
         // synthetic response so offline / CI builds remain functional.
         // Ollama is treated as "no key required" — but if no Ollama endpoint
         // is reachable the later fallback path will also degrade to synthetic.
-        let primary_key = self.config.api_key(&self.config.primary_provider);
-        let fallback_key = self.config.api_key(&self.config.fallback_provider);
+        let primary_key = cfg.api_key(&cfg.primary_provider);
+        let fallback_key = cfg.api_key(&cfg.fallback_provider);
         let offline_fast = primary_key.is_none() && fallback_key.is_none();
 
         // When both providers require keys and none are present, go synthetic
         // immediately. When one side is Ollama (key always None) we still
         // attempt the network call first; if it fails we degrade to synthetic.
-        let both_need_keys = self.config.primary_provider != ModelProvider::LocalOllama
-            && self.config.fallback_provider != ModelProvider::LocalOllama;
+        let both_need_keys = cfg.primary_provider != ModelProvider::LocalOllama
+            && cfg.fallback_provider != ModelProvider::LocalOllama;
         if offline_fast && both_need_keys {
             let synthetic = Self::synthetic_response(prompt, system);
             let inp = ((prompt.len() + system.len()) / 4) as u64;
@@ -974,17 +1220,12 @@ impl TokenRouter {
         // attempted first (record outcomes on both paths).
         let primary_latency = crate::provider_scorecard::LatencyGuard::start();
         let primary_err: Option<anyhow::Error> = match self
-            .call_provider(
-                &self.config.primary_provider,
-                &self.config.primary_model,
-                prompt,
-                system,
-            )
+            .call_provider(&cfg.primary_provider, &cfg.primary_model, prompt, system)
             .await
         {
             Ok(text) => {
                 self.scorecard.record(
-                    &self.config.primary_provider.to_string(),
+                    &cfg.primary_provider.to_string(),
                     true,
                     primary_latency.elapsed_ms(),
                 );
@@ -999,26 +1240,26 @@ impl TokenRouter {
             }
             Err(e) if is_retryable(&e) => {
                 self.scorecard.record(
-                    &self.config.primary_provider.to_string(),
+                    &cfg.primary_provider.to_string(),
                     false,
                     primary_latency.elapsed_ms(),
                 );
                 // Log telemetry:fallback event on retryable primary failure.
                 self.metrics.record_fallback();
-                let provider_name = self.config.primary_provider.to_string();
+                let provider_name = cfg.primary_provider.to_string();
                 info!(event = "telemetry:fallback", provider = %provider_name, error = %e, "primary provider failed, attempting fallback");
                 Some(e)
             }
             Err(e) => {
                 self.scorecard.record(
-                    &self.config.primary_provider.to_string(),
+                    &cfg.primary_provider.to_string(),
                     false,
                     primary_latency.elapsed_ms(),
                 );
                 if e.to_string().contains("429") || e.to_string().to_lowercase().contains("rate") {
                     // Log telemetry:fallback event on rate-limited primary.
                     self.metrics.record_fallback();
-                    let provider_name = self.config.primary_provider.to_string();
+                    let provider_name = cfg.primary_provider.to_string();
                     info!(event = "telemetry:fallback", provider = %provider_name, error = %e, "primary provider rate-limited, attempting fallback");
                     Some(e)
                 } else {
@@ -1028,15 +1269,15 @@ impl TokenRouter {
         };
         let last_err = primary_err;
 
-        if self.config.max_retries == 0 {
+        if cfg.max_retries == 0 {
             return Err(last_err.unwrap());
         }
 
         self.metrics.record_fallback();
-        let fallback_provider = self.config.fallback_provider.clone();
-        let fallback_model = self.config.fallback_model.clone();
+        let fallback_provider = cfg.fallback_provider.clone();
+        let fallback_model = cfg.fallback_model.clone();
 
-        info!(event = "telemetry:provider_failover", from = %self.config.primary_provider, to = %fallback_provider, "falling back to configured fallback provider");
+        info!(event = "telemetry:provider_failover", from = %cfg.primary_provider, to = %fallback_provider, "falling back to configured fallback provider");
 
         info!(provider = %fallback_provider, model = %fallback_model, "dispatching to fallback provider");
 
@@ -1086,19 +1327,15 @@ impl TokenRouter {
                 // configuration-driven final resort rather than a
                 // "no keys anywhere" special case.
                 let tried = [
-                    Some(self.config.primary_provider.to_string()),
+                    Some(cfg.primary_provider.to_string()),
                     Some(fallback_provider.to_string()),
                 ]
                 .into_iter()
                 .flatten()
                 .collect::<std::collections::HashSet<String>>();
 
-                let mut chain: Vec<&crate::router::ProviderConfig> = self
-                    .config
-                    .provider_configs
-                    .iter()
-                    .filter(|c| c.enabled)
-                    .collect();
+                let mut chain: Vec<&crate::router::ProviderConfig> =
+                    cfg.provider_configs.iter().filter(|c| c.enabled).collect();
                 chain.sort_by_key(|c| c.fallback_order);
 
                 for entry in chain {
@@ -1160,8 +1397,23 @@ impl TokenRouter {
         }
     }
 
-    /// Streaming variant — calls the provider and emits `StreamEvent`s via
-    /// callback. Falls back to synthetic streaming when offline.
+    /// Streaming variant — asks the selected provider for a *real* stream and
+    /// forwards its deltas as they arrive.
+    ///
+    /// This used to call `dispatch_prompt` and then re-chunk the finished string by
+    /// line, which looked like streaming in the UI while the provider had already
+    /// answered in one piece. Now each provider module owns its own wire protocol
+    /// (SSE for Anthropic and OpenAI-compatible, NDJSON for Ollama) and the router
+    /// only chooses the provider, forwards chunks, and records usage.
+    ///
+    /// Offline/synthetic responses are still available and are explicitly labelled
+    /// as synthetic rather than dressed up as a provider stream.
+    ///
+    /// The callback receives the provider-neutral [`StreamChunk`], not a reduced
+    /// delta type: usage, finish reason, tool-call deltas, structured errors and
+    /// provenance all reach the consumer without a second translation layer. A
+    /// consumer that only needs `{ index, delta, done }` projects it at its own
+    /// boundary (see `providers::compat`).
     pub async fn dispatch_stream<F>(
         &self,
         prompt: &str,
@@ -1169,23 +1421,255 @@ impl TokenRouter {
         mut on_chunk: F,
     ) -> Result<String>
     where
-        F: FnMut(StreamEvent) + Send,
+        F: FnMut(StreamChunk) + Send,
     {
-        let full = self.dispatch_prompt(prompt, system).await?;
-        // Emit synthetic stream events chunked by lines for UI progress.
-        for (idx, line) in full.lines().enumerate() {
-            on_chunk(StreamEvent {
-                index: idx as u64,
-                delta: line.to_string(),
-                done: false,
-            });
+        // A stream with no external cancel source still exposes the handle shape, so
+        // callers can migrate to `dispatch_stream_cancellable` without an API split.
+        let cancel = crate::providers::streaming::CancelToken::new();
+        self.dispatch_stream_cancellable(prompt, system, cancel, &mut on_chunk)
+            .await
+    }
+
+    /// Streaming variant with an explicit cancellation token.
+    ///
+    /// Cancelling the token aborts the in-flight HTTP request (the provider modules
+    /// drop the response body, which closes the connection); it does not merely stop
+    /// forwarding chunks.
+    pub async fn dispatch_stream_cancellable<F>(
+        &self,
+        prompt: &str,
+        system: &str,
+        cancel: crate::providers::streaming::CancelToken,
+        on_chunk: &mut F,
+    ) -> Result<String>
+    where
+        F: FnMut(StreamChunk) + Send,
+    {
+        let cfg = self.config();
+        let (prompt_owned, system_owned) =
+            trim_to_window(prompt, system, cfg.context_window_tokens, cfg.trim_strategy);
+        let prompt = prompt_owned.as_str();
+        let system = system_owned.as_str();
+
+        // Same offline decision `dispatch_prompt` makes: if neither the primary nor
+        // the fallback can possibly have a credential, do not open a socket.
+        let primary_key = cfg.api_key(&cfg.primary_provider);
+        let fallback_key = cfg.api_key(&cfg.fallback_provider);
+        let both_need_keys = cfg.primary_provider != ModelProvider::LocalOllama
+            && cfg.fallback_provider != ModelProvider::LocalOllama;
+        let offline = (primary_key.is_none() && fallback_key.is_none() && both_need_keys)
+            || cfg.primary_provider == ModelProvider::SyntheticOffline;
+
+        if offline {
+            // The synthetic path produces the same neutral chunks as a real
+            // provider, marked synthetic; the dispatcher forwards them unchanged.
+            let outcome = crate::providers::synthetic::stream(prompt, system, on_chunk);
+            self.metrics.record_usage(
+                ((prompt.len() + system.len()) / 4) as u64,
+                (outcome.text.len() / 4) as u64,
+            );
+            return Ok(outcome.text);
         }
-        on_chunk(StreamEvent {
-            index: full.lines().count() as u64,
-            delta: String::new(),
-            done: true,
-        });
-        Ok(full)
+
+        // Attempt the primary, then the configured fallback, then the remaining
+        // enabled chain entries — the same order `dispatch_prompt` uses. A provider
+        // that has already forwarded text is never retried on another provider: that
+        // would duplicate output in the consumer.
+        let mut candidates: Vec<(ModelProvider, String)> = vec![
+            (cfg.primary_provider.clone(), cfg.primary_model.clone()),
+            (cfg.fallback_provider.clone(), cfg.fallback_model.clone()),
+        ];
+        if cfg.max_retries > 0 {
+            let mut entries = cfg.provider_configs.clone();
+            entries.sort_by_key(|e| e.fallback_order);
+            for entry in entries {
+                if !entry.enabled {
+                    continue;
+                }
+                let Some(provider) = kind_to_model_provider(&entry.kind) else {
+                    continue;
+                };
+                if candidates.iter().any(|(p, _)| *p == provider) {
+                    continue;
+                }
+                candidates.push((provider, entry.model.clone()));
+            }
+        }
+
+        let mut last_err: Option<anyhow::Error> = None;
+        for (provider, model) in candidates {
+            let started = crate::provider_scorecard::LatencyGuard::start();
+            match self
+                .stream_one_provider(&provider, &model, prompt, system, &cfg, &cancel, on_chunk)
+                .await
+            {
+                Ok(text) => {
+                    self.scorecard
+                        .record(&provider.to_string(), true, started.elapsed_ms());
+                    return Ok(text);
+                }
+                Err(StreamAttemptError::Cancelled) => {
+                    self.scorecard
+                        .record(&provider.to_string(), false, started.elapsed_ms());
+                    return Ok(String::new());
+                }
+                Err(StreamAttemptError::Failed(err)) => {
+                    self.scorecard
+                        .record(&provider.to_string(), false, started.elapsed_ms());
+                    warn!(provider = %provider, error = %err, "streaming provider failed");
+                    last_err = Some(err);
+                }
+                Err(StreamAttemptError::AlreadyStreamed(err)) => {
+                    // Partial output already reached the consumer; retrying elsewhere
+                    // would duplicate it.
+                    self.scorecard
+                        .record(&provider.to_string(), false, started.elapsed_ms());
+                    return Err(err);
+                }
+            }
+        }
+
+        Err(last_err.unwrap_or_else(|| anyhow::anyhow!("no streaming provider was configured")))
+    }
+
+    /// One streaming attempt against one provider.
+    #[allow(clippy::too_many_arguments)]
+    async fn stream_one_provider<F>(
+        &self,
+        provider: &ModelProvider,
+        model: &str,
+        prompt: &str,
+        system: &str,
+        cfg: &RouterConfig,
+        cancel: &crate::providers::streaming::CancelToken,
+        on_chunk: &mut F,
+    ) -> std::result::Result<String, StreamAttemptError>
+    where
+        F: FnMut(StreamChunk) + Send,
+    {
+        use crate::providers::streaming::{ChatRequest, FinishReason};
+
+        // A provider that cannot stream is reported as such rather than faked.
+        if !crate::providers::capabilities::provider_capabilities(provider).streaming {
+            return Err(StreamAttemptError::Failed(anyhow::anyhow!(
+                "provider {provider} does not support streaming"
+            )));
+        }
+
+        let request = ChatRequest::new(model, system, prompt);
+        let timeout = Duration::from_millis(cfg.provider_timeout_ms(provider));
+        let base = cfg.base_url(provider);
+        let api_key = cfg.api_key(provider);
+
+        // Atomic, not `Cell`, because the streaming future must stay `Send` for
+        // callers that drive it from another thread.
+        let emitted = std::sync::atomic::AtomicBool::new(false);
+        let mut forward = |chunk: StreamChunk| {
+            if chunk.kind.text.is_some() || chunk.done {
+                emitted.store(true, std::sync::atomic::Ordering::SeqCst);
+            }
+            on_chunk(chunk);
+        };
+
+        #[cfg(test)]
+        NETWORK_EGRESS_COUNT.with(|c| c.set(c.get() + 1));
+
+        let outcome = match provider {
+            ModelProvider::Anthropic => {
+                crate::providers::anthropic::stream(
+                    &self.http,
+                    &base,
+                    api_key.as_deref(),
+                    &request,
+                    timeout,
+                    cancel,
+                    &mut forward,
+                )
+                .await
+            }
+            ModelProvider::LocalOllama => {
+                crate::providers::ollama::stream(
+                    &self.http,
+                    &base,
+                    &request,
+                    timeout,
+                    cancel,
+                    &mut forward,
+                )
+                .await
+            }
+            ModelProvider::SyntheticOffline => {
+                let outcome = crate::providers::synthetic::stream(prompt, system, &mut forward);
+                self.metrics.record_usage(
+                    ((prompt.len() + system.len()) / 4) as u64,
+                    (outcome.text.len() / 4) as u64,
+                );
+                return Ok(outcome.text);
+            }
+            _ => {
+                let extra: Vec<(String, String)> = if *provider == ModelProvider::OpenRouter {
+                    vec![
+                        (
+                            "HTTP-Referer".to_string(),
+                            "https://zylcode.dev".to_string(),
+                        ),
+                        ("X-Title".to_string(), "ZylCode".to_string()),
+                    ]
+                } else {
+                    Vec::new()
+                };
+                let target = crate::providers::openai_compatible::CompatTarget {
+                    base_url: &base,
+                    api_key: api_key.as_deref(),
+                    provider: &provider.to_string(),
+                    timeout,
+                    extra_headers: &extra,
+                };
+                crate::providers::openai_compatible::stream(
+                    &self.http,
+                    &target,
+                    &request,
+                    cancel,
+                    &mut forward,
+                )
+                .await
+            }
+        };
+
+        match outcome {
+            Ok(outcome) => {
+                if outcome.finish == FinishReason::Cancelled {
+                    return Err(StreamAttemptError::Cancelled);
+                }
+                let inp = outcome
+                    .usage
+                    .as_ref()
+                    .and_then(|u| u.input_tokens)
+                    .unwrap_or(((prompt.len() + system.len()) / 4) as u64);
+                let out = outcome
+                    .usage
+                    .as_ref()
+                    .and_then(|u| u.output_tokens)
+                    .unwrap_or((outcome.text.len() / 4) as u64);
+                self.metrics.record_usage(inp, out);
+                info!(provider = %provider, model = %model, input_tokens = inp, output_tokens = out, "provider stream completed");
+                Ok(outcome.text)
+            }
+            Err(err) => {
+                let err = anyhow::anyhow!(
+                    "provider {provider} stream failed ({:?}): {}",
+                    err.kind,
+                    err.message
+                );
+                if emitted.load(std::sync::atomic::Ordering::SeqCst) {
+                    Err(StreamAttemptError::AlreadyStreamed(err))
+                } else if cancel.is_cancelled() {
+                    Err(StreamAttemptError::Cancelled)
+                } else {
+                    Err(StreamAttemptError::Failed(err))
+                }
+            }
+        }
     }
 
     // -- internal provider call ---------------------------------------------
@@ -1197,6 +1681,7 @@ impl TokenRouter {
         prompt: &str,
         system: &str,
     ) -> Result<String> {
+        let cfg = self.config();
         // Explicit synthetic provider: return the deterministic offline payload
         // without reading a credential and without building or sending a
         // request. This is the second line of defence — `dispatch_prompt`
@@ -1207,66 +1692,52 @@ impl TokenRouter {
         }
 
         // Apply adaptive trimming again per-provider (idempotent, cheap).
-        let (prompt_owned, system_owned) = trim_to_window(
-            prompt,
-            system,
-            self.config.context_window_tokens,
-            self.config.trim_strategy,
-        );
+        let (prompt_owned, system_owned) =
+            trim_to_window(prompt, system, cfg.context_window_tokens, cfg.trim_strategy);
         let prompt = prompt_owned.as_str();
         let system = system_owned.as_str();
 
-        let base = self.config.base_url(provider);
-        let url = format!("{}{}", base, provider.completions_path());
+        let base = cfg.base_url(provider);
 
         // Estimate input tokens for telemetry regardless of outcome.
         let est_input = ((prompt.len() + system.len()) / 4) as u64;
 
-        let body = match provider {
-            ModelProvider::Anthropic => serde_json::json!({
-                "model": model,
-                "max_tokens": 4096,
-                "system": system,
-                "messages": [{ "role": "user", "content": prompt }]
-            }),
-            ModelProvider::LocalOllama => serde_json::json!({
-                "model": model,
-                "messages": [
-                    { "role": "system", "content": system },
-                    { "role": "user", "content": prompt }
-                ],
-                "stream": false
-            }),
-            _ => serde_json::json!({
-                "model": model,
-                "messages": [
-                    { "role": "system", "content": system },
-                    { "role": "user", "content": prompt }
-                ],
-                "temperature": 0.2,
-                "max_tokens": 4096
-            }),
+        // Request construction belongs to the provider module: this function knows
+        // which provider to call and how to report the outcome, not what Anthropic's
+        // or Ollama's body looks like.
+        let request = crate::providers::streaming::ChatRequest::new(model, system, prompt);
+        let api_key = cfg.api_key(provider);
+
+        let (url, body, mut extra_headers) = match provider {
+            ModelProvider::Anthropic => (
+                crate::providers::anthropic::messages_url(&base),
+                crate::providers::anthropic::messages_body(&request, false),
+                crate::providers::anthropic::headers(api_key.as_deref()),
+            ),
+            ModelProvider::LocalOllama => (
+                crate::providers::ollama::chat_url(&base),
+                crate::providers::ollama::chat_body(&request, false),
+                crate::providers::ollama::headers(api_key.as_deref()),
+            ),
+            _ => (
+                crate::providers::openai_compatible::chat_url(&base),
+                crate::providers::openai_compatible::chat_body(&request, false),
+                crate::providers::openai_compatible::headers(api_key.as_deref()),
+            ),
         };
-
-        let mut req = self.http.post(&url).json(&body);
-
-        if let Some(key) = self.config.api_key(provider) {
-            match provider {
-                ModelProvider::Anthropic => {
-                    req = req
-                        .header("x-api-key", key)
-                        .header("anthropic-version", "2023-06-01");
-                }
-                _ => {
-                    req = req.header("Authorization", format!("Bearer {key}"));
-                }
-            }
+        if *provider == ModelProvider::OpenRouter {
+            extra_headers.extend(crate::providers::openai_compatible::openrouter_headers());
         }
 
-        if *provider == ModelProvider::OpenRouter {
-            req = req
-                .header("HTTP-Referer", "https://zylcode.dev")
-                .header("X-Title", "ZylCode");
+        // Per-provider timeout when the chain entry names one; the shared
+        // HTTP client only carries the router-wide default.
+        let mut req = self
+            .http
+            .post(&url)
+            .json(&body)
+            .timeout(Duration::from_millis(cfg.provider_timeout_ms(provider)));
+        for (name, value) in extra_headers {
+            req = req.header(name, value);
         }
 
         // Test-only spy: record that we are about to egress to a provider.
@@ -1285,103 +1756,421 @@ impl TokenRouter {
 
         let json: serde_json::Value = resp.json().await.context("failed to parse JSON response")?;
 
-        let (text, usage_in, usage_out) = Self::extract_text_and_usage(provider, &json)?;
-        let inp = usage_in.unwrap_or(est_input);
-        let out = usage_out.unwrap_or((text.len() / 4) as u64);
+        // Response shape is the provider module's business too.
+        let completion = match provider {
+            ModelProvider::Anthropic => crate::providers::anthropic::parse_completion(&json),
+            ModelProvider::LocalOllama => crate::providers::ollama::parse_completion(&json),
+            _ => crate::providers::openai_compatible::parse_completion(&json),
+        };
+        let text = completion.text;
+        let inp = completion.usage.input_tokens.unwrap_or(est_input);
+        let out = completion
+            .usage
+            .output_tokens
+            .unwrap_or((text.len() / 4) as u64);
         self.metrics.record_usage(inp, out);
         info!(provider = %provider, model = %model, input_tokens = inp, output_tokens = out, "provider call succeeded");
         Ok(text)
     }
 
-    fn extract_text_and_usage(
-        provider: &ModelProvider,
-        json: &serde_json::Value,
-    ) -> Result<(String, Option<u64>, Option<u64>)> {
-        match provider {
-            ModelProvider::Anthropic => {
-                let text = json
-                    .get("content")
-                    .and_then(|c| c.as_array())
-                    .and_then(|arr| arr.first())
-                    .and_then(|o| o.get("text"))
-                    .and_then(|t| t.as_str())
-                    .unwrap_or("")
-                    .to_string();
-                let inp = json
-                    .get("usage")
-                    .and_then(|u| u.get("input_tokens"))
-                    .and_then(|v| v.as_u64());
-                let out = json
-                    .get("usage")
-                    .and_then(|u| u.get("output_tokens"))
-                    .and_then(|v| v.as_u64());
-                Ok((text, inp, out))
-            }
-            ModelProvider::LocalOllama => {
-                let text = json
-                    .get("message")
-                    .and_then(|m| m.get("content"))
-                    .and_then(|c| c.as_str())
-                    .unwrap_or("")
-                    .to_string();
-                // Ollama reports prompt_eval_count / eval_count
-                let inp = json.get("prompt_eval_count").and_then(|v| v.as_u64());
-                let out = json.get("eval_count").and_then(|v| v.as_u64());
-                Ok((text, inp, out))
-            }
-            _ => {
-                // OpenAI-compatible (OpenRouter, DeepSeek)
-                let text = json
-                    .get("choices")
-                    .and_then(|c| c.as_array())
-                    .and_then(|arr| arr.first())
-                    .and_then(|o| o.get("message"))
-                    .and_then(|m| m.get("content"))
-                    .and_then(|c| c.as_str())
-                    .unwrap_or("")
-                    .to_string();
-                let inp = json
-                    .get("usage")
-                    .and_then(|u| u.get("prompt_tokens"))
-                    .and_then(|v| v.as_u64());
-                let out = json
-                    .get("usage")
-                    .and_then(|u| u.get("completion_tokens"))
-                    .and_then(|v| v.as_u64());
-                Ok((text, inp, out))
-            }
-        }
-    }
-
-    fn synthetic_response(prompt: &str, _system: &str) -> String {
-        // Return a valid AgentDecision JSON response for the agent protocol
-        // This allows the agent to complete successfully in offline/CI mode
-        serde_json::json!({
-            "action": "Complete",
-            "payload": {
-                "summary": format!("Task completed: {}", prompt),
-                "evidence": ["Synthetic offline response"],
-                "remaining_limitations": ["Using synthetic offline mode - configure API keys for live LLM generation"]
-            }
-        }).to_string()
+    fn synthetic_response(prompt: &str, system: &str) -> String {
+        // The synthetic payload lives in the provider module now, so the offline
+        // answer has exactly one definition and stays explicitly labelled.
+        crate::providers::synthetic::response(prompt, system)
     }
 }
 
 // ---------------------------------------------------------------------------
-// Stream event
+// Streaming attempt outcome
 // ---------------------------------------------------------------------------
 
-/// A single streaming delta emitted during `dispatch_stream`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StreamEvent {
-    pub index: u64,
-    pub delta: String,
-    pub done: bool,
+/// Why one streaming attempt did not produce a completed answer.
+///
+/// The distinction that matters is whether the consumer already received output:
+/// a silent failure may be retried on the next provider, while a failure after
+/// partial output must be surfaced instead of duplicating text.
+enum StreamAttemptError {
+    /// The caller cancelled; no retry and no error.
+    Cancelled,
+    /// The attempt failed before anything was forwarded; another provider may be tried.
+    Failed(anyhow::Error),
+    /// Output was already forwarded, so this failure is terminal for the request.
+    AlreadyStreamed(anyhow::Error),
 }
 
 // ---------------------------------------------------------------------------
 // Error helpers
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Provider connection probe
+// ---------------------------------------------------------------------------
+//
+// The settings surface can list a provider chain, but before this there was no
+// way — for the operator or for a test — to ask "does this configuration
+// actually work?". The panel's own fields were not evidence: an endpoint and a
+// model can be saved and still be wrong, and "an API key is present" says
+// nothing about whether the provider accepts it.
+//
+// [`probe_provider`] answers that question the only way it can be answered: by
+// sending one real request through [`TokenRouter::call_provider`] — the same
+// function `dispatch_prompt` uses — and classifying the outcome. It is
+// deliberately **not** routed through `dispatch_prompt`, because that would
+// apply fallback and report a *secondary* provider's success as if the
+// configuration under test had worked.
+
+/// Outcome of one provider probe.
+///
+/// The variants are the distinctions an operator can act on, not a restatement
+/// of HTTP codes: `AuthenticationFailed` means "fix the key",
+/// `InvalidEndpoint` means "fix the URL", `ModelUnavailable` means "fix the
+/// model name", `NetworkError` means "the host is unreachable from here", and
+/// `ConfigurationIncomplete` means nothing was sent at all.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ProbeStatus {
+    /// The provider answered with a usable completion.
+    Connected,
+    /// Synthetic offline: no network is involved by construction.
+    OfflineProvider,
+    /// A credential the provider requires is missing; no request was sent.
+    ConfigurationIncomplete,
+    /// 401/403 — the provider rejected the credential.
+    AuthenticationFailed,
+    /// The URL is not reachable or not an API endpoint (404/405/HTML, bad URL).
+    InvalidEndpoint,
+    /// The endpoint answered but does not serve the requested model.
+    ModelUnavailable,
+    /// The provider refused the request (400/422/429/5xx).
+    ProviderRejected,
+    /// Transport-level failure: DNS, refused connection, timeout, TLS.
+    NetworkError,
+}
+
+impl ProbeStatus {
+    /// Stable machine-readable label, mirrored by the desktop UI.
+    pub fn code(&self) -> &'static str {
+        match self {
+            Self::Connected => "connected",
+            Self::OfflineProvider => "offline_provider",
+            Self::ConfigurationIncomplete => "configuration_incomplete",
+            Self::AuthenticationFailed => "authentication_failed",
+            Self::InvalidEndpoint => "invalid_endpoint",
+            Self::ModelUnavailable => "model_unavailable",
+            Self::ProviderRejected => "provider_rejected",
+            Self::NetworkError => "network_error",
+        }
+    }
+}
+
+/// Evidence for one probe: what was contacted, with which model and credential
+/// source, what came back, and how long it took.
+///
+/// `detail` carries the provider's own message (truncated) so a failure can be
+/// diagnosed without a second run.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProviderProbe {
+    pub provider: String,
+    pub model: String,
+    /// The URL actually requested, or the provider's default when none was set.
+    pub endpoint: String,
+    /// Where the credential came from: `config`, `env:NAME`, `not_required`,
+    /// or `none`.
+    pub key_source: String,
+    pub status: ProbeStatus,
+    /// The provider's HTTP status when a response was received.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub http_status: Option<u16>,
+    pub latency_ms: u64,
+    /// Characters returned by a successful probe (0 otherwise).
+    pub response_chars: usize,
+    pub detail: String,
+}
+
+impl ProviderProbe {
+    pub fn ok(&self) -> bool {
+        matches!(
+            self.status,
+            ProbeStatus::Connected | ProbeStatus::OfflineProvider
+        )
+    }
+}
+
+/// Read the `[status=NNN]` annotation [`annotate_status`] embeds in an error.
+fn status_in(err: &str) -> Option<u16> {
+    let idx = err.find("[status=")? + "[status=".len();
+    let digits: String = err[idx..]
+        .chars()
+        .take_while(|c| c.is_ascii_digit())
+        .collect();
+    digits.parse().ok()
+}
+
+/// The message body of a provider error, for `detail`.
+fn body_in(err: &str) -> &str {
+    match err.find(": ") {
+        Some(i) => err[i + 2..].split(" [status=").next().unwrap_or(""),
+        None => err,
+    }
+}
+
+/// Classify a provider error into an actionable status.
+///
+/// Pure, so every branch is unit-testable without a socket.
+fn classify_probe_error(err: &str) -> (ProbeStatus, Option<u16>) {
+    let Some(code) = status_in(err) else {
+        // No HTTP status: the request never completed. A URL that reqwest could
+        // not even build is a configuration error, not a network fault.
+        let lower = err.to_lowercase();
+        let status =
+            if lower.contains("relative url without a base") || lower.contains("invalid url") {
+                ProbeStatus::InvalidEndpoint
+            } else {
+                ProbeStatus::NetworkError
+            };
+        return (status, None);
+    };
+    let body = body_in(err).to_lowercase();
+    let mentions_model = body.contains("model");
+    let status = match code {
+        401 | 403 => ProbeStatus::AuthenticationFailed,
+        404 | 405 => {
+            if mentions_model {
+                ProbeStatus::ModelUnavailable
+            } else {
+                ProbeStatus::InvalidEndpoint
+            }
+        }
+        400 | 422 => {
+            if mentions_model {
+                ProbeStatus::ModelUnavailable
+            } else {
+                ProbeStatus::ProviderRejected
+            }
+        }
+        _ => ProbeStatus::ProviderRejected,
+    };
+    (status, Some(code))
+}
+
+/// Which credential a probe would use, named so the operator can see it.
+fn key_source_for(cfg: &RouterConfig, kind: &ProviderKind, provider: &ModelProvider) -> String {
+    if *provider == ModelProvider::SyntheticOffline {
+        return "not_required".to_string();
+    }
+    if *provider == ModelProvider::LocalOllama {
+        return "not_required".to_string();
+    }
+    let name = provider.to_string();
+    if cfg
+        .api_keys
+        .get(&name)
+        .map(|k| !k.is_empty())
+        .unwrap_or(false)
+    {
+        return "config".to_string();
+    }
+    let env = match kind {
+        ProviderKind::Anthropic => "ANTHROPIC_API_KEY",
+        ProviderKind::OpenRouter => "OPENROUTER_API_KEY",
+        ProviderKind::OpenAi => "OPENAI_API_KEY",
+        ProviderKind::DeepSeek => "DEEPSEEK_API_KEY",
+        ProviderKind::Custom => "OPENAI_COMPATIBLE_API_KEY",
+        ProviderKind::Ollama => return "not_required".to_string(),
+        ProviderKind::SyntheticOffline => return "not_required".to_string(),
+    };
+    match std::env::var(env).ok().map(|v| !v.trim().is_empty()) {
+        Some(true) => format!("env:{env}"),
+        _ => "none".to_string(),
+    }
+}
+
+/// Probe one provider with the settings the operator typed.
+///
+/// `endpoint` and `model` override the defaults when supplied; the credential
+/// is resolved exactly as dispatch resolves it (config, then the provider's
+/// environment variable). A provider that requires a key and has none returns
+/// [`ProbeStatus::ConfigurationIncomplete`] **without sending a request** —
+/// there is nothing to learn from an unauthenticated call that the missing key
+/// does not already tell us, and probing must not become an accidental way to
+/// hammer a provider.
+///
+/// A successful probe is not a claim that dispatch uses these values: the
+/// caller is testing a candidate configuration, and the desktop surfaces the
+/// values it probed in the result.
+pub async fn probe_provider(
+    kind: &ProviderKind,
+    endpoint: Option<&str>,
+    model: Option<&str>,
+    timeout_ms: u64,
+) -> ProviderProbe {
+    probe_provider_with_config(&RouterConfig::from_env(), kind, endpoint, model, timeout_ms).await
+}
+
+/// Probe against a specific configuration instead of a fresh environment
+/// snapshot.
+///
+/// The settings surface uses this so "Test connection" exercises the same
+/// values dispatch will use — including a credential that only exists in the
+/// process (never written to disk) and the endpoint normalisation performed by
+/// [`RouterConfig::apply_provider_chain`].
+pub async fn probe_provider_with_config(
+    base: &RouterConfig,
+    kind: &ProviderKind,
+    endpoint: Option<&str>,
+    model: Option<&str>,
+    timeout_ms: u64,
+) -> ProviderProbe {
+    let provider = match kind_to_model_provider(kind) {
+        Some(p) => p,
+        None => {
+            return ProviderProbe {
+                provider: kind.to_string(),
+                model: model.unwrap_or_default().to_string(),
+                endpoint: endpoint.unwrap_or_default().to_string(),
+                key_source: "none".to_string(),
+                status: ProbeStatus::ConfigurationIncomplete,
+                http_status: None,
+                latency_ms: 0,
+                response_chars: 0,
+                detail: format!("provider {kind} has no dispatch implementation"),
+            }
+        }
+    };
+
+    let mut cfg = base.clone();
+    cfg.timeout_ms = timeout_ms.clamp(1_000, 300_000);
+
+    // Model: explicit override, else the chain entry's, else the router default.
+    let model = model
+        .map(|m| m.trim().to_string())
+        .filter(|m| !m.is_empty())
+        .or_else(|| {
+            cfg.provider_configs
+                .iter()
+                .find(|c| c.kind == *kind)
+                .map(|c| c.model.clone())
+                .filter(|m| !m.is_empty())
+        })
+        .unwrap_or_else(|| cfg.primary_model.clone());
+
+    // Route a draft endpoint through the same normalisation dispatch uses
+    // (`apply_provider_chain`), so a probe cannot pass against a URL the
+    // request path would never build.
+    if let Some(url) = endpoint
+        .map(|e| e.trim().to_string())
+        .filter(|e| !e.is_empty())
+    {
+        match cfg.provider_configs.iter_mut().find(|c| c.kind == *kind) {
+            Some(entry) => entry.endpoint = url,
+            None => cfg.provider_configs.push(ProviderConfig {
+                kind: kind.clone(),
+                model: model.clone(),
+                endpoint: url,
+                timeout_ms,
+                enabled: true,
+                fallback_order: u32::MAX,
+                requires_api_key: !matches!(
+                    kind,
+                    ProviderKind::Ollama | ProviderKind::SyntheticOffline
+                ),
+            }),
+        }
+        cfg.apply_provider_chain();
+    }
+
+    let effective_endpoint = format!("{}{}", cfg.base_url(&provider), provider.completions_path());
+    let key_source = key_source_for(&cfg, kind, &provider);
+
+    if *kind == ProviderKind::SyntheticOffline {
+        return ProviderProbe {
+            provider: provider.to_string(),
+            model,
+            endpoint: "(no network)".to_string(),
+            key_source,
+            status: ProbeStatus::OfflineProvider,
+            http_status: None,
+            latency_ms: 0,
+            response_chars: 0,
+            detail: "synthetic offline is a first-class provider: it never sends a request"
+                .to_string(),
+        };
+    }
+
+    if provider != ModelProvider::LocalOllama && cfg.api_key(&provider).is_none() {
+        return ProviderProbe {
+            provider: provider.to_string(),
+            model,
+            endpoint: effective_endpoint,
+            key_source,
+            status: ProbeStatus::ConfigurationIncomplete,
+            http_status: None,
+            latency_ms: 0,
+            response_chars: 0,
+            detail: format!(
+                "no credential for {provider}: set {} or save a key for it; nothing was sent",
+                match kind {
+                    ProviderKind::Anthropic => "ANTHROPIC_API_KEY",
+                    ProviderKind::OpenRouter => "OPENROUTER_API_KEY",
+                    _ => "an API key",
+                }
+            ),
+        };
+    }
+
+    let router = match TokenRouter::without_vector_cache(cfg) {
+        Ok(r) => r,
+        Err(e) => {
+            return ProviderProbe {
+                provider: provider.to_string(),
+                model,
+                endpoint: effective_endpoint,
+                key_source,
+                status: ProbeStatus::NetworkError,
+                http_status: None,
+                latency_ms: 0,
+                response_chars: 0,
+                detail: format!("could not build an HTTP client: {e:#}"),
+            }
+        }
+    };
+
+    let started = std::time::Instant::now();
+    let outcome = router
+        .call_provider(&provider, &model, "Reply with the single word OK.", "")
+        .await;
+    let latency_ms = started.elapsed().as_millis() as u64;
+
+    match outcome {
+        Ok(text) => ProviderProbe {
+            provider: provider.to_string(),
+            model,
+            endpoint: effective_endpoint,
+            key_source,
+            status: ProbeStatus::Connected,
+            http_status: None,
+            latency_ms,
+            response_chars: text.chars().count(),
+            detail: "provider answered with a completion".to_string(),
+        },
+        Err(err) => {
+            let message = format!("{err:#}");
+            let (status, http_status) = classify_probe_error(&message);
+            let body: String = body_in(&message).chars().take(300).collect();
+            ProviderProbe {
+                provider: provider.to_string(),
+                model,
+                endpoint: effective_endpoint,
+                key_source,
+                status,
+                http_status,
+                latency_ms,
+                response_chars: 0,
+                detail: body,
+            }
+        }
+    }
+}
 
 fn annotate_status(err: anyhow::Error, status: u16) -> anyhow::Error {
     // Store status in the error chain via context so `is_retryable` can inspect.
@@ -1639,6 +2428,56 @@ mod tests {
         // on whatever `./vector_cache.db` existed on the machine — a stale entry would
         // satisfy the prompt and the test would pass without exercising this path at all.
         TokenRouter::without_vector_cache(cfg).unwrap()
+    }
+
+    /// The streaming boundary hands consumers the neutral contract itself, not a
+    /// reduced projection of it: an offline answer can be told apart from a real
+    /// one, and the reason the stream ended is visible without parsing payload text.
+    #[tokio::test]
+    async fn dispatch_stream_exposes_the_neutral_contract_at_the_boundary() {
+        use crate::providers::streaming::FinishReason;
+
+        let _guard = DISPATCH_MUTEX.lock().await;
+        let router = synthetic_router();
+        let egress_before = NETWORK_EGRESS_COUNT.with(std::cell::Cell::get);
+
+        let mut chunks: Vec<StreamChunk> = Vec::new();
+        let text = router
+            .dispatch_stream("build a counter", "you are a code generator", |chunk| {
+                chunks.push(chunk)
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(
+            NETWORK_EGRESS_COUNT.with(std::cell::Cell::get),
+            egress_before,
+            "the offline boundary must not perform network egress"
+        );
+        assert!(!chunks.is_empty(), "the boundary must forward chunks");
+        assert!(
+            chunks.iter().all(|c| c.synthetic),
+            "every offline chunk must carry its provenance"
+        );
+
+        let terminals: Vec<&StreamChunk> = chunks.iter().filter(|c| c.done).collect();
+        assert_eq!(terminals.len(), 1, "exactly one terminal chunk per stream");
+        assert_eq!(
+            terminals[0].finish_reason,
+            Some(FinishReason::Stop),
+            "the terminal chunk must say why the stream ended"
+        );
+
+        let streamed: String = chunks
+            .iter()
+            .filter_map(|c| c.kind.text.clone())
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert_eq!(
+            streamed.trim_end(),
+            text,
+            "what the consumer saw must be what the call returned"
+        );
     }
 
     #[tokio::test]
@@ -2194,5 +3033,348 @@ mod tests {
             d1 != sentinel && d3 != sentinel,
             "Case 4: the seeded sentinel never leaks"
         );
+    }
+
+    // -----------------------------------------------------------------------
+    // Provider probe
+    // -----------------------------------------------------------------------
+
+    /// A one-shot HTTP server on a real loopback socket.
+    ///
+    /// The probe is evidence only if a real request crosses a real socket, so
+    /// the tests below answer it themselves instead of mocking the transport:
+    /// a canned response is written, the probe runs, and the classification is
+    /// asserted. `status_line` is the full status line (`HTTP/1.1 401 Unauthorized`).
+    fn serve_once(status_line: &'static str, body: &'static str) -> (String, u16) {
+        use std::io::{Read, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind loopback");
+        let port = listener.local_addr().expect("local addr").port();
+        std::thread::spawn(move || {
+            if let Ok((mut stream, _)) = listener.accept() {
+                let mut buf = [0u8; 4096];
+                let _ = stream.read(&mut buf);
+                let response = format!(
+                    "{status_line}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                    body.len()
+                );
+                let _ = stream.write_all(response.as_bytes());
+                let _ = stream.flush();
+            }
+        });
+        (format!("http://127.0.0.1:{port}"), port)
+    }
+
+    #[test]
+    fn probe_error_classification_is_actionable() {
+        let cases = [
+            (
+                "provider ollama returned 401 Unauthorized: {\"error\":\"bad key\"} [status=401]",
+                ProbeStatus::AuthenticationFailed,
+                Some(401),
+            ),
+            (
+                "provider ollama returned 404 Not Found: {\"error\":\"no route\"} [status=404]",
+                ProbeStatus::InvalidEndpoint,
+                Some(404),
+            ),
+            (
+                "provider ollama returned 404 Not Found: {\"error\":{\"message\":\"model 'x' not found\"}} [status=404]",
+                ProbeStatus::ModelUnavailable,
+                Some(404),
+            ),
+            (
+                "provider ollama returned 400 Bad Request: {\"error\":\"model is required\"} [status=400]",
+                ProbeStatus::ModelUnavailable,
+                Some(400),
+            ),
+            (
+                "provider ollama returned 429 Too Many Requests: slow down [status=429]",
+                ProbeStatus::ProviderRejected,
+                Some(429),
+            ),
+            (
+                "provider ollama returned 503 Service Unavailable: down [status=503]",
+                ProbeStatus::ProviderRejected,
+                Some(503),
+            ),
+            (
+                "HTTP request failed: builder error for url",
+                ProbeStatus::NetworkError,
+                None,
+            ),
+        ];
+        for (message, expected, code) in cases {
+            let (status, http) = classify_probe_error(message);
+            assert_eq!(status, expected, "wrong classification for {message:?}");
+            assert_eq!(http, code, "wrong HTTP status for {message:?}");
+        }
+    }
+
+    #[tokio::test]
+    async fn probe_reports_connected_against_a_real_endpoint() {
+        let _guard = DISPATCH_MUTEX.lock().await;
+        let (base, _port) = serve_once(
+            "HTTP/1.1 200 OK",
+            r#"{"message":{"content":"OK"},"prompt_eval_count":3,"eval_count":1}"#,
+        );
+        let probe =
+            probe_provider(&ProviderKind::Ollama, Some(&base), Some("llama3.1"), 5_000).await;
+        assert_eq!(
+            probe.status,
+            ProbeStatus::Connected,
+            "detail: {}",
+            probe.detail
+        );
+        assert!(probe.ok());
+        assert_eq!(probe.key_source, "not_required");
+        assert_eq!(probe.response_chars, 2);
+        assert!(probe.endpoint.ends_with("/api/chat"), "{}", probe.endpoint);
+    }
+
+    #[tokio::test]
+    async fn probe_classifies_a_rejected_credential() {
+        let _guard = DISPATCH_MUTEX.lock().await;
+        let (base, _port) = serve_once(
+            "HTTP/1.1 401 Unauthorized",
+            r#"{"error":{"message":"invalid x-api-key"}}"#,
+        );
+        let probe =
+            probe_provider(&ProviderKind::Ollama, Some(&base), Some("llama3.1"), 5_000).await;
+        assert_eq!(probe.status, ProbeStatus::AuthenticationFailed);
+        assert_eq!(probe.http_status, Some(401));
+        assert!(!probe.ok());
+        assert!(probe.detail.contains("invalid"), "{}", probe.detail);
+    }
+
+    #[tokio::test]
+    async fn probe_classifies_an_unavailable_model() {
+        let _guard = DISPATCH_MUTEX.lock().await;
+        let (base, _port) = serve_once(
+            "HTTP/1.1 404 Not Found",
+            r#"{"error":{"message":"model 'nope' not found"}}"#,
+        );
+        let probe = probe_provider(&ProviderKind::Ollama, Some(&base), Some("nope"), 5_000).await;
+        assert_eq!(probe.status, ProbeStatus::ModelUnavailable);
+        assert_eq!(probe.http_status, Some(404));
+    }
+
+    #[tokio::test]
+    async fn probe_classifies_a_refused_connection_as_network_error() {
+        let _guard = DISPATCH_MUTEX.lock().await;
+        // Bind then drop, so the port is closed but not reused by the test.
+        let base = {
+            let l = std::net::TcpListener::bind("127.0.0.1:0").expect("bind");
+            let port = l.local_addr().expect("addr").port();
+            drop(l);
+            format!("http://127.0.0.1:{port}")
+        };
+        let probe =
+            probe_provider(&ProviderKind::Ollama, Some(&base), Some("llama3.1"), 2_000).await;
+        assert_eq!(
+            probe.status,
+            ProbeStatus::NetworkError,
+            "detail: {}",
+            probe.detail
+        );
+        assert_eq!(probe.http_status, None);
+    }
+
+    /// A provider that requires a credential and has none is not probed: the
+    /// missing key is the whole answer, and sending an unauthenticated request
+    /// would only spend the provider's rate limit to learn nothing.
+    #[tokio::test]
+    async fn probe_without_a_credential_sends_nothing() {
+        let _guard = DISPATCH_MUTEX.lock().await;
+        let _env = EnvScope::capture(&["ANTHROPIC_API_KEY"]);
+        std::env::remove_var("ANTHROPIC_API_KEY");
+        NETWORK_EGRESS_COUNT.with(|c| c.set(0));
+
+        let probe = probe_provider(&ProviderKind::Anthropic, None, None, 5_000).await;
+        assert_eq!(probe.status, ProbeStatus::ConfigurationIncomplete);
+        assert_eq!(probe.key_source, "none");
+        assert_eq!(
+            NETWORK_EGRESS_COUNT.with(|c| c.get()),
+            0,
+            "an incomplete configuration must not egress"
+        );
+    }
+
+    #[tokio::test]
+    async fn probe_of_the_offline_provider_sends_nothing() {
+        let _guard = DISPATCH_MUTEX.lock().await;
+        NETWORK_EGRESS_COUNT.with(|c| c.set(0));
+        let probe = probe_provider(&ProviderKind::SyntheticOffline, None, None, 5_000).await;
+        assert_eq!(probe.status, ProbeStatus::OfflineProvider);
+        assert!(probe.ok());
+        assert_eq!(NETWORK_EGRESS_COUNT.with(|c| c.get()), 0);
+    }
+
+    // -----------------------------------------------------------------------
+    // Provider chain write-through: settings surface -> dispatch
+    // -----------------------------------------------------------------------
+
+    fn chain_config() -> RouterConfig {
+        RouterConfig {
+            provider_configs: vec![
+                ProviderConfig {
+                    kind: ProviderKind::Anthropic,
+                    model: "claude-sonnet-4-5".to_string(),
+                    endpoint: String::new(),
+                    timeout_ms: 60_000,
+                    enabled: true,
+                    fallback_order: 0,
+                    requires_api_key: true,
+                },
+                ProviderConfig {
+                    kind: ProviderKind::Ollama,
+                    model: "llama3.1".to_string(),
+                    endpoint: String::new(),
+                    timeout_ms: 60_000,
+                    enabled: true,
+                    fallback_order: 1,
+                    requires_api_key: false,
+                },
+                ProviderConfig {
+                    kind: ProviderKind::OpenAi,
+                    model: "gpt-4o-mini".to_string(),
+                    endpoint: String::new(),
+                    timeout_ms: 60_000,
+                    enabled: false,
+                    fallback_order: 2,
+                    requires_api_key: true,
+                },
+            ],
+            ..RouterConfig::default()
+        }
+    }
+
+    #[test]
+    fn apply_provider_chain_makes_the_chain_authoritative() {
+        let mut cfg = chain_config();
+        // The user drags Ollama to the top: the legacy pair must follow, because
+        // that pair is what dispatch actually attempts first.
+        cfg.provider_configs[0].fallback_order = 5;
+        cfg.provider_configs[1].fallback_order = 0;
+        cfg.apply_provider_chain();
+
+        assert_eq!(cfg.primary_provider, ModelProvider::LocalOllama);
+        assert_eq!(cfg.primary_model, "llama3.1");
+        assert_eq!(cfg.fallback_provider, ModelProvider::Anthropic);
+        assert_eq!(
+            cfg.provider_configs[0].kind,
+            ProviderKind::Ollama,
+            "entries are sorted by fallback_order"
+        );
+    }
+
+    #[test]
+    fn apply_provider_chain_skips_disabled_and_blank_entries() {
+        let mut cfg = chain_config();
+        cfg.provider_configs[1].enabled = false; // Ollama off
+        cfg.provider_configs[0].model = "   ".to_string(); // blank model
+        cfg.apply_provider_chain();
+
+        // Nothing dispatchable remains, so the legacy pair must be untouched
+        // rather than becoming a blank provider.
+        assert_ne!(cfg.primary_model.trim(), "");
+        assert_ne!(cfg.primary_provider, ModelProvider::LocalOllama);
+    }
+
+    #[test]
+    fn endpoint_override_is_normalised_and_cleared() {
+        let mut cfg = chain_config();
+        cfg.provider_configs[0].endpoint =
+            "  https://gateway.internal/anthropic/v1/messages/  ".to_string();
+        cfg.apply_provider_chain();
+        assert_eq!(
+            cfg.base_url(&ModelProvider::Anthropic),
+            "https://gateway.internal/anthropic",
+            "a full completions URL must not have its path appended twice"
+        );
+
+        cfg.provider_configs[0].endpoint = String::new();
+        cfg.apply_provider_chain();
+        assert_eq!(
+            cfg.base_url(&ModelProvider::Anthropic),
+            "https://api.anthropic.com",
+            "clearing the endpoint restores the provider default"
+        );
+    }
+
+    #[test]
+    fn per_provider_timeout_overrides_the_router_default() {
+        let mut cfg = chain_config();
+        cfg.timeout_ms = 60_000;
+        cfg.provider_configs[1].timeout_ms = 7_500;
+        assert_eq!(cfg.provider_timeout_ms(&ModelProvider::LocalOllama), 7_500);
+        // A provider with no chain entry keeps the router-wide timeout.
+        assert_eq!(cfg.provider_timeout_ms(&ModelProvider::DeepSeek), 60_000);
+    }
+
+    #[test]
+    fn default_chain_uses_native_model_ids() {
+        let cfg = RouterConfig::default();
+        let model = |kind: &ProviderKind| {
+            cfg.provider_configs
+                .iter()
+                .find(|c| &c.kind == kind)
+                .map(|c| c.model.clone())
+                .unwrap_or_default()
+        };
+        // The native Anthropic API does not accept OpenRouter-style slugs.
+        assert!(
+            !model(&ProviderKind::Anthropic).starts_with("anthropic/"),
+            "{}",
+            model(&ProviderKind::Anthropic)
+        );
+        assert!(model(&ProviderKind::Anthropic).contains("claude"));
+        // OpenRouter addresses models as `vendor/model`.
+        assert!(model(&ProviderKind::OpenRouter).contains('/'));
+        assert!(!model(&ProviderKind::OpenRouter).starts_with("openrouter/"));
+    }
+
+    #[test]
+    fn a_cloned_router_shares_the_live_configuration() {
+        // The agent dispatches through a clone taken at construction; a copied
+        // config field would let the settings surface edit state nothing reads.
+        let router = TokenRouter::without_vector_cache(chain_config()).expect("router");
+        let agent_side = router.clone();
+        router.update_config(|c| c.provider_configs[0].model = "edited-model".to_string());
+        assert_eq!(agent_side.config().primary_model, "edited-model");
+    }
+
+    #[tokio::test]
+    async fn set_config_reaches_the_next_request() {
+        let _guard = DISPATCH_MUTEX.lock().await;
+        let (base, _port) = serve_once("HTTP/1.1 200 OK", r#"{"message":{"content":"pong"}}"#);
+        let cfg = RouterConfig {
+            provider_configs: vec![ProviderConfig {
+                kind: ProviderKind::Ollama,
+                model: "before-edit".to_string(),
+                endpoint: base.clone(),
+                timeout_ms: 5_000,
+                enabled: true,
+                fallback_order: 0,
+                requires_api_key: false,
+            }],
+            ..RouterConfig::default()
+        };
+        let router = TokenRouter::without_vector_cache(RouterConfig::default()).expect("router");
+        // Installing a chain is what the settings command does; construction
+        // alone must not normalise, or an env-selected provider would be
+        // overridden by the default list.
+        router.set_config(cfg);
+        assert_eq!(router.config().primary_model, "before-edit");
+
+        // The same call the settings command makes.
+        router.update_config(|c| c.provider_configs[0].model = "after-edit".to_string());
+
+        let probe = router.probe_saved(&ProviderKind::Ollama).await;
+        assert_eq!(
+            probe.model, "after-edit",
+            "the probe must test the saved configuration, not a snapshot"
+        );
+        assert_eq!(probe.status, ProbeStatus::Connected);
+        assert_eq!(probe.endpoint, format!("{base}/api/chat"));
     }
 }

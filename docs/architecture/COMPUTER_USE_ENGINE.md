@@ -35,14 +35,14 @@ Proof Engine).
 
 This is a v2.1 architectural decision and it is load-bearing.
 
-| | Browser Runtime (7A) | Computer-Use Engine (7B–7D) |
-|---|---|---|
-| Target | a browser it launched | applications the user already runs |
-| Side effects land on | a sandboxed page | the user's real files, accounts, devices |
-| Reversibility | reload the page | often none |
-| Permission granularity | per-origin, per-navigation | per-action, per-application |
-| Failure mode | wrong test result | deleted file, sent message, purchase |
-| Verification | DOM is queryable — the truth is inspectable | only the screen is available — the truth must be *re-observed* |
+|                        | Browser Runtime (7A)                        | Computer-Use Engine (7B–7D)                                    |
+| ---------------------- | ------------------------------------------- | -------------------------------------------------------------- |
+| Target                 | a browser it launched                       | applications the user already runs                             |
+| Side effects land on   | a sandboxed page                            | the user's real files, accounts, devices                       |
+| Reversibility          | reload the page                             | often none                                                     |
+| Permission granularity | per-origin, per-navigation                  | per-action, per-application                                    |
+| Failure mode           | wrong test result                           | deleted file, sent message, purchase                           |
+| Verification           | DOM is queryable — the truth is inspectable | only the screen is available — the truth must be _re-observed_ |
 
 Folding this into the browser phase would bury the per-action permission requirement and the
 re-observation requirement at the architecture layer. Those two obligations are precisely what
@@ -84,13 +84,13 @@ return `Ok(())` after a timer, with no observation of any effect.
 
 **Every percept is an artifact**, carrying:
 
-| Field | Meaning |
-|---|---|
-| `captured_at` | monotonic + wall-clock timestamp |
-| `source` | screen / window(id) / accessibility-tree |
-| `provenance` | `Observed` — never `Inferred`, never `Decided` |
-| `method` | the concrete mechanism that produced it (e.g. `Win32::BitBlt`) |
-| `display_context` | resolution, DPI scale, virtual-desktop origin |
+| Field             | Meaning                                                        |
+| ----------------- | -------------------------------------------------------------- |
+| `captured_at`     | monotonic + wall-clock timestamp                               |
+| `source`          | screen / window(id) / accessibility-tree                       |
+| `provenance`      | `Observed` — never `Inferred`, never `Decided`                 |
+| `method`          | the concrete mechanism that produced it (e.g. `Win32::BitBlt`) |
+| `display_context` | resolution, DPI scale, virtual-desktop origin                  |
 
 **A percept without a `method` is inadmissible.** The proof ladder cannot cite it.
 
@@ -141,7 +141,7 @@ read/write · window focus / move / resize / close.
 
 **Two invariants:**
 
-- **Record before acting.** The intended action is written to the ledger *before* it is issued,
+- **Record before acting.** The intended action is written to the ledger _before_ it is issued,
   so that a crash mid-action leaves a record of what was attempted.
 - **Every action completes with `Observe`+`Verify`, or the session halts.** A failed verification
   is not a warning to log and continue past.
@@ -152,18 +152,18 @@ read/write · window focus / move / resize / close.
 
 Every action declares exactly one level. Each maps to a permission tier and a verification depth.
 
-| Level | Scope | Example | Permission | Verification depth |
-|---|---|---|---|---|
-| **CU-0** | Observe only | capture a region, read the accessibility tree | standing grant | none (no side effect) |
-| **CU-1** | Navigate within a scoped app | focus a window, switch a tab, scroll | standing grant | target-state re-observed |
-| **CU-2** | Interact, non-destructive | type into a scratch field, hover | standing grant | effect re-observed |
-| **CU-3** | Modify user data | save a file, send a message, edit a record | **explicit approval, per action class** | effect re-observed **and** reconciled against external truth where available |
-| **CU-4** | Irreversible or externally visible | delete, purchase, publish, transmit | **explicit approval, per instance** | effect re-observed; external system queried |
+| Level    | Scope                              | Example                                       | Permission                              | Verification depth                                                           |
+| -------- | ---------------------------------- | --------------------------------------------- | --------------------------------------- | ---------------------------------------------------------------------------- |
+| **CU-0** | Observe only                       | capture a region, read the accessibility tree | standing grant                          | none (no side effect)                                                        |
+| **CU-1** | Navigate within a scoped app       | focus a window, switch a tab, scroll          | standing grant                          | target-state re-observed                                                     |
+| **CU-2** | Interact, non-destructive          | type into a scratch field, hover              | standing grant                          | effect re-observed                                                           |
+| **CU-3** | Modify user data                   | save a file, send a message, edit a record    | **explicit approval, per action class** | effect re-observed **and** reconciled against external truth where available |
+| **CU-4** | Irreversible or externally visible | delete, purchase, publish, transmit           | **explicit approval, per instance**     | effect re-observed; external system queried                                  |
 
 **Rules:**
 
 - Level is declared by the adapter, not inferred at call time. An action must not be able to
-  *lower* its own declared level.
+  _lower_ its own declared level.
 - CU-3/CU-4 approvals are not session-wide. A grant for "save a document" is not a grant for
   "send an email".
 - Ambiguity resolves **upward** (fail closed, Architecture A6). If a call site cannot prove an
@@ -221,13 +221,13 @@ Engine respectively. This engine **calls** them; it does not implement alternati
 For 7B (Foundation):
 
 1. **Capture is real.** Capture the screen on a known display configuration and assert the buffer
-   is *not* constant, that its dimensions match the actual display, and that a known on-screen
-   marker appears in the capture. *(The current skeleton returns `vec![0; 1920*1080*4]` and would
-   fail all three.)*
+   is _not_ constant, that its dimensions match the actual display, and that a known on-screen
+   marker appears in the capture. _(The current skeleton returns `vec![0; 1920*1080*4]` and would
+   fail all three.)_
 2. **Grounding is measured.** Against a labelled fixture set, report precision and recall **and
    the measurement method**. A confidence value with no stated method fails this benchmark.
 3. **Action asserts effect, not success.** Click a control in a fixture application and assert the
-   application's *state changed*. `assert!(result.is_ok())` is not a test of action.
+   application's _state changed_. `assert!(result.is_ok())` is not a test of action.
 4. **Permission blocks.** A CU-3 action without an explicit grant produces a recorded denial and
    **no** observable effect on the target application.
 5. **Verification is load-bearing.** Inject a failure between `Act` and the effect; assert the

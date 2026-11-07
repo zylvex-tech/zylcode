@@ -77,6 +77,7 @@ Stage 14 (Launch)
 ### Parallel Opportunities
 
 After Stage 4 completes:
+
 - **Stream A**: Stage 5 → Stage 7 (Execution + Visual Intelligence)
 - **Stream B**: Stage 6 → Stage 7 (Vision → Visual Intelligence)
 - **Stream C**: Stage 8 → Stage 9 (Mobile → Apple)
@@ -102,36 +103,36 @@ evidence ledger, memory, crash recovery, and approval model.
 
 ### Deliverables
 
-| Deliverable | Status | Evidence |
-|-------------|--------|----------|
-| Agent loop with decision protocol | ✅ Complete | `agent.rs`, `agent_protocol.rs` |
-| Evidence Ledger (append-first, hash-chained) | ✅ Complete | `ledger.rs`, `sqlite_ledger.rs` |
-| Crash recovery (checkpoint/resume) | ✅ Complete | `agent.rs`, `crash_recovery.rs` tests |
-| Fail-closed verification | ✅ Complete | `agent.rs` |
-| Risk-based approval model | ✅ Complete | `agent_protocol.rs` |
-| MCP server | ✅ Complete | `zylcode-mcp` crate |
-| CLI interface | ✅ Complete | `zylcode-cli` crate |
-| Desktop shell (Tauri v2) | ✅ Complete | `zylcode-desktop` |
-| React frontend | ✅ Complete | `apps/zylcode-desktop/src/` |
-| Tool runtime (filesystem, shell, git) | ✅ Complete | `zylcode-mcp/src/real_tools.rs` |
+| Deliverable                                  | Status      | Evidence                              |
+| -------------------------------------------- | ----------- | ------------------------------------- |
+| Agent loop with decision protocol            | ✅ Complete | `agent.rs`, `agent_protocol.rs`       |
+| Evidence Ledger (append-first, hash-chained) | ✅ Complete | `ledger.rs`, `sqlite_ledger.rs`       |
+| Crash recovery (checkpoint/resume)           | ✅ Complete | `agent.rs`, `crash_recovery.rs` tests |
+| Fail-closed verification                     | ✅ Complete | `agent.rs`                            |
+| Risk-based approval model                    | ✅ Complete | `agent_protocol.rs`                   |
+| MCP server                                   | ✅ Complete | `zylcode-mcp` crate                   |
+| CLI interface                                | ✅ Complete | `zylcode-cli` crate                   |
+| Desktop shell (Tauri v2)                     | ✅ Complete | `zylcode-desktop`                     |
+| React frontend                               | ✅ Complete | `apps/zylcode-desktop/src/`           |
+| Tool runtime (filesystem, shell, git)        | ✅ Complete | `zylcode-mcp/src/real_tools.rs`       |
 
 ### Gates
 
-| Gate | Criterion | Status |
-|------|-----------|--------|
-| All tests pass | 337+ tests green | ✅ |
-| Clippy clean | Zero warnings | ✅ |
-| Crash recovery works | Resume after kill | ✅ |
-| Evidence integrity | Hash chain unbroken | ✅ |
-| Frontend builds | `pnpm build` succeeds | ✅ |
+| Gate                 | Criterion             | Status |
+| -------------------- | --------------------- | ------ |
+| All tests pass       | 337+ tests green      | ✅     |
+| Clippy clean         | Zero warnings         | ✅     |
+| Crash recovery works | Resume after kill     | ✅     |
+| Evidence integrity   | Hash chain unbroken   | ✅     |
+| Frontend builds      | `pnpm build` succeeds | ✅     |
 
 ### Benchmark
 
-| Metric | Target | Actual |
-|--------|--------|--------|
-| Test suite | ≥100 tests | 337 ✅ |
-| Crash recovery | 3+ crash window tests | 5 ✅ |
-| Agent loop | E2E test passing | ✅ |
+| Metric         | Target                | Actual |
+| -------------- | --------------------- | ------ |
+| Test suite     | ≥100 tests            | 337 ✅ |
+| Crash recovery | 3+ crash window tests | 5 ✅   |
+| Agent loop     | E2E test passing      | ✅     |
 
 ---
 
@@ -152,42 +153,42 @@ query API, context retrieval, and commissioning benchmark.
 
 ### Deliverables
 
-| Deliverable | Status | Evidence |
-|-------------|--------|----------|
-| Repository scanner | ✅ | `intelligence/scanner.rs` |
-| Language classifier | ✅ | `intelligence/classifier.rs` |
-| Manifest parser (Cargo, pnpm, npm) | ✅ | `intelligence/manifest.rs` |
-| Symbol extractor (Rust, TypeScript) | ✅ | `intelligence/symbols.rs` |
-| Dependency graph | ✅ | `intelligence/dependency.rs` |
-| Entry-point discovery | ✅ | `intelligence/entry_points.rs` |
-| Architectural fingerprint | ✅ | `intelligence/architecture.rs` |
-| Git/Change intelligence | ✅ | `intelligence/git.rs` |
-| SQLite persistence | ✅ | `intelligence/store.rs` |
-| Query API (14 methods) | ✅ | `intelligence/query.rs` |
-| Context retriever | ✅ | `intelligence/context.rs` |
-| Commissioning benchmark | ✅ | `tests/repo_intelligence_benchmark.rs` |
+| Deliverable                         | Status | Evidence                               |
+| ----------------------------------- | ------ | -------------------------------------- |
+| Repository scanner                  | ✅     | `intelligence/scanner.rs`              |
+| Language classifier                 | ✅     | `intelligence/classifier.rs`           |
+| Manifest parser (Cargo, pnpm, npm)  | ✅     | `intelligence/manifest.rs`             |
+| Symbol extractor (Rust, TypeScript) | ✅     | `intelligence/symbols.rs`              |
+| Dependency graph                    | ✅     | `intelligence/dependency.rs`           |
+| Entry-point discovery               | ✅     | `intelligence/entry_points.rs`         |
+| Architectural fingerprint           | ✅     | `intelligence/architecture.rs`         |
+| Git/Change intelligence             | ✅     | `intelligence/git.rs`                  |
+| SQLite persistence                  | ✅     | `intelligence/store.rs`                |
+| Query API (14 methods)              | ✅     | `intelligence/query.rs`                |
+| Context retriever                   | ✅     | `intelligence/context.rs`              |
+| Commissioning benchmark             | ✅     | `tests/repo_intelligence_benchmark.rs` |
 
 ### Gates
 
-| Gate | Criterion | Status |
-|------|-----------|--------|
-| All tests pass | 79 intelligence tests + 337 workspace | ✅ |
-| Clippy clean | Zero warnings | ✅ |
-| Benchmark passes | P@10≥0.25, R@10≥0.30 | ✅ (0.30, 0.53) |
-| Performance | Scan <120s for 15K files | ✅ (12.7s) |
-| Frontend builds | `pnpm build` succeeds | ✅ |
+| Gate             | Criterion                             | Status          |
+| ---------------- | ------------------------------------- | --------------- |
+| All tests pass   | 79 intelligence tests + 337 workspace | ✅              |
+| Clippy clean     | Zero warnings                         | ✅              |
+| Benchmark passes | P@10≥0.25, R@10≥0.30                  | ✅ (0.30, 0.53) |
+| Performance      | Scan <120s for 15K files              | ✅ (12.7s)      |
+| Frontend builds  | `pnpm build` succeeds                 | ✅              |
 
 ### Benchmark
 
-| Metric | Target | Actual |
-|--------|--------|--------|
-| Files indexed | ≥1000 | 14,973 ✅ |
-| Symbols extracted | ≥100 | 1,444 ✅ |
-| Packages discovered | ≥2 | 5 ✅ |
-| Entry points | ≥1 | 15 ✅ |
-| Precision@10 | ≥0.25 | 0.30 ✅ |
-| Recall@10 | ≥0.30 | 0.53 ✅ |
-| Scan duration | <120s | 12.7s ✅ |
+| Metric              | Target | Actual    |
+| ------------------- | ------ | --------- |
+| Files indexed       | ≥1000  | 14,973 ✅ |
+| Symbols extracted   | ≥100   | 1,444 ✅  |
+| Packages discovered | ≥2     | 5 ✅      |
+| Entry points        | ≥1     | 15 ✅     |
+| Precision@10        | ≥0.25  | 0.30 ✅   |
+| Recall@10           | ≥0.30  | 0.53 ✅   |
+| Scan duration       | <120s  | 12.7s ✅  |
 
 ---
 
@@ -206,39 +207,39 @@ deeper intelligence (import graph, reference graph, semantic index).
 
 ### Deliverables
 
-| Deliverable | Description |
-|-------------|-------------|
-| Model Router | Task classification → model selection |
-| Provider Registry | Register/manage model providers (OpenAI, Anthropic, DeepSeek, Ollama, etc.) |
-| Performance Tracker | Record per-task-model outcomes |
-| Context Optimizer | Token-aware context assembly with priority ranking |
-| Import Graph | File→file import relationships |
-| Reference Graph | Symbol→symbol references and calls |
-| Semantic Index | Vector embeddings for semantic retrieval |
-| Model Benchmark | Per-model performance measurement |
-| Sovereign Fallback | Graceful degradation to local models |
+| Deliverable         | Description                                                                 |
+| ------------------- | --------------------------------------------------------------------------- |
+| Model Router        | Task classification → model selection                                       |
+| Provider Registry   | Register/manage model providers (OpenAI, Anthropic, DeepSeek, Ollama, etc.) |
+| Performance Tracker | Record per-task-model outcomes                                              |
+| Context Optimizer   | Token-aware context assembly with priority ranking                          |
+| Import Graph        | File→file import relationships                                              |
+| Reference Graph     | Symbol→symbol references and calls                                          |
+| Semantic Index      | Vector embeddings for semantic retrieval                                    |
+| Model Benchmark     | Per-model performance measurement                                           |
+| Sovereign Fallback  | Graceful degradation to local models                                        |
 
 ### Gates
 
-| Gate | Criterion |
-|------|-----------|
-| All tests pass | Full workspace green |
-| Model routing | ≥80% correct task→model classification |
-| Context optimization | ≥20% improvement in benchmark recall |
-| Sovereign mode | System functional with Ollama only |
-| Import graph | ≥90% import detection for Rust/TS |
-| Semantic index | Vector search returns relevant results |
+| Gate                 | Criterion                              |
+| -------------------- | -------------------------------------- |
+| All tests pass       | Full workspace green                   |
+| Model routing        | ≥80% correct task→model classification |
+| Context optimization | ≥20% improvement in benchmark recall   |
+| Sovereign mode       | System functional with Ollama only     |
+| Import graph         | ≥90% import detection for Rust/TS      |
+| Semantic index       | Vector search returns relevant results |
 
 ### Benchmark
 
-| Metric | Target |
-|--------|--------|
-| Model routing accuracy | ≥0.80 |
-| Context recall improvement | ≥20% over Stage 2 |
-| Import detection rate | ≥0.90 |
-| Semantic search relevance | ≥0.70 |
-| Sovereign mode: code gen | Functional (reduced quality) |
-| Sovereign mode: intelligence | Full capability |
+| Metric                       | Target                       |
+| ---------------------------- | ---------------------------- |
+| Model routing accuracy       | ≥0.80                        |
+| Context recall improvement   | ≥20% over Stage 2            |
+| Import detection rate        | ≥0.90                        |
+| Semantic search relevance    | ≥0.70                        |
+| Sovereign mode: code gen     | Functional (reduced quality) |
+| Sovereign mode: intelligence | Full capability              |
 
 ### Dependencies
 
@@ -265,40 +266,40 @@ composable. Everything becomes a plugin.
 
 ### Deliverables
 
-| Deliverable | Description |
-|-------------|-------------|
-| Plugin Runtime | Define, approve, activate, update, stop, undefine plugins |
-| Service Registry | Register and discover services |
-| Event Bus | Publish/subscribe for system events |
-| Skill System | Register, load, and invoke skills |
-| MCP Client | Connect to external MCP servers |
-| Agent Registry | Register and manage agent configurations |
-| Workflow Engine | Multi-step, multi-agent orchestration |
-| Plugin Sandbox | Process isolation, permission enforcement |
-| Plugin Manifest | Standard manifest format for all plugin types |
-| Creator Studio (basic) | Visual plugin/skill/workflow builder |
+| Deliverable            | Description                                               |
+| ---------------------- | --------------------------------------------------------- |
+| Plugin Runtime         | Define, approve, activate, update, stop, undefine plugins |
+| Service Registry       | Register and discover services                            |
+| Event Bus              | Publish/subscribe for system events                       |
+| Skill System           | Register, load, and invoke skills                         |
+| MCP Client             | Connect to external MCP servers                           |
+| Agent Registry         | Register and manage agent configurations                  |
+| Workflow Engine        | Multi-step, multi-agent orchestration                     |
+| Plugin Sandbox         | Process isolation, permission enforcement                 |
+| Plugin Manifest        | Standard manifest format for all plugin types             |
+| Creator Studio (basic) | Visual plugin/skill/workflow builder                      |
 
 ### Gates
 
-| Gate | Criterion |
-|------|-----------|
-| Plugin lifecycle | Define→Activate→Run→Stop works |
-| Service registry | Services discoverable across plugins |
-| Event bus | Events delivered to all subscribers |
+| Gate              | Criterion                                    |
+| ----------------- | -------------------------------------------- |
+| Plugin lifecycle  | Define→Activate→Run→Stop works               |
+| Service registry  | Services discoverable across plugins         |
+| Event bus         | Events delivered to all subscribers          |
 | Sandbox isolation | Plugins cannot access unauthorized resources |
-| Plugin load time | <500ms for typical plugin |
-| MCP client | Connect to external MCP server |
-| Workflow engine | Multi-step workflow executes correctly |
+| Plugin load time  | <500ms for typical plugin                    |
+| MCP client        | Connect to external MCP server               |
+| Workflow engine   | Multi-step workflow executes correctly       |
 
 ### Benchmark
 
-| Metric | Target |
-|--------|--------|
-| Plugin activation time | <500ms |
-| Plugin isolation | 100% permission enforcement |
-| MCP connectivity | ≥3 external MCP servers |
-| Workflow execution | 3+ step workflow completes |
-| Creator Studio | Visual plugin creation works |
+| Metric                 | Target                       |
+| ---------------------- | ---------------------------- |
+| Plugin activation time | <500ms                       |
+| Plugin isolation       | 100% permission enforcement  |
+| MCP connectivity       | ≥3 external MCP servers      |
+| Workflow execution     | 3+ step workflow completes   |
+| Creator Studio         | Visual plugin creation works |
 
 ### Dependencies
 
@@ -329,39 +330,39 @@ software, see it running, take screenshots, and interact with it.
 
 ### Deliverables
 
-| Deliverable | Description |
-|-------------|-------------|
-| Chrome CDP Adapter | Launch, navigate, screenshot, DOM snapshot, click, type, evaluate JS |
-| Firefox Adapter | Launch, navigate, screenshot via Marionette |
-| Desktop Adapter | Tauri window control, IPC |
-| Build Controller | Detect build system, run builds, capture output |
-| Inspection Pipeline | Build→Launch→Render→Screenshot→Inspect |
-| Screenshot Capture | Full-page and element screenshots |
-| DOM Snapshot | Structured DOM tree for agent consumption |
-| Console Capture | JavaScript console output |
-| Network Capture | HTTP request/response logging |
-| Sandbox Manager | Process isolation, resource limits |
+| Deliverable         | Description                                                          |
+| ------------------- | -------------------------------------------------------------------- |
+| Chrome CDP Adapter  | Launch, navigate, screenshot, DOM snapshot, click, type, evaluate JS |
+| Firefox Adapter     | Launch, navigate, screenshot via Marionette                          |
+| Desktop Adapter     | Tauri window control, IPC                                            |
+| Build Controller    | Detect build system, run builds, capture output                      |
+| Inspection Pipeline | Build→Launch→Render→Screenshot→Inspect                               |
+| Screenshot Capture  | Full-page and element screenshots                                    |
+| DOM Snapshot        | Structured DOM tree for agent consumption                            |
+| Console Capture     | JavaScript console output                                            |
+| Network Capture     | HTTP request/response logging                                        |
+| Sandbox Manager     | Process isolation, resource limits                                   |
 
 ### Gates
 
-| Gate | Criterion |
-|------|-----------|
-| Chrome control | Launch, navigate, screenshot works |
-| Build integration | Cargo + npm builds succeed |
-| Inspection pipeline | Build→screenshot in <30s |
-| DOM snapshot | Structured tree returned |
-| Console capture | Errors captured |
-| Sandbox | Process isolated, timeout enforced |
+| Gate                | Criterion                          |
+| ------------------- | ---------------------------------- |
+| Chrome control      | Launch, navigate, screenshot works |
+| Build integration   | Cargo + npm builds succeed         |
+| Inspection pipeline | Build→screenshot in <30s           |
+| DOM snapshot        | Structured tree returned           |
+| Console capture     | Errors captured                    |
+| Sandbox             | Process isolated, timeout enforced |
 
 ### Benchmark
 
-| Metric | Target |
-|--------|--------|
-| Build→screenshot time | <30s |
-| Screenshot capture | <2s |
-| DOM snapshot | <1s |
-| Chrome launch | <5s |
-| Console capture | 100% error capture |
+| Metric                | Target             |
+| --------------------- | ------------------ |
+| Build→screenshot time | <30s               |
+| Screenshot capture    | <2s                |
+| DOM snapshot          | <1s                |
+| Chrome launch         | <5s                |
+| Console capture       | 100% error capture |
 
 ### Dependencies
 
@@ -390,40 +391,40 @@ canvas and code are two representations of the same product.
 
 ### Deliverables
 
-| Deliverable | Description |
-|-------------|-------------|
-| Canvas Engine | WebGL/WebGPU rendering, Flexbox/Grid layout |
-| Code Bridge | Bidirectional AST-aware sync between canvas and code |
-| Component System | Component definition, variants, instances, overrides |
-| Design Token System | Color, typography, spacing, radius, shadow, motion tokens |
-| Theme System | Light/dark themes, brand variants |
-| Responsive Layout | Breakpoints, constraints, auto-layout |
-| Asset Management | Images, icons, SVGs, fonts |
-| Prototype Links | Click-through prototyping |
-| Design System Intelligence | AI understands tokens and constraints |
-| Canvas ↔ Agent | Agent can read/modify canvas state |
+| Deliverable                | Description                                               |
+| -------------------------- | --------------------------------------------------------- |
+| Canvas Engine              | WebGL/WebGPU rendering, Flexbox/Grid layout               |
+| Code Bridge                | Bidirectional AST-aware sync between canvas and code      |
+| Component System           | Component definition, variants, instances, overrides      |
+| Design Token System        | Color, typography, spacing, radius, shadow, motion tokens |
+| Theme System               | Light/dark themes, brand variants                         |
+| Responsive Layout          | Breakpoints, constraints, auto-layout                     |
+| Asset Management           | Images, icons, SVGs, fonts                                |
+| Prototype Links            | Click-through prototyping                                 |
+| Design System Intelligence | AI understands tokens and constraints                     |
+| Canvas ↔ Agent             | Agent can read/modify canvas state                        |
 
 ### Gates
 
-| Gate | Criterion |
-|------|-----------|
-| Canvas rendering | 60fps with 1000+ elements |
-| Code bridge: Canvas→Code | Property change reflects in source |
-| Code bridge: Code→Canvas | Source change reflects on canvas |
-| Component system | Variants and instances work |
-| Token system | Tokens applied to elements |
-| Responsive layout | Breakpoints switch correctly |
-| Agent integration | Agent can inspect and modify canvas |
+| Gate                     | Criterion                           |
+| ------------------------ | ----------------------------------- |
+| Canvas rendering         | 60fps with 1000+ elements           |
+| Code bridge: Canvas→Code | Property change reflects in source  |
+| Code bridge: Code→Canvas | Source change reflects on canvas    |
+| Component system         | Variants and instances work         |
+| Token system             | Tokens applied to elements          |
+| Responsive layout        | Breakpoints switch correctly        |
+| Agent integration        | Agent can inspect and modify canvas |
 
 ### Benchmark
 
-| Metric | Target |
-|--------|--------|
-| Canvas framerate | ≥60fps at 1000 elements |
-| Canvas→Code fidelity | ≥0.95 property preservation |
-| Code→Canvas fidelity | ≥0.95 visual preservation |
-| Component rendering | Variants render correctly |
-| Token application | 100% token usage verification |
+| Metric               | Target                        |
+| -------------------- | ----------------------------- |
+| Canvas framerate     | ≥60fps at 1000 elements       |
+| Canvas→Code fidelity | ≥0.95 property preservation   |
+| Code→Canvas fidelity | ≥0.95 visual preservation     |
+| Component rendering  | Variants render correctly     |
+| Token application    | 100% token usage verification |
 
 ### Dependencies
 
@@ -451,35 +452,35 @@ create design↔code sync with screenshot inspection and automatic repair.
 
 ### Deliverables
 
-| Deliverable | Description |
-|-------------|-------------|
-| Visual QA Pipeline | Screenshot→Inspect→Compare→Report→Repair loop |
-| Design Comparison | Pixel diff, structural diff, token verification |
-| Screenshot Inspector | Vision model analyzes rendered output |
-| Auto-Repair | Agent fixes visual issues detected by inspection |
-| Visual Regression | Detect unintended visual changes |
-| Accessibility Audit | Automated WCAG compliance checking |
-| Design System Verification | Verify components use design tokens correctly |
+| Deliverable                | Description                                      |
+| -------------------------- | ------------------------------------------------ |
+| Visual QA Pipeline         | Screenshot→Inspect→Compare→Report→Repair loop    |
+| Design Comparison          | Pixel diff, structural diff, token verification  |
+| Screenshot Inspector       | Vision model analyzes rendered output            |
+| Auto-Repair                | Agent fixes visual issues detected by inspection |
+| Visual Regression          | Detect unintended visual changes                 |
+| Accessibility Audit        | Automated WCAG compliance checking               |
+| Design System Verification | Verify components use design tokens correctly    |
 
 ### Gates
 
-| Gate | Criterion |
-|------|-----------|
-| Visual QA pipeline | End-to-end loop works |
-| Design comparison | Pixel diff detects real differences |
-| Auto-repair | Agent fixes ≥50% of detected issues |
-| Visual regression | ≥90% change detection rate |
-| Accessibility audit | WCAG 2.1 AA automated checks |
+| Gate                | Criterion                           |
+| ------------------- | ----------------------------------- |
+| Visual QA pipeline  | End-to-end loop works               |
+| Design comparison   | Pixel diff detects real differences |
+| Auto-repair         | Agent fixes ≥50% of detected issues |
+| Visual regression   | ≥90% change detection rate          |
+| Accessibility audit | WCAG 2.1 AA automated checks        |
 
 ### Benchmark
 
-| Metric | Target |
-|--------|--------|
-| Defect detection rate | ≥0.80 |
-| Auto-repair success | ≥0.50 |
-| Visual regression accuracy | ≥0.90 |
-| Accessibility coverage | WCAG 2.1 AA |
-| Full pipeline time | <60s |
+| Metric                     | Target      |
+| -------------------------- | ----------- |
+| Defect detection rate      | ≥0.80       |
+| Auto-repair success        | ≥0.50       |
+| Visual regression accuracy | ≥0.90       |
+| Accessibility coverage     | WCAG 2.1 AA |
+| Full pipeline time         | <60s        |
 
 ### Dependencies
 
@@ -508,34 +509,34 @@ build, install, launch, interact, screenshot, and inspect.
 
 ### Deliverables
 
-| Deliverable | Description |
-|-------------|-------------|
-| ADB Controller | Device discovery, install, launch, shell commands |
-| Emulator Manager | Create, start, stop, configure emulators |
-| UI Automator | Element interaction (tap, swipe, type, scroll) |
-| Android Build Controller | Gradle build, APK/AAB signing |
-| Android Inspector | Screenshots, logcat, UI hierarchy |
-| Android Sandbox | Process isolation for device interaction |
+| Deliverable              | Description                                       |
+| ------------------------ | ------------------------------------------------- |
+| ADB Controller           | Device discovery, install, launch, shell commands |
+| Emulator Manager         | Create, start, stop, configure emulators          |
+| UI Automator             | Element interaction (tap, swipe, type, scroll)    |
+| Android Build Controller | Gradle build, APK/AAB signing                     |
+| Android Inspector        | Screenshots, logcat, UI hierarchy                 |
+| Android Sandbox          | Process isolation for device interaction          |
 
 ### Gates
 
-| Gate | Criterion |
-|------|-----------|
-| Emulator launch | Emulator starts in <60s |
-| APK install | Install succeeds |
-| App launch | App launches on emulator |
-| Screenshot | Screenshot captured |
-| UI interaction | Tap, type, swipe work |
-| Logcat capture | Logs captured |
+| Gate            | Criterion                |
+| --------------- | ------------------------ |
+| Emulator launch | Emulator starts in <60s  |
+| APK install     | Install succeeds         |
+| App launch      | App launches on emulator |
+| Screenshot      | Screenshot captured      |
+| UI interaction  | Tap, type, swipe work    |
+| Logcat capture  | Logs captured            |
 
 ### Benchmark
 
-| Metric | Target |
-|--------|--------|
-| Build→emulator time | <120s |
-| Emulator launch | <60s |
-| Screenshot capture | <5s |
-| UI interaction | <1s response |
+| Metric              | Target       |
+| ------------------- | ------------ |
+| Build→emulator time | <120s        |
+| Emulator launch     | <60s         |
+| Screenshot capture  | <5s          |
+| UI interaction      | <1s response |
 
 ### Dependencies
 
@@ -563,35 +564,35 @@ and physical device control.
 
 ### Deliverables
 
-| Deliverable | Description |
-|-------------|-------------|
-| Remote macOS Worker | SSH-based remote build and test worker |
-| Xcode Build Controller | xcodebuild integration |
-| Simulator Controller | xcrun simctl for simulator management |
-| XCUITest Framework | UI testing on simulator and device |
-| iOS Inspector | Screenshots, console, UI hierarchy |
-| libimobiledevice | Physical iOS device control |
-| iOS Sandbox | Process isolation for device interaction |
+| Deliverable            | Description                              |
+| ---------------------- | ---------------------------------------- |
+| Remote macOS Worker    | SSH-based remote build and test worker   |
+| Xcode Build Controller | xcodebuild integration                   |
+| Simulator Controller   | xcrun simctl for simulator management    |
+| XCUITest Framework     | UI testing on simulator and device       |
+| iOS Inspector          | Screenshots, console, UI hierarchy       |
+| libimobiledevice       | Physical iOS device control              |
+| iOS Sandbox            | Process isolation for device interaction |
 
 ### Gates
 
-| Gate | Criterion |
-|------|-----------|
-| Remote worker | SSH connection to macOS works |
-| Simulator launch | Simulator starts |
-| App install | IPA installs on simulator |
-| Screenshot | Screenshot captured |
-| XCUITest | UI tests run on simulator |
-| Physical device | Basic device control works |
+| Gate             | Criterion                     |
+| ---------------- | ----------------------------- |
+| Remote worker    | SSH connection to macOS works |
+| Simulator launch | Simulator starts              |
+| App install      | IPA installs on simulator     |
+| Screenshot       | Screenshot captured           |
+| XCUITest         | UI tests run on simulator     |
+| Physical device  | Basic device control works    |
 
 ### Benchmark
 
-| Metric | Target |
-|--------|--------|
-| Build→simulator time | <180s |
-| Simulator launch | <30s |
-| Screenshot capture | <5s |
-| XCUITest execution | <60s |
+| Metric               | Target |
+| -------------------- | ------ |
+| Build→simulator time | <180s  |
+| Simulator launch     | <30s   |
+| Screenshot capture   | <5s    |
+| XCUITest execution   | <60s   |
 
 ### Dependencies
 
@@ -620,35 +621,35 @@ ensure integration.
 
 ### Deliverables
 
-| Deliverable | Description |
-|-------------|-------------|
-| Orchestrator | Mission decomposition, agent assignment, monitoring |
-| Agent Roles | Product, Architect, Designer, Frontend, Backend, Test, Security, Reviewer, Release |
-| Task Ownership | File-level ownership prevents conflicts |
-| Branch Strategy | One branch per agent, merge via quality gate |
-| Handoff Protocol | Structured message passing between agents |
-| Shared World State | Intelligence Graph, evidence, design system as shared context |
-| Quality Gate | Automated merge verification |
-| Progress Dashboard | Real-time mission progress visualization |
+| Deliverable        | Description                                                                        |
+| ------------------ | ---------------------------------------------------------------------------------- |
+| Orchestrator       | Mission decomposition, agent assignment, monitoring                                |
+| Agent Roles        | Product, Architect, Designer, Frontend, Backend, Test, Security, Reviewer, Release |
+| Task Ownership     | File-level ownership prevents conflicts                                            |
+| Branch Strategy    | One branch per agent, merge via quality gate                                       |
+| Handoff Protocol   | Structured message passing between agents                                          |
+| Shared World State | Intelligence Graph, evidence, design system as shared context                      |
+| Quality Gate       | Automated merge verification                                                       |
+| Progress Dashboard | Real-time mission progress visualization                                           |
 
 ### Gates
 
-| Gate | Criterion |
-|------|-----------|
-| Multi-agent execution | 2+ agents work in parallel |
-| Task ownership | No file conflicts between agents |
-| Quality gate | All merges pass verification |
-| Handoff protocol | Agent-to-agent communication works |
-| Progress dashboard | Real-time updates visible |
+| Gate                  | Criterion                          |
+| --------------------- | ---------------------------------- |
+| Multi-agent execution | 2+ agents work in parallel         |
+| Task ownership        | No file conflicts between agents   |
+| Quality gate          | All merges pass verification       |
+| Handoff protocol      | Agent-to-agent communication works |
+| Progress dashboard    | Real-time updates visible          |
 
 ### Benchmark
 
-| Metric | Target |
-|--------|--------|
-| Parallel agents | ≥3 agents simultaneously |
-| Task completion rate | ≥0.70 for multi-agent tasks |
-| Merge conflict rate | <10% of merges |
-| Quality gate pass rate | ≥0.90 |
+| Metric                 | Target                      |
+| ---------------------- | --------------------------- |
+| Parallel agents        | ≥3 agents simultaneously    |
+| Task completion rate   | ≥0.70 for multi-agent tasks |
+| Merge conflict rate    | <10% of merges              |
+| Quality gate pass rate | ≥0.90                       |
 
 ### Dependencies
 
@@ -677,39 +678,39 @@ capabilities.
 
 ### Deliverables
 
-| Deliverable | Description |
-|-------------|-------------|
-| Windows Installer | NSIS via Tauri |
-| macOS Installer | DMG via Tauri |
-| Linux Packages | DEB, RPM, AppImage, Flatpak via Tauri |
-| Web Deployment | Static hosting, Docker, CDN |
-| Android Delivery | APK/AAB signing, Play Store submission |
-| iOS Delivery | IPA signing, App Store submission |
-| CI Pipeline | GitHub Actions (when billing resolved) |
-| Release Pipeline | Verify→Package→Sign→Test→Stage→Deploy |
-| Rollback | Automated rollback on failure |
-| Evidence | Full delivery evidence trail |
+| Deliverable       | Description                            |
+| ----------------- | -------------------------------------- |
+| Windows Installer | NSIS via Tauri                         |
+| macOS Installer   | DMG via Tauri                          |
+| Linux Packages    | DEB, RPM, AppImage, Flatpak via Tauri  |
+| Web Deployment    | Static hosting, Docker, CDN            |
+| Android Delivery  | APK/AAB signing, Play Store submission |
+| iOS Delivery      | IPA signing, App Store submission      |
+| CI Pipeline       | GitHub Actions (when billing resolved) |
+| Release Pipeline  | Verify→Package→Sign→Test→Stage→Deploy  |
+| Rollback          | Automated rollback on failure          |
+| Evidence          | Full delivery evidence trail           |
 
 ### Gates
 
-| Gate | Criterion |
-|------|-----------|
-| Windows installer | Installs and runs on clean Windows |
-| macOS installer | Installs and runs on clean macOS |
-| Linux package | Installs and runs on clean Linux |
-| Web deployment | Deploys and serves correctly |
-| Android APK | Installs and runs on emulator |
-| CI pipeline | Full pipeline green (when available) |
-| Rollback | Rollback works within 60s |
+| Gate              | Criterion                            |
+| ----------------- | ------------------------------------ |
+| Windows installer | Installs and runs on clean Windows   |
+| macOS installer   | Installs and runs on clean macOS     |
+| Linux package     | Installs and runs on clean Linux     |
+| Web deployment    | Deploys and serves correctly         |
+| Android APK       | Installs and runs on emulator        |
+| CI pipeline       | Full pipeline green (when available) |
+| Rollback          | Rollback works within 60s            |
 
 ### Benchmark
 
-| Metric | Target |
-|--------|--------|
-| Build→installer time | <300s |
-| Installer size | <100MB |
-| Install time | <60s |
-| Rollback time | <60s |
+| Metric               | Target |
+| -------------------- | ------ |
+| Build→installer time | <300s  |
+| Installer size       | <100MB |
+| Install time         | <60s   |
+| Rollback time        | <60s   |
 
 ### Dependencies
 
@@ -737,36 +738,36 @@ plugins, skills, MCP servers, themes, design systems, and templates.
 
 ### Deliverables
 
-| Deliverable | Description |
-|-------------|-------------|
-| Marketplace Protocol | Package format, signing, versioning, dependencies |
-| Marketplace Client | Search, install, update, remove packages |
-| Marketplace Server | Registry, authentication, package storage |
-| Publisher Tools | Package creation, upload, documentation |
-| Trust System | Ratings, security audits, permission declarations |
-| Creator Studio | Visual builder for plugins, skills, workflows, tools |
-| Template System | Project templates with scaffolding |
-| Theme System | Distributable themes for workspace and canvas |
+| Deliverable                | Description                                             |
+| -------------------------- | ------------------------------------------------------- |
+| Marketplace Protocol       | Package format, signing, versioning, dependencies       |
+| Marketplace Client         | Search, install, update, remove packages                |
+| Marketplace Server         | Registry, authentication, package storage               |
+| Publisher Tools            | Package creation, upload, documentation                 |
+| Trust System               | Ratings, security audits, permission declarations       |
+| Creator Studio             | Visual builder for plugins, skills, workflows, tools    |
+| Template System            | Project templates with scaffolding                      |
+| Theme System               | Distributable themes for workspace and canvas           |
 | Design System Distribution | Distributable design systems with tokens and components |
 
 ### Gates
 
-| Gate | Criterion |
-|------|-----------|
-| Package install | Install from marketplace works |
-| Package signing | Signed packages verified |
-| Creator Studio | Visual plugin creation works |
-| Trust system | Permissions displayed before install |
-| Template system | Template scaffolding works |
+| Gate            | Criterion                            |
+| --------------- | ------------------------------------ |
+| Package install | Install from marketplace works       |
+| Package signing | Signed packages verified             |
+| Creator Studio  | Visual plugin creation works         |
+| Trust system    | Permissions displayed before install |
+| Template system | Template scaffolding works           |
 
 ### Benchmark
 
-| Metric | Target |
-|--------|--------|
-| Package install time | <10s |
-| Marketplace search | <1s response |
-| Creator Studio | Visual creation of 3+ plugin types |
-| Template scaffolding | <30s |
+| Metric               | Target                             |
+| -------------------- | ---------------------------------- |
+| Package install time | <10s                               |
+| Marketplace search   | <1s response                       |
+| Creator Studio       | Visual creation of 3+ plugin types |
+| Template scaffolding | <30s                               |
 
 ### Dependencies
 
@@ -793,36 +794,36 @@ demonstrates ZylCode's capability.
 
 ### Deliverables
 
-| Deliverable | Description |
-|-------------|-------------|
-| Benchmark Tasks | 7 difficulty levels from bug fix to full autonomous ship |
-| Benchmark Harness | Automated task execution and measurement |
-| Benchmark Metrics | Completion rate, evidence quality, visual QA, test coverage, time |
-| Benchmark Results | Published results for ZylCode |
-| Benchmark Protocol | Documented protocol for third-party comparison |
-| Reproducibility Package | Docker/VM image for independent verification |
+| Deliverable             | Description                                                       |
+| ----------------------- | ----------------------------------------------------------------- |
+| Benchmark Tasks         | 7 difficulty levels from bug fix to full autonomous ship          |
+| Benchmark Harness       | Automated task execution and measurement                          |
+| Benchmark Metrics       | Completion rate, evidence quality, visual QA, test coverage, time |
+| Benchmark Results       | Published results for ZylCode                                     |
+| Benchmark Protocol      | Documented protocol for third-party comparison                    |
+| Reproducibility Package | Docker/VM image for independent verification                      |
 
 ### Benchmark Tasks
 
-| Level | Task | Measures |
-|-------|------|----------|
-| 1 | Fix this bug (given failing test) | Code correctness |
-| 2 | Add this feature (given spec) | Implementation quality |
-| 3 | Refactor this module (given goals) | Code quality improvement |
-| 4 | Build this component (given design) | Design→code fidelity |
-| 5 | Build this application (given description) | Full-stack capability |
-| 6 | Build with mobile support (given description) | Multi-platform capability |
-| 7 | Build, test, and ship (given description) | End-to-end autonomy |
+| Level | Task                                          | Measures                  |
+| ----- | --------------------------------------------- | ------------------------- |
+| 1     | Fix this bug (given failing test)             | Code correctness          |
+| 2     | Add this feature (given spec)                 | Implementation quality    |
+| 3     | Refactor this module (given goals)            | Code quality improvement  |
+| 4     | Build this component (given design)           | Design→code fidelity      |
+| 5     | Build this application (given description)    | Full-stack capability     |
+| 6     | Build with mobile support (given description) | Multi-platform capability |
+| 7     | Build, test, and ship (given description)     | End-to-end autonomy       |
 
 ### Gates
 
-| Gate | Criterion |
-|------|-----------|
-| Task completion | ≥60% of Level 5 tasks complete |
-| Evidence completeness | ≥90% of actions have evidence |
-| Visual QA | ≥80% of visual tasks pass |
-| Test coverage | ≥70% coverage for generated code |
-| Reproducibility | Third-party can reproduce results |
+| Gate                  | Criterion                         |
+| --------------------- | --------------------------------- |
+| Task completion       | ≥60% of Level 5 tasks complete    |
+| Evidence completeness | ≥90% of actions have evidence     |
+| Visual QA             | ≥80% of visual tasks pass         |
+| Test coverage         | ≥70% coverage for generated code  |
+| Reproducibility       | Third-party can reproduce results |
 
 ### Dependencies
 
@@ -849,34 +850,34 @@ through developer preview, alpha, beta, and stable releases.
 
 ### Deliverables
 
-| Deliverable | Description |
-|-------------|-------------|
-| Developer Preview | Early access for developers, limited features |
-| Alpha | Feature-complete but known rough edges |
-| Beta | Feature-complete, polished, community feedback |
-| Stable | Production-ready release |
-| Documentation | Complete user docs, API docs, contributor docs |
-| Website | Product website with downloads, docs, community |
-| Community | Discord/forum, contribution guide, governance |
-| Marketing | Launch materials, demo videos, blog posts |
+| Deliverable       | Description                                     |
+| ----------------- | ----------------------------------------------- |
+| Developer Preview | Early access for developers, limited features   |
+| Alpha             | Feature-complete but known rough edges          |
+| Beta              | Feature-complete, polished, community feedback  |
+| Stable            | Production-ready release                        |
+| Documentation     | Complete user docs, API docs, contributor docs  |
+| Website           | Product website with downloads, docs, community |
+| Community         | Discord/forum, contribution guide, governance   |
+| Marketing         | Launch materials, demo videos, blog posts       |
 
 ### Launch Phases
 
-| Phase | Audience | Duration | Criteria to Advance |
-|-------|----------|----------|-------------------|
-| Developer Preview | Invited developers | 4-8 weeks | Feedback collected, critical bugs fixed |
-| Alpha | Open registration | 4-8 weeks | Feature-complete, benchmark passing |
-| Beta | Open | 4-8 weeks | Community feedback positive, stability good |
-| Stable | General availability | Ongoing | All gates pass |
+| Phase             | Audience             | Duration  | Criteria to Advance                         |
+| ----------------- | -------------------- | --------- | ------------------------------------------- |
+| Developer Preview | Invited developers   | 4-8 weeks | Feedback collected, critical bugs fixed     |
+| Alpha             | Open registration    | 4-8 weeks | Feature-complete, benchmark passing         |
+| Beta              | Open                 | 4-8 weeks | Community feedback positive, stability good |
+| Stable            | General availability | Ongoing   | All gates pass                              |
 
 ### Gates
 
-| Gate | Criterion |
-|------|-----------|
-| Developer Preview | Core workflow works, 5+ invited users |
-| Alpha | All Stage 1-7 features working |
-| Beta | All Stage 1-12 features working |
-| Stable | Benchmark passing, documentation complete, no P0 bugs |
+| Gate              | Criterion                                             |
+| ----------------- | ----------------------------------------------------- |
+| Developer Preview | Core workflow works, 5+ invited users                 |
+| Alpha             | All Stage 1-7 features working                        |
+| Beta              | All Stage 1-12 features working                       |
+| Stable            | Benchmark passing, documentation complete, no P0 bugs |
 
 ### Dependencies
 
@@ -886,40 +887,40 @@ through developer preview, alpha, beta, and stable releases.
 
 ## 16. Summary Table
 
-| Stage | Name | Status | Dependencies | Blocks | Key Metric |
-|-------|------|--------|-------------|--------|-----------|
-| 1 | Truth | ✅ COMPLETE | — | 2 | 337 tests pass |
-| 2 | Understanding | ✅ COMPLETE | 1 | 3 | P@10=0.30, R@10=0.53 |
-| 3 | Intelligence | NEXT | 2 | 4 | Model routing ≥0.80 |
-| 4 | Extensibility | PLANNED | 3 | 5,6,8,10,12 | Plugin load <500ms |
-| 5 | Execution | PLANNED | 4 | 7,10,11 | Build→screenshot <30s |
-| 6 | Vision | PLANNED | 4 | 7 | Canvas 60fps |
-| 7 | Visual Intelligence | PLANNED | 5,6 | 10 | Defect detection ≥0.80 |
-| 8 | Mobile | PLANNED | 4 | 9,11 | Build→emulator <120s |
-| 9 | Apple | PLANNED | 8 | 11 | Build→simulator <180s |
-| 10 | Teams | PLANNED | 4+5/6 | 13 | ≥3 parallel agents |
-| 11 | Delivery | PLANNED | 5+8/9 | 14 | Build→installer <300s |
-| 12 | Ecosystem | PLANNED | 4 | 14 | Install <10s |
-| 13 | Benchmark | PLANNED | 1-12 | 14 | ≥60% Level 5 completion |
-| 14 | Launch | PLANNED | 13 | — | Stable release |
+| Stage | Name                | Status      | Dependencies | Blocks      | Key Metric              |
+| ----- | ------------------- | ----------- | ------------ | ----------- | ----------------------- |
+| 1     | Truth               | ✅ COMPLETE | —            | 2           | 337 tests pass          |
+| 2     | Understanding       | ✅ COMPLETE | 1            | 3           | P@10=0.30, R@10=0.53    |
+| 3     | Intelligence        | NEXT        | 2            | 4           | Model routing ≥0.80     |
+| 4     | Extensibility       | PLANNED     | 3            | 5,6,8,10,12 | Plugin load <500ms      |
+| 5     | Execution           | PLANNED     | 4            | 7,10,11     | Build→screenshot <30s   |
+| 6     | Vision              | PLANNED     | 4            | 7           | Canvas 60fps            |
+| 7     | Visual Intelligence | PLANNED     | 5,6          | 10          | Defect detection ≥0.80  |
+| 8     | Mobile              | PLANNED     | 4            | 9,11        | Build→emulator <120s    |
+| 9     | Apple               | PLANNED     | 8            | 11          | Build→simulator <180s   |
+| 10    | Teams               | PLANNED     | 4+5/6        | 13          | ≥3 parallel agents      |
+| 11    | Delivery            | PLANNED     | 5+8/9        | 14          | Build→installer <300s   |
+| 12    | Ecosystem           | PLANNED     | 4            | 14          | Install <10s            |
+| 13    | Benchmark           | PLANNED     | 1-12         | 14          | ≥60% Level 5 completion |
+| 14    | Launch              | PLANNED     | 13           | —           | Stable release          |
 
 ---
 
 ## 17. Risk Register
 
-| Risk | Impact | Mitigation |
-|------|--------|-----------|
-| Canvas↔Code sync complexity | High | Start with limited component set, expand iteratively |
-| iOS device lab (no macOS) | High | Remote macOS worker, cloud Mac services |
-| Model routing accuracy | Medium | Start with manual override, improve with data |
-| Multi-agent coordination | High | Start with 2 agents, expand gradually |
-| GitHub CI billing | Medium | EXTERNAL_BLOCKER, alternative CI when needed |
-| Vision Studio scope | High | Phased: basic canvas → components → full design system |
-| Performance at scale | Medium | Benchmark at each stage, optimize early |
-| Plugin security | High | Sandbox-first, permission declarations, audit |
+| Risk                        | Impact | Mitigation                                             |
+| --------------------------- | ------ | ------------------------------------------------------ |
+| Canvas↔Code sync complexity | High   | Start with limited component set, expand iteratively   |
+| iOS device lab (no macOS)   | High   | Remote macOS worker, cloud Mac services                |
+| Model routing accuracy      | Medium | Start with manual override, improve with data          |
+| Multi-agent coordination    | High   | Start with 2 agents, expand gradually                  |
+| GitHub CI billing           | Medium | EXTERNAL_BLOCKER, alternative CI when needed           |
+| Vision Studio scope         | High   | Phased: basic canvas → components → full design system |
+| Performance at scale        | Medium | Benchmark at each stage, optimize early                |
+| Plugin security             | High   | Sandbox-first, permission declarations, audit          |
 
 ---
 
-*ZylCode Roadmap v2.0*
-*Companion to ZylCode Product Constitution v2.0 and Architecture v2.0*
-*Status: DRAFT — pending review*
+_ZylCode Roadmap v2.0_
+_Companion to ZylCode Product Constitution v2.0 and Architecture v2.0_
+_Status: DRAFT — pending review_

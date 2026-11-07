@@ -19,17 +19,17 @@ cannot be verified. When the product cannot yet do the thing, **say so** — do 
 
 Each recording is planned as one unit:
 
-| Field | Required |
-|---|---|
-| Scenario | What capability is being demonstrated |
-| Starting commit | Exact SHA the recording was made from |
-| Environment | OS, `rustc --version`, app version/commit, model in use |
-| Command / action | The exact steps taken |
-| Expected result | What should happen, stated before recording |
-| Evidence | The artifact the demo produces (transcript, preview, proof node) |
-| Recording steps | How it was captured |
-| Redaction checklist | What was removed before publication |
-| Publication checklist | Final gate before release |
+| Field                 | Required                                                         |
+| --------------------- | ---------------------------------------------------------------- |
+| Scenario              | What capability is being demonstrated                            |
+| Starting commit       | Exact SHA the recording was made from                            |
+| Environment           | OS, `rustc --version`, app version/commit, model in use          |
+| Command / action      | The exact steps taken                                            |
+| Expected result       | What should happen, stated before recording                      |
+| Evidence              | The artifact the demo produces (transcript, preview, proof node) |
+| Recording steps       | How it was captured                                              |
+| Redaction checklist   | What was removed before publication                              |
+| Publication checklist | Final gate before release                                        |
 
 ---
 

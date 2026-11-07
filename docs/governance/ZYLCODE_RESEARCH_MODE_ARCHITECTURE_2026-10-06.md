@@ -19,7 +19,7 @@ This document is an **architecture**, not a status report. It is written because
 for the architectural foundation, and because a design that names exactly what does not exist is
 more useful than a vague aspiration.
 
-**What does exist and is relevant:** the *reproducibility pattern* proven by the First Mission
+**What does exist and is relevant:** the _reproducibility pattern_ proven by the First Mission
 (`first_mission.rs`) — environment capture, spec hash, effect hashes, a resume that reconciles rather
 than repeats, and a reproducibility package. Research mode should **extend that pattern**, not invent
 a parallel one.
@@ -71,21 +71,21 @@ that; a schema can.
 
 For every experiment, capture — where technically feasible:
 
-| Field | Why | Available from existing code? |
-|---|---|---|
-| `git_sha` | exact source revision | yes — `gitops`, `first_mission` |
-| `dependency_lockfiles` | exact dependency set | yes — `Cargo.lock`, `pnpm-lock.yaml` are on disk |
-| `runtime_versions` | interpreter/compiler versions | yes — `first_mission::capture_environment` |
-| `os_platform` | platform | yes — same |
-| `environment_metadata` | selected env vars, **never secrets** | yes — `evidence_graph` node `environment` |
-| `dataset_hash` | which data | **no — new** |
-| `input_hash` | which inputs | **partial** — `sha256_file` exists |
-| `command` | exactly what ran | yes — `CmdOutcome` / `ToolEvidence` |
-| `parameters` | with what settings | **no — new** |
-| `random_seed` | determinism | **no — new** |
-| `output_hash` | what came out | **partial** — `sha256_hex` exists |
-| `test_result` | did verification pass | yes — claims + exit codes |
-| `generated_artifacts` | the figures/data | yes — `artifact_bus` |
+| Field                  | Why                                  | Available from existing code?                    |
+| ---------------------- | ------------------------------------ | ------------------------------------------------ |
+| `git_sha`              | exact source revision                | yes — `gitops`, `first_mission`                  |
+| `dependency_lockfiles` | exact dependency set                 | yes — `Cargo.lock`, `pnpm-lock.yaml` are on disk |
+| `runtime_versions`     | interpreter/compiler versions        | yes — `first_mission::capture_environment`       |
+| `os_platform`          | platform                             | yes — same                                       |
+| `environment_metadata` | selected env vars, **never secrets** | yes — `evidence_graph` node `environment`        |
+| `dataset_hash`         | which data                           | **no — new**                                     |
+| `input_hash`           | which inputs                         | **partial** — `sha256_file` exists               |
+| `command`              | exactly what ran                     | yes — `CmdOutcome` / `ToolEvidence`              |
+| `parameters`           | with what settings                   | **no — new**                                     |
+| `random_seed`          | determinism                          | **no — new**                                     |
+| `output_hash`          | what came out                        | **partial** — `sha256_hex` exists                |
+| `test_result`          | did verification pass                | yes — claims + exit codes                        |
+| `generated_artifacts`  | the figures/data                     | yes — `artifact_bus`                             |
 
 **Nine of thirteen already have machinery.** The four gaps (dataset hash, parameters, seed, output
 hash) are small, well-understood additions — but they are **not implemented**, and until they are,
@@ -98,15 +98,15 @@ environment, and the result is compared by hash.
 
 **The honesty constraint, taken verbatim from the directive:**
 
-> *Do not pretend reproducibility exists until execution proves it.*
+> _Do not pretend reproducibility exists until execution proves it._
 
 Therefore the designed feature has three outcomes, not two:
 
-| Outcome | Meaning |
-|---|---|
-| `REPRODUCED` | every captured hash matched |
-| `REPRODUCED_WITH_DIFFERENCES` | ran, but an output hash differs — **and the difference is recorded, not hidden** |
-| `NOT_REPRODUCIBLE` | the environment or inputs could not be reconstructed — with the specific missing piece named |
+| Outcome                       | Meaning                                                                                      |
+| ----------------------------- | -------------------------------------------------------------------------------------------- |
+| `REPRODUCED`                  | every captured hash matched                                                                  |
+| `REPRODUCED_WITH_DIFFERENCES` | ran, but an output hash differs — **and the difference is recorded, not hidden**             |
+| `NOT_REPRODUCIBLE`            | the environment or inputs could not be reconstructed — with the specific missing piece named |
 
 A binary pass/fail would force the middle case to be reported as a failure or a success. Both would
 be false.
@@ -119,17 +119,17 @@ be false.
 
 The designed taxonomy, mapping onto the existing `Claim` model:
 
-| Research type | Maps to `ClaimStatus` | Promotion rule |
-|---|---|---|
-| `SOURCE` | — (a citation, not a claim) | must carry an identifier; not promotable |
-| `OBSERVATION` | `OBSERVED` | requires a captured measurement |
-| `INFERENCE` | `DERIVED` | requires cited premises + stated reasoning |
-| `HYPOTHESIS` | `HYPOTHESIS` | **never** promotable without new evidence |
-| `RESULT` | `VERIFIED` | requires evidence at level ≥ R2 **and** a reproduction record |
-| `DECISION` | — (an ADR) | requires attribution |
+| Research type | Maps to `ClaimStatus`       | Promotion rule                                                |
+| ------------- | --------------------------- | ------------------------------------------------------------- |
+| `SOURCE`      | — (a citation, not a claim) | must carry an identifier; not promotable                      |
+| `OBSERVATION` | `OBSERVED`                  | requires a captured measurement                               |
+| `INFERENCE`   | `DERIVED`                   | requires cited premises + stated reasoning                    |
+| `HYPOTHESIS`  | `HYPOTHESIS`                | **never** promotable without new evidence                     |
+| `RESULT`      | `VERIFIED`                  | requires evidence at level ≥ R2 **and** a reproduction record |
+| `DECISION`    | — (an ADR)                  | requires attribution                                          |
 
 **The single most important line in this document:** an AI-generated statement enters as
-`HYPOTHESIS`, and the *only* path to `RESULT` runs through a deterministic measurement plus a
+`HYPOTHESIS`, and the _only_ path to `RESULT` runs through a deterministic measurement plus a
 reproduction record. There is no "the model said so" path. This is the existing `claim.rs` gate
 applied to research, which is why the claim model is the correct substrate rather than a new one.
 
@@ -179,25 +179,25 @@ history is not a provenance chain.
 
 ## 5. What is NOT designed here
 
-* **Institutional deployment** of research mode (see `INSTITUTIONAL_MODE_ARCHITECTURE`).
-* **Literature search / external source retrieval** — a connector problem, not a core-architecture
+- **Institutional deployment** of research mode (see `INSTITUTIONAL_MODE_ARCHITECTURE`).
+- **Literature search / external source retrieval** — a connector problem, not a core-architecture
   problem, and out of scope for this wave.
-* **Peer review workflows.**
-* **Statistical analysis engines.** Research mode stores and reproduces; it does not (yet) compute.
+- **Peer review workflows.**
+- **Statistical analysis engines.** Research mode stores and reproduces; it does not (yet) compute.
 
 ---
 
 ## 6. Status summary
 
-| Capability | Status |
-|---|---|
-| Research project object | **NOT_IMPLEMENTED** |
-| Epistemic typing for research statements | **NOT_IMPLEMENTED** (claim model is the substrate) |
-| Reproduction capture (4 missing fields) | **NOT_IMPLEMENTED** |
-| "Reproduce Experiment N" | **NOT_IMPLEMENTED** |
-| Research-to-product provenance linking | **NOT_IMPLEMENTED** |
-| The reproducibility *pattern* it would extend | **IMPLEMENTED** (`first_mission.rs`) |
-| Evidence substrate it would use | **IMPLEMENTED** (`claim`, `evidence_graph`, `artifact_bus`) |
+| Capability                                    | Status                                                      |
+| --------------------------------------------- | ----------------------------------------------------------- |
+| Research project object                       | **NOT_IMPLEMENTED**                                         |
+| Epistemic typing for research statements      | **NOT_IMPLEMENTED** (claim model is the substrate)          |
+| Reproduction capture (4 missing fields)       | **NOT_IMPLEMENTED**                                         |
+| "Reproduce Experiment N"                      | **NOT_IMPLEMENTED**                                         |
+| Research-to-product provenance linking        | **NOT_IMPLEMENTED**                                         |
+| The reproducibility _pattern_ it would extend | **IMPLEMENTED** (`first_mission.rs`)                        |
+| Evidence substrate it would use               | **IMPLEMENTED** (`claim`, `evidence_graph`, `artifact_bus`) |
 
 **Recommended first vertical slice, when this is funded:** take the First Mission's reproducibility
 package, add the four missing capture fields (dataset hash, parameters, seed, output hash), and make

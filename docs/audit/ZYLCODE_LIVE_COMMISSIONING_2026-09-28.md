@@ -11,34 +11,35 @@ Nothing committed; no git history touched. Companion documents:
 
 ## 1. Live baseline (verified this session, not assumed)
 
-| Item | Value | Verification |
-|---|---|---|
-| Frontend URL | `http://localhost:1420/` | HTTP 200 curl + DOM snapshots |
-| Frontend process | `node` **PID 29352** (vite, started 09-28 02:37) | `Get-Process -Id` + `netstat :1420 LISTEN` |
-| Backend URL | `http://127.0.0.1:17630` | `netstat :17630 LISTEN` + `/healthz` 200 |
-| Backend process | `zylcode` **PID 4132 → 30972 → 29852** (started 02:41, then restarted twice *by the commissioning tests below*) | process identity checked by name+PID, not memory |
-| Health | `{"service":"zylcode-repo-intel","status":"ok"}` | curl |
-| Indexed files | 447 → 450 → **454** (grows with the working tree; index is content-hash validated) | `/api/repo-intel`, `/api/files` |
-| Symbols / packages | 2111 → 2120 symbols · 6 packages | `/api/repo-intel` |
-| Endpoints exercised (200) | `/api/evidence`, `/api/missions`, `/api/terminal/reset`, `/api/terminal/exec`, `/api/search`, `/api/files`, `/api/file-content`, `/api/repo-intel`, `/healthz` | curl + preview network log |
-| New endpoints shipped this session | `POST /api/artifact/save`, `POST /api/artifact/patch` (transport parity for the editor write path) | runtime probe incl. fail-closed `../` refusal |
-| Browser verification method | `preview_snapshot` accessibility trees, `preview_evaluate` DOM probes, `preview_logs` network capture | — |
-| Screenshot limitation | `preview_screenshot` produced **no frames** (compositor unavailable in this environment) — **no visual screenshot verification is claimed**; all UI evidence is DOM/network | — |
-| Console errors | none observed after backend recovery (proxy 500s only while backend was deliberately down) | `preview_logs` |
-| BLOCKED surfaces (honest) | Design Studio, Multi-agent board (COMING SOON), Runtime panel (LIMITED) | DOM |
+| Item                               | Value                                                                                                                                                                       | Verification                                     |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| Frontend URL                       | `http://localhost:1420/`                                                                                                                                                    | HTTP 200 curl + DOM snapshots                    |
+| Frontend process                   | `node` **PID 29352** (vite, started 09-28 02:37)                                                                                                                            | `Get-Process -Id` + `netstat :1420 LISTEN`       |
+| Backend URL                        | `http://127.0.0.1:17630`                                                                                                                                                    | `netstat :17630 LISTEN` + `/healthz` 200         |
+| Backend process                    | `zylcode` **PID 4132 → 30972 → 29852** (started 02:41, then restarted twice _by the commissioning tests below_)                                                             | process identity checked by name+PID, not memory |
+| Health                             | `{"service":"zylcode-repo-intel","status":"ok"}`                                                                                                                            | curl                                             |
+| Indexed files                      | 447 → 450 → **454** (grows with the working tree; index is content-hash validated)                                                                                          | `/api/repo-intel`, `/api/files`                  |
+| Symbols / packages                 | 2111 → 2120 symbols · 6 packages                                                                                                                                            | `/api/repo-intel`                                |
+| Endpoints exercised (200)          | `/api/evidence`, `/api/missions`, `/api/terminal/reset`, `/api/terminal/exec`, `/api/search`, `/api/files`, `/api/file-content`, `/api/repo-intel`, `/healthz`              | curl + preview network log                       |
+| New endpoints shipped this session | `POST /api/artifact/save`, `POST /api/artifact/patch` (transport parity for the editor write path)                                                                          | runtime probe incl. fail-closed `../` refusal    |
+| Browser verification method        | `preview_snapshot` accessibility trees, `preview_evaluate` DOM probes, `preview_logs` network capture                                                                       | —                                                |
+| Screenshot limitation              | `preview_screenshot` produced **no frames** (compositor unavailable in this environment) — **no visual screenshot verification is claimed**; all UI evidence is DOM/network | —                                                |
+| Console errors                     | none observed after backend recovery (proxy 500s only while backend was deliberately down)                                                                                  | `preview_logs`                                   |
+| BLOCKED surfaces (honest)          | Design Studio, Multi-agent board (COMING SOON), Runtime panel (LIMITED)                                                                                                     | DOM                                              |
 
 ---
 
 ## 2. Stale backend-recovery defect — reproduced, root-caused, fixed, proven live
 
-**Observed defect (reproduced):** with the backend stopped, a *reload* showed
+**Observed defect (reproduced):** with the backend stopped, a _reload_ showed
 Terminal `BLOCKED` / "terminal service error: HTTP 500" (honest), and a page
-that had mounted *before* the backend died kept showing `AVAILABLE` — a stale
+that had mounted _before_ the backend died kept showing `AVAILABLE` — a stale
 false surface. Earlier evidence (previous session): after the backend came up,
 surfaces stayed in their stale state until reload.
 
 **Concrete cause (source-inspected):** one-shot mount-time probes with no
 health re-check:
+
 - `TerminalPanel` probed once in `useEffect([])`; any failure latched
   `BLOCKED` forever, any early success latched `AVAILABLE` forever; transport
   failure was detected by **string-prefix sniffing** (`startsWith("terminal ")`).
@@ -48,8 +49,9 @@ health re-check:
   the fix pattern was already established in-repo.)
 
 **Fix (three surfaces, one contract):**
-- `lib/terminal.ts`: explicit `transportError` flag distinguishes *transport*
-  failure (backend gone) from a *command* failing (health unchanged) — no
+
+- `lib/terminal.ts`: explicit `transportError` flag distinguishes _transport_
+  failure (backend gone) from a _command_ failing (health unchanged) — no
   string sniffing.
 - `TerminalPanel.tsx`: mount probe → BLOCKED truthfully; re-probe every
   `RECOVERY_INTERVAL_MS` (2s) while down; recover to AVAILABLE on a real
@@ -65,6 +67,7 @@ health re-check:
 Frontend suite: **67 passed / 0 failed**, `tsc --noEmit` clean.
 
 **Live proof (no reload involved in the recovery leg):**
+
 1. Backend killed → reload → Terminal `BLOCKED` "terminal service error: HTTP
    500" (honest state, no fabrication).
 2. New backend binary started on the same port (without touching the page).
@@ -84,12 +87,12 @@ Method: for symbols from four different modules, ground truth was established
 with `grep -rn` (deterministic), then the same query went to the live
 `/api/search`. `elapsed_ms` per query: 1.9–2.6 s (451 files).
 
-| Query | Ground truth | Intelligence answer | Verdict |
-|---|---|---|---|
-| `TokenRouter` | `crates/zylcode-core/src/router.rs:500` | top-1 `crates::zylcode-core::src::router::TokenRouter` (rel 3.56), owner file top-2 | **match** |
-| `save_file_payload` | `crates/zylcode-core/src/surfaces.rs:253` | top-1 `…::surfaces::save_file_payload` (rel 3.72), owner file top-2 | **match** |
-| `TerminalHub` | `crates/zylcode-core/src/terminal.rs:117` | top-1 exact symbol (rel 3.88) | **match** |
-| `ClaimStore` | `crates/zylcode-core/src/claim.rs:357` | top-1 exact symbol (rel 3.41) | **match** |
+| Query               | Ground truth                              | Intelligence answer                                                                 | Verdict   |
+| ------------------- | ----------------------------------------- | ----------------------------------------------------------------------------------- | --------- |
+| `TokenRouter`       | `crates/zylcode-core/src/router.rs:500`   | top-1 `crates::zylcode-core::src::router::TokenRouter` (rel 3.56), owner file top-2 | **match** |
+| `save_file_payload` | `crates/zylcode-core/src/surfaces.rs:253` | top-1 `…::surfaces::save_file_payload` (rel 3.72), owner file top-2                 | **match** |
+| `TerminalHub`       | `crates/zylcode-core/src/terminal.rs:117` | top-1 exact symbol (rel 3.88)                                                       | **match** |
+| `ClaimStore`        | `crates/zylcode-core/src/claim.rs:357`    | top-1 exact symbol (rel 3.41)                                                       | **match** |
 
 False positives / false negatives in definition queries: **none** in the four
 probed. Case variant (`tokenrouter`) still resolves the symbol (substring
@@ -120,13 +123,13 @@ queries are the next intelligence wave (Wave B), not a current capability.
 Explicit `#[ignore]`d probe (`crates/zylcode-core/tests/live_commissioning.rs`,
 run with `--ignored`), re-executed today:
 
-| Provider | configured | request sent | HTTP response received | completion | classification |
-|---|---|---|---|---|---|
-| DeepSeek | YES (env key, value never shown) | YES — 1.13 s | YES — **402 Insufficient Balance** | NO | **BLOCKED** (external: billing) |
-| OpenRouter | YES | YES — 0.46 s | YES — 401 "Missing Authentication header" | NO | **BLOCKED** (credential invalid/not OpenRouter format; 23-char key, no hyphens) |
-| Anthropic | YES | YES — 0.69 s | YES — 401 "API key is invalid" | NO | **BLOCKED** (credential) |
+| Provider   | configured                       | request sent | HTTP response received                    | completion | classification                                                                  |
+| ---------- | -------------------------------- | ------------ | ----------------------------------------- | ---------- | ------------------------------------------------------------------------------- |
+| DeepSeek   | YES (env key, value never shown) | YES — 1.13 s | YES — **402 Insufficient Balance**        | NO         | **BLOCKED** (external: billing)                                                 |
+| OpenRouter | YES                              | YES — 0.46 s | YES — 401 "Missing Authentication header" | NO         | **BLOCKED** (credential invalid/not OpenRouter format; 23-char key, no hyphens) |
+| Anthropic  | YES                              | YES — 0.69 s | YES — 401 "API key is invalid"            | NO         | **BLOCKED** (credential)                                                        |
 
-Transport truth established earlier by differential curl: the header *does*
+Transport truth established earlier by differential curl: the header _does_
 transit (DeepSeek's 402 proves auth parsing); OpenRouter's stored key is
 almost certainly not an OpenRouter credential. Streaming, tool-calling,
 multimodal: **BLOCKED** (they require a completable channel). No key material
@@ -134,18 +137,18 @@ printed or persisted anywhere. Per mandate §5, this does not stop the pass.
 
 ## 6. Core-loop proof status (chain → where it breaks)
 
-| Chain step | State | Evidence |
-|---|---|---|
-| Open real repository | RUNTIME_VERIFIED | live UI + `/api/files` 454 files |
-| Index / understand repository | RUNTIME_VERIFIED | `/api/repo-intel` 454/2120/6; ground-truth-matched queries (§3) |
-| User creates mission | RUNTIME_VERIFIED | HTTP enqueue persisted (§4) |
-| Model/agent planning | **BLOCKED (external: provider credentials/billing)** | §5 |
-| Tool calls (real) | RUNTIME_VERIFIED (deterministic path) | `/api/terminal/exec` live; Phase T3 First Mission e2e drives real python/git |
-| Real file change + diff | TESTED (backend) + runtime save probe | `save_file_payload`/`apply_patch_payload` (9 unit tests; live fail-closed probe); Tauri + HTTP transports wired |
-| Test/build execution | TESTED + RUNTIME_VERIFIED | `/api/build` status machinery; First Mission e2e runs real `python -m unittest` |
-| Failure inspection → repair → re-verify | TESTED | First Mission e2e: real failing test → diagnosis → repair → green; kill/`abort()` mid-step → resume reconciles honestly |
-| Evidence recorded | RUNTIME_VERIFIED | UI chain **intact**; ledger hash-chain survives restarts |
-| Durable mission/session | RUNTIME_VERIFIED | §4 restart proof |
+| Chain step                              | State                                                | Evidence                                                                                                                |
+| --------------------------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Open real repository                    | RUNTIME_VERIFIED                                     | live UI + `/api/files` 454 files                                                                                        |
+| Index / understand repository           | RUNTIME_VERIFIED                                     | `/api/repo-intel` 454/2120/6; ground-truth-matched queries (§3)                                                         |
+| User creates mission                    | RUNTIME_VERIFIED                                     | HTTP enqueue persisted (§4)                                                                                             |
+| Model/agent planning                    | **BLOCKED (external: provider credentials/billing)** | §5                                                                                                                      |
+| Tool calls (real)                       | RUNTIME_VERIFIED (deterministic path)                | `/api/terminal/exec` live; Phase T3 First Mission e2e drives real python/git                                            |
+| Real file change + diff                 | TESTED (backend) + runtime save probe                | `save_file_payload`/`apply_patch_payload` (9 unit tests; live fail-closed probe); Tauri + HTTP transports wired         |
+| Test/build execution                    | TESTED + RUNTIME_VERIFIED                            | `/api/build` status machinery; First Mission e2e runs real `python -m unittest`                                         |
+| Failure inspection → repair → re-verify | TESTED                                               | First Mission e2e: real failing test → diagnosis → repair → green; kill/`abort()` mid-step → resume reconciles honestly |
+| Evidence recorded                       | RUNTIME_VERIFIED                                     | UI chain **intact**; ledger hash-chain survives restarts                                                                |
+| Durable mission/session                 | RUNTIME_VERIFIED                                     | §4 restart proof                                                                                                        |
 
 The only missing link in the live model-driven loop is **model/agent planning**,
 blocked externally by credentials/billing — not by repository code.
@@ -155,7 +158,7 @@ blocked externally by credentials/billing — not by repository code.
 - Frontend: `pnpm test` → **11 files / 67 tests passed / 0 failed** (+10
   regression tests); `tsc --noEmit` clean.
 - Rust: `cargo check -p zylcode-cli --all-targets` clean; `cargo check -p
-  zylcode-desktop` clean; `cargo test -p zylcode-core --lib surfaces` → **9
+zylcode-desktop` clean; `cargo test -p zylcode-core --lib surfaces` → **9
   editor-write tests green** (containment, symlink escape, git-apply
   fail-closed, byte-faithful line endings).
 - Detached-service launcher timeouts (PowerShell `Start-Process`) occurred
@@ -164,24 +167,24 @@ blocked externally by credentials/billing — not by repository code.
 
 ## 8. Final classification (§14, independent axes)
 
-| Capability | State |
-|---|---|
-| Repository indexing | IMPLEMENTED · TESTED · RUNTIME_VERIFIED (454 files / 2120 symbols, content-hash validated) |
-| Repository intelligence | IMPLEMENTED · TESTED · RUNTIME_VERIFIED for definitions/files/packages/entry points/recent changes; **references/imports/dependency graph NOT_IMPLEMENTED** (queries honestly refused as keyword-only) |
-| Mission persistence | IMPLEMENTED · TESTED · RUNTIME_VERIFIED (restart-proof §4) |
-| Provider authentication | BLOCKED (external: 402 billing / 401 credentials — requests genuinely reach providers) |
-| Provider streaming / tool calling / multimodal | BLOCKED (requires completable provider) |
-| Agent planning (LLM) | BLOCKED (external) |
-| Tool execution | IMPLEMENTED · TESTED · RUNTIME_VERIFIED (terminal exec live; deterministic mission runner e2e) |
-| Approval enforcement | TESTED (workspace boundary: editor save/patch refuse escapes, `.git/*`, symlinks; terminal commands execute inside workspace root) |
-| File editing | IMPLEMENTED · TESTED · UI_WIRED · runtime-probed (desktop command + HTTP parity deployed) |
-| Diff generation / patch apply | TESTED (git apply fail-closed, byte-faithful EOL contract) |
-| Test execution | TESTED · RUNTIME_VERIFIED (deterministic mission path) |
-| Failure recovery | TESTED (failure object taxonomy; First Mission repair + kill/resume) |
-| Evidence persistence | IMPLEMENTED · TESTED · RUNTIME_VERIFIED (hash chain intact in UI across restarts) |
-| Session recovery | RUNTIME_VERIFIED (backend restarts 3× this session; missions and ledger survived each) |
-| Dev web runtime | **DEV_WEB_RUNTIME_VERIFIED** (this document) |
-| Packaged desktop runtime | UNVERIFIED (not attempted this pass; Tauri crate compiles — `cargo check` clean) |
+| Capability                                     | State                                                                                                                                                                                                  |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Repository indexing                            | IMPLEMENTED · TESTED · RUNTIME_VERIFIED (454 files / 2120 symbols, content-hash validated)                                                                                                             |
+| Repository intelligence                        | IMPLEMENTED · TESTED · RUNTIME_VERIFIED for definitions/files/packages/entry points/recent changes; **references/imports/dependency graph NOT_IMPLEMENTED** (queries honestly refused as keyword-only) |
+| Mission persistence                            | IMPLEMENTED · TESTED · RUNTIME_VERIFIED (restart-proof §4)                                                                                                                                             |
+| Provider authentication                        | BLOCKED (external: 402 billing / 401 credentials — requests genuinely reach providers)                                                                                                                 |
+| Provider streaming / tool calling / multimodal | BLOCKED (requires completable provider)                                                                                                                                                                |
+| Agent planning (LLM)                           | BLOCKED (external)                                                                                                                                                                                     |
+| Tool execution                                 | IMPLEMENTED · TESTED · RUNTIME_VERIFIED (terminal exec live; deterministic mission runner e2e)                                                                                                         |
+| Approval enforcement                           | TESTED (workspace boundary: editor save/patch refuse escapes, `.git/*`, symlinks; terminal commands execute inside workspace root)                                                                     |
+| File editing                                   | IMPLEMENTED · TESTED · UI_WIRED · runtime-probed (desktop command + HTTP parity deployed)                                                                                                              |
+| Diff generation / patch apply                  | TESTED (git apply fail-closed, byte-faithful EOL contract)                                                                                                                                             |
+| Test execution                                 | TESTED · RUNTIME_VERIFIED (deterministic mission path)                                                                                                                                                 |
+| Failure recovery                               | TESTED (failure object taxonomy; First Mission repair + kill/resume)                                                                                                                                   |
+| Evidence persistence                           | IMPLEMENTED · TESTED · RUNTIME_VERIFIED (hash chain intact in UI across restarts)                                                                                                                      |
+| Session recovery                               | RUNTIME_VERIFIED (backend restarts 3× this session; missions and ledger survived each)                                                                                                                 |
+| Dev web runtime                                | **DEV_WEB_RUNTIME_VERIFIED** (this document)                                                                                                                                                           |
+| Packaged desktop runtime                       | UNVERIFIED (not attempted this pass; Tauri crate compiles — `cargo check` clean)                                                                                                                       |
 
 ## 9. Next executable work
 

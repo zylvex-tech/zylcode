@@ -1,6 +1,7 @@
 # ZylCode Installation & Testing Guide (Windows, Mac, Linux)
 
 ## Table of Contents
+
 1. [System Requirements](#system-requirements)
 2. [Windows Installation](#windows-installation)
 3. [macOS Installation](#macos-installation)
@@ -13,12 +14,14 @@
 ## System Requirements
 
 ### Minimum Requirements
+
 - **OS**: Windows 10+, macOS 10.15+, Ubuntu 20.04+
 - **RAM**: 8GB (16GB recommended)
 - **Storage**: 2GB free space
 - **Internet**: Required for initial setup
 
 ### Recommended Requirements
+
 - **OS**: Windows 11, macOS 13+, Ubuntu 22.04+
 - **RAM**: 16GB+
 - **Storage**: 5GB+ free space
@@ -30,13 +33,14 @@
 ### Method 1: Pre-built Binary (Recommended)
 
 1. **Download the latest release**
+
    ```powershell
    # Download from GitHub releases
    Invoke-WebRequest -Uri "https://github.com/zylcode/zylcode/releases/latest/download/zylcode-windows-x64.zip" -OutFile "zylcode.zip"
-   
+
    # Extract
    Expand-Archive -Path "zylcode.zip" -DestinationPath "C:\Program Files\ZylCode"
-   
+
    # Add to PATH
    $env:PATH += ";C:\Program Files\ZylCode"
    [Environment]::SetEnvironmentVariable("PATH", $env:PATH, [EnvironmentVariableTarget]::User)
@@ -46,7 +50,7 @@
    ```powershell
    # Run from command line
    zylcode.exe
-   
+
    # Or run the GUI
    zylcode-gui.exe
    ```
@@ -54,19 +58,20 @@
 ### Method 2: Build from Source (Windows)
 
 1. **Install Prerequisites**
+
    ```powershell
    # Install Rust
    Invoke-WebRequest -Uri "https://win.rustup.rs/x86_64" -OutFile "rustup-init.exe"
    .\rustup-init.exe -y
    $env:PATH += ";$env:USERPROFILE\.cargo\bin"
-   
+
    # Install Node.js (LTS)
    Invoke-WebRequest -Uri "https://nodejs.org/dist/v18.18.0/node-v18.18.0-x64.msi" -OutFile "node.msi"
    Start-Process msiexec.exe -Wait -ArgumentList '/I', 'node.msi', '/quiet'
-   
+
    # Install pnpm
    npm install -g pnpm
-   
+
    # Install Visual Studio Build Tools
    Invoke-WebRequest -Uri "https://aka.ms/vs/17/release/vs_BuildTools.exe" -OutFile "vs_BuildTools.exe"
    .\vs_BuildTools.exe --quiet --wait --norestart --nocache --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended
@@ -77,15 +82,15 @@
    # Clone repository
    git clone https://github.com/zylcode/zylcode.git
    cd zylcode
-   
+
    # Build backend
    cargo build --release
-   
+
    # Build frontend
    cd apps/zylcode-desktop
    pnpm install
    pnpm build
-   
+
    # Run application
    cargo run --package zylcode-desktop --release
    ```
@@ -93,6 +98,7 @@
 ### Method 3: Using Scoop (Package Manager)
 
 1. **Install Scoop**
+
    ```powershell
    Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
    Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
@@ -109,15 +115,16 @@
 ### Method 1: Pre-built Binary (Recommended)
 
 1. **Download and Install**
+
    ```bash
    # Download from GitHub releases
    curl -L -o zylcode.dmg "https://github.com/zylcode/zylcode/releases/latest/download/zylcode-macos-arm64.dmg"
-   
+
    # Mount and install
    hdiutil attach zylcode.dmg
    cp -R /Volumes/ZylCode/ZylCode.app /Applications/
    hdiutil detach /Volumes/ZylCode
-   
+
    # Add to PATH
    echo 'export PATH="/Applications/ZylCode.app/Contents/MacOS:$PATH"' >> ~/.zshrc
    source ~/.zshrc
@@ -127,7 +134,7 @@
    ```bash
    # Run from terminal
    zylcode
-   
+
    # Or run the GUI
    open -a ZylCode
    ```
@@ -135,13 +142,14 @@
 ### Method 2: Build from Source (macOS)
 
 1. **Install Prerequisites**
+
    ```bash
    # Install Homebrew
    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-   
+
    # Install dependencies
    brew install rust node pnpm
-   
+
    # Install Xcode Command Line Tools
    xcode-select --install
    ```
@@ -151,15 +159,15 @@
    # Clone repository
    git clone https://github.com/zylcode/zylcode.git
    cd zylcode
-   
+
    # Build backend
    cargo build --release
-   
+
    # Build frontend
    cd apps/zylcode-desktop
    pnpm install
    pnpm build
-   
+
    # Run application
    cargo run --package zylcode-desktop --release
    ```
@@ -169,23 +177,24 @@
 ### Ubuntu/Debian
 
 1. **Install Prerequisites**
+
    ```bash
    # Update system
    sudo apt update && sudo apt upgrade -y
-   
+
    # Install dependencies
    sudo apt install -y curl wget git build-essential \
        libwebkit2gtk-4.0-dev libgtk-3-dev libayatana-appindicator3-dev \
        librsvg2-dev libssl-dev
-   
+
    # Install Rust
    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
    source $HOME/.cargo/env
-   
+
    # Install Node.js
    curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
    sudo apt-get install -y nodejs
-   
+
    # Install pnpm
    npm install -g pnpm
    ```
@@ -195,15 +204,15 @@
    # Clone repository
    git clone https://github.com/zylcode/zylcode.git
    cd zylcode
-   
+
    # Build backend
    cargo build --release
-   
+
    # Build frontend
    cd apps/zylcode-desktop
    pnpm install
    pnpm build
-   
+
    # Install system-wide
    sudo cp target/release/zylcode /usr/local/bin/
    sudo cp target/release/zylcode-desktop /usr/local/bin/
@@ -212,19 +221,20 @@
 ### Fedora/RHEL
 
 1. **Install Prerequisites**
+
    ```bash
    # Install dependencies
    sudo dnf install -y curl wget git gcc gcc-c++ make \
        webkit2gtk3-devel gtk3-devel libappindicator-gtk3-devel \
        librsvg2-devel openssl-devel
-   
+
    # Install Rust
    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
    source $HOME/.cargo/env
-   
+
    # Install Node.js
    sudo dnf install -y nodejs npm
-   
+
    # Install pnpm
    npm install -g pnpm
    ```
@@ -234,15 +244,15 @@
    # Clone repository
    git clone https://github.com/zylcode/zylcode.git
    cd zylcode
-   
+
    # Build backend
    cargo build --release
-   
+
    # Build frontend
    cd apps/zylcode-desktop
    pnpm install
    pnpm build
-   
+
    # Install system-wide
    sudo cp target/release/zylcode /usr/local/bin/
    sudo cp target/release/zylcode-desktop /usr/local/bin/
@@ -251,18 +261,19 @@
 ### Arch Linux
 
 1. **Install Prerequisites**
+
    ```bash
    # Install dependencies
    sudo pacman -S curl wget git base-devel \
        webkit2gtk gtk3 libappindicator-gtk3 librsvg openssl
-   
+
    # Install Rust
    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
    source $HOME/.cargo/env
-   
+
    # Install Node.js
    sudo pacman -S nodejs npm
-   
+
    # Install pnpm
    npm install -g pnpm
    ```
@@ -272,15 +283,15 @@
    # Clone repository
    git clone https://github.com/zylcode/zylcode.git
    cd zylcode
-   
+
    # Build backend
    cargo build --release
-   
+
    # Build frontend
    cd apps/zylcode-desktop
    pnpm install
    pnpm build
-   
+
    # Install system-wide
    sudo cp target/release/zylcode /usr/local/bin/
    sudo cp target/release/zylcode-desktop /usr/local/bin/
@@ -291,38 +302,39 @@
 ### Universal Build Script
 
 1. **Create build script** (`build.sh`):
+
    ```bash
    #!/bin/bash
    set -e
-   
+
    echo "Building ZylCode for $(uname -s) $(uname -m)..."
-   
+
    # Clean previous builds
    cargo clean
    rm -rf apps/zylcode-desktop/dist
-   
+
    # Build backend
    echo "Building backend..."
    cargo build --release
-   
+
    # Build frontend
    echo "Building frontend..."
    cd apps/zylcode-desktop
    pnpm install
    pnpm build
    cd ../..
-   
+
    # Create distribution
    echo "Creating distribution..."
    mkdir -p dist
-   
+
    # Copy binaries
    cp target/release/zylcode dist/
    cp target/release/zylcode-desktop dist/
-   
+
    # Copy frontend assets
    cp -r apps/zylcode-desktop/dist/* dist/
-   
+
    # Create platform-specific package
    case "$(uname -s)" in
        Linux*)
@@ -337,7 +349,7 @@
            cp dist/zylcode-desktop dist/ZylCode.app/Contents/MacOS/
            cp dist/zylcode dist/ZylCode.app/Contents/MacOS/
            cp -r dist/* dist/ZylCode.app/Contents/Resources/
-           
+
            # Create Info.plist
            cat > dist/ZylCode.app/Contents/Info.plist << EOF
    <?xml version="1.0" encoding="UTF-8"?>
@@ -359,7 +371,7 @@
    </dict>
    </plist>
    EOF
-           
+
            # Create DMG
            hdiutil create -volname "ZylCode" -srcfolder dist/ZylCode.app -ov -format UDZO zylcode-macos-$(uname -m).dmg
            ;;
@@ -368,7 +380,7 @@
            zip -r zylcode-windows-$(uname -m).zip dist/*
            ;;
    esac
-   
+
    echo "Build complete!"
    ```
 
@@ -383,31 +395,34 @@
 ### 1. Basic Functionality Test
 
 1. **Launch the application**
+
    ```bash
    # Windows
    zylcode-gui.exe
-   
+
    # macOS
    open -a ZylCode
-   
+
    # Linux
    zylcode-desktop
    ```
 
 2. **Test MCP Bridge**
+
    ```bash
    # List available tools
    zylcode tools list
-   
+
    # Execute a tool
    zylcode tools execute git.commit --params '{"message": "test commit"}'
    ```
 
 3. **Test Skills System**
+
    ```bash
    # List available skills
    zylcode skills list
-   
+
    # Execute a skill
    zylcode skills execute code.review --params '{"file": "src/main.rs"}'
    ```
@@ -416,7 +431,7 @@
    ```bash
    # List available plugins
    zylcode plugins list
-   
+
    # Install a plugin
    zylcode plugins install code.review.bot
    ```
@@ -424,15 +439,17 @@
 ### 2. Performance Testing
 
 1. **Run benchmarks**
+
    ```bash
    cargo bench
    ```
 
 2. **Test tool execution speed**
+
    ```bash
    # Time tool execution
    time zylcode tools execute git.commit --params '{"message": "test"}'
-   
+
    # Expected: <100ms
    ```
 
@@ -440,32 +457,34 @@
    ```bash
    # Monitor memory usage
    top -p $(pgrep zylcode)
-   
+
    # Expected: <512MB
    ```
 
 ### 3. Cross-Platform Testing
 
 1. **Test on Windows**
+
    ```powershell
    # Test GUI
    zylcode-gui.exe
-   
+
    # Test CLI
    zylcode.exe --help
-   
+
    # Test tools
    zylcode.exe tools list
    ```
 
 2. **Test on macOS**
+
    ```bash
    # Test GUI
    open -a ZylCode
-   
+
    # Test CLI
    zylcode --help
-   
+
    # Test tools
    zylcode tools list
    ```
@@ -474,10 +493,10 @@
    ```bash
    # Test GUI
    zylcode-desktop
-   
+
    # Test CLI
    zylcode --help
-   
+
    # Test tools
    zylcode tools list
    ```
@@ -485,18 +504,20 @@
 ### 4. Integration Testing
 
 1. **Run all tests**
+
    ```bash
    cargo test
    ```
 
 2. **Run specific test suites**
+
    ```bash
    # MCP Bridge tests
    cargo test --package zylcode-mcp
-   
+
    # Skills system tests
    cargo test --package zylcode-mcp --lib enhanced_skills
-   
+
    # Plugin marketplace tests
    cargo test --package zylcode-mcp --lib enhanced_plugin_marketplace
    ```
@@ -512,6 +533,7 @@
 ### Platform-Specific Settings
 
 1. **Windows Configuration**
+
    ```json
    // config/windows.json
    {
@@ -524,6 +546,7 @@
    ```
 
 2. **macOS Configuration**
+
    ```json
    // config/macos.json
    {
@@ -550,6 +573,7 @@
 ### Environment Variables
 
 1. **Common Environment Variables**
+
    ```env
    ZYLCODE_HOME=~/.zylcode
    ZYLCODE_CONFIG=~/.zylcode/config
@@ -558,6 +582,7 @@
    ```
 
 2. **Windows Environment Variables**
+
    ```powershell
    [Environment]::SetEnvironmentVariable("ZYLCODE_HOME", "$env:USERPROFILE\.zylcode", [EnvironmentVariableTarget]::User)
    [Environment]::SetEnvironmentVariable("ZYLCODE_CONFIG", "$env:USERPROFILE\.zylcode\config", [EnvironmentVariableTarget]::User)
@@ -577,6 +602,7 @@
 #### Windows Issues
 
 1. **"VCRUNTIME140.dll not found"**
+
    ```powershell
    # Install Visual C++ Redistributable
    Invoke-WebRequest -Uri "https://aka.ms/vs/17/release/vc_redist.x64.exe" -OutFile "vc_redist.exe"
@@ -584,6 +610,7 @@
    ```
 
 2. **"Windows Defender blocks the application"**
+
    ```powershell
    # Add exclusion
    Add-MpPreference -ExclusionPath "C:\Program Files\ZylCode"
@@ -599,6 +626,7 @@
 #### macOS Issues
 
 1. **"App is damaged and can't be opened"**
+
    ```bash
    # Remove quarantine attribute
    xattr -cr /Applications/ZylCode.app
@@ -613,6 +641,7 @@
 #### Linux Issues
 
 1. **"Permission denied"**
+
    ```bash
    # Make executable
    chmod +x /usr/local/bin/zylcode
@@ -623,7 +652,7 @@
    ```bash
    # Ubuntu/Debian
    sudo apt install -y libwebkit2gtk-4.0-dev libgtk-3-dev
-   
+
    # Fedora
    sudo dnf install -y webkit2gtk3-devel gtk3-devel
    ```
@@ -631,10 +660,11 @@
 ### Debug Mode
 
 1. **Enable debug logging**
+
    ```bash
    # Set log level
    export RUST_LOG=debug
-   
+
    # Run with debug output
    zylcode --debug
    ```
@@ -643,7 +673,7 @@
    ```bash
    # Windows
    Get-Content "$env:USERPROFILE\.zylcode\logs\zylcode.log" -Tail 100
-   
+
    # macOS/Linux
    tail -f ~/.zylcode/logs/zylcode.log
    ```
@@ -651,10 +681,11 @@
 ### Performance Issues
 
 1. **Slow startup**
+
    ```bash
    # Clear cache
    rm -rf ~/.zylcode/cache
-   
+
    # Rebuild
    cargo clean && cargo build --release
    ```
@@ -670,6 +701,7 @@
 ## Quick Start Guide
 
 ### Windows Quick Start
+
 ```powershell
 # 1. Download and extract
 Invoke-WebRequest -Uri "https://github.com/zylcode/zylcode/releases/latest/download/zylcode-windows-x64.zip" -OutFile "zylcode.zip"
@@ -684,6 +716,7 @@ cd C:\ZylCode
 ```
 
 ### macOS Quick Start
+
 ```bash
 # 1. Download and install
 curl -L -o zylcode.dmg "https://github.com/zylcode/zylcode/releases/latest/download/zylcode-macos-arm64.dmg"
@@ -699,6 +732,7 @@ zylcode tools list
 ```
 
 ### Linux Quick Start
+
 ```bash
 # 1. Download and extract
 wget https://github.com/zylcode/zylcode/releases/latest/download/zylcode-linux-x86_64.tar.gz

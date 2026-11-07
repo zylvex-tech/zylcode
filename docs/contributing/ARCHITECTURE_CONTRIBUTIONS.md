@@ -26,7 +26,7 @@ implemented or quietly reverted.
 - Open a GitHub Discussion under **Architecture** (or an issue using `feature_request`) describing:
   - the current contract;
   - the proposed change;
-  - the rationale (the *why*, with evidence);
+  - the rationale (the _why_, with evidence);
   - the rung/dependency/data-ownership impact;
   - the migration or compatibility story.
 - If the change alters the Constitution, it requires an **amendment** recorded in the Constitution's
@@ -36,7 +36,7 @@ implemented or quietly reverted.
 ## What is not an architecture change
 
 - Fixing a bug within a defined contract.
-- Adding a capability *within* an existing system's stated scope.
+- Adding a capability _within_ an existing system's stated scope.
 - Documentation that describes reality more accurately (that is a correction, not a change).
 
 ## Anti-patterns

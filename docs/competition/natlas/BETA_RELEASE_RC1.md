@@ -5,7 +5,7 @@
 **Date/Time:** 2026-10-08 03:21 GMT+1  
 **Branch:** `competition/natlas-2026`  
 **Test Status:** 61/61 competition tests passing (hermetic)  
-**Live Endpoint:** `https://zylvex-natlas-zylcode-bridge.hf.space/healthz` → 200, model `NCAIR1/N-ATLaS`  
+**Live Endpoint:** `https://zylvex-natlas-zylcode-bridge.hf.space/healthz` → 200, model `NCAIR1/N-ATLaS`
 
 ## Known Limitations
 
@@ -43,4 +43,4 @@
 
 ---
 
-*Frozen at RC1 SHA. Any subsequent change requires a new RC number.*
+_Frozen at RC1 SHA. Any subsequent change requires a new RC number._

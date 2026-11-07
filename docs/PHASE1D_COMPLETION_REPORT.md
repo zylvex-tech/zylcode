@@ -11,65 +11,85 @@ Phase 1D has established ZylCode's durable memory architecture with P0 correctio
 ## P0 Corrections Applied
 
 ### 1. Fail-Open Verification Behavior
+
 **Status: CORRECTED**
+
 - `verify_results()` no longer assumes checks pass
 - Unexpected model responses result in `Failed`, not `Verified`
 - Failed model calls result in `Failed`, not `Verified`
 - Model must provide actual verification evidence
 
 ### 2. Hash-Chain Integrity
+
 **Status: CORRECTED**
+
 - Compute actual SHA-256 hash of previous entry content
 - Store in `prev_hash` field
 - Verify chain integrity on recovery
 
 ### 3. Checkpoint Ledger Cursor
+
 **Status: CORRECTED**
+
 - Track actual last entry ID in checkpoint
 - Update checkpoint with real cursor position
 
 ### 4. Ambiguous-Side-Effect Recovery
+
 **Status: CORRECTED**
+
 - For `Started` entries without `Executed`: inspect external state before deciding
 - For file writes: check if file exists and has expected content
 - For git operations: require manual reconciliation
 - Mark as `RequiresReconciliation` if state cannot be determined
 
 ### 5. Tool Not Found
+
 **Status: CORRECTED**
+
 - Return error when tool is not found
 - Mark ledger entry as failed
 - Prevent infinite loops
 
 ### 6. XML Response Handling
+
 **Status: CORRECTED**
+
 - Treat old XML format as completion with evidence
 - Update synthetic response to return valid JSON
 
 ## Commissioning Gates
 
 ### 1. Evidence Ledger Schema
+
 **Status: COMPLETE**
+
 - `LedgerEntry` struct with immutable execution records
 - `ExecutionState` enum: `Planned → Approved → Started → Executed → Recorded → Verified → Cancelled → Failed`
 - `SessionCheckpoint` for recovery state persistence
 - `LedgerStore` trait for persistence abstraction
 
 ### 2. SQLite Implementation
+
 **Status: COMPLETE**
+
 - `SqliteLedgerStore` implements `LedgerStore` with SQLite backend
 - Schema includes `ledger_entries` and `session_checkpoints` tables
 - Proper indexing for session-based queries
 - Thread-safe with `Mutex<Connection>`
 
 ### 3. In-Memory Implementation for Tests
+
 **Status: COMPLETE**
+
 - `MemoryLedgerStore` implements `LedgerStore` for testing
 - Thread-safe with `Mutex<HashMap>`
 - Fast, deterministic tests
 
 ### 4. Agent Integration
+
 **Status: COMPLETE**
+
 - `AgentLoop` now includes `ledger: Arc<dyn LedgerStore>`
 - Tool executions logged through state machine:
   - `Approved` when tool call is auto-approved
@@ -80,26 +100,32 @@ Phase 1D has established ZylCode's durable memory architecture with P0 correctio
 - Verification steps also logged to ledger
 
 ### 5. Crash Window Tests
+
 **Status: COMPLETE**
 Three crash windows tested:
 
 **Window 1: Pre-Execution**
+
 - Agent logs `Started`, then crashes
 - Recovery sees `Started` without `Executed`
 - Safe choice: Cancel and request human intervention
 
 **Window 2: Post-Side-Effect**
+
 - Agent logs `Started` and `Executed`, then crashes
 - Recovery sees `Executed` with payload
 - Safe choice: Skip re-execution, go to Recording/Verification
 
 **Window 3: Post-Evidence**
+
 - Agent logs `Started`, `Executed`, `Recorded`, then crashes
 - Recovery sees `Recorded`
 - Safe choice: Mark as `Verified`
 
 ### 6. E2E Process Kill Simulation
+
 **Status: COMPLETE**
+
 - Test creates agent, runs until first tool call
 - Saves checkpoint to ledger
 - Verifies ledger has correct entries
@@ -107,14 +133,18 @@ Three crash windows tested:
 - Recovery logic can safely resume without duplicate execution
 
 ### 7. Checkpoint Recovery
+
 **Status: COMPLETE**
+
 - `save_checkpoint()` persists session state to ledger
 - `recover_from_checkpoint()` restores state from checkpoint
 - Agent state and context are restored
 - Incomplete executions are identified and handled safely
 
 ### 8. Local Regression Suite
+
 **Status: COMPLETE**
+
 - `cargo fmt --all -- --check` ✅
 - `cargo clippy --workspace --all-targets -- -D warnings` ✅
 - `cargo test --workspace` ✅ (all tests pass)
@@ -122,16 +152,16 @@ Three crash windows tested:
 
 ## Evidence Summary
 
-| Gate | Status | Evidence |
-|------|--------|----------|
-| Evidence Ledger Schema | ✅ | `LedgerEntry`, `ExecutionState`, `SessionCheckpoint` |
-| SQLite Implementation | ✅ | `SqliteLedgerStore` with proper schema |
-| In-Memory Implementation | ✅ | `MemoryLedgerStore` for tests |
-| Agent Integration | ✅ | Ledger logging in `execute_tool_call` and `verify_results` |
-| Crash Window Tests | ✅ | `crash_recovery.rs` with 3 tests |
-| E2E Process Kill | ✅ | `e2e_crash_recovery.rs` with 2 tests |
-| Checkpoint Recovery | ✅ | `save_checkpoint()` and `recover_from_checkpoint()` |
-| Local Regression | ✅ | fmt, clippy, tests, build all pass |
+| Gate                     | Status | Evidence                                                   |
+| ------------------------ | ------ | ---------------------------------------------------------- |
+| Evidence Ledger Schema   | ✅     | `LedgerEntry`, `ExecutionState`, `SessionCheckpoint`       |
+| SQLite Implementation    | ✅     | `SqliteLedgerStore` with proper schema                     |
+| In-Memory Implementation | ✅     | `MemoryLedgerStore` for tests                              |
+| Agent Integration        | ✅     | Ledger logging in `execute_tool_call` and `verify_results` |
+| Crash Window Tests       | ✅     | `crash_recovery.rs` with 3 tests                           |
+| E2E Process Kill         | ✅     | `e2e_crash_recovery.rs` with 2 tests                       |
+| Checkpoint Recovery      | ✅     | `save_checkpoint()` and `recover_from_checkpoint()`        |
+| Local Regression         | ✅     | fmt, clippy, tests, build all pass                         |
 
 ## Capabilities Added
 
@@ -183,21 +213,21 @@ pub enum ExecutionState {
 
 ### Crash Windows
 
-| Window | State | Recovery Action |
-|--------|-------|-----------------|
-| Pre-Execution | `Started` | Verify side effect or cancel |
+| Window           | State      | Recovery Action                    |
+| ---------------- | ---------- | ---------------------------------- |
+| Pre-Execution    | `Started`  | Verify side effect or cancel       |
 | Post-Side-Effect | `Executed` | Skip re-execution, record evidence |
-| Post-Evidence | `Recorded` | Mark as Verified |
+| Post-Evidence    | `Recorded` | Mark as Verified                   |
 
 ### Verification Fail-Closed Behavior
 
-| Scenario | Old Behavior | New Behavior |
-|----------|--------------|--------------|
-| No checks provided | Assume pass | `FAILED` |
-| Checks provided but not executed | Assume pass | `FAILED` |
-| Unexpected model response | `Verified` | `FAILED` |
-| Model call failure | `Verified` | `FAILED` |
-| Empty evidence | `Verified` | `FAILED` |
+| Scenario                         | Old Behavior | New Behavior |
+| -------------------------------- | ------------ | ------------ |
+| No checks provided               | Assume pass  | `FAILED`     |
+| Checks provided but not executed | Assume pass  | `FAILED`     |
+| Unexpected model response        | `Verified`   | `FAILED`     |
+| Model call failure               | `Verified`   | `FAILED`     |
+| Empty evidence                   | `Verified`   | `FAILED`     |
 
 ## Remote CI Status
 

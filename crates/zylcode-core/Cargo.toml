@@ -9,6 +9,7 @@ description = "ZylCode pure Rust engine library — intent processing, logic ver
 rust-version.workspace = true
 
 [dependencies]
+url = { version = "2", default-features = false, features = ["serde"] }
 tokio = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
