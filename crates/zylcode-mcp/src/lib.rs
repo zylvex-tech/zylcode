@@ -9,6 +9,7 @@ pub mod enhanced_skills;
 pub mod evidence;
 pub mod executor;
 pub mod hot_reload;
+pub mod mcp_client;
 pub mod nav_tools;
 pub mod permission;
 pub mod plugin_marketplace;
