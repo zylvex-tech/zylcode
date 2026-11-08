@@ -7,7 +7,6 @@ import {
   onIntentChunk,
   onIntentDone,
   onMcpToolCall,
-  onNativeToolCall,
   safeListen,
   useStreamSubscription,
 } from "./events";
