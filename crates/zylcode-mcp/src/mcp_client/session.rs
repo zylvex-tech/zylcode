@@ -530,7 +530,6 @@ mod tests {
                 sent,
             )
         }
-
     }
 
     #[async_trait]
