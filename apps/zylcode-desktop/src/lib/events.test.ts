@@ -7,6 +7,7 @@ import {
   onIntentChunk,
   onIntentDone,
   onMcpToolCall,
+  onNativeToolCall,
   safeListen,
   useStreamSubscription,
 } from "./events";
@@ -137,6 +138,51 @@ describe("in the desktop runtime", () => {
     expect(handlers.has("intent:done")).toBe(true);
     expect(handlers.has("zylcode://mcp-tool-call")).toBe(true);
     expect(handlers.has("zylcode://stream-delta")).toBe(false);
+  });
+
+  it("surfaces a native tool call with its canonical id and gate decision", async () => {
+    const { mod, handlers } = await loadDesktopEvents();
+    const received: unknown[] = [];
+    await mod.onNativeToolCall((e) => received.push(e));
+    expect(handlers.has("zylcode://tool-call")).toBe(true);
+
+    handlers.get("zylcode://tool-call")!({
+      payload: {
+        tool: "fs.read",
+        wire_name: "fs_read",
+        status: "complete",
+        decision: "allow: risk Read is within the permitted threshold (Read)",
+        executed: true,
+        invocation_id: "inv-1",
+        error: null,
+      },
+    });
+
+    expect(received).toHaveLength(1);
+    expect(received[0]).toMatchObject({ tool: "fs.read", executed: true });
+  });
+
+  it("renders a refused native tool call as failed, not as success", async () => {
+    const { mod, handlers } = await loadDesktopEvents();
+    const { result } = renderHook(() => mod.useStreamSubscription());
+    await waitFor(() => expect(handlers.has("zylcode://tool-call")).toBe(true));
+
+    act(() => {
+      handlers.get("zylcode://tool-call")!({
+        payload: {
+          tool: "fs.write",
+          status: "failed",
+          decision: "deny: risk Write exceeds the permitted threshold (Read)",
+          executed: false,
+          error: "tool error: permission denied",
+        },
+      });
+    });
+
+    const row = result.current.mcpCalls[0];
+    expect(row.tool).toBe("fs.write");
+    expect(row.status).toBe("failed");
+    expect(row.error).toContain("permission denied");
   });
 
   it("drives the hook's stream state and unsubscribes on unmount", async () => {

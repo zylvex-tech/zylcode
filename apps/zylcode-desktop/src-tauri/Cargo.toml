@@ -25,6 +25,11 @@ tauri = { version = "2", features = [] }
 tauri-plugin-shell = "2"
 rusqlite = { version = "0.31", features = ["bundled"] }
 
+[dev-dependencies]
+# Used by the desktop native-tool test to give the real executor a real
+# workspace. Matches the version the other crates already use.
+tempfile = "3"
+
 [features]
 # Production / standalone builds.
 #

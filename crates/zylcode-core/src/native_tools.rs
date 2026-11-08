@@ -194,6 +194,15 @@ pub fn resolve<'a>(specs: &'a [ToolSpec], returned: &str) -> Option<&'a ToolSpec
         .find(|spec| spec.wire_name() == returned || spec.name == returned)
 }
 
+/// Notified once per executed call, after the gate has decided and the
+/// executor has run.
+///
+/// A surface (desktop, CLI) uses this to show tool activity as it happens
+/// without the loop having to know what a surface is. It receives the same
+/// [`ExecutedCall`] the run returns, so a live row and the final report cannot
+/// disagree.
+pub type CallObserver = Box<dyn Fn(&ExecutedCall) + Send + Sync>;
+
 /// Everything a run needs to reach the provider and the tool pipeline.
 pub struct NativeToolRunner<'a> {
     turn: &'a dyn ChatTurn,
@@ -202,6 +211,7 @@ pub struct NativeToolRunner<'a> {
     system: String,
     tools: Vec<ToolSpec>,
     max_rounds: usize,
+    observer: Option<CallObserver>,
 }
 
 impl<'a> NativeToolRunner<'a> {
@@ -213,7 +223,14 @@ impl<'a> NativeToolRunner<'a> {
             system: String::new(),
             tools: Vec::new(),
             max_rounds: MAX_TOOL_ROUNDS,
+            observer: None,
         }
+    }
+
+    /// Report each executed call as it happens.
+    pub fn with_observer(mut self, observer: CallObserver) -> Self {
+        self.observer = Some(observer);
+        self
     }
 
     pub fn with_system(mut self, system: impl Into<String>) -> Self {
@@ -345,7 +362,7 @@ impl<'a> NativeToolRunner<'a> {
         let executed = outcome.executed();
         let content = render_result(&outcome.result);
 
-        calls.push(ExecutedCall {
+        let record = ExecutedCall {
             wire_name: call.name.clone(),
             tool_id: spec.name.clone(),
             call_id: Some(call_id.clone()),
@@ -353,7 +370,11 @@ impl<'a> NativeToolRunner<'a> {
             executed,
             result_content: content.clone(),
             evidence: outcome.evidence,
-        });
+        };
+        if let Some(observer) = &self.observer {
+            observer(&record);
+        }
+        calls.push(record);
 
         Ok((
             executed,
@@ -391,6 +412,26 @@ fn truncate(content: &str, limit: usize) -> String {
     }
     let kept: String = content.chars().take(limit).collect();
     format!("{kept}\n… output truncated at {limit} characters by ZylCode; the tool produced more.")
+}
+
+/// The tool context a product surface hands the loop.
+///
+/// `approval_required` is false on purpose: a model-requested call is not a
+/// human-approved one, so the restrictive gate keeps refusing the risky
+/// operations instead of being handed an approval it never received.
+pub fn tool_context(
+    workspace: &std::path::Path,
+    actor: &str,
+    session_id: Option<String>,
+) -> ToolContext {
+    ToolContext {
+        working_directory: workspace.to_path_buf(),
+        environment: std::env::vars().collect(),
+        timeout: std::time::Duration::from_secs(60),
+        session_id,
+        actor: Some(actor.to_string()),
+        approval_required: false,
+    }
 }
 
 /// The runtime a real run uses: the restrictive policy and the JSONL ledger.
