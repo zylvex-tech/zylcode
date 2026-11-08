@@ -18,9 +18,9 @@ use std::time::Duration;
 
 use super::sse::SseDecoder;
 use super::streaming::{
-    CancelToken, ChatRequest, Completion, DecodedEvent, FinishReason, LineDecoder, ProviderError,
-    ProviderErrorKind, StreamEndpoint, StreamOutcome, ToolCall, ToolCallDelta, ToolCallDeltaKind,
-    Usage,
+    CancelToken, ChatMessage, ChatRequest, Completion, DecodedEvent, FinishReason, LineDecoder,
+    ProviderError, ProviderErrorKind, StreamEndpoint, StreamOutcome, ToolCall, ToolCallDelta,
+    ToolCallDeltaKind, Usage,
 };
 use std::collections::HashMap;
 
@@ -29,10 +29,68 @@ pub const ANTHROPIC_VERSION: &str = "2023-06-01";
 
 /// Build the streaming request body for the Messages API.
 pub fn messages_body(req: &ChatRequest, stream: bool) -> serde_json::Value {
+    // Anthropic keys tool results by block id and requires them to arrive in a
+    // *user* turn, so an assistant turn's `tool_use` blocks and the following
+    // `tool_result` blocks are two deliberate shapes rather than one message list.
+    let mut messages: Vec<serde_json::Value> = Vec::new();
+    for turn in req.turns() {
+        match turn {
+            ChatMessage::User { content } => messages.push(serde_json::json!({
+                "role": "user",
+                "content": [{ "type": "text", "text": content }],
+            })),
+            ChatMessage::Assistant {
+                content,
+                tool_calls,
+            } => {
+                let mut blocks: Vec<serde_json::Value> = Vec::new();
+                if !content.is_empty() {
+                    blocks.push(serde_json::json!({ "type": "text", "text": content }));
+                }
+                for call in &tool_calls {
+                    // The block id is what a `tool_result` addresses; without it
+                    // the result cannot be attached to the call that asked for it.
+                    let Some(id) = call.call_id.clone() else {
+                        continue;
+                    };
+                    let input: serde_json::Value =
+                        serde_json::from_str(&call.arguments).unwrap_or(serde_json::json!({}));
+                    blocks.push(serde_json::json!({
+                        "type": "tool_use",
+                        "id": id,
+                        "name": crate::providers::streaming::wire_name(&call.name),
+                        "input": input,
+                    }));
+                }
+                messages.push(serde_json::json!({ "role": "assistant", "content": blocks }));
+            }
+            ChatMessage::ToolResult {
+                call_id,
+                content,
+                is_error,
+                ..
+            } => messages.push(serde_json::json!({
+                "role": "user",
+                "content": [{
+                    "type": "tool_result",
+                    "tool_use_id": call_id,
+                    "content": content,
+                    "is_error": is_error,
+                }],
+            })),
+        }
+    }
+    if messages.is_empty() {
+        messages.push(serde_json::json!({
+            "role": "user",
+            "content": [{ "type": "text", "text": req.prompt }],
+        }));
+    }
+
     let mut body = serde_json::json!({
         "model": req.model,
         "max_tokens": req.max_tokens,
-        "messages": [{ "role": "user", "content": req.prompt }],
+        "messages": messages,
         "stream": stream,
     });
     if !req.system.is_empty() {
@@ -485,7 +543,10 @@ mod tests {
         assert_eq!(body["stream"], true);
         assert_eq!(body["system"], "be terse");
         assert_eq!(body["messages"][0]["role"], "user");
-        assert_eq!(body["messages"][0]["content"], "hi");
+        // Content is a block array: a plain string cannot also carry a
+        // `tool_result` block in the same turn, and tool results must.
+        assert_eq!(body["messages"][0]["content"][0]["type"], "text");
+        assert_eq!(body["messages"][0]["content"][0]["text"], "hi");
         assert_eq!(body["max_tokens"], 4096);
         // Native tool calling is gated: no tools field may be sent.
         assert!(body.get("tools").is_none());

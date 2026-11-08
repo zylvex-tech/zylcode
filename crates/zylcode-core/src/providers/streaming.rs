@@ -167,17 +167,24 @@ impl ToolSpec {
     /// not declare two ids that collapse to the same wire name, or a returned
     /// call would be ambiguous.
     pub fn wire_name(&self) -> String {
-        self.name
-            .chars()
-            .map(|c| {
-                if c.is_ascii_alphanumeric() || c == '_' || c == '-' {
-                    c
-                } else {
-                    '_'
-                }
-            })
-            .collect()
+        wire_name(&self.name)
     }
+}
+
+/// Sanitise a ZylCode tool id into the name grammar providers accept.
+///
+/// Kept as a free function so a returned tool result can be addressed back to
+/// the declaration that produced it without constructing a [`ToolSpec`].
+pub fn wire_name(id: &str) -> String {
+    id.chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '_' || c == '-' {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect()
 }
 
 /// Whether the model may, must, or must not call a tool.
@@ -455,6 +462,33 @@ impl StreamHandle {
 // Request shape shared by the provider modules
 // ---------------------------------------------------------------------------
 
+/// One turn of a provider-bound conversation.
+///
+/// A native tool conversation is not two strings: after the model asks for a
+/// tool, the next request has to carry the assistant turn that asked and the
+/// result that came back. Without this the second round would re-send the
+/// original question and the model would ask for the same tool forever.
+#[derive(Debug, Clone, PartialEq)]
+pub enum ChatMessage {
+    /// Something the user said.
+    User { content: String },
+    /// What the assistant said, and the tool calls it made while saying it.
+    Assistant {
+        content: String,
+        tool_calls: Vec<ToolCall>,
+    },
+    /// The result of executing one tool call the assistant asked for.
+    ToolResult {
+        /// The id the provider assigned to the call, used to address the result
+        /// back to it. Anthropic and OpenAI-compatible require it; Ollama does not.
+        call_id: String,
+        /// The canonical ZylCode tool id the call resolved to.
+        name: String,
+        content: String,
+        is_error: bool,
+    },
+}
+
 /// The neutral description of one streaming chat call.
 #[derive(Debug, Clone)]
 pub struct ChatRequest {
@@ -468,6 +502,11 @@ pub struct ChatRequest {
     pub tools: Vec<ToolSpec>,
     /// Whether, and how firmly, the model should call one.
     pub tool_choice: ToolChoice,
+    /// Conversation already exchanged, newest last. When this is empty the
+    /// request is the single `prompt` turn; when it is not, it **is** the whole
+    /// conversation and `prompt` is ignored. Keeping both shapes means every
+    /// existing single-shot caller is unchanged.
+    pub messages: Vec<ChatMessage>,
 }
 
 impl ChatRequest {
@@ -484,6 +523,7 @@ impl ChatRequest {
             temperature: 0.2,
             tools: Vec::new(),
             tool_choice: ToolChoice::Auto,
+            messages: Vec::new(),
         }
     }
 
@@ -491,6 +531,34 @@ impl ChatRequest {
     pub fn with_tools(mut self, tools: Vec<ToolSpec>) -> Self {
         self.tools = tools;
         self
+    }
+
+    /// Carry an ongoing conversation instead of a single prompt turn.
+    pub fn with_messages(mut self, messages: Vec<ChatMessage>) -> Self {
+        self.messages = messages;
+        self
+    }
+
+    /// Say whether, and how firmly, a tool should be called.
+    pub fn with_tool_choice(mut self, choice: ToolChoice) -> Self {
+        self.tool_choice = choice;
+        self
+    }
+
+    /// The turns to send, oldest first.
+    ///
+    /// `messages` wins when present; otherwise the request collapses to its one
+    /// prompt turn, which is what every pre-tool-calling caller relies on.
+    pub fn turns(&self) -> Vec<ChatMessage> {
+        if !self.messages.is_empty() {
+            return self.messages.clone();
+        }
+        match self.prompt.as_str() {
+            "" => Vec::new(),
+            prompt => vec![ChatMessage::User {
+                content: prompt.to_string(),
+            }],
+        }
     }
 }
 

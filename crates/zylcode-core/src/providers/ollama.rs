@@ -17,9 +17,9 @@
 use std::time::Duration;
 
 use super::streaming::{
-    CancelToken, ChatRequest, Completion, DecodedEvent, FinishReason, LineDecoder, ProviderError,
-    ProviderErrorKind, StreamChunk, StreamEndpoint, StreamOutcome, ToolCall, ToolCallDelta,
-    ToolCallDeltaKind, Usage,
+    CancelToken, ChatMessage, ChatRequest, Completion, DecodedEvent, FinishReason, LineDecoder,
+    ProviderError, ProviderErrorKind, StreamChunk, StreamEndpoint, StreamOutcome, ToolCall,
+    ToolCallDelta, ToolCallDeltaKind, Usage,
 };
 
 /// Streaming URL for an Ollama base URL such as `http://127.0.0.1:11434`.
@@ -33,7 +33,39 @@ pub fn chat_body(req: &ChatRequest, stream: bool) -> serde_json::Value {
     if !req.system.is_empty() {
         messages.push(serde_json::json!({ "role": "system", "content": req.system }));
     }
-    messages.push(serde_json::json!({ "role": "user", "content": req.prompt }));
+    for turn in req.turns() {
+        messages.push(match turn {
+            ChatMessage::User { content } => serde_json::json!({
+                "role": "user",
+                "content": content,
+            }),
+            // Ollama takes the arguments as an object and addresses results by
+            // position, not by id, so an unparsable argument string cannot be
+            // carried faithfully — it is sent as an empty object and the caller
+            // has already been told the call was malformed.
+            ChatMessage::Assistant {
+                content,
+                tool_calls,
+            } => serde_json::json!({
+                "role": "assistant",
+                "content": content,
+                "tool_calls": tool_calls
+                    .iter()
+                    .map(|call| serde_json::json!({
+                        "function": {
+                            "name": crate::providers::streaming::wire_name(&call.name),
+                            "arguments": serde_json::from_str::<serde_json::Value>(&call.arguments)
+                                .unwrap_or_else(|_| serde_json::json!({})),
+                        },
+                    }))
+                    .collect::<Vec<_>>(),
+            }),
+            ChatMessage::ToolResult { content, .. } => serde_json::json!({
+                "role": "tool",
+                "content": content,
+            }),
+        });
+    }
 
     let mut body = serde_json::json!({
         "model": req.model,

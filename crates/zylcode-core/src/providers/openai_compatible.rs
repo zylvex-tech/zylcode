@@ -19,9 +19,9 @@ use std::time::Duration;
 
 use super::sse::SseDecoder;
 use super::streaming::{
-    CancelToken, ChatRequest, Completion, DecodedEvent, FinishReason, LineDecoder, ProviderError,
-    ProviderErrorKind, StreamChunk, StreamEndpoint, StreamOutcome, ToolCall, ToolCallDelta,
-    ToolCallDeltaKind, Usage,
+    CancelToken, ChatMessage, ChatRequest, Completion, DecodedEvent, FinishReason, LineDecoder,
+    ProviderError, ProviderErrorKind, StreamChunk, StreamEndpoint, StreamOutcome, ToolCall,
+    ToolCallDelta, ToolCallDeltaKind, Usage,
 };
 
 /// Values of `finish_reason` this layer maps concretely.
@@ -41,7 +41,42 @@ pub fn chat_body(req: &ChatRequest, stream: bool) -> serde_json::Value {
     if !req.system.is_empty() {
         messages.push(serde_json::json!({ "role": "system", "content": req.system }));
     }
-    messages.push(serde_json::json!({ "role": "user", "content": req.prompt }));
+    for turn in req.turns() {
+        messages.push(match turn {
+            ChatMessage::User { content } => serde_json::json!({
+                "role": "user",
+                "content": content,
+            }),
+            // `tool_calls` must travel back with the assistant turn it belongs
+            // to: a `tool` message that answers a call the assistant turn never
+            // declared is rejected by the API.
+            ChatMessage::Assistant {
+                content,
+                tool_calls,
+            } => serde_json::json!({
+                "role": "assistant",
+                "content": content,
+                "tool_calls": tool_calls
+                    .iter()
+                    .map(|call| serde_json::json!({
+                        "id": call.call_id.clone().unwrap_or_default(),
+                        "type": "function",
+                        "function": {
+                            "name": crate::providers::streaming::wire_name(&call.name),
+                            "arguments": call.arguments,
+                        },
+                    }))
+                    .collect::<Vec<_>>(),
+            }),
+            ChatMessage::ToolResult {
+                call_id, content, ..
+            } => serde_json::json!({
+                "role": "tool",
+                "tool_call_id": call_id,
+                "content": content,
+            }),
+        });
+    }
 
     let mut body = serde_json::json!({
         "model": req.model,
