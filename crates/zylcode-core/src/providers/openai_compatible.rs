@@ -10,16 +10,18 @@
 //!   requested, and arrives in a final chunk with an empty `choices` array.
 //! * The literal `data: [DONE]` sentinel ends the stream.
 //!
-//! Native tool calling is deliberately **not** sent and `delta.tool_calls` is
-//! surfaced as metadata only, because the tool-calling acceptance gate has not
-//! passed.
+//! Native tool calling **is** sent: `tools` carries OpenAI's
+//! `{type: function, function}` shape and `delta.tool_calls` (or the
+//! non-streamed `message.tool_calls`) is translated into the neutral tool-call
+//! contract. Execution stays on ZylCode's gated path.
 
 use std::time::Duration;
 
 use super::sse::SseDecoder;
 use super::streaming::{
     CancelToken, ChatRequest, Completion, DecodedEvent, FinishReason, LineDecoder, ProviderError,
-    ProviderErrorKind, StreamChunk, StreamEndpoint, StreamOutcome, Usage,
+    ProviderErrorKind, StreamChunk, StreamEndpoint, StreamOutcome, ToolCall, ToolCallDelta,
+    ToolCallDeltaKind, Usage,
 };
 
 /// Values of `finish_reason` this layer maps concretely.
@@ -52,6 +54,28 @@ pub fn chat_body(req: &ChatRequest, stream: bool) -> serde_json::Value {
         // Without this, OpenAI omits usage entirely from streamed responses.
         body["stream_options"] = serde_json::json!({ "include_usage": true });
     }
+    if !req.tools.is_empty() {
+        body["tools"] = serde_json::Value::Array(
+            req.tools
+                .iter()
+                .map(|tool| {
+                    serde_json::json!({
+                        "type": "function",
+                        "function": {
+                            "name": tool.wire_name(),
+                            "description": tool.description,
+                            "parameters": tool.parameters,
+                        }
+                    })
+                })
+                .collect(),
+        );
+        body["tool_choice"] = serde_json::json!(match req.tool_choice {
+            crate::providers::streaming::ToolChoice::Auto => "auto",
+            crate::providers::streaming::ToolChoice::None => "none",
+            crate::providers::streaming::ToolChoice::Required => "required",
+        });
+    }
     body
 }
 
@@ -79,8 +103,46 @@ pub fn parse_completion(json: &serde_json::Value) -> Completion {
         .unwrap_or("")
         .to_string();
 
+    // `tool_calls` is where this family asks for tools. `arguments` is a JSON
+    // *string* in the protocol and stays a string here: parsing it at the
+    // translation boundary would turn a model's malformed arguments into a
+    // provider bug, when the caller needs to see exactly what was generated.
+    let tool_calls = json
+        .get("choices")
+        .and_then(|c| c.as_array())
+        .and_then(|choices| choices.first())
+        .and_then(|choice| choice.get("message"))
+        .and_then(|message| message.get("tool_calls"))
+        .and_then(|calls| calls.as_array())
+        .map(|calls| {
+            calls
+                .iter()
+                .filter_map(|call| {
+                    let function = call.get("function")?;
+                    let name = function.get("name")?.as_str()?.to_string();
+                    Some(ToolCall {
+                        call_id: call
+                            .get("id")
+                            .and_then(serde_json::Value::as_str)
+                            .map(str::to_string),
+                        block_id: None,
+                        name,
+                        arguments: function
+                            .get("arguments")
+                            .and_then(serde_json::Value::as_str)
+                            .unwrap_or_default()
+                            .to_string(),
+                        done: true,
+                        metadata: None,
+                    })
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
     Completion {
         text,
+        tool_calls,
         usage: Usage {
             input_tokens: json
                 .get("usage")
@@ -121,6 +183,9 @@ pub struct OpenAiCompatDecoder {
     finish: Option<FinishReason>,
     usage: Usage,
     provider_ref: Option<String>,
+    /// OpenAI streams a tool call's id once and then refers to it by `index`, so
+    /// the decoder has to remember the mapping to keep the call correlated.
+    tool_call_ids: std::collections::HashMap<u64, String>,
 }
 
 impl OpenAiCompatDecoder {
@@ -206,15 +271,62 @@ impl OpenAiCompatDecoder {
                         events.push(event);
                     }
                 }
-                if let Some(tool_calls) = delta.get("tool_calls").filter(|t| !t.is_null()) {
-                    events.push(DecodedEvent {
-                        metadata: Some(serde_json::json!({
-                            "unhandled_delta_field": "tool_calls",
-                            "tool_calls": tool_calls,
-                        })),
-                        provider_ref: self.provider_ref.clone(),
-                        ..DecodedEvent::default()
-                    });
+                if let Some(tool_calls) = delta
+                    .get("tool_calls")
+                    .and_then(serde_json::Value::as_array)
+                {
+                    for call in tool_calls {
+                        let index = call
+                            .get("index")
+                            .and_then(serde_json::Value::as_u64)
+                            .unwrap_or(0);
+                        // The first frame carries the id; later frames for the same
+                        // call carry only the index, so the id is remembered.
+                        let key = call
+                            .get("id")
+                            .and_then(serde_json::Value::as_str)
+                            .map(str::to_string)
+                            .or_else(|| self.tool_call_ids.get(&index).cloned())
+                            .unwrap_or_else(|| format!("call-{index}"));
+                        self.tool_call_ids.insert(index, key.clone());
+
+                        let function = call.get("function");
+                        if let Some(name) = function
+                            .and_then(|f| f.get("name"))
+                            .and_then(serde_json::Value::as_str)
+                        {
+                            events.push(DecodedEvent {
+                                tool_call: Some(ToolCallDelta {
+                                    kind: ToolCallDeltaKind::Start,
+                                    call_id: Some(key.clone()),
+                                    block_id: None,
+                                    argument_delta: None,
+                                    done: false,
+                                    metadata: Some(serde_json::json!({ "name": name })),
+                                }),
+                                provider_ref: self.provider_ref.clone(),
+                                ..DecodedEvent::default()
+                            });
+                        }
+                        if let Some(arguments) = function
+                            .and_then(|f| f.get("arguments"))
+                            .and_then(serde_json::Value::as_str)
+                            .filter(|a| !a.is_empty())
+                        {
+                            events.push(DecodedEvent {
+                                tool_call: Some(ToolCallDelta {
+                                    kind: ToolCallDeltaKind::ArgumentDelta,
+                                    call_id: Some(key),
+                                    block_id: None,
+                                    argument_delta: Some(arguments.to_string()),
+                                    done: false,
+                                    metadata: None,
+                                }),
+                                provider_ref: self.provider_ref.clone(),
+                                ..DecodedEvent::default()
+                            });
+                        }
+                    }
                 }
             }
 
@@ -452,17 +564,17 @@ mod tests {
     }
 
     #[test]
-    fn tool_call_deltas_are_metadata_only() {
+    fn tool_call_deltas_are_translated_into_the_neutral_contract() {
         let frame = chunk(
             serde_json::json!({"tool_calls":[{"index":0,"id":"call_1","function":{"name":"x","arguments":"{"}}]}),
             None,
         );
         let events = decode(&[&format!("data: {frame}"), ""]);
         assert!(events.iter().all(|e| e.text.is_none()));
-        assert_eq!(
-            events[0].metadata.as_ref().unwrap()["unhandled_delta_field"],
-            "tool_calls"
-        );
+        let deltas: Vec<_> = events.iter().filter_map(|e| e.tool_call.clone()).collect();
+        assert_eq!(deltas[0].kind, ToolCallDeltaKind::Start);
+        assert_eq!(deltas[1].kind, ToolCallDeltaKind::ArgumentDelta);
+        assert_eq!(deltas[1].argument_delta.as_deref(), Some("{"));
     }
 
     #[test]

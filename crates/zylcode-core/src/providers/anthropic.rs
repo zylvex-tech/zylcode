@@ -9,17 +9,20 @@
 //! * `message_stop` ends the stream; `ping` events are keep-alives.
 //! * An `error` event carries `error.type` and `error.message`.
 //!
-//! Native tool calling is deliberately **not** sent: `tools` is absent from the
-//! request body and `tool_use` blocks are surfaced as metadata only, because the
-//! tool-calling acceptance gate has not passed.
+//! Native tool calling **is** sent: `tools` carries `{name, description,
+//! input_schema}` and `tool_use` blocks are translated into the neutral tool-call
+//! contract. Execution remains ZylCode's gated path; this module only translates
+//! the protocol.
 
 use std::time::Duration;
 
 use super::sse::SseDecoder;
 use super::streaming::{
     CancelToken, ChatRequest, Completion, DecodedEvent, FinishReason, LineDecoder, ProviderError,
-    ProviderErrorKind, StreamEndpoint, StreamOutcome, Usage,
+    ProviderErrorKind, StreamEndpoint, StreamOutcome, ToolCall, ToolCallDelta, ToolCallDeltaKind,
+    Usage,
 };
+use std::collections::HashMap;
 
 /// Anthropic API version this module is written against.
 pub const ANTHROPIC_VERSION: &str = "2023-06-01";
@@ -38,6 +41,28 @@ pub fn messages_body(req: &ChatRequest, stream: bool) -> serde_json::Value {
     // `temperature` is only meaningful to send when the caller tuned it.
     if (req.temperature - 0.2).abs() > f32::EPSILON {
         body["temperature"] = serde_json::json!(req.temperature);
+    }
+    if !req.tools.is_empty() {
+        body["tools"] = serde_json::Value::Array(
+            req.tools
+                .iter()
+                .map(|tool| {
+                    serde_json::json!({
+                        "name": tool.wire_name(),
+                        "description": tool.description,
+                        "input_schema": tool.parameters,
+                    })
+                })
+                .collect(),
+        );
+        // Anthropic names the must-call case `any`, not `required`.
+        body["tool_choice"] = serde_json::json!({
+            "type": match req.tool_choice {
+                super::streaming::ToolChoice::Auto => "auto",
+                super::streaming::ToolChoice::None => "none",
+                super::streaming::ToolChoice::Required => "any",
+            }
+        });
     }
     body
 }
@@ -65,8 +90,37 @@ pub fn parse_completion(json: &serde_json::Value) -> Completion {
         })
         .unwrap_or_default();
 
+    // `tool_use` blocks are requests to call a tool, not text. Their `input`
+    // is already a JSON object in this API, so it is serialised to keep the
+    // neutral contract's single string shape.
+    let tool_calls = json
+        .get("content")
+        .and_then(|c| c.as_array())
+        .map(|blocks| {
+            blocks
+                .iter()
+                .filter(|block| block.get("type").and_then(|t| t.as_str()) == Some("tool_use"))
+                .filter_map(|block| {
+                    let name = block.get("name")?.as_str()?.to_string();
+                    Some(ToolCall {
+                        call_id: None,
+                        block_id: block.get("id").and_then(|v| v.as_str()).map(str::to_string),
+                        name,
+                        arguments: block
+                            .get("input")
+                            .map(|input| input.to_string())
+                            .unwrap_or_else(|| "{}".to_string()),
+                        done: true,
+                        metadata: None,
+                    })
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
     Completion {
         text,
+        tool_calls,
         usage: Usage {
             input_tokens: json
                 .get("usage")
@@ -105,6 +159,9 @@ pub struct AnthropicDecoder {
     provider_ref: Option<String>,
     finish: Option<FinishReason>,
     usage: Usage,
+    /// Argument deltas and `content_block_stop` carry only the block `index`,
+    /// so the block's id and tool name are remembered when it starts.
+    tool_blocks: HashMap<u64, (String, String)>,
 }
 
 impl AnthropicDecoder {
@@ -167,8 +224,31 @@ impl AnthropicDecoder {
                         .unwrap_or_default();
                     return Ok(vec![DecodedEvent::text(text)]);
                 }
-                // Tool-use deltas are not wired to any execution path, so they are
-                // preserved as opaque metadata rather than acted on.
+                if delta_type == "input_json_delta" {
+                    let index = json
+                        .get("index")
+                        .and_then(serde_json::Value::as_u64)
+                        .unwrap_or(0);
+                    let block_id = self.tool_blocks.get(&index).map(|(id, _)| id.clone());
+                    let partial = delta
+                        .get("partial_json")
+                        .and_then(|p| p.as_str())
+                        .unwrap_or_default();
+                    return Ok(vec![DecodedEvent {
+                        tool_call: Some(ToolCallDelta {
+                            kind: ToolCallDeltaKind::ArgumentDelta,
+                            call_id: None,
+                            block_id,
+                            argument_delta: Some(partial.to_string()),
+                            done: false,
+                            metadata: None,
+                        }),
+                        provider_ref: self.provider_ref.clone(),
+                        ..DecodedEvent::default()
+                    }]);
+                }
+                // A delta type this module does not implement is preserved as
+                // metadata rather than silently dropped.
                 Ok(vec![DecodedEvent {
                     metadata: Some(serde_json::json!({
                         "unhandled_delta_type": delta_type,
@@ -176,6 +256,61 @@ impl AnthropicDecoder {
                     })),
                     ..DecodedEvent::default()
                 }])
+            }
+            "content_block_start" => {
+                let index = json
+                    .get("index")
+                    .and_then(serde_json::Value::as_u64)
+                    .unwrap_or(0);
+                let block = json.get("content_block").cloned().unwrap_or_default();
+                if block.get("type").and_then(|t| t.as_str()) == Some("tool_use") {
+                    let id = block
+                        .get("id")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or_default()
+                        .to_string();
+                    let name = block
+                        .get("name")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or_default()
+                        .to_string();
+                    self.tool_blocks.insert(index, (id.clone(), name.clone()));
+                    return Ok(vec![DecodedEvent {
+                        tool_call: Some(ToolCallDelta {
+                            kind: ToolCallDeltaKind::Start,
+                            call_id: None,
+                            block_id: Some(id),
+                            argument_delta: None,
+                            done: false,
+                            metadata: Some(serde_json::json!({ "name": name })),
+                        }),
+                        provider_ref: self.provider_ref.clone(),
+                        ..DecodedEvent::default()
+                    }]);
+                }
+                // A text block needs no event of its own: its deltas follow.
+                Ok(Vec::new())
+            }
+            "content_block_stop" => {
+                let index = json
+                    .get("index")
+                    .and_then(serde_json::Value::as_u64)
+                    .unwrap_or(0);
+                match self.tool_blocks.remove(&index) {
+                    Some((id, _name)) => Ok(vec![DecodedEvent {
+                        tool_call: Some(ToolCallDelta {
+                            kind: ToolCallDeltaKind::Done,
+                            call_id: None,
+                            block_id: Some(id),
+                            argument_delta: None,
+                            done: true,
+                            metadata: None,
+                        }),
+                        provider_ref: self.provider_ref.clone(),
+                        ..DecodedEvent::default()
+                    }]),
+                    None => Ok(Vec::new()),
+                }
             }
             "message_delta" => {
                 if let Some(reason) = json
@@ -455,7 +590,15 @@ mod tests {
     }
 
     #[test]
-    fn tool_use_delta_is_surfaced_as_metadata_not_executed() {
+    fn tool_use_delta_is_translated_into_a_neutral_tool_call() {
+        // A tool block must start before its arguments arrive; the decoder
+        // remembers the block id so the fragments can be attributed.
+        let start = serde_json::json!({
+            "type": "content_block_start",
+            "index": 1,
+            "content_block": { "type": "tool_use", "id": "toolu_9", "name": "x" }
+        })
+        .to_string();
         let frame = serde_json::json!({
             "type": "content_block_delta",
             "index": 1,
@@ -464,13 +607,22 @@ mod tests {
         .to_string();
         let mut decoder = AnthropicDecoder::new();
         let mut events = decoder
-            .feed(&format!("data: {frame}"))
+            .feed(&format!("data: {start}"))
             .expect("valid frame");
         events.extend(decoder.feed("").expect("valid frame"));
-        assert!(events[0].text.is_none());
-        assert_eq!(
-            events[0].metadata.as_ref().unwrap()["unhandled_delta_type"],
-            "input_json_delta"
-        );
+        let mut delta_events = decoder
+            .feed(&format!("data: {frame}"))
+            .expect("valid frame");
+        delta_events.extend(decoder.feed("").expect("valid frame"));
+
+        let start_delta = events[0].tool_call.as_ref().expect("a start delta");
+        assert_eq!(start_delta.kind, ToolCallDeltaKind::Start);
+        let argument = delta_events[0]
+            .tool_call
+            .as_ref()
+            .expect("an argument delta");
+        assert_eq!(argument.kind, ToolCallDeltaKind::ArgumentDelta);
+        assert_eq!(argument.block_id.as_deref(), Some("toolu_9"));
+        assert_eq!(argument.argument_delta.as_deref(), Some("{\"a\":1"));
     }
 }

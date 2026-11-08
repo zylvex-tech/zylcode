@@ -9,15 +9,17 @@
 //!   counters `prompt_eval_count` / `eval_count`.
 //! * An error is returned as `{"error": "..."}` with a non-2xx status, or inline.
 //!
-//! Native tool calling is deliberately **not** sent and `message.tool_calls` is
-//! surfaced as metadata only, because the tool-calling acceptance gate has not
-//! passed.
+//! Native tool calling **is** sent: `tools` uses the OpenAI-shaped
+//! `{type, function}` objects Ollama documents, and `message.tool_calls` is
+//! translated into the neutral tool-call contract. Execution remains ZylCode's
+//! gated path.
 
 use std::time::Duration;
 
 use super::streaming::{
     CancelToken, ChatRequest, Completion, DecodedEvent, FinishReason, LineDecoder, ProviderError,
-    ProviderErrorKind, StreamChunk, StreamEndpoint, StreamOutcome, Usage,
+    ProviderErrorKind, StreamChunk, StreamEndpoint, StreamOutcome, ToolCall, ToolCallDelta,
+    ToolCallDeltaKind, Usage,
 };
 
 /// Streaming URL for an Ollama base URL such as `http://127.0.0.1:11434`.
@@ -42,6 +44,23 @@ pub fn chat_body(req: &ChatRequest, stream: bool) -> serde_json::Value {
         "temperature": req.temperature,
         "num_predict": req.max_tokens,
     });
+    if !req.tools.is_empty() {
+        body["tools"] = serde_json::Value::Array(
+            req.tools
+                .iter()
+                .map(|tool| {
+                    serde_json::json!({
+                        "type": "function",
+                        "function": {
+                            "name": tool.wire_name(),
+                            "description": tool.description,
+                            "parameters": tool.parameters,
+                        }
+                    })
+                })
+                .collect(),
+        );
+    }
     body
 }
 
@@ -57,8 +76,38 @@ pub fn parse_completion(json: &serde_json::Value) -> Completion {
         .unwrap_or("")
         .to_string();
 
+    // Ollama returns arguments as a JSON *object*, unlike OpenAI's string. The
+    // neutral contract carries text, so it is serialised here and the boundary
+    // keeps one shape for every provider.
+    let tool_calls = json
+        .get("message")
+        .and_then(|m| m.get("tool_calls"))
+        .and_then(|calls| calls.as_array())
+        .map(|calls| {
+            calls
+                .iter()
+                .filter_map(|call| {
+                    let function = call.get("function")?;
+                    let name = function.get("name")?.as_str()?.to_string();
+                    Some(ToolCall {
+                        call_id: call.get("id").and_then(|v| v.as_str()).map(str::to_string),
+                        block_id: None,
+                        name,
+                        arguments: function
+                            .get("arguments")
+                            .map(|a| a.to_string())
+                            .unwrap_or_else(|| "{}".to_string()),
+                        done: true,
+                        metadata: None,
+                    })
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
     Completion {
         text,
+        tool_calls,
         usage: Usage {
             input_tokens: json.get("prompt_eval_count").and_then(|v| v.as_u64()),
             output_tokens: json.get("eval_count").and_then(|v| v.as_u64()),
@@ -121,18 +170,62 @@ impl OllamaDecoder {
             }
         }
 
+        // Ollama emits a tool call whole rather than in deltas, so each call
+        // becomes a start, its full argument text, and a completion: the same
+        // three facts an SSE provider spreads over several frames.
         if let Some(tool_calls) = json
             .get("message")
             .and_then(|m| m.get("tool_calls"))
-            .filter(|t| !t.is_null())
+            .and_then(|t| t.as_array())
         {
-            events.push(DecodedEvent {
-                metadata: Some(serde_json::json!({
-                    "unhandled_message_field": "tool_calls",
-                    "tool_calls": tool_calls,
-                })),
-                ..DecodedEvent::default()
-            });
+            for (index, call) in tool_calls.iter().enumerate() {
+                let Some(function) = call.get("function") else {
+                    continue;
+                };
+                let Some(name) = function.get("name").and_then(|n| n.as_str()) else {
+                    continue;
+                };
+                let key = call
+                    .get("id")
+                    .and_then(|v| v.as_str())
+                    .map(str::to_string)
+                    .unwrap_or_else(|| format!("call-{index}"));
+                events.push(DecodedEvent {
+                    tool_call: Some(ToolCallDelta {
+                        kind: ToolCallDeltaKind::Start,
+                        call_id: Some(key.clone()),
+                        block_id: None,
+                        argument_delta: None,
+                        done: false,
+                        metadata: Some(serde_json::json!({ "name": name })),
+                    }),
+                    ..DecodedEvent::default()
+                });
+                if let Some(arguments) = function.get("arguments") {
+                    events.push(DecodedEvent {
+                        tool_call: Some(ToolCallDelta {
+                            kind: ToolCallDeltaKind::ArgumentDelta,
+                            call_id: Some(key.clone()),
+                            block_id: None,
+                            argument_delta: Some(arguments.to_string()),
+                            done: false,
+                            metadata: None,
+                        }),
+                        ..DecodedEvent::default()
+                    });
+                }
+                events.push(DecodedEvent {
+                    tool_call: Some(ToolCallDelta {
+                        kind: ToolCallDeltaKind::Done,
+                        call_id: Some(key),
+                        block_id: None,
+                        argument_delta: None,
+                        done: true,
+                        metadata: None,
+                    }),
+                    ..DecodedEvent::default()
+                });
+            }
         }
 
         let is_done = json.get("done").and_then(|d| d.as_bool()).unwrap_or(false);
@@ -292,14 +385,19 @@ mod tests {
     }
 
     #[test]
-    fn tool_calls_are_metadata_only() {
+    fn tool_calls_are_translated_into_the_neutral_contract() {
         let events = decode(&[
             "{\"message\":{\"content\":\"\",\"tool_calls\":[{\"function\":{\"name\":\"x\"}}]},\"done\":false}",
         ]);
         assert!(events.iter().all(|e| e.text.is_none()));
+        let kinds: Vec<ToolCallDeltaKind> = events
+            .iter()
+            .filter_map(|e| e.tool_call.as_ref().map(|d| d.kind))
+            .collect();
         assert_eq!(
-            events[0].metadata.as_ref().unwrap()["unhandled_message_field"],
-            "tool_calls"
+            kinds,
+            vec![ToolCallDeltaKind::Start, ToolCallDeltaKind::Done],
+            "a call with no arguments still starts and completes"
         );
     }
 }
