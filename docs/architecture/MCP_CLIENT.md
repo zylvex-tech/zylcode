@@ -10,14 +10,14 @@ executors, a permission gate and an evidence log — but no protocol. A
 
 ## Layers
 
-| Layer | Module | Responsibility |
-| ----- | ------ | -------------- |
-| Framing | `jsonrpc.rs` | JSON-RPC 2.0 envelopes, id correlation, malformed-message errors |
-| Wire | `transport.rs` | stdio (spawn, frame, capture stderr) and Streamable HTTP (POST/GET, SSE, `Mcp-Session-Id`) |
-| Lifecycle | `session.rs` | `initialize` → `initialized` → `tools/list` → `tools/call`, `ping`, cancellation |
-| Config | `config.rs` | persisted `mcp.servers.json`, validated as a security boundary |
-| Supervision | `registry.rs` | start/restart/backoff, discovery cache, status snapshot |
-| Adapter | `remote.rs` | a discovered tool as a `RealTool`, dispatched through `real_tools::dispatch_with` |
+| Layer       | Module         | Responsibility                                                                             |
+| ----------- | -------------- | ------------------------------------------------------------------------------------------ |
+| Framing     | `jsonrpc.rs`   | JSON-RPC 2.0 envelopes, id correlation, malformed-message errors                           |
+| Wire        | `transport.rs` | stdio (spawn, frame, capture stderr) and Streamable HTTP (POST/GET, SSE, `Mcp-Session-Id`) |
+| Lifecycle   | `session.rs`   | `initialize` → `initialized` → `tools/list` → `tools/call`, `ping`, cancellation           |
+| Config      | `config.rs`    | persisted `mcp.servers.json`, validated as a security boundary                             |
+| Supervision | `registry.rs`  | start/restart/backoff, discovery cache, status snapshot                                    |
+| Adapter     | `remote.rs`    | a discovered tool as a `RealTool`, dispatched through `real_tools::dispatch_with`          |
 
 ## Protocol revision, stated honestly
 
@@ -42,12 +42,12 @@ the fixture server's observation log contains no `tools/call`.
 MCP annotations are hints from the server, and a server may omit them or lie.
 The mapping fails closed:
 
-| Server hint | Risk |
-| ----------- | ---- |
-| `destructiveHint: true` | `Destructive` |
-| `readOnlyHint: true` | `Read` |
-| `openWorldHint: true` | `Network` |
-| *(none, or contradictory)* | `Write` — approval-requiring |
+| Server hint                | Risk                         |
+| -------------------------- | ---------------------------- |
+| `destructiveHint: true`    | `Destructive`                |
+| `readOnlyHint: true`       | `Read`                       |
+| `openWorldHint: true`      | `Network`                    |
+| _(none, or contradictory)_ | `Write` — approval-requiring |
 
 An unannotated tool is therefore never treated as harmless because nobody said
 otherwise.
