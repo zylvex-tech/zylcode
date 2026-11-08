@@ -33,20 +33,58 @@ model-requested call, so the restrictive gate keeps refusing anything above
 
 ## Surfaces
 
-| Surface         | Entry point                     | Status                | Evidence                                                                                                                                                                                                                               |
-| --------------- | ------------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| CLI             | `zylcode ask "<task>"`          | `VERIFIED_RUNTIME`    | Run twice against a local OpenAI-compatible endpoint: 20 declarations, `fs_read` → `fs.read`, gate `allow`, file content returned, ledger written, second round answered from it                                                       |
-| Desktop chat    | `process_intent_stream` (Tauri) | `VERIFIED_LOCAL_ONLY` | `native_chat::tests::desktop_session_runs_the_gated_tool_lifecycle` drives the same session function through a real executor, real gate, real ledger and a scripted provider. Not yet driven through Tauri IPC in a running app window |
-| Everything else | `dispatch_prompt`               | `NOT_IMPLEMENTED`     | Falls back to the text-only pipeline path when the provider cannot be handed tools                                                                                                                                                     |
+| Surface      | Entry point                     | Status                | Evidence                                                                                                                                                                                                                               |
+| ------------ | ------------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CLI          | `zylcode ask "<task>"`          | `VERIFIED_RUNTIME`    | Run twice against a local OpenAI-compatible endpoint: 20 declarations, `fs_read` → `fs.read`, gate `allow`, file content returned, ledger written, second round answered from it                                                       |
+| Desktop chat | `process_intent_stream` (Tauri) | `VERIFIED_LOCAL_ONLY` | `native_chat::tests::desktop_session_runs_the_gated_tool_lifecycle` drives the same session function through a real executor, real gate, real ledger and a scripted provider. Not yet driven through Tauri IPC in a running app window |
+| Fallback     | `AgentLoop` / `dispatch_prompt` | `PARTIAL`             | For providers that cannot be handed declarations. Same gate, same registry, but the model is asked to emit a JSON decision in prose; the transport carries no tool schema. A prompt-JSON call is not a native call                     |
 
 ## Providers
 
-| Provider          | Declares tools | Status                | Why                                                                                 |
-| ----------------- | -------------- | --------------------- | ----------------------------------------------------------------------------------- |
-| OpenAI-compatible | yes            | `VERIFIED_RUNTIME`    | Full loop exercised end to end                                                      |
-| Anthropic         | yes            | `VERIFIED_LOCAL_ONLY` | Request/response translation covered by tests; no live endpoint tested              |
-| Ollama            | yes            | `VERIFIED_LOCAL_ONLY` | Same                                                                                |
-| Synthetic offline | no             | n/a                   | Deterministic local provider; declaring tools would promise a call it cannot honour |
+`tools: true` in the capability table is an **implementation claim**: a request
+builder emits the declaration and a decoder reads the call back. It has never
+been a runtime claim, and reporting it as one was the defect this section
+corrects. The table below reports each stage of the lifecycle separately, and the
+same values live in code (`providers::capabilities::tool_call_evidence`) so the
+document cannot drift from the implementation.
+
+| Stage                      | OpenAI-compatible       | Anthropic               | Ollama                  | Synthetic |
+| -------------------------- | ----------------------- | ----------------------- | ----------------------- | --------- |
+| Tool declaration           | `UNIT_TESTED`           | `UNIT_TESTED`           | `UNIT_TESTED`           | —         |
+| Call decoding              | `UNIT_TESTED`           | `UNIT_TESTED`           | `UNIT_TESTED`           | —         |
+| Streamed call reassembly   | `UNIT_TESTED`           | `UNIT_TESTED`           | `UNIT_TESTED`           | —         |
+| Canonical resolution       | `UNIT_TESTED` (shared)  | `UNIT_TESTED` (shared)  | `UNIT_TESTED` (shared)  | —         |
+| Execution                  | `UNIT_TESTED` (shared)  | `UNIT_TESTED` (shared)  | `UNIT_TESTED` (shared)  | —         |
+| Permission gate            | `UNIT_TESTED` (shared)  | `UNIT_TESTED` (shared)  | `UNIT_TESTED` (shared)  | —         |
+| Evidence recording         | `UNIT_TESTED` (shared)  | `UNIT_TESTED` (shared)  | `UNIT_TESTED` (shared)  | —         |
+| Tool result return         | `UNIT_TESTED` (shared)  | `UNIT_TESTED` (shared)  | `UNIT_TESTED` (shared)  | —         |
+| Continuation round         | `UNIT_TESTED` (shared)  | `UNIT_TESTED` (shared)  | `UNIT_TESTED` (shared)  | —         |
+| Whole turn on the wire     | `IMPLEMENTED_ONLY`      | `IMPLEMENTED_ONLY`      | `IMPLEMENTED_ONLY`      | —         |
+| Through the desktop window | `UNIT_TESTED` (session) | `UNIT_TESTED` (session) | `UNIT_TESTED` (session) | —         |
+
+Reading that table honestly:
+
+- **No provider is `LIVE_VERIFIED`.** No recorded run against a real Anthropic,
+  OpenAI, OpenRouter, DeepSeek, Respan or Ollama endpoint exists in this
+  repository. The CLI proof in the surface table ran against a local server that
+  speaks the OpenAI wire, which tests this client's translation and the loop, not
+  the vendor's behaviour.
+- **No surface is `DESKTOP_VERIFIED`.** The desktop test stops at the session
+  function; Tauri IPC and the window are untested.
+- Anthropic and Ollama are not weaker than OpenAI-compatible in evidence — they are
+  identical. Every difference previously drawn between them in this document was
+  overstatement, and the honest fix is to flatten it rather than defend it.
+- The three wire stages are tested per provider against synthetic frames. The
+  stages after them are provider-independent code with one test suite, so they are
+  reported as shared.
+- Synthetic offline is `NOT_IMPLEMENTED` at every stage by design: it has no wire,
+  so declaring tools would promise a call it cannot make. It is deterministic and
+  local, which is why it is the provider used for offline tests, not a tool host.
+
+Promotion rule, enforced in code (`evidence_tests`): a stage may say
+`LIVE_VERIFIED` only for a provider listed in `LIVE_RUNS_RECORDED`, and
+`DESKTOP_VERIFIED` only for one listed in `DESKTOP_RUNS_RECORDED`. Both lists are
+empty today, and the test fails if a row is promoted without an entry.
 
 Vision input is `NOT_IMPLEMENTED` on every provider. Tool calling must not be
 read as multi-modal support.
