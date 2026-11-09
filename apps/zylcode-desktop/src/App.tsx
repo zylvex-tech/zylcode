@@ -347,7 +347,7 @@ function AppContent() {
           {
             id: "settings",
             label: "Settings…",
-            shortcut: "Ctrl+,
+            shortcut: "Ctrl+",
             run: () => {
               setSettingsSection("general");
               setSettingsOpen(true);
