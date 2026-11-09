@@ -6,6 +6,7 @@ use std::sync::Arc;
 use zylcode_core::input_validation as iv;
 use zylcode_core::router::{ProviderConfig, ProviderKind};
 use zylcode_core::{EngineConfig, Intent, McpBridgeDescriptor, ZylCodeEngine};
+use zylcode_mcp::composio_integration;
 
 mod native_chat;
 mod provider_store;
@@ -745,6 +746,26 @@ async fn marketplace_search(
         reg.register(ext);
     }
     Ok(reg.search(&query).into_iter().cloned().collect())
+}
+
+// ---------------------------------------------------------------------------
+// Integrations IPC -- Composio + Floot status for the settings panel.
+// ---------------------------------------------------------------------------
+
+/// Return the current integrations snapshot for the settings panel.
+///
+/// Today every service reads as "not_setup": the OAuth + connected account
+/// plumbing is not wired yet. When it is, this is the single place that folds
+/// real state back into the UI without the UI knowing how the backend works.
+#[tauri::command]
+async fn get_integrations_status(
+    state: tauri::State<'_, EngineState>,
+) -> Result<composio_integration::IntegrationsSnapshot, String> {
+    let bridges = state.engine.list_mcp_bridges().await;
+    let floot_registered = bridges
+        .iter()
+        .any(|b| b.id == "floot" || b.endpoint.to_lowercase().contains("floot"));
+    Ok(composio_integration::build_snapshot(floot_registered))
 }
 
 // ---------------------------------------------------------------------------

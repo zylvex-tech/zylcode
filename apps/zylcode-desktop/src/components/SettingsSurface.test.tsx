@@ -28,6 +28,9 @@ vi.mock("./McpInspector", () => ({ default: () => <div data-testid="mcp-stub" />
 vi.mock("./ProviderSettings", () => ({
   default: () => <div data-testid="provider-settings-stub" />,
 }));
+vi.mock("./ConnectCards", () => ({
+  default: () => <div data-testid="connect-cards-stub" />,
+}));
 vi.mock("./ui", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./ui")>();
   return {
@@ -61,6 +64,7 @@ function open(
     | "general"
     | "agent"
     | "providers"
+    | "integrations"
     | "extensions"
     | "appearance"
     | "hotkeys"
@@ -92,13 +96,14 @@ describe("SettingsSurface", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
-  it("offers all eight sections and shows the initial section's content", async () => {
+  it("offers all nine sections and shows the initial section's content", async () => {
     open();
     expect(screen.getByRole("dialog", { name: "Settings" })).toBeInTheDocument();
     for (const label of [
       "General",
       "Agent & Sessions",
       "Model Providers",
+      "Integrations",
       "Extensions & MCP",
       "Appearance",
       "Hotkeys",

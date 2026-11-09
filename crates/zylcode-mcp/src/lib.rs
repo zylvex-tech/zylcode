@@ -2,6 +2,7 @@ pub mod actor;
 pub mod audit;
 pub mod builtin_plugins;
 pub mod builtin_skills;
+pub mod composio_integration;
 pub mod config;
 pub mod enhanced_bridge;
 pub mod enhanced_plugin_marketplace;
