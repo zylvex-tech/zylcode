@@ -228,6 +228,7 @@ function AppContent() {
       createdAt: now,
       updatedAt: now,
       acceptanceCriteria: [],
+      state: "RUNNING" as MissionRecord["state"],
       deltas: [],
       toolCalls: [],
       artifacts: [],
