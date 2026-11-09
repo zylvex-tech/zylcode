@@ -8,6 +8,7 @@
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
 **Project status: 9 November 2026** · branch `feat/design-studio-foundation` · head `HEAD` · post-integration
+Last updated: 9 November 2026
 
 ZylCode is an engineering workbench developed by **Zylvex Technologies Ltd.** It
 turns an instruction into a plan, executes the plan through approval-gated tools,
