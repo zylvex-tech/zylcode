@@ -236,13 +236,16 @@ describe("SurfaceHost renders every declared surface", () => {
     expect(screen.getByText(/Full repository browsing is/)).toBeInTheDocument();
   });
 
-  it("marks design and extensions as coming soon with their own titles", () => {
+  it("renders the implemented Design Studio instead of a placeholder", () => {
     const { unmount } = render(<SurfaceHost {...baseProps()} surface="design" />);
-    expect(screen.getByText("DESIGN STUDIO")).toBeInTheDocument();
+    expect(screen.getByTestId("design-studio")).toBeInTheDocument();
+    expect(screen.queryByText("COMING SOON")).toBeNull();
     unmount();
 
+    // Extensions is still a shell: its own title, and the honest badge.
     render(<SurfaceHost {...baseProps()} surface="extensions" />);
     expect(screen.getByText("EXTENSIONS")).toBeInTheDocument();
+    expect(screen.getByText("COMING SOON")).toBeInTheDocument();
   });
 
   it("falls back to a visible message for a surface that does not exist", () => {
