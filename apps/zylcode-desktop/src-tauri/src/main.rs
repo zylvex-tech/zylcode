@@ -2,12 +2,14 @@
 
 use serde::{Deserialize, Serialize};
 use std::io::{self, Write};
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use zylcode_core::input_validation as iv;
 use zylcode_core::router::{ProviderConfig, ProviderKind};
 use zylcode_core::{EngineConfig, Intent, McpBridgeDescriptor, ZylCodeEngine};
 use zylcode_mcp::composio_integration;
 
+mod composio_accounts;
+mod composio_client_stub;
 mod native_chat;
 mod provider_store;
 mod secrets;
@@ -27,6 +29,8 @@ struct EngineState {
     build_status: Arc<std::sync::Mutex<serde_json::Value>>,
     /// Cancellation slot for the live chat turn.
     cancel: Arc<native_chat::CancelSlot>,
+    /// Per-user Composio connected accounts + Floot MCP registration state.
+    composio_accounts: std::sync::RwLock<composio_accounts::UserComposioAccounts>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -761,11 +765,23 @@ async fn marketplace_search(
 async fn get_integrations_status(
     state: tauri::State<'_, EngineState>,
 ) -> Result<composio_integration::IntegrationsSnapshot, String> {
+    let accounts = state
+        .composio_accounts
+        .read()
+        .map_err(|_| "composio accounts lock poisoned")?;
     let bridges = state.engine.list_mcp_bridges().await;
     let floot_registered = bridges
         .iter()
         .any(|b| b.id == "floot" || b.endpoint.to_lowercase().contains("floot"));
-    Ok(composio_integration::build_snapshot(floot_registered))
+    let mut snap = composio_integration::build_snapshot(floot_registered);
+    for (service, account) in &accounts.accounts {
+        if let Some(idx) = snap.services.iter().position(|s| s.status == "not_setup") {
+            snap.services[idx].connected = true;
+            snap.services[idx].status = "connected".to_string();
+            snap.services[idx].connected_at = Some(account.connected_at.clone());
+        }
+    }
+    Ok(snap)
 }
 
 // ---------------------------------------------------------------------------
@@ -1758,6 +1774,7 @@ fn main() {
                     "note": "no build run in this app session"
                 }))),
                 cancel: Arc::new(native_chat::CancelSlot::default()),
+                composio_accounts: std::sync::RwLock::new(composio_accounts::load()),
             }
         })
         .invoke_handler(tauri::generate_handler![
