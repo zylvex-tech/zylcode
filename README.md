@@ -7,7 +7,7 @@
 [![CI](https://github.com/zylvex-tech/zylcode/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/zylvex-tech/zylcode/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
-**Project status: 6 November 2026** · branch `fix/r05-input-validation` · head `fc69e4c` · pre-release
+**Project status: 10 November 2026** · branch `feat/design-studio-foundation` · head `4371d77` · post-integration
 
 ZylCode is an engineering workbench developed by **Zylvex Technologies Ltd.** It
 turns an instruction into a plan, executes the plan through approval-gated tools,
@@ -25,7 +25,7 @@ providers you configure yourself.
 
 ---
 
-## What's new — 6 November 2026
+## What's new — 10 November 2026
 
 The model layer stopped pretending. Before this milestone the "streaming" path was a
 fake line-chunker in `router.rs` that emitted `{index, delta, done}` and nothing else;
@@ -225,7 +225,7 @@ How the pieces relate:
 
 ## Verification — what was actually run
 
-All rows measured on this head (`fc69e4c`) on 6 November 2026, on Windows, unless the
+All rows measured on this head (`4371d77`) on 10 November 2026, on Windows, unless the
 row says otherwise.
 
 | Check                                                                                    | Result                                                                     |
