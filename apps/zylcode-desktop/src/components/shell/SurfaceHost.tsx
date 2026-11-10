@@ -12,6 +12,7 @@ import { TerminalPanel } from "../TerminalPanel";
 import Forge from "../Forge";
 import { VerificationRungBadge } from "../VerificationRungBadge";
 import { Panel } from "../Panel";
+import { DesignStudio } from "../../design/DesignStudio";
 import { StatusBadge } from "../CapabilityStatus";
 import { NOT_CAPTURED, type MissionRecord } from "../../lib/mission";
 import { IS_DESKTOP } from "../../lib/runtime";
@@ -484,15 +485,16 @@ export function SurfaceHost({
         );
 
       case "design":
+        return <DesignStudio />;
+
       case "extensions":
         return (
-          <Panel title={surface === "design" ? "DESIGN STUDIO" : "EXTENSIONS"}>
+          <Panel title="EXTENSIONS">
             <div className="flex flex-col items-center gap-2 py-10 text-center">
               <StatusBadge status="COMING SOON" />
               <p className="text-sm text-text-muted max-w-sm">
-                {surface === "design"
-                  ? "The Design workspace (canvas, tokens, screens) is defined in Product Architecture v3 and awaits implementation."
-                  : "Extensions integrate with Forge capability packs. The Forge shell is available under Forge."}
+                Extensions integrate with Forge capability packs. The Forge shell is available under
+                Forge.
               </p>
             </div>
           </Panel>

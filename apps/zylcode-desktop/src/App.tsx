@@ -223,12 +223,12 @@ function AppContent() {
       id,
       title: goal.length > 42 ? goal.slice(0, 42) + "…" : goal,
       goal,
-      state: "RUNNING",
       autonomy: autonomy as MissionRecord["autonomy"],
       model,
       createdAt: now,
       updatedAt: now,
       acceptanceCriteria: [],
+      state: "RUNNING" as MissionRecord["state"],
       deltas: [],
       toolCalls: [],
       artifacts: [],
@@ -299,8 +299,7 @@ function AppContent() {
     [setEditorTabs, setEditorActive],
   );
 
-  /**
-   * Click-to-navigate target for repository-intelligence surfaces: open the
+  /** Click-to-navigate target for repository-intelligence surfaces: open the
    * file *and* bring the editor forward, because a reference row is useless
    * if it opens a tab nobody can see.
    */
@@ -349,7 +348,7 @@ function AppContent() {
           {
             id: "settings",
             label: "Settings…",
-            shortcut: "Ctrl+,",
+            shortcut: "Ctrl+",
             run: () => {
               setSettingsSection("general");
               setSettingsOpen(true);
@@ -527,6 +526,13 @@ function AppContent() {
             run: () => {
               setBottomPanelOpen(true);
               setActiveBottomTab("ports");
+            },
+          },
+          {
+            id: "view-design",
+            label: "Design Studio",
+            run: () => {
+              setActiveSurface("design");
             },
           },
         ],
@@ -737,15 +743,15 @@ function AppContent() {
               />
             </div>
           )}
-
-          {/* Bottom workspace */}
-          <BottomPanel
-            isOpen={bottomPanelOpen}
-            onToggle={() => setBottomPanelOpen((v) => !v)}
-            activeTab={activeBottomTab}
-            onTabChange={setActiveBottomTab}
-          />
         </main>
+
+        {/* Bottom workspace */}
+        <BottomPanel
+          isOpen={bottomPanelOpen}
+          onToggle={() => setBottomPanelOpen((v) => !v)}
+          activeTab={activeBottomTab}
+          onTabChange={setActiveBottomTab}
+        />
 
         {/* RIGHT: preview + agent workspace (large screens) */}
         <RightWorkspace />
@@ -783,7 +789,7 @@ function AppContent() {
 // ---------------------------------------------------------------------------
 
 export default function App() {
-  // Embedded context (`/?embed=1`, e.g. the Preview pane iframing this app):
+  // Embedded preview target (`/?embed=1`, e.g. the Preview pane iframing this app):
   // content-only render, no second shell.
   if (isEmbeddedPreview()) {
     return <EmbeddedPreviewApp />;

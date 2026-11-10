@@ -3,19 +3,21 @@
   "private": true,
   "version": "0.2.3",
   "type": "module",
-  "description": "ZylCode desktop — real-time artifact visualizer (Vite + React + Tauri 2.0)",
+  "description": "ZylCode desktop \u2014 real-time artifact visualizer (Vite + React + Tauri 2.0)",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
     "lint": "eslint src --ext .ts,.tsx",
-    "test": "vitest run",
+    "test": "node scripts/design-index.mjs --check && vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css,json}\"",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "design:index": "node scripts/design-index.mjs",
+    "design:index:check": "node scripts/design-index.mjs --check"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",

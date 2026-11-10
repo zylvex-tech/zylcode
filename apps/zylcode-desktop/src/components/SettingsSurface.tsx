@@ -10,11 +10,13 @@ import ToolsCataloguePanel from "./ToolsCataloguePanel";
 import ToolRunnerPanel from "./ToolRunnerPanel";
 import AgentTurnPanel from "./AgentTurnPanel";
 import { ThemeSelector } from "./ui";
+import { ConnectCards } from "./ConnectCards";
 
 type SectionId =
   | "general"
   | "agent"
   | "providers"
+  | "integrations"
   | "extensions"
   | "appearance"
   | "hotkeys"
@@ -25,6 +27,7 @@ const SECTIONS: { id: SectionId; label: string; icon: string }[] = [
   { id: "general", label: "General", icon: "⚙" },
   { id: "agent", label: "Agent & Sessions", icon: "🤖" },
   { id: "providers", label: "Model Providers", icon: "⚡" },
+  { id: "integrations", label: "Integrations", icon: "🔗" },
   { id: "extensions", label: "Extensions & MCP", icon: "🧩" },
   { id: "appearance", label: "Appearance", icon: "🎨" },
   { id: "hotkeys", label: "Hotkeys", icon: "⌨" },
@@ -325,6 +328,12 @@ export const SettingsSurface: React.FC<SettingsSurfaceProps> = ({
                     </p>
                   </div>
                 )}
+              </div>
+            )}
+
+            {section === "integrations" && (
+              <div className="p-4">
+                <ConnectCards />
               </div>
             )}
 
