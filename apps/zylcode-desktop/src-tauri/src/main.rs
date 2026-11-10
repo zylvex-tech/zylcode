@@ -1,70 +1,109 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use serde::{Deserialize, Serialize};
+
 use std::io::{self, Write};
+
 use std::sync::{Arc, RwLock};
+
 use zylcode_core::input_validation as iv;
+
 use zylcode_core::router::{ProviderConfig, ProviderKind};
+
 use zylcode_core::{EngineConfig, Intent, McpBridgeDescriptor, ZylCodeEngine};
+
 use zylcode_mcp::composio_integration;
 
 mod composio_accounts;
+
 mod composio_client_stub;
+
 mod native_chat;
+
 mod provider_store;
+
 mod secrets;
 
 // ---------------------------------------------------------------------------
-// Shared engine state — managed by Tauri
+
+// Shared engine state â managed by Tauri
+
 // ---------------------------------------------------------------------------
 
 struct EngineState {
     engine: ZylCodeEngine,
+
     vector_cache: Arc<zylcode_core::cache::VectorCacheStore>,
+
     /// Terminal sessions: cwd state persists for the app's lifetime.
     terminal_hub: Arc<zylcode_core::terminal::TerminalHub>,
+
     /// Mission queue: file-backed, survives app restarts.
     missions: Arc<zylcode_core::missions::MissionQueue>,
+
     /// Last/current workspace build pipeline state.
     build_status: Arc<std::sync::Mutex<serde_json::Value>>,
+
     /// Cancellation slot for the live chat turn.
     cancel: Arc<native_chat::CancelSlot>,
+
     /// Per-user Composio connected accounts + Floot MCP registration state.
     composio_accounts: std::sync::RwLock<composio_accounts::UserComposioAccounts>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+
 pub struct CacheStats {
     pub entry_count: usize,
+
     pub estimated_size: usize,
+
     pub db_path: String,
 }
 
 // ---------------------------------------------------------------------------
-// IPC commands — invoked from the frontend via `invoke("...")`
+
+// IPC commands â invoked from the frontend via `invoke("...")`
+
 // ---------------------------------------------------------------------------
 
 /// Process a natural-language intent and return the result.
+
 ///
+
 /// `model` is an optional per-call override surfaced by the desktop model
+
 /// picker. When `None`, the engine's configured primary model is used.
+
 #[tauri::command]
+
 async fn process_intent(
     prompt: String,
+
     model: Option<String>,
+
     state: tauri::State<'_, EngineState>,
 ) -> Result<zylcode_core::IntentResult, String> {
-    // Reject at the boundary, before the engine — and the index build it
-    // triggers — is touched. The renderer is a trust boundary like any
+    // Reject at the boundary, before the engine â and the index build it
+
+    // triggers â is touched. The renderer is a trust boundary like any
+
     // other caller: a 40 000-character prompt or a prompt-shaped `model`
+
     // is a bad request, not a slow mission.
+
     iv::validate_prompt(&prompt).map_err(|e| e.to_string())?;
+
     iv::validate_model(model.as_deref()).map_err(|e| e.to_string())?;
+
     let intent = Intent {
         prompt,
+
         context: None,
+
         correlation_id: None,
     };
+
     state
         .engine
         .process_intent_with_model(intent, model)
@@ -73,69 +112,103 @@ async fn process_intent(
 }
 
 /// Payload emitted when the router falls back from one provider to another.
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+
 pub struct ProviderFailoverPayload {
     /// ISO 8601 timestamp when the failover occurred.
     pub timestamp: String,
+
     /// Provider that was attempted first (and failed).
     pub from_provider: String,
+
     /// Provider that was attempted next (fallback).
     pub to_provider: String,
+
     /// Human-readable reason for the failover (e.g. "rate-limited", "5xx error").
     pub reason: String,
+
     /// 1-based attempt number within the configured fallback chain.
     pub attempt_number: usize,
 }
 
-/// Streaming execution — dispatches the intent and emits progress events
+/// Streaming execution â dispatches the intent and emits progress events
+
 /// (`intent:chunk` / `intent:done`) to the frontend during generation.
+
 ///
+
 /// The frontend should listen via `listen("intent:chunk", ...)` and
+
 /// `listen("intent:done", ...)` and `listen("telemetry:provider_failover", ...)`.
+
 #[tauri::command]
+
 async fn process_intent_stream(
     prompt: String,
+
     model: Option<String>,
+
     app: tauri::AppHandle,
+
     state: tauri::State<'_, EngineState>,
 ) -> Result<zylcode_core::IntentResult, String> {
     use tauri::Emitter;
 
     // Before anything is emitted: a rejected prompt must not leave the UI
+
     // in a streaming state it will never get a result for.
+
     iv::validate_prompt(&prompt).map_err(|e| e.to_string())?;
+
     iv::validate_model(model.as_deref()).map_err(|e| e.to_string())?;
 
     // Emit a start event so the UI can transition to streaming state.
+
     let _ = app.emit(
         "intent:chunk",
         serde_json::json!({ "index": 0, "delta": "", "done": false, "phase": "planning" }),
     );
 
     // ---- Native tool path -------------------------------------------------
+
     //
+
     // When the configured provider advertises tool calling, the turn is driven
-    // by `NativeToolRunner` — the same loop `zylcode ask` uses — so the desktop
+
+    // by `NativeToolRunner` â the same loop `zylcode ask` uses â so the desktop
+
     // executes the model's tool call natively instead of asking the model to
+
     // format one as JSON. What follows is the previous path (`AgentLoop` over
+
     // `dispatch_prompt`, JSON-in-text tool protocol), kept only for providers
+
     // that cannot be handed tool declarations at all. Neither path has its own
+
     // executor: both reach the same gate and the same registry.
+
     {
         let engine = state.inner().engine.clone();
+
         let mut router_config = engine.pipeline().router().config().clone();
+
         if let Some(m) = model.clone().filter(|m| !m.trim().is_empty()) {
             router_config.primary_model = m;
         }
 
         if native_chat::provider_supports_native_tools(&router_config.primary_provider) {
             let planner = zylcode_core::IntentPlanner::new();
+
             let bridges = engine.list_mcp_bridges().await;
+
             let plan = planner.build_execution_plan(
                 &Intent {
                     prompt: prompt.clone(),
+
                     context: None,
+
                     correlation_id: None,
                 },
                 &bridges,
@@ -143,12 +216,17 @@ async fn process_intent_stream(
 
             let router =
                 zylcode_core::TokenRouter::new(router_config).map_err(|e| e.to_string())?;
+
             let cancel = zylcode_core::providers::streaming::CancelToken::new();
+
             state.inner().cancel.install(cancel.clone());
 
             let app_for_calls = app.clone();
+
             let actor = "desktop:chat";
+
             let session = format!("desktop-{}", std::process::id());
+
             let workspace = std::path::PathBuf::from(&engine.config().workspace_root);
 
             let result = native_chat::run_native_session(
@@ -158,6 +236,7 @@ async fn process_intent_stream(
                 &plan.system_prompt,
                 &plan.compiled_prompt,
                 // Empty means "the provider's configured model wins", which is
+
                 // what the router already does when no override was sent.
                 model.as_deref().unwrap_or(""),
                 actor,
@@ -166,6 +245,7 @@ async fn process_intent_stream(
                 move |call| native_chat::emit_call(&app_for_calls, call),
             )
             .await;
+
             state.inner().cancel.clear();
 
             return match result {
@@ -174,24 +254,33 @@ async fn process_intent_stream(
                         "intent:chunk",
                         serde_json::json!({ "index": 1, "delta": run.text, "done": false }),
                     );
+
                     let intent_result = zylcode_core::IntentResult {
                         summary: run.text,
+
                         artifacts: Vec::new(),
+
                         success: true,
                     };
+
                     let _ = app.emit("intent:done", &intent_result);
+
                     let _ = app.emit(
                         "intent:chunk",
                         serde_json::json!({ "index": 999999, "delta": "", "done": true }),
                     );
+
                     Ok(intent_result)
                 }
+
                 Err(err) => {
                     // A failed turn is an error, never a fabricated answer.
+
                     let _ = app.emit(
                         "intent:chunk",
                         serde_json::json!({ "index": 999999, "delta": "", "done": true }),
                     );
+
                     Err(err.to_string())
                 }
             };
@@ -199,30 +288,48 @@ async fn process_intent_stream(
     }
 
     // Build a router-level stream so the UI gets token-by-token progress.
+
     // We drive the full pipeline via the engine but also emit router stream
+
     // deltas in parallel. For the offline synthetic path this is a fast
+
     // line-chunked emission; for live providers it streams real deltas.
+
     let engine = state.inner().engine.clone();
+
     let engine_for_stream = engine.clone();
+
     let app_clone = app.clone();
 
     // Spawn a background task that drives router streaming for progress UI.
+
     // The actual result still comes from the verified pipeline execution.
+
     let stream_prompt = prompt.clone();
+
     let stream_model = model.clone();
+
     tokio::spawn(async move {
         // Build a one-shot router for streaming progress (does not affect the
-        // verified pipeline result — purely for UI feedback).
+
+        // verified pipeline result â purely for UI feedback).
+
         let mut rc = engine_for_stream.pipeline().router().config().clone();
+
         if let Some(m) = stream_model.filter(|m| !m.trim().is_empty()) {
             rc.primary_model = m;
         }
+
         let planner = zylcode_core::IntentPlanner::new();
+
         let bridges = engine_for_stream.list_mcp_bridges().await;
+
         let plan = planner.build_execution_plan(
             &zylcode_core::Intent {
                 prompt: stream_prompt,
+
                 context: None,
+
                 correlation_id: None,
             },
             &bridges,
@@ -230,28 +337,38 @@ async fn process_intent_stream(
 
         let router = match zylcode_core::TokenRouter::new(rc) {
             Ok(r) => r,
+
             Err(_) => return,
         };
 
         let _ = router
             .dispatch_stream(&plan.compiled_prompt, &plan.system_prompt, |chunk| {
                 // The frontend renders the pre-existing three-field payload, so the
+
                 // boundary projects it here. One streaming implementation stays
+
                 // authoritative: the projection is derived from the chunk and drops
+
                 // nothing the dispatcher chose to send.
+
                 let event = zylcode_core::providers::compat::StreamEvent::from(&chunk);
+
                 let _ = app_clone.emit("intent:chunk", &event);
             })
             .await;
     });
 
     // Snapshot fallback count before pipeline execution to detect failover.
+
     let fallback_before = engine.pipeline().router().snapshot().fallback_count;
+
     let router_cfg_snapshot = engine.pipeline().router().config().clone();
 
     let intent_for_pipeline = Intent {
         prompt,
+
         context: None,
+
         correlation_id: None,
     };
 
@@ -261,32 +378,46 @@ async fn process_intent_stream(
         .map_err(|e| e.to_string())?;
 
     // Detect failover by delta in fallback_count and emit structured telemetry.
+
     let fallback_after = engine.pipeline().router().snapshot().fallback_count;
+
     if fallback_after > fallback_before {
         let delta = (fallback_after - fallback_before) as usize;
+
         for attempt in 1..=delta {
             let ts = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .map(|d| {
                     let secs = d.as_secs();
+
                     // RFC3339-like: seconds since epoch as ISO string fallback
+
                     format!("{}", secs)
                 })
                 .unwrap_or_else(|_| "unknown".to_string());
+
             // Use chrono-like ISO if available, otherwise epoch string; keep payload serializable.
+
             let payload = ProviderFailoverPayload {
                 timestamp: ts,
+
                 from_provider: router_cfg_snapshot.primary_provider.to_string(),
+
                 to_provider: router_cfg_snapshot.fallback_provider.to_string(),
-                reason: "primary provider failed — fallback attempted".to_string(),
+
+                reason: "primary provider failed â fallback attempted".to_string(),
+
                 attempt_number: attempt,
             };
+
             let _ = app.emit("telemetry:provider_failover", &payload);
         }
     }
 
     let _ = app.emit("intent:done", &result);
+
     // Also emit a terminal chunk so listeners can finalize.
+
     let _ = app.emit(
         "intent:chunk",
         serde_json::json!({ "index": 999999, "delta": "", "done": true }),
@@ -296,50 +427,77 @@ async fn process_intent_stream(
 }
 
 /// Cancel the live chat turn.
+
 ///
+
 /// The token is checked between provider rounds, before the gate and between
+
 /// tool calls, so cancelling stops the next provider continuation rather than
+
 /// leaving one in flight. Returns whether a turn was actually cancelled, so the
+
 /// UI can tell "stopped" from "nothing was running".
+
 #[tauri::command]
+
 fn cancel_intent(state: tauri::State<'_, EngineState>) -> bool {
     state.inner().cancel.cancel()
 }
 
 /// Return the current execution plan without dispatching to the LLM (useful
+
 /// for preview / dry-run in the UI).
+
 #[tauri::command]
+
 async fn preview_execution_plan(
     prompt: String,
+
     state: tauri::State<'_, EngineState>,
 ) -> Result<zylcode_core::ExecutionPlan, String> {
     iv::validate_prompt(&prompt).map_err(|e| e.to_string())?;
+
     let planner = zylcode_core::IntentPlanner::new();
+
     let bridges = state.engine.list_mcp_bridges().await;
+
     let plan = planner.build_execution_plan(
         &Intent {
             prompt,
+
             context: None,
+
             correlation_id: None,
         },
         &bridges,
     );
+
     Ok(plan)
 }
 
 /// Repository Intelligence payload for the frontend: the same persisted-
+
 /// index-backed pipeline the `repo-context` CLI and the `serve-intel`
+
 /// HTTP service expose, so every surface shows the same real data.
+
 #[tauri::command]
+
 async fn repo_context(
     task: Option<String>,
+
     state: tauri::State<'_, EngineState>,
 ) -> Result<serde_json::Value, String> {
     let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
+
     let task = task.unwrap_or_default();
+
     // Optional hint: empty is legitimate ("no particular task"), but a
+
     // present one is bounded before it reaches the index.
+
     iv::ensure_max_chars("task", &task, iv::MAX_TASK_CHARS).map_err(|e| e.to_string())?;
+
     tokio::task::spawn_blocking(move || {
         zylcode_core::intelligence::api::repo_intel_payload(&root, &task)
             .map_err(|e| format!("repository intelligence failed: {e:#}"))
@@ -349,22 +507,36 @@ async fn repo_context(
 }
 
 /// Repository-intelligence navigation: the same `zylcode-nav` engine and the
+
 /// same process-wide index slot as the `serve-intel` `POST /api/nav` route
+
 /// and the `nav.*` MCP tools, so every surface answers from one index.
+
 ///
+
 /// Read-only. An unresolvable selector arrives *inside* a successful payload
-/// with `unresolved` set — never as an invented hit — while a failure to run
+
+/// with `unresolved` set â never as an invented hit â while a failure to run
+
 /// the query arrives as `Err`, so a UI cannot render an error as an answer.
+
 #[tauri::command]
+
 async fn nav_query(
     tool: String,
+
     args: Option<serde_json::Value>,
+
     state: tauri::State<'_, EngineState>,
 ) -> Result<serde_json::Value, String> {
     iv::validate_tool_id(&tool).map_err(|e| e.to_string())?;
+
     let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
+
     let args = args.unwrap_or_else(|| serde_json::json!({}));
+
     iv::validate_tool_args(&args).map_err(|e| e.to_string())?;
+
     tokio::task::spawn_blocking(move || {
         zylcode_core::intelligence::nav_api::nav_payload(&root, &tool, args)
             .map_err(|e| format!("repository navigation failed: {e}"))
@@ -372,20 +544,28 @@ async fn nav_query(
     .await
     .map_err(|e| format!("nav task failed: {e}"))?
 }
+
 /// Mission queue: append a task (build or plan mode).
+
 #[tauri::command]
+
 async fn mission_enqueue(
     task: String,
+
     mode: Option<String>,
+
     state: tauri::State<'_, EngineState>,
 ) -> Result<serde_json::Value, String> {
     iv::validate_task(&task).map_err(|e| e.to_string())?;
+
     iv::validate_mode(mode.as_deref()).map_err(|e| e.to_string())?;
+
     let m = if mode.as_deref() == Some("plan") {
         zylcode_core::missions::MissionMode::Plan
     } else {
         zylcode_core::missions::MissionMode::Build
     };
+
     state
         .missions
         .enqueue(&task, m)
@@ -394,7 +574,9 @@ async fn mission_enqueue(
 }
 
 /// Mission queue: full list, newest first.
+
 #[tauri::command]
+
 async fn missions_list(state: tauri::State<'_, EngineState>) -> Result<serde_json::Value, String> {
     let list: Vec<serde_json::Value> = state
         .missions
@@ -402,57 +584,87 @@ async fn missions_list(state: tauri::State<'_, EngineState>) -> Result<serde_jso
         .iter()
         .map(|m| serde_json::to_value(m).unwrap_or(serde_json::json!({})))
         .collect();
+
     Ok(serde_json::json!({ "missions": list }))
 }
 
 /// Drain one queued mission for real (best-of-n or plan generation).
+
 #[tauri::command]
+
 async fn mission_run_next(
     state: tauri::State<'_, EngineState>,
 ) -> Result<serde_json::Value, String> {
     let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
+
     let Some(mission) = state.missions.claim_next() else {
         return Ok(serde_json::json!({ "status": "idle", "reason": "queue empty" }));
     };
+
     match mission.mode {
         zylcode_core::missions::MissionMode::Plan => {
             let hub = state.missions.clone();
+
             tokio::task::spawn_blocking(move || {
+
                 match zylcode_core::missions::build_plan(&root, &mission.task) {
+
                     Ok(plan) => {
+
                         let head: String = plan.lines().take(6).collect::<Vec<_>>().join(" ");
+
                         hub.finish(&mission.id, true, &head, None);
+
                         serde_json::json!({ "status": "done", "mission": mission.id, "mode": "plan", "plan": plan })
+
                     }
+
                     Err(e) => {
+
                         hub.finish(&mission.id, false, &format!("plan failed: {e:#}"), None);
+
                         serde_json::json!({ "status": "failed", "mission": mission.id, "error": format!("{e:#}") })
+
                     }
+
                 }
+
             })
+
             .await
+
             .map_err(|e| format!("plan task failed: {e}"))
         }
+
         zylcode_core::missions::MissionMode::Build => {
             let ledger_path = root.join(".zylcode").join("ledger.db");
+
             let _ = std::fs::create_dir_all(ledger_path.parent().unwrap());
+
             let ledger: Arc<dyn zylcode_core::ledger::LedgerStore> =
                 zylcode_core::sqlite_ledger::SqliteLedgerStore::new(
                     ledger_path.to_string_lossy().as_ref(),
                 )
                 .map(Arc::new)
                 .map_err(|e| format!("ledger unavailable: {e:#}"))?;
+
             let session_id = zylcode_core::new_session_id();
+
             let source: Arc<dyn zylcode_core::patch_best_of_n::CandidateSource> =
                 Arc::new(zylcode_core::patch_best_of_n::WorkingTreeSource {
                     repo_root: root.clone(),
                 });
+
             let config = zylcode_core::best_of_n::BestOfNConfig {
                 candidates: 1,
+
                 per_candidate_timeout: std::time::Duration::from_secs(1800),
+
                 max_concurrent: 1,
             };
+
             let hub = state.missions.clone();
+
             let run = zylcode_core::patch_best_of_n::run_patch_best_of_n(
                 &mission.task,
                 source,
@@ -465,9 +677,11 @@ async fn mission_run_next(
                 std::time::Duration::from_secs(1800),
             )
             .await;
+
             match run {
                 Ok(result) => {
                     let passed = result.selection.outcomes.iter().find(|o| o.passed);
+
                     Ok(match passed {
                         Some(o) => {
                             let summary = format!(
@@ -476,9 +690,12 @@ async fn mission_run_next(
                                 o.evidence.passing_checks(),
                                 o.evidence.checks.len()
                             );
+
                             hub.finish(&mission.id, true, &summary, Some(session_id.to_string()));
+
                             serde_json::json!({ "status": "done", "mission": mission.id, "mode": "build", "summary": summary, "ledger_session": session_id.to_string() })
                         }
+
                         None => {
                             hub.finish(
                                 &mission.id,
@@ -486,10 +703,12 @@ async fn mission_run_next(
                                 "no candidate passed verification",
                                 Some(session_id.to_string()),
                             );
+
                             serde_json::json!({ "status": "failed", "mission": mission.id, "summary": "no candidate passed verification" })
                         }
                     })
                 }
+
                 Err(e) => {
                     hub.finish(
                         &mission.id,
@@ -497,6 +716,7 @@ async fn mission_run_next(
                         &format!("best-of-n failed: {e:#}"),
                         None,
                     );
+
                     Ok(
                         serde_json::json!({ "status": "failed", "mission": mission.id, "error": format!("{e:#}") }),
                     )
@@ -506,22 +726,34 @@ async fn mission_run_next(
     }
 }
 
-/// Terminal exec with persistent cwd sessions — the same TerminalHub model
+/// Terminal exec with persistent cwd sessions â the same TerminalHub model
+
 /// the `serve-intel` HTTP service uses, so desktop and browser terminals
+
 /// behave identically. Session cwd state lives for the app's lifetime.
+
 #[tauri::command]
+
 async fn terminal_exec(
     request: serde_json::Value,
+
     state: tauri::State<'_, EngineState>,
 ) -> Result<serde_json::Value, String> {
     let req: zylcode_core::terminal::TerminalRequest =
         serde_json::from_value(request).map_err(|e| format!("invalid terminal request: {e}"))?;
+
     // Untrusted IPC input: check the command, shell, timeout and session id, and
+
     // keep the working directory inside the workspace, before a child process
+
     // exists. The HTTP surface runs the same gate.
+
     iv::validate_terminal_request_in(state.terminal_hub.root(), &req).map_err(|e| e.to_string())?;
+
     let hub = state.terminal_hub.clone();
+
     // TerminalHub::exec is &self; run it without blocking the IPC thread.
+
     tokio::task::spawn(async move {
         hub.exec(&req).await.map(|out| {
             serde_json::to_value(&out)
@@ -534,31 +766,46 @@ async fn terminal_exec(
 }
 
 /// Terminal reset: forget every session's remembered working directory, so
+
 /// the next command starts again at the workspace root. The previous
-/// desktop implementation returned `true` without doing anything — a reset
+
+/// desktop implementation returned `true` without doing anything â a reset
+
 /// that reports success it never performed. This one calls the same
+
 /// `TerminalHub::reset` the HTTP `/api/terminal/reset` route uses.
+
 #[tauri::command]
+
 async fn terminal_reset(state: tauri::State<'_, EngineState>) -> Result<serde_json::Value, String> {
     state.terminal_hub.reset();
+
     Ok(serde_json::json!({ "status": "ok" }))
 }
 
 /// Version & build info for the About/Diagnostics surfaces.
+
 #[tauri::command]
+
 async fn app_version(state: tauri::State<'_, EngineState>) -> Result<serde_json::Value, String> {
     let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
+
     tokio::task::spawn_blocking(move || Ok(zylcode_core::gitops::version_payload(&root)))
         .await
         .map_err(|e| format!("version task failed: {e}"))?
 }
 
 /// Git source-control state for the frontend (branch, tracking, status
-/// entries, uncommitted diff stat) — the same gitops payload the
+
+/// entries, uncommitted diff stat) â the same gitops payload the
+
 /// `serve-intel` HTTP service exposes.
+
 #[tauri::command]
+
 async fn git_status(state: tauri::State<'_, EngineState>) -> Result<serde_json::Value, String> {
     let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
+
     tokio::task::spawn_blocking(move || {
         zylcode_core::gitops::git_status_payload(&root)
             .map_err(|e| format!("git status failed: {e:#}"))
@@ -568,14 +815,20 @@ async fn git_status(state: tauri::State<'_, EngineState>) -> Result<serde_json::
 }
 
 /// Live search over the intelligence pipeline (indexed resources + file
-/// paths) — the same payload the serve-intel HTTP route exposes.
+
+/// paths) â the same payload the serve-intel HTTP route exposes.
+
 #[tauri::command]
+
 async fn repo_search(
     q: String,
+
     state: tauri::State<'_, EngineState>,
 ) -> Result<serde_json::Value, String> {
     iv::validate_query(&q).map_err(|e| e.to_string())?;
+
     let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
+
     tokio::task::spawn_blocking(move || {
         zylcode_core::surfaces::search_payload(&root, &q)
             .map_err(|e| format!("search failed: {e:#}"))
@@ -585,9 +838,12 @@ async fn repo_search(
 }
 
 /// The scanner's file tree for the Explorer surface.
+
 #[tauri::command]
+
 async fn repo_file_tree(state: tauri::State<'_, EngineState>) -> Result<serde_json::Value, String> {
     let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
+
     tokio::task::spawn_blocking(move || {
         zylcode_core::surfaces::file_tree_payload(&root)
             .map_err(|e| format!("file tree failed: {e:#}"))
@@ -597,13 +853,18 @@ async fn repo_file_tree(state: tauri::State<'_, EngineState>) -> Result<serde_js
 }
 
 /// Real file content for the central editor (workspace-relative path).
+
 #[tauri::command]
+
 async fn file_content(
     state: tauri::State<'_, EngineState>,
+
     path: String,
 ) -> Result<serde_json::Value, String> {
     iv::validate_path(&path).map_err(|e| e.to_string())?;
+
     let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
+
     tokio::task::spawn_blocking(move || {
         zylcode_core::surfaces::file_content_payload(&root, &path)
             .map_err(|e| format!("file content failed: {e:#}"))
@@ -612,17 +873,25 @@ async fn file_content(
     .map_err(|e| format!("file task failed: {e}"))?
 }
 
-/// Save edited content to a workspace file — the desktop editor's save
+/// Save edited content to a workspace file â the desktop editor's save
+
 /// backend (G-03). Containment (absolute/`..`/`.git/`/symlink escapes) is
+
 /// enforced inside `save_file_payload` before any write happens.
+
 #[tauri::command]
+
 async fn save_workspace_artifact(
     state: tauri::State<'_, EngineState>,
+
     label: String,
+
     content: String,
 ) -> Result<serde_json::Value, String> {
     iv::validate_artifact(&label, &content).map_err(|e| e.to_string())?;
+
     let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
+
     tokio::task::spawn_blocking(move || {
         zylcode_core::surfaces::save_file_payload(&root, &label, &content)
             .map_err(|e| format!("save failed: {e:#}"))
@@ -631,16 +900,23 @@ async fn save_workspace_artifact(
     .map_err(|e| format!("save task failed: {e}"))?
 }
 
-/// Apply a unified diff to the workspace — the artifact stream's Ctrl+Enter
+/// Apply a unified diff to the workspace â the artifact stream's Ctrl+Enter
+
 /// patch backend. Patch paths are validated before git runs; `git apply`
+
 /// fails closed on malformed hunks with byte-faithful line endings.
+
 #[tauri::command]
+
 async fn apply_patch(
     state: tauri::State<'_, EngineState>,
+
     patch: String,
 ) -> Result<serde_json::Value, String> {
     iv::validate_patch(&patch).map_err(|e| e.to_string())?;
+
     let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
+
     tokio::task::spawn_blocking(move || {
         zylcode_core::surfaces::apply_patch_payload(&root, &patch)
             .map_err(|e| format!("apply patch failed: {e:#}"))
@@ -650,18 +926,23 @@ async fn apply_patch(
 }
 
 /// The evidence ledger timeline with hash-chain verification.
+
 #[tauri::command]
+
 async fn evidence_ledger(
     state: tauri::State<'_, EngineState>,
 ) -> Result<serde_json::Value, String> {
     let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
+
     tokio::task::spawn_blocking(move || Ok(zylcode_core::surfaces::evidence_payload(&root)))
         .await
         .map_err(|e| format!("evidence task failed: {e}"))?
 }
 
 /// Current token telemetry snapshot.
+
 #[tauri::command]
+
 async fn token_metrics(
     state: tauri::State<'_, EngineState>,
 ) -> Result<zylcode_core::TokenSnapshot, String> {
@@ -669,7 +950,9 @@ async fn token_metrics(
 }
 
 /// Run the logic verification pipeline.
+
 #[tauri::command]
+
 async fn verify_logic(
     state: tauri::State<'_, EngineState>,
 ) -> Result<zylcode_core::VerificationReport, String> {
@@ -677,22 +960,33 @@ async fn verify_logic(
 }
 
 /// Register an MCP bridge from the desktop UI.
+
 #[tauri::command]
+
 async fn register_mcp_bridge(
     id: String,
+
     endpoint: String,
+
     transport: Option<String>,
+
     state: tauri::State<'_, EngineState>,
 ) -> Result<(), String> {
     iv::validate_tool_id(&id).map_err(|e| e.to_string())?;
+
     iv::validate_endpoint(&endpoint).map_err(|e| e.to_string())?;
+
     iv::validate_transport(transport.as_deref()).map_err(|e| e.to_string())?;
+
     state
         .engine
         .register_mcp_bridge(McpBridgeDescriptor {
             id,
+
             endpoint,
+
             transport: transport.unwrap_or_else(|| "stdio".to_string()),
+
             env: Default::default(),
         })
         .await
@@ -700,7 +994,9 @@ async fn register_mcp_bridge(
 }
 
 /// List all registered MCP bridges.
+
 #[tauri::command]
+
 async fn list_mcp_bridges(
     state: tauri::State<'_, EngineState>,
 ) -> Result<Vec<McpBridgeDescriptor>, String> {
@@ -708,7 +1004,9 @@ async fn list_mcp_bridges(
 }
 
 /// List dynamic MCP tools from the registry (local `mcp.tools.yaml`).
+
 #[tauri::command]
+
 async fn list_tools(
     state: tauri::State<'_, EngineState>,
 ) -> Result<Vec<zylcode_core::ToolDescriptor>, String> {
@@ -716,17 +1014,26 @@ async fn list_tools(
 }
 
 /// Execute a dynamic tool with recovery (30s timeout, 2 retries).
+
 #[tauri::command]
+
 async fn execute_tool(
     id: String,
+
     params: serde_json::Value,
+
     state: tauri::State<'_, EngineState>,
 ) -> Result<serde_json::Value, String> {
     iv::validate_tool_id(&id).map_err(|e| e.to_string())?;
+
     iv::validate_tool_args(&params).map_err(|e| e.to_string())?;
+
     // The desktop surface is the human operator: bind the actor so the
+
     // evidence ledger attributes this invocation to "user:desktop" rather
+
     // than to an unidentified process.
+
     zylcode_mcp::with_actor("user:desktop", async {
         state
             .engine
@@ -738,30 +1045,45 @@ async fn execute_tool(
 }
 
 /// Search marketplace extensions by query string.
+
 #[tauri::command]
+
 async fn marketplace_search(
     query: String,
+
     state: tauri::State<'_, EngineState>,
 ) -> Result<Vec<zylcode_core::MarketplaceExtension>, String> {
     iv::validate_marketplace_query(&query).map_err(|e| e.to_string())?;
+
     let extensions = state.engine.marketplace_snapshot().await;
+
     let mut reg = zylcode_core::ExtensionRegistry::new();
+
     for ext in extensions {
         reg.register(ext);
     }
+
     Ok(reg.search(&query).into_iter().cloned().collect())
 }
 
 // ---------------------------------------------------------------------------
+
 // Integrations IPC -- Composio + Floot status for the settings panel.
+
 // ---------------------------------------------------------------------------
 
 /// Return the current integrations snapshot for the settings panel.
+
 ///
+
 /// Today every service reads as "not_setup": the OAuth + connected account
+
 /// plumbing is not wired yet. When it is, this is the single place that folds
+
 /// real state back into the UI without the UI knowing how the backend works.
+
 #[tauri::command]
+
 async fn get_integrations_status(
     state: tauri::State<'_, EngineState>,
 ) -> Result<composio_integration::IntegrationsSnapshot, String> {
@@ -769,79 +1091,125 @@ async fn get_integrations_status(
         .composio_accounts
         .read()
         .map_err(|_| "composio accounts lock poisoned")?;
+
     let bridges = state.engine.list_mcp_bridges().await;
+
     let floot_registered = bridges
         .iter()
         .any(|b| b.id == "floot" || b.endpoint.to_lowercase().contains("floot"));
+
     let mut snap = composio_integration::build_snapshot(floot_registered);
+
     for (service, account) in &accounts.accounts {
         if let Some(idx) = snap.services.iter().position(|s| s.status == "not_setup") {
             snap.services[idx].connected = true;
+
             snap.services[idx].status = "connected".to_string();
+
             snap.services[idx].connected_at = Some(account.connected_at.clone());
         }
     }
+
     Ok(snap)
 }
 
 // ---------------------------------------------------------------------------
+
 // Provider Configuration IPC (track: MULTIPROVIDER-2)
+
 // ---------------------------------------------------------------------------
 
 /// Return current provider configs sorted by fallback_order.
+
 ///
+
 /// Read from the engine's live router, not from a copy: a settings panel that
+
 /// renders a different list than the one dispatch walks is the defect this
+
 /// command exists to make impossible.
+
 #[tauri::command]
+
 async fn get_provider_configs(
     state: tauri::State<'_, EngineState>,
 ) -> Result<Vec<ProviderConfig>, String> {
     let mut sorted = state.engine.pipeline().router().config().provider_configs;
+
     sorted.sort_by_key(|c| c.fallback_order);
+
     Ok(sorted)
 }
 
 /// Probe one provider configuration with a real request and classify the
+
 /// outcome.
+
 ///
+
 /// This is the only honest answer to "is my configuration working?": the
+
 /// saved chain is evidence of intent, not of reachability. The probe sends a
+
 /// minimal completion through the same dispatch function a turn uses and
+
 /// reports `connected`, `authentication_failed`, `invalid_endpoint`,
+
 /// `model_unavailable`, `network_error`, `provider_rejected` or
-/// `configuration_incomplete` — with the endpoint, model and credential source
+
+/// `configuration_incomplete` â with the endpoint, model and credential source
+
 /// it actually used, so the result cannot be mistaken for a different config.
+
 #[tauri::command]
+
 async fn test_provider_connection(
     kind: ProviderKind,
+
     endpoint: Option<String>,
+
     model: Option<String>,
+
     timeout_ms: Option<u64>,
+
     saved: Option<bool>,
+
     state: tauri::State<'_, EngineState>,
 ) -> Result<zylcode_core::router::ProviderProbe, String> {
     // "Test connection" on a saved card must exercise the saved configuration:
+
     // the model, endpoint and timeout dispatch would use, with whatever
+
     // credential the router actually resolves. A draft has to be tested
+
     // separately, so a green result can never stand for values nobody saved.
+
     if saved.unwrap_or(false) {
         return Ok(state.engine.pipeline().router().probe_saved(&kind).await);
     }
+
     let endpoint = endpoint.filter(|e| !e.trim().is_empty());
+
     if let Some(ep) = endpoint.as_deref() {
         iv::validate_provider_endpoint(ep).map_err(|e| e.to_string())?;
     }
+
     let model = model.filter(|m| !m.trim().is_empty());
+
     // `Some("")` would pass `validate_model` as absent; filter first so a
+
     // whitespace-only field is treated as "use the default" rather than sent.
+
     if let Some(m) = model.as_deref() {
         iv::validate_model(Some(m)).map_err(|e| e.to_string())?;
     }
+
     let timeout = timeout_ms.unwrap_or(30_000);
+
     if !(1_000..=300_000).contains(&timeout) {
         return Err(format!("timeout_ms out of range 1000..300000: {timeout}"));
     }
+
     Ok(
         zylcode_core::router::probe_provider(&kind, endpoint.as_deref(), model.as_deref(), timeout)
             .await,
@@ -849,63 +1217,87 @@ async fn test_provider_connection(
 }
 
 /// Read-only view of the measured provider scorecard (best first). The same
+
 /// Laplace-smoothed records that inform dispatch order in the core router.
+
 #[tauri::command]
+
 async fn get_provider_scorecard(
 ) -> Result<Vec<zylcode_core::provider_scorecard::ProviderRecord>, String> {
     zylcode_core::router::RouterConfig::scorecard_view()
         .map_err(|e| format!("scorecard unavailable: {e:#}"))
 }
 
-/// Deploy targets that are actually commissioned — same payload the
+/// Deploy targets that are actually commissioned â same payload the
+
 /// `serve-intel` HTTP route exposes.
+
 #[tauri::command]
+
 async fn deploy_status(state: tauri::State<'_, EngineState>) -> Result<serde_json::Value, String> {
     let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
+
     zylcode_core::delivery::deploy_targets(&root)
         .map_err(|e| format!("deploy status failed: {e:#}"))
 }
 
 /// Current/last build pipeline state for this workspace session.
+
 #[tauri::command]
+
 async fn build_status(state: tauri::State<'_, EngineState>) -> Result<serde_json::Value, String> {
     let cell = state
         .build_status
         .lock()
         .map_err(|_| "build status lock poisoned".to_string())?;
+
     Ok(cell.clone())
 }
 
 /// Start the real build pipeline in the background.
+
 #[tauri::command]
+
 async fn build_start(state: tauri::State<'_, EngineState>) -> Result<serde_json::Value, String> {
     let running = {
         let cell = state
             .build_status
             .lock()
             .map_err(|_| "build status lock poisoned".to_string())?;
+
         cell["state"] == "running"
     };
+
     if running {
         return Ok(serde_json::json!({
+
             "started": false,
+
             "state": "running",
+
             "note": "a build is already in progress"
+
         }));
     }
+
     let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
+
     let cell = Arc::clone(&state.build_status);
+
     tauri::async_runtime::spawn(async move {
         if let Ok(mut status) = cell.lock() {
             *status = serde_json::json!({ "state": "running" });
         }
+
         let pipeline = zylcode_core::delivery::default_build_pipeline();
+
         match zylcode_core::delivery::build_workspace(&root, &pipeline, false).await {
             Ok(report) => {
                 if let Ok(mut status) = cell.lock() {
                     *status = report;
                 }
             }
+
             Err(e) => {
                 if let Ok(mut status) = cell.lock() {
                     *status = serde_json::json!({ "state": "failed", "error": format!("{e:#}") });
@@ -913,124 +1305,176 @@ async fn build_start(state: tauri::State<'_, EngineState>) -> Result<serde_json:
             }
         }
     });
+
     Ok(serde_json::json!({ "started": true, "state": "running" }))
 }
 
 /// Start release packaging in the background (pipeline included unless package_only).
+
 #[tauri::command]
+
 async fn package_start(
     version: Option<String>,
+
     package_only: Option<bool>,
+
     state: tauri::State<'_, EngineState>,
 ) -> Result<serde_json::Value, String> {
     // A supplied version becomes a path component of the release artifact, so it
+
     // is validated before the build starts. An absent or blank version is left
+
     // alone: that is the "resolve it from the workspace" request, not bad input.
+
     if let Some(v) = version.as_deref().filter(|v| !v.trim().is_empty()) {
         iv::validate_release_version(v).map_err(|e| e.to_string())?;
     }
+
     let running = {
         let cell = state
             .build_status
             .lock()
             .map_err(|_| "build status lock poisoned".to_string())?;
+
         cell["state"] == "running"
     };
+
     if running {
         return Ok(serde_json::json!({
+
             "started": false,
+
             "note": "a build is already in progress; wait for it to finish"
+
         }));
     }
+
     let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
+
     let cell = Arc::clone(&state.build_status);
+
     tauri::async_runtime::spawn(async move {
         if let Ok(mut status) = cell.lock() {
             *status = serde_json::json!({ "state": "running" });
         }
+
         let mut version = version.unwrap_or_default();
+
         if !package_only.unwrap_or(false) {
             let pipeline = zylcode_core::delivery::default_build_pipeline();
+
             match zylcode_core::delivery::build_workspace(&root, &pipeline, false).await {
                 Ok(report) => {
                     let passed = report["passed"].as_bool().unwrap_or(false);
+
                     if let Ok(mut status) = cell.lock() {
                         *status = report;
                     }
+
                     if !passed {
                         return; // red build is never packaged
                     }
                 }
+
                 Err(e) => {
                     if let Ok(mut status) = cell.lock() {
                         *status =
                             serde_json::json!({ "state": "failed", "error": format!("{e:#}") });
                     }
+
                     return;
                 }
             }
         }
+
         if version.trim().is_empty() {
             version = zylcode_core::gitops::version_payload(&root)["app_version"]
                 .as_str()
                 .unwrap_or("")
                 .to_string();
         }
+
         if version.trim().is_empty() {
             if let Ok(mut status) = cell.lock() {
                 *status = serde_json::json!({
+
                     "state": "failed",
+
                     "error": "no version resolvable; pass a version"
+
                 });
             }
+
             return;
         }
+
         match zylcode_core::delivery::package_release(&root, &version).await {
             Ok(payload) => {
                 if let Ok(mut status) = cell.lock() {
                     *status = serde_json::json!({ "state": "passed", "packaged": payload });
                 }
             }
+
             Err(e) => {
                 if let Ok(mut status) = cell.lock() {
                     *status = serde_json::json!({
+
                         "state": "failed",
+
                         "error": format!("packaging failed: {e:#}")
+
                     });
                 }
             }
         }
     });
+
     Ok(serde_json::json!({ "started": true, "state": "running" }))
 }
 
 /// Update settings for a single provider, in the live router.
+
 ///
+
 /// The change reaches dispatch because it is applied to the engine's own
+
 /// `TokenRouter` (which normalises the chain), and it is durable because the
+
 /// same configuration is written to `providers.json`. Validation happens before
+
 /// any mutation, so a rejected field leaves the running configuration intact.
+
 #[tauri::command]
+
 async fn set_provider_config(
     kind: ProviderKind,
+
     endpoint: Option<String>,
+
     timeout_ms: Option<u64>,
+
     enabled: Option<bool>,
+
     model: Option<String>,
+
     state: tauri::State<'_, EngineState>,
 ) -> Result<Vec<ProviderConfig>, String> {
     if let Some(ep) = endpoint.as_deref().map(str::trim).filter(|e| !e.is_empty()) {
         iv::validate_provider_endpoint(ep).map_err(|e| e.to_string())?;
     }
+
     if let Some(t) = timeout_ms {
         if !(1_000..=300_000).contains(&t) {
             return Err(format!("timeout_ms out of range 1000..300000: {t}"));
         }
     }
+
     if let Some(m) = model.as_deref().map(str::trim).filter(|m| !m.is_empty()) {
         iv::validate_model(Some(m)).map_err(|e| e.to_string())?;
     }
+
     // A local daemon address is a base URL, not a completions path.
+
     if matches!(kind, ProviderKind::Ollama) {
         if let Some(ep) = endpoint.as_deref().map(str::trim).filter(|e| !e.is_empty()) {
             if !ep.starts_with("http://") && !ep.starts_with("https://") {
@@ -1040,6 +1484,7 @@ async fn set_provider_config(
     }
 
     let router = state.engine.pipeline().router();
+
     if !router
         .config()
         .provider_configs
@@ -1054,35 +1499,49 @@ async fn set_provider_config(
             if entry.kind != kind {
                 continue;
             }
+
             if let Some(ep) = &endpoint {
                 entry.endpoint = ep.trim().to_string();
             }
+
             if let Some(t) = timeout_ms {
                 entry.timeout_ms = t;
             }
+
             if let Some(en) = enabled {
                 entry.enabled = en;
             }
+
             // `Some("")` is an explicit clear; `None` leaves the field alone.
+
             // The panel sends the trimmed field (possibly empty) so a model or
+
             // endpoint can be removed, and sends `null` only from the toggle
+
             // path where it must not touch either.
+
             if let Some(m) = &model {
                 entry.model = m.trim().to_string();
             }
+
             break;
         }
     });
 
     let mut sorted = router.config().provider_configs;
+
     sorted.sort_by_key(|c| c.fallback_order);
+
     provider_store::save(&router.config())
         .map_err(|e| format!("applied in memory but not saved: {e}"))?;
+
     Ok(sorted)
 }
 
-/// Vector cache — clear all entries.
+/// Vector cache â clear all entries.
+
 #[tauri::command]
+
 async fn clear_vector_cache(state: tauri::State<'_, EngineState>) -> Result<usize, String> {
     state
         .vector_cache
@@ -1090,40 +1549,57 @@ async fn clear_vector_cache(state: tauri::State<'_, EngineState>) -> Result<usiz
         .map_err(|e| format!("clear vector_cache failed: {}", e))
 }
 
-/// Vector cache — stats.
+/// Vector cache â stats.
+
 #[tauri::command]
+
 async fn get_cache_stats(state: tauri::State<'_, EngineState>) -> Result<CacheStats, String> {
     let (entry_count, estimated_size) = state
         .vector_cache
         .stats()
         .map_err(|e| format!("get cache stats failed: {}", e))?;
+
     Ok(CacheStats {
         entry_count,
+
         estimated_size,
+
         db_path: state.vector_cache.db_path().display().to_string(),
     })
 }
 
-/// Reorder the fallback chain — `order` is authoritative; first element is
+/// Reorder the fallback chain â `order` is authoritative; first element is
+
 /// attempted first.
+
 ///
+
 /// Applied to the live router and persisted, so the order the operator dragged
+
 /// is the order dispatch attempts, across restarts.
+
 #[tauri::command]
+
 async fn reorder_provider_chain(
     order: Vec<ProviderKind>,
+
     state: tauri::State<'_, EngineState>,
 ) -> Result<Vec<ProviderConfig>, String> {
     if order.is_empty() {
         return Err("order must not be empty".to_string());
     }
+
     let router = state.engine.pipeline().router();
+
     let existing = router.config().provider_configs;
+
     let mut seen = std::collections::HashSet::new();
+
     for kind in &order {
         if !seen.insert(kind.to_string()) {
             return Err(format!("duplicate provider in order: {kind}"));
         }
+
         if !existing.iter().any(|c| &c.kind == kind) {
             return Err(format!("unknown provider: {kind}"));
         }
@@ -1135,16 +1611,22 @@ async fn reorder_provider_chain(
                 entry.fallback_order = idx as u32;
             }
         }
+
         // Entries the caller did not mention keep their relative order, after
+
         // the ones it did.
+
         let mut remaining: Vec<_> = cfg
             .provider_configs
             .iter()
             .filter(|c| !order.contains(&c.kind))
             .cloned()
             .collect();
+
         remaining.sort_by_key(|c| c.fallback_order);
+
         let base = order.len() as u32;
+
         for (idx, entry) in remaining.into_iter().enumerate() {
             if let Some(target) = cfg
                 .provider_configs
@@ -1157,23 +1639,32 @@ async fn reorder_provider_chain(
     });
 
     let mut sorted = router.config().provider_configs;
+
     sorted.sort_by_key(|c| c.fallback_order);
+
     provider_store::save(&router.config())
         .map_err(|e| format!("applied in memory but not saved: {e}"))?;
+
     Ok(sorted)
 }
 
 // ---------------------------------------------------------------------------
-// Credentials — the OS credential store. A key enters through one command and
+
+// Credentials â the OS credential store. A key enters through one command and
+
 // never leaves through any: status reports a source and a masked hint only.
+
 // ---------------------------------------------------------------------------
 
 /// Where each provider's credential comes from.
+
 #[tauri::command]
+
 async fn provider_key_status(
     state: tauri::State<'_, EngineState>,
 ) -> Result<Vec<provider_store::ProviderKeyStatus>, String> {
     let cfg = state.engine.pipeline().router().config();
+
     Ok(ProviderKind::all()
         .iter()
         .map(|kind| provider_store::key_status(kind, &cfg))
@@ -1181,33 +1672,47 @@ async fn provider_key_status(
 }
 
 /// Store a provider key in the OS credential store and make it live.
+
 ///
+
 /// The key is written to the vault and then into the in-memory router; it is
+
 /// never written to `providers.json`, never logged, and never returned.
+
 #[tauri::command]
+
 async fn set_provider_key(
     kind: ProviderKind,
+
     api_key: String,
+
     state: tauri::State<'_, EngineState>,
 ) -> Result<Vec<provider_store::ProviderKeyStatus>, String> {
     let provider = kind
         .dispatch_name()
         .ok_or_else(|| format!("provider {kind} has no dispatch implementation"))?;
+
     if !kind.requires_api_key() {
         return Err(format!("{kind} does not use an API key"));
     }
+
     if !secrets::is_supported() {
         return Err(secrets::StoreError::Unsupported.to_string());
     }
+
     secrets::set(&provider, api_key.trim()).map_err(|e| e.to_string())?;
 
     let router = state.engine.pipeline().router();
+
     let mut cfg = router.config();
+
     cfg.api_keys
         .insert(provider.clone(), api_key.trim().to_string());
+
     router.set_api_keys(cfg.api_keys);
 
     let cfg = router.config();
+
     Ok(ProviderKind::all()
         .iter()
         .map(|k| provider_store::key_status(k, &cfg))
@@ -1215,14 +1720,18 @@ async fn set_provider_key(
 }
 
 /// Remove a provider key from the vault and from memory.
+
 #[tauri::command]
+
 async fn delete_provider_key(
     kind: ProviderKind,
+
     state: tauri::State<'_, EngineState>,
 ) -> Result<Vec<provider_store::ProviderKeyStatus>, String> {
     let provider = kind
         .dispatch_name()
         .ok_or_else(|| format!("provider {kind} has no dispatch implementation"))?;
+
     let removed = if secrets::is_supported() {
         secrets::delete(&provider).map_err(|e| e.to_string())?
     } else {
@@ -1230,18 +1739,25 @@ async fn delete_provider_key(
     };
 
     let router = state.engine.pipeline().router();
+
     let mut cfg = router.config();
+
     cfg.api_keys.remove(&provider);
+
     router.set_api_keys(cfg.api_keys);
 
     let cfg = router.config();
+
     let mut statuses: Vec<_> = ProviderKind::all()
         .iter()
         .map(|k| provider_store::key_status(k, &cfg))
         .collect();
+
     if !removed {
         // `delete` is idempotent; say so rather than implying a key was removed
+
         // when none was stored (an environment variable may still supply one).
+
         for status in statuses.iter_mut() {
             if status.kind == kind.to_string() && status.source == "environment" {
                 status.store_error = Some(format!(
@@ -1251,23 +1767,31 @@ async fn delete_provider_key(
             }
         }
     }
+
     Ok(statuses)
 }
 
 // ---------------------------------------------------------------------------
+
 // Tauri entry point
+
 // ---------------------------------------------------------------------------
 
 fn run_interactive(engine: ZylCodeEngine) -> Result<(), String> {
     println!("ZylCode Interactive Mode");
+
     println!("Type 'exit' or 'quit' to quit, 'help' for commands.");
+
     println!();
 
     // Auto-load tools from mcp.tools.yaml
+
     {
         let reg = engine.tool_registry_arc();
+
         tauri::async_runtime::block_on(async {
             let n = zylcode_mcp::register_from_default_location(reg.as_ref()).await;
+
             if n > 0 {
                 println!("Loaded {} MCP tools from default location", n);
             }
@@ -1275,34 +1799,50 @@ fn run_interactive(engine: ZylCodeEngine) -> Result<(), String> {
     }
 
     let stdin = io::stdin();
+
     let mut stdout = io::stdout();
 
     loop {
         print!("zylcode> ");
+
         stdout.flush().map_err(|e| e.to_string())?;
 
         let mut input = String::new();
+
         stdin.read_line(&mut input).map_err(|e| e.to_string())?;
+
         let input = input.trim();
 
         match input {
             "" => continue,
+
             "exit" | "quit" => {
                 println!("Goodbye!");
+
                 break;
             }
+
             "help" => {
                 println!("Commands:");
+
                 println!("  <prompt>     - Process a natural language intent");
+
                 println!("  tools        - List available MCP tools");
+
                 println!("  bridges      - List registered MCP bridges");
+
                 println!("  verify       - Run logic verification");
+
                 println!("  tokens       - Show token metrics");
+
                 println!("  help         - Show this help");
+
                 println!("  exit/quit    - Exit interactive mode");
             }
+
             "tools" => {
                 let tools = tauri::async_runtime::block_on(engine.list_tools());
+
                 if tools.is_empty() {
                     println!("No tools registered. Add mcp.tools.yaml to register tools.");
                 } else {
@@ -1316,8 +1856,10 @@ fn run_interactive(engine: ZylCodeEngine) -> Result<(), String> {
                     }
                 }
             }
+
             "bridges" => {
                 let bridges = tauri::async_runtime::block_on(engine.list_mcp_bridges());
+
                 if bridges.is_empty() {
                     println!("No bridges registered.");
                 } else {
@@ -1326,29 +1868,35 @@ fn run_interactive(engine: ZylCodeEngine) -> Result<(), String> {
                     }
                 }
             }
+
             "verify" => {
                 println!("Running verification...");
+
                 match tauri::async_runtime::block_on(engine.verify_logic()) {
                     Ok(report) => {
                         println!(
-                            "{} — {}ms",
+                            "{} â {}ms",
                             if report.passed { "PASSED" } else { "FAILED" },
                             report.duration_ms
                         );
+
                         for c in report.checks {
                             println!(
                                 "  {} {}: {}",
-                                if c.passed { "✓" } else { "✗" },
+                                if c.passed { "â" } else { "â-" },
                                 c.name,
                                 c.message
                             );
                         }
                     }
+
                     Err(e) => println!("Verification failed: {}", e),
                 }
             }
+
             "tokens" => {
                 let metrics = engine.token_metrics();
+
                 println!(
                     "Tokens: in={} out={} saved={} fallback={}",
                     metrics.input_tokens,
@@ -1357,25 +1905,35 @@ fn run_interactive(engine: ZylCodeEngine) -> Result<(), String> {
                     metrics.fallback_count
                 );
             }
+
             prompt => {
                 println!("Processing: {}", prompt);
+
                 let intent = Intent {
                     prompt: prompt.to_string(),
+
                     context: None,
+
                     correlation_id: None,
                 };
+
                 match tauri::async_runtime::block_on(engine.process_intent(intent)) {
                     Ok(result) => {
                         println!("\n--- Result ---");
+
                         println!("{}", result.summary);
+
                         if !result.artifacts.is_empty() {
                             println!("\nArtifacts:");
+
                             for a in result.artifacts {
                                 println!("  [{}] {} ({} chars)", a.kind, a.label, a.content.len());
                             }
                         }
+
                         println!("--- End ---\n");
                     }
+
                     Err(e) => println!("Error: {}", e),
                 }
             }
@@ -1387,6 +1945,7 @@ fn run_interactive(engine: ZylCodeEngine) -> Result<(), String> {
 
 #[allow(dead_code)]
 #[tauri::command]
+
 async fn init_telemetry_db(_state: tauri::State<'_, EngineState>) -> Result<String, String> {
     use rusqlite::Connection;
 
@@ -1406,20 +1965,35 @@ async fn init_telemetry_db(_state: tauri::State<'_, EngineState>) -> Result<Stri
 
     conn.execute(
         "CREATE TABLE IF NOT EXISTS audit_logs (
+
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+
             timestamp TEXT NOT NULL,
+
             event_type TEXT NOT NULL,
+
             severity TEXT NOT NULL,
+
             tool_id TEXT,
+
             transport TEXT,
+
             caller_id TEXT,
+
             input_hash TEXT,
+
             output_hash TEXT,
+
             duration_ms INTEGER,
+
             retry_attempt INTEGER,
+
             max_retries INTEGER,
+
             error TEXT,
+
             created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+
         )",
         [],
     )
@@ -1427,15 +2001,25 @@ async fn init_telemetry_db(_state: tauri::State<'_, EngineState>) -> Result<Stri
 
     conn.execute(
         "CREATE TABLE IF NOT EXISTS metrics (
+
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+
             timestamp TEXT NOT NULL,
+
             total_tokens INTEGER,
+
             input_tokens INTEGER,
+
             output_tokens INTEGER,
+
             active_bridges INTEGER,
+
             queued_requests INTEGER,
+
             error_count INTEGER,
+
             created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+
         )",
         [],
     )
@@ -1445,14 +2029,17 @@ async fn init_telemetry_db(_state: tauri::State<'_, EngineState>) -> Result<Stri
 }
 
 /// Get recent audit log entries with SHA-256 chain hash validation.
+
 #[allow(dead_code)]
 #[tauri::command]
+
 async fn get_recent_audit_logs(
     state: tauri::State<'_, EngineState>,
 ) -> Result<Vec<TelemetryAuditEntry>, String> {
     use rusqlite::Connection;
 
     // Determine database path: prefer env var, fallback to home dir.
+
     let db_path = std::env::var("ZYLCODE_TELEMETRY_DB_PATH")
         .ok()
         .map(|p| std::path::Path::new(&p).to_path_buf())
@@ -1468,38 +2055,56 @@ async fn get_recent_audit_logs(
         .map_err(|e| format!("failed to open telemetry DB at {:?}: {}", db_path, e))?;
 
     // Ensure tables exist on first open.
+
     init_telemetry_db(state)
         .await
         .map_err(|e| format!("DB init failed: {}", e))?;
 
     let prepare_result = conn.prepare(
+
         "SELECT timestamp, event_type, severity, tool_id, transport, caller_id, input_hash, output_hash, duration_ms, retry_attempt, max_retries, error FROM audit_logs ORDER BY id ASC LIMIT 50",
+
     );
+
     let mut stmt = match prepare_result {
         Ok(s) => s,
+
         Err(e) => return Err(format!("failed to prepare SQL: {}", e)),
     };
 
     let mut rows = Vec::new();
+
     if let Ok(mapped_rows) = stmt.query_map([], |row| {
         Ok(TelemetryAuditEntry {
             timestamp: row.get::<_, String>(0).unwrap(),
+
             event_type: row.get::<_, String>(1).unwrap(),
+
             severity: row.get::<_, String>(2).unwrap(),
+
             tool_id: row.get::<_, Option<String>>(3).unwrap(),
+
             transport: row.get::<_, Option<String>>(4).unwrap(),
+
             caller_id: row.get::<_, Option<String>>(5).unwrap(),
+
             input_hash: row.get::<_, Option<String>>(6).unwrap(),
+
             output_hash: row.get::<_, Option<String>>(7).unwrap(),
+
             duration_ms: row.get::<_, Option<u64>>(8).unwrap(),
+
             retry_attempt: row.get::<_, Option<u32>>(9).unwrap(),
+
             max_retries: row.get::<_, Option<u32>>(10).unwrap(),
+
             error: row.get::<_, Option<String>>(11).unwrap(),
         })
     }) {
         for row in mapped_rows {
             match row {
                 Ok(entry) => rows.push(entry),
+
                 Err(e) => {
                     eprintln!("Skipping corrupted audit row: {}", e);
                 }
@@ -1511,52 +2116,83 @@ async fn get_recent_audit_logs(
 }
 
 #[allow(dead_code)]
+
 struct TelemetryAuditEntry {
     /// RFC3339 timestamp.
     pub timestamp: String,
+
     /// Event type.
     pub event_type: String,
+
     /// Severity level.
     pub severity: String,
+
     /// Tool identifier (if applicable).
     pub tool_id: Option<String>,
+
     /// Transport type (stdio, sse, websocket).
     pub transport: Option<String>,
+
     /// Caller identity (anonymized).
     pub caller_id: Option<String>,
+
     /// SHA-256 hash of input payload.
     pub input_hash: Option<String>,
+
     /// SHA-256 hash of output payload.
     pub output_hash: Option<String>,
+
     /// Execution duration in milliseconds.
     pub duration_ms: Option<u64>,
+
     /// Retry attempt number (if applicable).
     pub retry_attempt: Option<u32>,
+
     /// Maximum retries configured.
     pub max_retries: Option<u32>,
+
     /// Error message (if failed).
     pub error: Option<String>,
 }
 
 /// Resolve the one workspace this app instance operates in.
+
 ///
-/// Order: `--workspace <path>` / `--workspace=<path>` → `ZYLCODE_WORKSPACE` →
+
+/// Order: `--workspace <path>` / `--workspace=<path>` â `ZYLCODE_WORKSPACE` â
+
 /// the process working directory. The result is a canonical absolute
+
 /// directory (without Windows' `\\?\` verbatim prefix, so shell commands can
+
 /// use it verbatim). This is the path the engine, the terminal sessions and
-/// the mission queue all inherit — nothing anywhere may assume a directory.
+
+/// the mission queue all inherit â nothing anywhere may assume a directory.
+
 ///
+
 /// # Why this exists
+
 ///
+
 /// The engine used to be configured with `workspace_root = "."`, which
-/// resolves against wherever the executable happened to start — typically the
+
+/// resolves against wherever the executable happened to start â typically the
+
 /// install directory. Terminal commands therefore ran outside the user's
+
 /// project, so `git status` answered "not a git repository" even while the
+
 /// user was looking at a repository in the file explorer.
+
 ///
+
 /// The final step is not quite "the process working directory": when the app is
+
 /// started by double-clicking its own executable, that directory is the binary's
+
 /// folder rather than anything the user chose. See [`escape_launch_directory`].
+
 fn resolve_workspace_root(args: &[String]) -> anyhow::Result<std::path::PathBuf> {
     resolve_workspace_root_from(
         args,
@@ -1567,15 +2203,22 @@ fn resolve_workspace_root(args: &[String]) -> anyhow::Result<std::path::PathBuf>
 }
 
 /// Files/directories that mark a project root when searching upwards from a
+
 /// launch directory. Only consulted to escape the executable's own folder.
+
 const WORKSPACE_MARKERS: [&str; 3] = [".git", "Cargo.toml", "pnpm-workspace.yaml"];
 
 /// The resolver proper, with every ambient input injected so the precedence
+
 /// rules can be tested without mutating the process environment.
+
 fn resolve_workspace_root_from(
     args: &[String],
+
     env_workspace: Option<String>,
+
     current_dir: Option<std::path::PathBuf>,
+
     exe_path: Option<std::path::PathBuf>,
 ) -> anyhow::Result<std::path::PathBuf> {
     let from_flag = args
@@ -1586,49 +2229,69 @@ fn resolve_workspace_root_from(
             args.iter()
                 .find_map(|a| a.strip_prefix("--workspace=").map(str::to_string))
         });
+
     let candidate = from_flag
         .map(std::path::PathBuf::from)
         .or_else(|| env_workspace.map(std::path::PathBuf::from))
         .unwrap_or_else(|| {
             let cwd = current_dir.unwrap_or_else(|| std::path::PathBuf::from("."));
+
             escape_launch_directory(cwd, exe_path.as_deref())
         });
+
     resolve_dir(&candidate)
 }
 
 /// The process working directory is only a usable workspace when it is not
+
 /// simply the folder the executable was launched from.
+
 ///
+
 /// Double-clicking `target\release\zylcode-desktop.exe` in Explorer starts the
+
 /// process with its cwd set to the binary's own directory, so the plain
+
 /// `current_dir()` fallback opened the terminal in `target\release` instead of
-/// the project the user was actually looking at. When — and only when — the cwd
+
+/// the project the user was actually looking at. When â and only when â the cwd
+
 /// *is* the executable's directory, walk up for a project marker; with no
+
 /// marker (an installed app under Program Files, say) the previous fallback is
+
 /// kept unchanged.
+
 fn escape_launch_directory(
     cwd: std::path::PathBuf,
+
     exe_path: Option<&std::path::Path>,
 ) -> std::path::PathBuf {
     let Some(exe_dir) = exe_path.and_then(|exe| exe.parent()) else {
         return cwd;
     };
+
     if !same_directory(&cwd, exe_dir) {
         return cwd;
     }
+
     find_project_root(exe_dir).unwrap_or(cwd)
 }
 
 /// Compare two directories by identity, falling back to a literal comparison
+
 /// when either side cannot be resolved.
+
 fn same_directory(a: &std::path::Path, b: &std::path::Path) -> bool {
     match (a.canonicalize(), b.canonicalize()) {
         (Ok(a), Ok(b)) => a == b,
+
         _ => a == b,
     }
 }
 
 /// The nearest ancestor of `start` (inclusive) carrying a project marker.
+
 fn find_project_root(start: &std::path::Path) -> Option<std::path::PathBuf> {
     start
         .ancestors()
@@ -1641,24 +2304,32 @@ fn find_project_root(start: &std::path::Path) -> Option<std::path::PathBuf> {
 }
 
 /// Canonicalize a workspace candidate and validate that it is a directory,
+
 /// with an error naming the path rather than a bare OS error.
+
 fn resolve_dir(path: &std::path::Path) -> anyhow::Result<std::path::PathBuf> {
     let canonical = path
         .canonicalize()
         .map_err(|e| anyhow::anyhow!("cannot resolve workspace '{}': {e}", path.display()))?;
+
     anyhow::ensure!(
         canonical.is_dir(),
         "workspace '{}' is not a directory",
         canonical.display()
     );
+
     Ok(strip_verbatim(canonical))
 }
 
 /// Windows `canonicalize` returns verbatim (`\\?\C:\...`, `\\?\UNC\...`)
+
 /// paths. Shell commands and UI strings need the plain form.
+
 #[cfg(windows)]
+
 fn strip_verbatim(path: std::path::PathBuf) -> std::path::PathBuf {
     let s = path.to_string_lossy().into_owned();
+
     if let Some(rest) = s.strip_prefix(r"\\?\UNC\") {
         std::path::PathBuf::from(format!(r"\\{rest}"))
     } else if let Some(rest) = s.strip_prefix(r"\\?\") {
@@ -1669,36 +2340,49 @@ fn strip_verbatim(path: std::path::PathBuf) -> std::path::PathBuf {
 }
 
 #[cfg(not(windows))]
+
 fn strip_verbatim(path: std::path::PathBuf) -> std::path::PathBuf {
     path
 }
 
 fn main() {
     // Check for --interactive flag before Tauri initialization
+
     let args: Vec<String> = std::env::args().collect();
 
     // Resolve the workspace once, before anything that depends on it. On a
-    // bad request we exit immediately with a readable message — never start
+
+    // bad request we exit immediately with a readable message â never start
+
     // the app pointed at a directory that is not there.
+
     let workspace = match resolve_workspace_root(&args) {
         Ok(w) => w,
+
         Err(e) => {
             eprintln!("ZylCode: {e:#}");
+
             std::process::exit(1);
         }
     };
+
     let workspace_str = workspace.to_string_lossy().into_owned();
 
     if args.iter().any(|a| a == "--interactive" || a == "-i") {
         let engine = ZylCodeEngine::new(EngineConfig {
             workspace_root: workspace_str,
+
             verbose: false,
+
             extra: Default::default(),
         });
+
         if let Err(e) = run_interactive(engine) {
             eprintln!("Interactive mode error: {}", e);
+
             std::process::exit(1);
         }
+
         return;
     }
 
@@ -1709,49 +2393,75 @@ fn main() {
         )
         .with_target(false)
         .init();
+
     tracing::info!(workspace = %workspace_str, "workspace resolved");
 
     let engine = ZylCodeEngine::new(EngineConfig {
         workspace_root: workspace_str,
+
         verbose: false,
+
         extra: Default::default(),
     });
+
     // Startup order matters: durable settings first, then credentials, then
-    // the live router. Each step is non-fatal on its own — a corrupt settings
+
+    // the live router. Each step is non-fatal on its own â a corrupt settings
+
     // file or an unreadable credential must not stop the app from starting.
+
     match provider_store::load() {
         Some(mut persisted) => {
             for warning in provider_store::inject_secrets(&mut persisted) {
                 tracing::warn!(warning = %warning, "stored provider credential unavailable");
             }
+
             engine.pipeline().router().set_config(persisted);
+
             tracing::info!(
+
                 path = %provider_store::settings_path().display(),
+
                 "provider settings restored"
+
             );
         }
+
         None => {
             let mut cfg = engine.pipeline().router().config();
+
             for warning in provider_store::inject_secrets(&mut cfg) {
                 tracing::warn!(warning = %warning, "stored provider credential unavailable");
             }
+
             engine.pipeline().router().set_api_keys(cfg.api_keys);
         }
     }
+
     let vector_cache = Arc::new(
+
         zylcode_core::cache::VectorCacheStore::with_default_path()
+
             .unwrap_or_else(|e| {
+
                 tracing::warn!(error = %e, "vector_cache init failed, falling back to ./vector_cache.db");
+
                 zylcode_core::cache::VectorCacheStore::new("./vector_cache.db")
+
                     .expect("fallback vector_cache must init")
+
             }),
+
     );
 
     // Auto-load tools from mcp.tools.yaml if present (non-fatal).
+
     {
         let reg = engine.tool_registry_arc();
+
         tauri::async_runtime::block_on(async {
             let n = zylcode_mcp::register_from_default_location(reg.as_ref()).await;
+
             if n > 0 {
                 tracing::info!(tools = n, "loaded MCP tools from default location");
             }
@@ -1762,18 +2472,28 @@ fn main() {
         .plugin(tauri_plugin_shell::init())
         .manage({
             let workspace_root = std::path::PathBuf::from(&engine.config().workspace_root);
+
             EngineState {
                 engine,
+
                 vector_cache,
+
                 terminal_hub: Arc::new(zylcode_core::terminal::TerminalHub::new(
                     workspace_root.clone(),
                 )),
+
                 missions: Arc::new(zylcode_core::missions::MissionQueue::new(workspace_root)),
+
                 build_status: Arc::new(std::sync::Mutex::new(serde_json::json!({
+
                     "state": "idle",
+
                     "note": "no build run in this app session"
+
                 }))),
+
                 cancel: Arc::new(native_chat::CancelSlot::default()),
+
                 composio_accounts: std::sync::RwLock::new(composio_accounts::load()),
             }
         })
@@ -1824,21 +2544,32 @@ fn main() {
 }
 
 #[cfg(test)]
+
 mod workspace_resolution_tests {
+
     //! Regression tests for the working-directory defect: the engine was
+
     //! configured with `workspace_root = "."`, so the terminal ran in
+
     //! whatever directory the executable happened to start in and `git`
+
     //! reported "not a git repository" for the user's actual project.
-    //! These tests pin the resolver that replaces it — the same process the
+
+    //! These tests pin the resolver that replaces it â the same process the
+
     //! app runs at startup, against real directories on disk.
 
     use super::{resolve_dir, resolve_workspace_root, resolve_workspace_root_from};
+
     // Only the `#[cfg(windows)]` test below calls this, so importing it
+
     // unconditionally is an unused import on POSIX targets.
+
     #[cfg(windows)]
     use super::strip_verbatim;
 
     /// A unique real directory under the system temp dir (removed on drop).
+
     struct TempDir(std::path::PathBuf);
 
     impl TempDir {
@@ -1851,7 +2582,9 @@ mod workspace_resolution_tests {
                     .unwrap()
                     .as_nanos()
             ));
+
             std::fs::create_dir_all(&dir).unwrap();
+
             Self(dir)
         }
     }
@@ -1863,26 +2596,34 @@ mod workspace_resolution_tests {
     }
 
     #[test]
+
     fn explicit_flag_wins_and_resolves_to_an_absolute_directory() {
         let tmp = TempDir::new();
+
         let args = vec![
             "zylcode".to_string(),
             "--interactive".to_string(),
             "--workspace".to_string(),
             tmp.0.to_string_lossy().into_owned(),
         ];
+
         let resolved = resolve_workspace_root(&args).unwrap();
+
         assert!(resolved.is_absolute(), "{}", resolved.display());
+
         assert_eq!(resolved, resolve_dir(&tmp.0).unwrap());
     }
 
     #[test]
+
     fn equals_form_of_the_flag_is_accepted_too() {
         let tmp = TempDir::new();
+
         let args = vec![
             "zylcode".to_string(),
             format!("--workspace={}", tmp.0.to_string_lossy()),
         ];
+
         assert_eq!(
             resolve_workspace_root(&args).unwrap(),
             resolve_dir(&tmp.0).unwrap()
@@ -1890,32 +2631,48 @@ mod workspace_resolution_tests {
     }
 
     // -- launch-directory resolution --------------------------------------
+
     //
+
     // Double-clicking `target\release\zylcode-desktop.exe` starts the process
+
     // with its cwd set to the binary's own folder, which the old
-    // `current_dir()` fallback adopted verbatim — so the terminal opened in
+
+    // `current_dir()` fallback adopted verbatim â so the terminal opened in
+
     // `target\release` instead of the project. These pin the precedence order
+
     // and the escape from the executable's directory.
 
     /// A project root carrying `marker`, with an executable at
+
     /// `root/target/release/zylcode-desktop.exe`. Returns (root, release, exe).
+
     fn project_with_release_exe(marker: &str) -> (TempDir, std::path::PathBuf, std::path::PathBuf) {
         let tmp = TempDir::new();
+
         let release = tmp.0.join("target").join("release");
+
         std::fs::create_dir_all(&release).unwrap();
+
         if marker == ".git" {
             std::fs::create_dir_all(tmp.0.join(".git")).unwrap();
         } else {
             std::fs::write(tmp.0.join(marker), "").unwrap();
         }
+
         let exe = release.join("zylcode-desktop.exe");
+
         std::fs::write(&exe, "").unwrap();
+
         (tmp, release, exe)
     }
 
     #[test]
+
     fn the_executable_directory_is_not_taken_as_the_workspace() {
         let (tmp, release, exe) = project_with_release_exe(".git");
+
         let resolved = resolve_workspace_root_from(
             &["zylcode".to_string()],
             None,
@@ -1923,12 +2680,14 @@ mod workspace_resolution_tests {
             Some(exe),
         )
         .unwrap();
+
         assert_eq!(
             resolved,
             resolve_dir(&tmp.0).unwrap(),
             "the launch directory leaked into the workspace: {}",
             resolved.display()
         );
+
         assert_ne!(
             resolved,
             resolve_dir(&release).unwrap(),
@@ -1937,20 +2696,28 @@ mod workspace_resolution_tests {
     }
 
     #[test]
+
     fn a_cargo_manifest_also_marks_the_project_root() {
         let (tmp, release, exe) = project_with_release_exe("Cargo.toml");
+
         let resolved =
             resolve_workspace_root_from(&["zylcode".to_string()], None, Some(release), Some(exe))
                 .unwrap();
+
         assert_eq!(resolved, resolve_dir(&tmp.0).unwrap());
     }
 
     #[test]
+
     fn the_plain_fallback_is_kept_when_the_launch_directory_is_a_real_cwd() {
-        // cwd is not the executable's folder, so it is adopted as-is — the
+        // cwd is not the executable's folder, so it is adopted as-is â the
+
         // pre-existing fallback, unchanged.
+
         let tmp = TempDir::new();
+
         let exe = std::path::PathBuf::from("__no_such_install_dir__/zylcode-desktop.exe");
+
         let resolved = resolve_workspace_root_from(
             &["zylcode".to_string()],
             None,
@@ -1958,12 +2725,15 @@ mod workspace_resolution_tests {
             Some(exe),
         )
         .unwrap();
+
         assert_eq!(resolved, resolve_dir(&tmp.0).unwrap());
     }
 
     #[test]
+
     fn env_workspace_is_used_when_no_flag_is_given() {
         let tmp = TempDir::new();
+
         let resolved = resolve_workspace_root_from(
             &["zylcode".to_string()],
             Some(tmp.0.to_string_lossy().into_owned()),
@@ -1971,18 +2741,23 @@ mod workspace_resolution_tests {
             None,
         )
         .unwrap();
+
         assert_eq!(resolved, resolve_dir(&tmp.0).unwrap());
     }
 
     #[test]
+
     fn the_flag_beats_the_environment() {
         let flag_dir = TempDir::new();
+
         let env_dir = TempDir::new();
+
         let args = vec![
             "zylcode".to_string(),
             "--workspace".to_string(),
             flag_dir.0.to_string_lossy().into_owned(),
         ];
+
         let resolved = resolve_workspace_root_from(
             &args,
             Some(env_dir.0.to_string_lossy().into_owned()),
@@ -1990,63 +2765,230 @@ mod workspace_resolution_tests {
             None,
         )
         .unwrap();
+
         assert_eq!(resolved, resolve_dir(&flag_dir.0).unwrap());
     }
 
     #[test]
+
     fn a_missing_workspace_is_a_readable_error_not_a_silent_fallback() {
         let args = vec![
             "zylcode".to_string(),
             "--workspace".to_string(),
             "__zylcode_no_such_workspace_dir__".to_string(),
         ];
+
         let err = resolve_workspace_root(&args).unwrap_err();
+
         let msg = format!("{err:#}");
+
         assert!(
             msg.contains("cannot resolve workspace"),
             "the error must name the problem: {msg}"
         );
+
         assert!(msg.contains("__zylcode_no_such_workspace_dir__"), "{msg}");
     }
 
     #[test]
+
     fn a_file_is_rejected_because_it_is_not_a_workspace() {
         let tmp = TempDir::new();
+
         let file = tmp.0.join("not_a_dir.txt");
+
         std::fs::write(&file, "hi").unwrap();
+
         let err = resolve_dir(&file).unwrap_err();
+
         assert!(format!("{err:#}").contains("is not a directory"), "{err:#}");
     }
 
     #[test]
+
     fn the_resolved_path_is_usable_in_a_shell() {
         // `\\?\` verbatim paths break naive path handling in cmd/PowerShell
-        // and look wrong in the UI — canonicalization must strip them.
+
+        // and look wrong in the UI â canonicalization must strip them.
+
         let tmp = TempDir::new();
+
         let resolved = resolve_dir(&tmp.0).unwrap();
+
         let shown = resolved.to_string_lossy();
+
         assert!(
             !shown.contains(r"\\?\"),
             "verbatim prefix leaked into a shell-facing path: {shown}"
         );
+
         assert!(!shown.ends_with('.'), "{shown}");
     }
 
     #[cfg(windows)]
     #[test]
+
     fn strip_verbatim_handles_both_drive_and_unc_forms() {
         assert_eq!(
             strip_verbatim(std::path::PathBuf::from(r"\\?\C:\repo")),
             std::path::PathBuf::from(r"C:\repo")
         );
+
         assert_eq!(
             strip_verbatim(std::path::PathBuf::from(r"\\?\UNC\server\share\repo")),
             std::path::PathBuf::from(r"\\server\share\repo")
         );
+
         // Plain paths pass through untouched.
+
         assert_eq!(
             strip_verbatim(std::path::PathBuf::from(r"C:\repo")),
             std::path::PathBuf::from(r"C:\repo")
         );
     }
+}
+
+/// Initiates the OAuth connection flow for a Composio service.
+
+#[tauri::command]
+
+async fn connect_service(
+    service: String,
+
+    state: tauri::State<'_, EngineState>,
+) -> Result<serde_json::Value, String> {
+    let valid_services = [
+        "github", "gmail", "slack", "linear", "gdrive", "jira", "notion",
+    ];
+
+    if !valid_services.contains(&service.as_str()) {
+        return Err(format!("unknown service: {service}"));
+    }
+
+    let accounts = state
+        .composio_accounts
+        .read()
+        .map_err(|_| "composio accounts lock poisoned")?;
+
+    // If already connected, just report status
+
+    if let Some(account) = accounts.accounts.get(service) {
+        return Ok(serde_json::json!({
+
+            "ok": true,
+
+            "connected": true,
+
+            "service": service,
+
+            "status": "connected",
+
+            "connected_at": account.connected_at,
+
+        }));
+    }
+
+    // Otherwise, initiate the Composio Connect Link flow.
+
+    // We generate a hosted Connect Link URL that the user should open to authorize the service.
+
+    // The actual OAuth token exchange happens after the callback, handled by the Composio backend.
+
+    let (redirect_url, connection_id) =
+        composio_client_stub::create_connect_link(&service, &user_id)
+            .await
+            .map_err(|_| "failed to create composio connect link")?;
+
+    // Open the hosted Connect Link URL in the system browser
+
+    #[cfg(target_os = "windows")]
+    {
+        use tauri::api::shell::open;
+        match open(&tauri::api::shell::ShellUrl::Custom(redirect_url.clone())) {
+            Ok(_) => {}
+
+            Err(e) => return Err(format!("failed to open auth URL: {e}")),
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+
+        // On non-Windows, the frontend will handle opening the URL
+
+        // or the user can manually visit the Composio Connect Link.
+    }
+
+    Ok(serde_json::json!({
+
+        "ok": true,
+
+        "connected": false,
+
+        "service": service,
+
+        "status": "connect_started",
+
+        "connection_id": connection_id,
+
+        "redirect_url": redirect_url,
+
+        "message": "Auth flow started - open the URL and complete authorization"
+
+    }))
+}
+
+/// Remove a connected Composio account (revoke / disconnect).
+
+#[tauri::command]
+
+async fn remove_service(
+    service: String,
+
+    state: tauri::State<'_, EngineState>,
+) -> Result<serde_json::Value, String> {
+    let valid_services = [
+        "github", "gmail", "slack", "linear", "gdrive", "jira", "notion",
+    ];
+
+    if !valid_services.contains(&service.as_str()) {
+        return Err(format!("unknown service: {service}"));
+    }
+
+    let mut accounts = state
+        .composio_accounts
+        .write()
+        .map_err(|_| "composio accounts lock poisoned")?;
+
+    if let Some(account) = accounts.accounts.remove(service.as_str()) {
+        // The save is called from register_account path, but let's persist here too
+
+        let _ = composio_accounts::save(&accounts);
+
+        return Ok(serde_json::json!({
+
+            "ok": true,
+
+            "connected": false,
+
+            "service": service,
+
+            "status": "disconnected",
+
+            "message": "Account disconnected"
+
+        }));
+    }
+
+    Ok(serde_json::json!({
+
+        "ok": false,
+
+        "service": service,
+
+        "status": "not_connected",
+
+        "message": "Account was not connected"
+
+    }))
 }
