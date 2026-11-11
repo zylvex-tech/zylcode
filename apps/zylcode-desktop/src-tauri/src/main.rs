@@ -3,10 +3,12 @@
 use serde::{Deserialize, Serialize};
 use std::io::{self, Write};
 use std::sync::Arc;
+use tauri::Manager;
 use zylcode_core::input_validation as iv;
 use zylcode_core::router::{ProviderConfig, ProviderKind};
 use zylcode_core::{EngineConfig, Intent, McpBridgeDescriptor, ZylCodeEngine};
 
+mod design_store;
 mod provider_store;
 mod secrets;
 
@@ -1543,6 +1545,70 @@ fn strip_verbatim(path: std::path::PathBuf) -> std::path::PathBuf {
     path
 }
 
+// ---------------------------------------------------------------------------
+// Design Studio
+//
+// The store owns ids, revisions, timestamps and validation; these commands are
+// the IPC boundary and nothing more. Projects live under the app data directory
+// so they survive a restart and are visible to the user as ordinary files.
+// ---------------------------------------------------------------------------
+
+fn design_store_at(app: &tauri::AppHandle) -> Result<design_store::DesignStore, String> {
+    let dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("cannot resolve the app data directory: {e}"))?
+        .join("design-projects");
+    design_store::DesignStore::new(dir)
+}
+
+#[tauri::command]
+fn design_list(app: tauri::AppHandle) -> Result<Vec<design_store::ProjectSummary>, String> {
+    design_store_at(&app)?.list()
+}
+
+#[tauri::command]
+fn design_create(
+    app: tauri::AppHandle,
+    name: String,
+) -> Result<design_store::DesignProject, String> {
+    design_store_at(&app)?.create(&name)
+}
+
+#[tauri::command]
+fn design_load(app: tauri::AppHandle, id: String) -> Result<design_store::DesignProject, String> {
+    design_store_at(&app)?.load(&id)
+}
+
+#[tauri::command]
+fn design_save(
+    app: tauri::AppHandle,
+    project: design_store::DesignProject,
+) -> Result<design_store::DesignProject, String> {
+    design_store_at(&app)?.save(&project)
+}
+
+#[tauri::command]
+fn design_rename(
+    app: tauri::AppHandle,
+    id: String,
+    name: String,
+) -> Result<design_store::DesignProject, String> {
+    design_store_at(&app)?.rename(&id, &name)
+}
+
+#[tauri::command]
+fn design_delete(app: tauri::AppHandle, id: String) -> Result<(), String> {
+    design_store_at(&app)?.delete(&id)
+}
+
+#[tauri::command]
+fn design_export(app: tauri::AppHandle, id: String, html: String) -> Result<String, String> {
+    design_store_at(&app)?
+        .write_export(&id, &html)
+        .map(|path| path.to_string_lossy().to_string())
+}
+
 fn main() {
     // Check for --interactive flag before Tauri initialization
     let args: Vec<String> = std::env::args().collect();
@@ -1684,7 +1750,14 @@ fn main() {
             build_start,
             package_start,
             clear_vector_cache,
-            get_cache_stats
+            get_cache_stats,
+            design_list,
+            design_create,
+            design_load,
+            design_save,
+            design_rename,
+            design_delete,
+            design_export
         ])
         .run(tauri::generate_context!())
         .expect("error while running ZylCode desktop application");
