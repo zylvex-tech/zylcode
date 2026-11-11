@@ -26,7 +26,7 @@ lru = { workspace = true }
 memchr = { workspace = true }
 zylcode-mcp = { workspace = true }
 zylcode-nav = { workspace = true }
-rusqlite = { workspace = true }
+rusqlite = { version = "0.41.1", features = ["bundled"], default-features = false }
 sha2 = { workspace = true }
 walkdir = "2"
 chrono = { version = "0.4", features = ["serde"] }
