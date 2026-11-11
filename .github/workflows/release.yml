@@ -119,6 +119,11 @@ jobs:
   # download. If the expected set is incomplete it fails without publishing a
   # manifest: a partial SHA256SUMS is worse than none, because it looks like the
   # assets were verified.
+  #
+  # Operational rule: this job hashes whatever is attached when it runs, and
+  # nothing re-triggers it. If a build leg is re-run after it ("Re-run failed
+  # jobs" on the release workflow), re-run this job too, or the published
+  # manifest will describe the previous upload.
   # ---------------------------------------------------------------------------
   checksums:
     needs: release

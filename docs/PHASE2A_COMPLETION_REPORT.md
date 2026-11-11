@@ -242,8 +242,10 @@ product surface, and that the remaining Phase 2A entries are R2 libraries behind
 
 A structural gate now enforces this shape in CI: `scripts/check_capability_registry.py` fails on
 a missing `rung`, an out-of-vocabulary status or rung, a `DISPUTED` entry without its dispute
-record, a summary that disagrees with the entries, and a GREEN entry below R3 that is not
-declared. It does not judge whether a rung is earned.
+record, a rung with no stated basis, a missing or drifted `summary`, and a GREEN entry below R3
+that is not declared. The gate carries its own regression fixtures (`--self-test`), so an edit
+that widens acceptance fails in CI rather than in an audit. It does not judge whether a rung is
+earned.
 
 ---
 
