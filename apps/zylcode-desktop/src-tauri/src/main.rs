@@ -1345,22 +1345,7 @@ async fn get_recent_audit_logs(
     };
 
     let mut rows = Vec::new();
-    if let Ok(mapped_rows) = stmt.query_map([], |row| {
-        Ok(TelemetryAuditEntry {
-            timestamp: row.get::<_, String>(0).unwrap(),
-            event_type: row.get::<_, String>(1).unwrap(),
-            severity: row.get::<_, String>(2).unwrap(),
-            tool_id: row.get::<_, Option<String>>(3).unwrap(),
-            transport: row.get::<_, Option<String>>(4).unwrap(),
-            caller_id: row.get::<_, Option<String>>(5).unwrap(),
-            input_hash: row.get::<_, Option<String>>(6).unwrap(),
-            output_hash: row.get::<_, Option<String>>(7).unwrap(),
-            duration_ms: row.get::<_, Option<u64>>(8).unwrap(),
-            retry_attempt: row.get::<_, Option<u32>>(9).unwrap(),
-            max_retries: row.get::<_, Option<u32>>(10).unwrap(),
-            error: row.get::<_, Option<String>>(11).unwrap(),
-        })
-    }) {
+    if let Ok(mapped_rows) = stmt.query_map([], audit_entry_from_row) {
         for row in mapped_rows {
             match row {
                 Ok(entry) => rows.push(entry),
@@ -1372,6 +1357,27 @@ async fn get_recent_audit_logs(
     }
 
     Ok(rows)
+}
+
+/// Map one `audit_logs` row into a [`TelemetryAuditEntry`].
+///
+/// Conversion failures are returned as `rusqlite::Error` so callers can skip
+/// the corrupted row instead of panicking; SQL `NULL` stays `None`.
+fn audit_entry_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<TelemetryAuditEntry> {
+    Ok(TelemetryAuditEntry {
+        timestamp: row.get(0)?,
+        event_type: row.get(1)?,
+        severity: row.get(2)?,
+        tool_id: row.get(3)?,
+        transport: row.get(4)?,
+        caller_id: row.get(5)?,
+        input_hash: row.get(6)?,
+        output_hash: row.get(7)?,
+        duration_ms: row.get(8)?,
+        retry_attempt: row.get(9)?,
+        max_retries: row.get(10)?,
+        error: row.get(11)?,
+    })
 }
 
 #[allow(dead_code)]
@@ -1393,7 +1399,7 @@ struct TelemetryAuditEntry {
     /// SHA-256 hash of output payload.
     pub output_hash: Option<String>,
     /// Execution duration in milliseconds.
-    pub duration_ms: Option<u64>,
+    pub duration_ms: Option<i64>,
     /// Retry attempt number (if applicable).
     pub retry_attempt: Option<u32>,
     /// Maximum retries configured.
@@ -1909,5 +1915,109 @@ mod workspace_resolution_tests {
             strip_verbatim(std::path::PathBuf::from(r"C:\repo")),
             std::path::PathBuf::from(r"C:\repo")
         );
+    }
+}
+
+#[cfg(test)]
+mod telemetry_audit_tests {
+    //! Regression tests for the `audit_logs` row mapping used by
+    //! `get_recent_audit_logs`.
+    //!
+    //! rusqlite 0.39 removed `FromSql for u64`, so `duration_ms` is decoded as
+    //! `Option<i64>` now. These tests pin the nullable semantics (SQL `NULL`
+    //! stays `None`), the non-negative range, and the error-not-panic contract
+    //! for values that cannot be converted.
+
+    use super::{audit_entry_from_row, TelemetryAuditEntry};
+    use rusqlite::types::Value;
+
+    const SELECT: &str = "SELECT timestamp, event_type, severity, tool_id, transport, \
+         caller_id, input_hash, output_hash, duration_ms, retry_attempt, max_retries, error \
+         FROM audit_logs ORDER BY id ASC LIMIT 50";
+
+    fn audit_db() -> rusqlite::Connection {
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE audit_logs (
+                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                 timestamp TEXT NOT NULL,
+                 event_type TEXT NOT NULL,
+                 severity TEXT NOT NULL,
+                 tool_id TEXT,
+                 transport TEXT,
+                 caller_id TEXT,
+                 input_hash TEXT,
+                 output_hash TEXT,
+                 duration_ms INTEGER,
+                 retry_attempt INTEGER,
+                 max_retries INTEGER,
+                 error TEXT
+             );",
+        )
+        .unwrap();
+        conn
+    }
+
+    fn insert_row(conn: &rusqlite::Connection, duration: Value) {
+        conn.execute(
+            "INSERT INTO audit_logs (timestamp, event_type, severity, duration_ms) \
+             VALUES ('2026-11-11T00:00:00.000Z', 'tool_call', 'info', ?1)",
+            [duration],
+        )
+        .unwrap();
+    }
+
+    fn read_all(conn: &rusqlite::Connection) -> Vec<rusqlite::Result<TelemetryAuditEntry>> {
+        let mut stmt = conn.prepare(SELECT).unwrap();
+        stmt.query_map([], audit_entry_from_row).unwrap().collect()
+    }
+
+    #[test]
+    fn null_duration_maps_to_none() {
+        let conn = audit_db();
+        insert_row(&conn, Value::Null);
+        let entries = read_all(&conn);
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].as_ref().unwrap().duration_ms, None);
+    }
+
+    #[test]
+    fn positive_duration_maps_to_some_i64() {
+        let conn = audit_db();
+        insert_row(&conn, Value::Integer(1_234));
+        let entries = read_all(&conn);
+        assert_eq!(entries[0].as_ref().unwrap().duration_ms, Some(1_234i64));
+    }
+
+    #[test]
+    fn zero_duration_maps_to_some_zero() {
+        let conn = audit_db();
+        insert_row(&conn, Value::Integer(0));
+        let entries = read_all(&conn);
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].as_ref().unwrap().duration_ms, Some(0));
+    }
+
+    #[test]
+    fn invalid_duration_returns_error_without_panicking() {
+        let conn = audit_db();
+        insert_row(&conn, Value::Text("not-a-duration".into()));
+        let entries = read_all(&conn);
+        assert_eq!(entries.len(), 1);
+        assert!(
+            entries[0].is_err(),
+            "a non-integer duration must surface as a row error"
+        );
+    }
+
+    #[test]
+    fn existing_rows_remain_readable() {
+        let conn = audit_db();
+        insert_row(&conn, Value::Null);
+        insert_row(&conn, Value::Integer(42));
+        let entries = read_all(&conn);
+        assert_eq!(entries.len(), 2);
+        assert_eq!(entries[0].as_ref().unwrap().duration_ms, None);
+        assert_eq!(entries[1].as_ref().unwrap().duration_ms, Some(42));
     }
 }
