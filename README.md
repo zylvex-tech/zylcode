@@ -361,8 +361,9 @@ Things a reader might reasonably assume, which this repository does **not** do y
   `synthetic` flag stop at the boundary. The UI cannot yet show why a response ended.
 - **Provider editing is desktop-only.** The browser preview renders the live chain
   read-only (capture `17`); changing keys or testing a connection needs the Tauri runtime.
-- **Acceptance is not self-granted.** 12 of 37 registry entries are disputed and Phase 2A
-  re-acceptance is open; independent acceptance remains outstanding.
+- **Acceptance is not self-granted.** 12 of 37 registry entries are disputed. Phase 2A
+  remediation is complete and a re-audit is requested, but independent acceptance is
+  still outstanding — so those entries stay disputed here.
 - **Computer use is simulation.** Nothing drives a screen
   ([`docs/governance/MAIN_STATUS_REPORT_2026-10-11.md`](docs/governance/MAIN_STATUS_REPORT_2026-10-11.md)).
 - **No signed installers.** Source checkout is the supported path today.
@@ -376,8 +377,9 @@ Things a reader might reasonably assume, which this repository does **not** do y
 - **Now:** a working desktop shell and CLI over a tested core: provider streaming with
   real wire parsing, request-aborting cancellation, failover, an evidence ledger that
   keeps its failures; 1,069 Rust tests, 764 frontend tests, clippy/fmt clean on this head.
-- **In progress:** Phase 2A re-acceptance evidence
-  ([`docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md`](docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md));
+- **In progress:** the Phase 2A independent re-audit — remediation is closed, the
+  verdict is not
+  ([`docs/governance/PHASE2A_REAUDIT_REQUEST_2026-11-11.md`](docs/governance/PHASE2A_REAUDIT_REQUEST_2026-11-11.md));
   surfacing the full `StreamChunk` across IPC; honest distribution.
 - **Planned:** everything in
   [`docs/roadmap/ZYLCODE_ROADMAP_V2.md`](docs/roadmap/ZYLCODE_ROADMAP_V2.md) —

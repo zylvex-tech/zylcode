@@ -1,7 +1,7 @@
 # Repository Documentation Index — read this before any other `.md`
 
 **Status:** GOVERNING MAP
-**Last swept:** 2026-09-16
+**Last swept:** 2026-11-11
 **Governed by:** `ZYLCODE_AGENT_OPERATING_PROTOCOL.md` §4.7 (phase numbers) and §4.8 (superseded documents)
 
 ---
@@ -16,7 +16,7 @@ them carries a superseded banner**.
 An agent that reads `PROJECT_COMPLETE.md` before reading `docs/governance/` will conclude the project
 is finished and that Phases 3 and 4 passed. Both conclusions are false. The authoritative state is:
 
-> **Phase 2A is NOT ACCEPTED — RE-OPENED. Phase 2B is BLOCKED on 2A. Phases 3A–16 are NOT STARTED.**
+> **Phase 2A: remediation complete, AWAITING INDEPENDENT RE-AUDIT. Phase 2B stays BLOCKED until that verdict. Phases 3A–16 are NOT STARTED.**
 
 The root files are not lies about the past — they are **provenance**. They record what was believed
 and attempted during an earlier, differently-numbered program. Under Protocol §4.8 they may be read
