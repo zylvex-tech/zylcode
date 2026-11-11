@@ -1,0 +1,54 @@
+Design Studio — verification transcript
+Generated: 2026-11-11T16:20:47Z
+Branch:    feat/design-studio-slice
+Code commit: 776a4af172421fbd50be2dc57197925afd9dde0e
+Platform:  MINGW64_NT-10.0-26200 / x86_64
+
+== 1. Persistence across a restart (Rust store) ==
+   command: cargo test -p zylcode-desktop design_store
+test design_store::tests::ids_cannot_escape_the_store_directory ... ok
+test design_store::tests::export_writes_the_bytes_it_is_given ... ok
+test design_store::tests::invalid_documents_are_refused_before_they_reach_disk ... ok
+test design_store::tests::a_document_from_a_newer_schema_is_reported_not_misread ... ok
+test design_store::tests::rename_preserves_content_and_delete_removes_both_document_and_export ... ok
+test design_store::tests::a_stale_save_is_refused_instead_of_overwriting ... ok
+test design_store::tests::a_saved_project_is_readable_by_a_new_store_on_the_same_root ... ok
+test design_store::tests::save_advances_the_revision_and_list_reports_it ... ok
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 25 filtered out; finished in 0.08s
+
+   The contract asserted by a_saved_project_is_readable_by_a_new_store_on_the_same_root:
+   save a project, construct a SECOND DesignStore over the same directory (what the next
+   application start does), and load the document back with its nodes and revision intact.
+
+== 2. Whole desktop crate ==
+   command: cargo test -p zylcode-desktop
+test result: ok. 33 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+
+== 3. Lints and types ==
+   cargo clippy -p zylcode-desktop --all-targets -- -D warnings  -> exit 0
+   cargo fmt -p zylcode-desktop                                 -> clean
+   pnpm exec tsc --noEmit                                       -> exit 0
+   pnpm exec eslint src --ext .ts,.tsx                          -> exit 0 (1 pre-existing warning)
+   pnpm exec prettier --check src/**/*.{ts,tsx}                  -> all files formatted
+
+== 4. Frontend suite with coverage gates ==
+   command: pnpm exec vitest run --coverage (apps/zylcode-desktop)
+[2m Test Files [22m [1m[32m71 passed[39m[22m[90m (71)[39m
+All files          |   96.84 |     90.2 |   94.56 |   96.84 |                   
+
+   Thresholds enforced by vitest.config.ts: lines 70, branches 83, functions 80, statements 70.
+
+== 5. The user workflow under test ==
+   apps/zylcode-desktop/src/features/design/DesignStudio.test.tsx drives the real component:
+   - create a project by name, then add a text element and edit it
+   - save (revision advances, UNSAVED clears)
+   - unmount the component and mount a fresh one against the same store, reopen the
+     project, and assert the saved text is present (the restart path)
+   - undo/redo, one-drag-one-undo, validation refusal, failed save reported as failure
+   - unsaved-changes guard on project switch
+   - export HTML containing the current text
+
+== 6. What remains unimplemented ==
+   Visual diff (DESIGN vs RUNTIME), design<->code generation, agent repair, proof,
+   Figma import, screens/routes/tokens/assets, multi-page projects, concurrent editing.
+   The workspace footer and the Design tab note name these; no control renders for them.
