@@ -6289,7 +6289,7 @@ checksum = "29666d0abbfad1e3dc4dcf6144730dd3a3ab225bbbdac83319345b1b44ccfc1b"
 
 [[package]]
 name = "zylcode-cli"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -6309,7 +6309,7 @@ dependencies = [
 
 [[package]]
 name = "zylcode-core"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "ahash",
  "anyhow",
@@ -6343,7 +6343,7 @@ dependencies = [
 
 [[package]]
 name = "zylcode-desktop"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -6362,7 +6362,7 @@ dependencies = [
 
 [[package]]
 name = "zylcode-mcp"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -6391,7 +6391,7 @@ dependencies = [
 
 [[package]]
 name = "zylcode-nav"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "anyhow",
  "ignore",

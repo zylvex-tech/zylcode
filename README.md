@@ -7,7 +7,7 @@
 [![CI](https://github.com/zylvex-tech/zylcode/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/zylvex-tech/zylcode/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
-**Project status: 6 November 2026** · branch `fix/r05-input-validation` · head `fc69e4c` · pre-release
+**Project status: 11 November 2026** · `main` @ `c2a2b94` · pre-release
 
 ZylCode is an engineering workbench developed by **Zylvex Technologies Ltd.** It
 turns an instruction into a plan, executes the plan through approval-gated tools,
@@ -25,7 +25,36 @@ providers you configure yourself.
 
 ---
 
-## What's new — 6 November 2026
+## What's new — 11 November 2026
+
+**`RUSTSEC-2026-0459` is closed on `main`.** The advisory flagged
+`libsqlite3-sys 0.28.0`, reached through `rusqlite 0.31.0` in the audit-log read path.
+That chain is gone:
+
+- **`rusqlite` 0.31.0 → 0.41.1**, which resolves **`libsqlite3-sys` 0.39.1** (the
+  advisory asks for ≥ 0.39.0). `cargo tree -i libsqlite3-sys` reports a single
+  0.39.1 across the workspace — no duplicate C SQLite builds.
+- **The `duration_ms` read no longer panics.** Row decoding moved into
+  `audit_entry_from_row`, which returns `rusqlite::Result` and uses `?` for every
+  column, so a value SQLite cannot convert becomes a skipped, logged row instead of
+  an abort inside the telemetry reader. `NULL` still reads as `None` and integers as
+  `Some(i64)`; the JSON field stays `number | null`, matching the TypeScript
+  `duration_ms?: number` types already in `useAuditStream` / `useTelemetryStream`.
+- **5 regression tests** cover `NULL`, a positive value, zero, a non-integer value
+  (error, not panic) and mixed rows in one read.
+- **No schema migration.** `audit_logs.duration_ms` was already `INTEGER` — SQLite's
+  signed 64-bit storage class — and `CREATE TABLE IF NOT EXISTS` is unchanged, so
+  existing databases remain readable.
+- **`cargo audit` exits 0.** No `RUSTSEC-2026-0459`; the only remaining entries are
+  the two accepted warnings (unmaintained `proc-macro-error`, unsound `glib 0.18.5`).
+
+Landed as **PR #60** (`aaae05e`, merged `c2a2b94`). CI on that head was green on
+Ubuntu, macOS and Windows — including `Cargo audit` and the full workspace suite in
+the Windows leg — plus `coverage` and `frontend-coverage`.
+
+---
+
+## Provider boundary — 6 November 2026
 
 The model layer stopped pretending. Before this milestone the "streaming" path was a
 fake line-chunker in `router.rs` that emitted `{index, delta, done}` and nothing else;
@@ -332,8 +361,9 @@ Things a reader might reasonably assume, which this repository does **not** do y
   `synthetic` flag stop at the boundary. The UI cannot yet show why a response ended.
 - **Provider editing is desktop-only.** The browser preview renders the live chain
   read-only (capture `17`); changing keys or testing a connection needs the Tauri runtime.
-- **Acceptance is not self-granted.** 12 of 37 registry entries are disputed and Phase 2A
-  re-acceptance is open; independent acceptance remains outstanding.
+- **Acceptance is not self-granted.** 12 of 37 registry entries are disputed. Phase 2A
+  remediation is complete and a re-audit is requested, but independent acceptance is
+  still outstanding — so those entries stay disputed here.
 - **Computer use is simulation.** Nothing drives a screen
   ([`docs/governance/MAIN_STATUS_REPORT_2026-10-11.md`](docs/governance/MAIN_STATUS_REPORT_2026-10-11.md)).
 - **No signed installers.** Source checkout is the supported path today.
@@ -347,8 +377,9 @@ Things a reader might reasonably assume, which this repository does **not** do y
 - **Now:** a working desktop shell and CLI over a tested core: provider streaming with
   real wire parsing, request-aborting cancellation, failover, an evidence ledger that
   keeps its failures; 1,069 Rust tests, 764 frontend tests, clippy/fmt clean on this head.
-- **In progress:** Phase 2A re-acceptance evidence
-  ([`docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md`](docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md));
+- **In progress:** the Phase 2A independent re-audit — remediation is closed, the
+  verdict is not
+  ([`docs/governance/PHASE2A_REAUDIT_REQUEST_2026-11-11.md`](docs/governance/PHASE2A_REAUDIT_REQUEST_2026-11-11.md));
   surfacing the full `StreamChunk` across IPC; honest distribution.
 - **Planned:** everything in
   [`docs/roadmap/ZYLCODE_ROADMAP_V2.md`](docs/roadmap/ZYLCODE_ROADMAP_V2.md) —

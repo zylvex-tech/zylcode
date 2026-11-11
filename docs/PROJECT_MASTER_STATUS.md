@@ -1,6 +1,6 @@
 # ZylCode — Project Master Status
 
-> **Last updated:** 2026-10-23 · `main` @ `6469bae` · 125 commits on main
+> **Last updated:** 2026-11-11 · `main` @ `c2a2b94` · 308 commits on main
 >
 > This document is the single source of truth for where ZylCode is, what has been  
 > built, what remains, and what to do next. It is updated after every merged PR.
@@ -15,11 +15,14 @@ chatbot wrapper — it is an operating system for software creation with a
 permission-gated tool runtime, an evidence ledger, and a structured agent loop.
 
 **Current state:** The foundational kernel (Phases 1A–1D) is implemented and  
-accepted. Phase 2A (Repository Intelligence) was rejected in independent audit  
-and is awaiting remediation. Everything beyond 2A is blocked or not started.
+accepted. Phase 2A (Repository Intelligence) was rejected in independent audit;  
+its P0 and P1 remediation is now complete and verified on `main`, and a re-audit  
+is requested. Acceptance is the auditor's to grant, so everything beyond 2A  
+stays blocked until that verdict.
 
-**The gap is not "more code" — it is "wire existing libraries into product  
-surfaces" and "get Phase 2A accepted."**
+**The gap is no longer implementation.** The remediation closed the  
+product-surface and threshold gaps the audit named. What remains is an  
+independent verdict, and then Phase 2B.
 
 ---
 
@@ -28,35 +31,35 @@ surfaces" and "get Phase 2A accepted."**
 ZylCode is built in **16 phases across 6 epochs**. A phase must be **ACCEPTED**  
 (not merely implemented) before dependents may begin.
 
-| Phase  | Title                                  | Status                          | Rung | Blocks                 |
-| ------ | -------------------------------------- | ------------------------------- | ---- | ---------------------- |
-| **1A** | Real Tool Runtime                      | ✅ **ACCEPTED**                 | R3   | 1B                     |
-| **1B** | Agent Execution Loop                   | ✅ **ACCEPTED**                 | R3   | 1C                     |
-| **1C** | Model-Driven Autonomous Agent          | ✅ **ACCEPTED WITH CONDITIONS** | R3   | 1D                     |
-| **1D** | Durable Memory, Evidence & Recovery    | ✅ **ACCEPTED WITH CONDITIONS** | R3   | 2A                     |
-| **2A** | Repository Intelligence Foundation     | ❌ **NOT ACCEPTED — RE-OPENED** | R2   | 2B                     |
-| **2B** | Repository Reasoning & Impact Analysis | 🚫 **BLOCKED on 2A**            | —    | 3A                     |
-| **3A** | ZylCode Project System                 | ⏸ **NOT STARTED**               | —    | 3B, 4, 5, 6A, 8A       |
-| **3B** | Mission Engine                         | ⏸ **NOT STARTED**               | —    | 4, 14                  |
-| **4**  | Model Platform / Model Democracy       | ⏸ **NOT STARTED**               | —    | 14                     |
-| **5**  | Extension Platform                     | ⏸ **NOT STARTED**               | —    | 6A, 7A, 10, 11, 13, 15 |
-| **6A** | Artifact System                        | ⏸ **NOT STARTED**               | —    | 6B, 7A, 9              |
-| **6B** | Live Preview Runtime                   | ⏸ **NOT STARTED**               | —    | 7A                     |
-| **7A** | Browser Runtime                        | ⏸ **NOT STARTED**               | —    | 7B, 9, 12              |
-| **7B** | Computer Use Foundation                | ⏸ **NOT STARTED**               | —    | 7C, 7D                 |
-| **7C** | Computer Use Reliability               | ⏸ **NOT STARTED**               | —    | 7D                     |
-| **7D** | Application Adapters                   | ⏸ **NOT STARTED**               | —    | 9, 12                  |
-| **8A** | Design Foundation                      | ⏸ **NOT STARTED**               | —    | 8B, 8C                 |
-| **8B** | Professional Design Canvas             | ⏸ **NOT STARTED**               | —    | 9                      |
-| **8C** | Design ↔ Code                          | ⏸ **NOT STARTED**               | —    | 9                      |
-| **9**  | Visual Intelligence & Self-Repair      | ⏸ **NOT STARTED**               | —    | 12, 16                 |
-| **10** | Android Device Lab                     | ⏸ **NOT STARTED**               | —    | 12, 13, 16             |
-| **11** | macOS/iOS Worker                       | ⏸ **NOT STARTED**               | —    | 12, 13                 |
-| **12** | Proof Engine v2                        | ⏸ **NOT STARTED**               | —    | 13, 16                 |
-| **13** | Delivery Engine                        | ⏸ **NOT STARTED**               | —    | 16                     |
-| **14** | Multi-Agent Engineering                | ⏸ **NOT STARTED**               | —    | 15, 16                 |
-| **15** | Marketplace and Ecosystem              | ⏸ **NOT STARTED**               | —    | 16                     |
-| **16** | Public Commissioning                   | ⏸ **NOT STARTED**               | —    | —                      |
+| Phase  | Title                                  | Status                                          | Rung         | Blocks                 |
+| ------ | -------------------------------------- | ----------------------------------------------- | ------------ | ---------------------- |
+| **1A** | Real Tool Runtime                      | ✅ **ACCEPTED**                                 | R3           | 1B                     |
+| **1B** | Agent Execution Loop                   | ✅ **ACCEPTED**                                 | R3           | 1C                     |
+| **1C** | Model-Driven Autonomous Agent          | ✅ **ACCEPTED WITH CONDITIONS**                 | R3           | 1D                     |
+| **1D** | Durable Memory, Evidence & Recovery    | ✅ **ACCEPTED WITH CONDITIONS**                 | R3           | 2A                     |
+| **2A** | Repository Intelligence Foundation     | 🟡 **REMEDIATION COMPLETE — AWAITING RE-AUDIT** | R3 (claimed) | 2B                     |
+| **2B** | Repository Reasoning & Impact Analysis | 🚫 **BLOCKED on 2A verdict**                    | —            | 3A                     |
+| **3A** | ZylCode Project System                 | ⏸ **NOT STARTED**                               | —            | 3B, 4, 5, 6A, 8A       |
+| **3B** | Mission Engine                         | ⏸ **NOT STARTED**                               | —            | 4, 14                  |
+| **4**  | Model Platform / Model Democracy       | ⏸ **NOT STARTED**                               | —            | 14                     |
+| **5**  | Extension Platform                     | ⏸ **NOT STARTED**                               | —            | 6A, 7A, 10, 11, 13, 15 |
+| **6A** | Artifact System                        | ⏸ **NOT STARTED**                               | —            | 6B, 7A, 9              |
+| **6B** | Live Preview Runtime                   | ⏸ **NOT STARTED**                               | —            | 7A                     |
+| **7A** | Browser Runtime                        | ⏸ **NOT STARTED**                               | —            | 7B, 9, 12              |
+| **7B** | Computer Use Foundation                | ⏸ **NOT STARTED**                               | —            | 7C, 7D                 |
+| **7C** | Computer Use Reliability               | ⏸ **NOT STARTED**                               | —            | 7D                     |
+| **7D** | Application Adapters                   | ⏸ **NOT STARTED**                               | —            | 9, 12                  |
+| **8A** | Design Foundation                      | ⏸ **NOT STARTED**                               | —            | 8B, 8C                 |
+| **8B** | Professional Design Canvas             | ⏸ **NOT STARTED**                               | —            | 9                      |
+| **8C** | Design ↔ Code                          | ⏸ **NOT STARTED**                               | —            | 9                      |
+| **9**  | Visual Intelligence & Self-Repair      | ⏸ **NOT STARTED**                               | —            | 12, 16                 |
+| **10** | Android Device Lab                     | ⏸ **NOT STARTED**                               | —            | 12, 13, 16             |
+| **11** | macOS/iOS Worker                       | ⏸ **NOT STARTED**                               | —            | 12, 13                 |
+| **12** | Proof Engine v2                        | ⏸ **NOT STARTED**                               | —            | 13, 16                 |
+| **13** | Delivery Engine                        | ⏸ **NOT STARTED**                               | —            | 16                     |
+| **14** | Multi-Agent Engineering                | ⏸ **NOT STARTED**                               | —            | 15, 16                 |
+| **15** | Marketplace and Ecosystem              | ⏸ **NOT STARTED**                               | —            | 16                     |
+| **16** | Public Commissioning                   | ⏸ **NOT STARTED**                               | —            | —                      |
 
 **Rung legend:** R0 = simulation · R1 = scaffold · R2 = library/test · R3 =  
 product surface + evidence · R4 = independent audit · R5 = computed from evidence
@@ -121,9 +124,10 @@ Durable memory with crash recovery, evidence ledger, and permission gate.
 
 ---
 
-### Phase 2A — Repository Intelligence Foundation ❌ RE-OPENED
+### Phase 2A — Repository Intelligence Foundation 🟡 AWAITING RE-AUDIT
 
-A structured, queryable model of a repository. **Implemented but NOT ACCEPTED.**
+A structured, queryable model of a repository. **Implemented, remediated, and  
+NOT self-accepted** — the verdict belongs to the independent auditor.
 
 **What exists:**
 
@@ -144,17 +148,60 @@ A structured, queryable model of a repository. **Implemented but NOT ACCEPTED.**
 3. Zero product integration — library only, no UI or CLI surface beyond debug
 4. Windows path-normalization defect in exclusion logic
 
-**Remediation status:** P0 fixes applied (path exclusion, metric rebaseline,  
-determinism proof, reproduction transcript). P1 items (integration into AgentLoop,  
-quality thresholds, failing test resolution) **NOT STARTED**.
+**Remediation status (verified 2026-11-11 on `main` @ `c2a2b94`): P0 complete, P1  
+complete.**
+
+- **P1.7 — integration (option a).** `ContextBuilder::build` ranks the agent's  
+  relevant files through the real intelligence pipeline  
+  (`find_relevant_files_intelligent`, falling back to the legacy heuristic only when  
+  indexing is unavailable) and attaches deterministic repository-graph citations via  
+  `intelligence::nav_api::agent_citation_block`. `zylcode repo-context <task>` is  
+  the CLI entry point. Two tests hold it:  
+  `context_builder_uses_intelligence_ranking` and  
+  `agent_context_carries_deterministic_graph_citations` (no `HEURISTIC` citation may  
+  be presented as a graph fact).
+- **P1.8 — thresholds.** `crates/zylcode-core/tests/repo_intelligence_benchmark.rs`  
+  asserts `Precision@10 >= 0.60` **and** `Recall@10 >= 0.60` on a 28-question set, and  
+  runs inside the default merge gate (`cargo test --workspace --all-targets`). The  
+  scan-throughput test is `#[ignore]`d so a slow machine cannot red-flag correctness.
+- **P1.9 — failing router test.** Resolved: `TokenRouter::without_vector_cache()`  
+  makes the dispatch test hermetic, and the assertion parses `AgentDecision` instead  
+  of substring-matching a retired envelope (see `PHASE2A_REMEDIATION_ORDER.md` P1.9).
+- **P1.10 — dirty tree.** Working tree is clean; the incident's modules are no longer  
+  load-bearing untracked files.
+- **P0.6 is deliberately unchanged.** The 12 intelligence capabilities stay  
+  **DISPUTED** in `docs/capability-registry.json` until an auditor rules on the R3  
+  claim. Builder evidence is not acceptance.
+
+Re-audit request:  
+[`docs/governance/PHASE2A_REAUDIT_REQUEST_2026-11-11.md`](governance/PHASE2A_REAUDIT_REQUEST_2026-11-11.md).
 
 **Blocking:** Phase 2B and everything downstream.
 
 ---
 
-## 4. Recent Engineering (2026-10)
+## 4. Recent Engineering (2026-11)
 
 These are the most recently merged changes on `main`:
+
+### PR #60 — `RUSTSEC-2026-0459` closed (merged 2026-11-11)
+
+- `rusqlite` 0.31.0 → 0.41.1, resolving `libsqlite3-sys` 0.39.1 (advisory asks ≥ 0.39.0)
+- `duration_ms` decoding moved into `audit_entry_from_row`, which returns  
+  `rusqlite::Result` and uses `?`, so an unconvertible value skips a row instead of  
+  panicking in the telemetry reader; `NULL` stays `None`, integers stay `Some(i64)`
+- 5 regression tests (NULL, positive, zero, non-integer, mixed rows)
+- No schema migration: `duration_ms` was already `INTEGER`
+- `cargo audit` exits 0 with only the two accepted warnings
+- Merge commit `c2a2b94`; CI plus `coverage` green on all three platforms
+
+### PR #61 — status refresh and `v0.2.4` preparation (open at time of writing)
+
+- Front page dated 11 November 2026 against `main`; the `RUSTSEC-2026-0459` work is  
+  the new "What's new" entry and the 6 November provider work keeps its own date
+- Workspace bumped to 0.2.4 so a `v0.2.4` tag produces 0.2.4 artifacts
+
+### Earlier (2026-10)
 
 ### PR #28 — `serde-saphyr` migration (merged 2026-10-23)
 
@@ -215,16 +262,19 @@ retrieval — the heart of the product's differentiated value.
 
 ### Immediate (unblocks everything)
 
-**Phase 2A re-acceptance.** This is the critical path. Without it, 2B is blocked,  
-and without 2B, Epoch II (Project & Agent OS) cannot begin.
+**The Phase 2A verdict.** This is the critical path. Without it, 2B is blocked,  
+and without 2B, Epoch II (Project & Agent OS) cannot begin. The remediation work  
+itself is finished:
 
-P1 remediation items still open:
+1. ✔ Intelligence is integrated into `AgentLoop` context assembly and exposed at  
+   `zylcode repo-context` (option (a), not the downgrade)
+2. ✔ `Precision@10` and `Recall@10` are both asserted at ≥ 0.60 in CI
+3. ✔ The failing `router::tests::synthetic_offline_dispatch_returns_parseable_payload`  
+   was resolved by removing the shared vector-cache dependency
+4. ✔ The working tree is clean
 
-1. Integrate intelligence into `AgentLoop` context assembly + CLI entry point —  
-   **or** honestly downgrade the 11 DISPUTED capabilities to PARTIAL/R2
-2. Raise quality thresholds: `Precision@10 ≥ 0.60`, Q5/Q6/Q10 non-zero
-3. Resolve failing `router::tests::synthetic_offline_dispatch_returns_parseable_payload`
-4. Commit or discard 53 modified files from the dirty-tree incident
+What is **not** done, and cannot be done by the builder: independent acceptance of  
+the R3 claim for the 12 disputed entries.
 
 ### Near-term (after 2A accepted)
 
@@ -249,11 +299,13 @@ P1 remediation items still open:
 
 ## 8. The Most Logical Next Step
 
-> **Start Phase 2A P1 remediation.**
+> **File the Phase 2A re-audit and hold Phase 2B until the verdict.**
 
-Specifically:
+Remediation is closed on `main` @ `c2a2b94`; the dated request is  
+`docs/governance/PHASE2A_REAUDIT_REQUEST_2026-11-11.md`. The steps below are  
+retained as the record of what was done.
 
-1. **Check out `main` at the latest tip (`6469bae`)**
+1. **Check out `main` at the latest tip (`c2a2b94`)**
 2. **Verify a clean worktree compiles:** `cargo check --workspace --all-targets`
 3. **Address the dirty-tree legacy:** review `performance.rs` and  
    `system_integration.rs` — commit if real, discard if not, but do not leave  
@@ -308,7 +360,8 @@ cargo tree -p unsafe-libyaml    # should error: not found
 python scripts/check_retracted_claims.py
 ```
 
-**Latest verified run:** 2026-10-23, PR #28 merge, 4 CI checks passed.
+**Latest verified run:** 2026-11-11, `main` @ `c2a2b94`, CI plus `coverage` and  
+`frontend-coverage` green (Ubuntu, macOS, Windows).
 
 ---
 
