@@ -1,0 +1,46 @@
+MCP client — real third-party server transcript
+Generated: 2026-11-11T12:50:37Z
+Branch:    test/mcp-real-server-integration
+Base code: 10dd351efec0cc2baeae0984689faedba07b39b7 (this file is added in the following commit)
+Platform:  MINGW64_NT-10.0-26200 / x86_64
+node:      v24.21.0
+npx:       12.0.1
+pinned:    2.3.0
+
+== 1. Raw stdio exchange with the published server (independent of ZylCode) ==
+   request: initialize(protocolVersion=2025-06-18) -> notifications/initialized -> tools/list
+   command: npx -y @modelcontextprotocol/server-filesystem@2.3.0 <sandbox>
+   {"result":{"protocolVersion":"2025-06-18","capabilities":{"tools":{"listChanged":true},"resources":{"listChanged":true}},"serverInfo":{"name":"secure-filesystem-server","version":"2.3.0"}},"jsonrpc":"2.0","id":1}
+   {"result":{"tools":[{"name":"read_file","title":"Read File (Deprecated)","description":"Read the complete contents of a file as text. DEPRECATED: Use read_text_file instead.","inputSchema":{"type":"object","$schema":"https://json-schema.org/draft/2020-12/schema","properties":{"path":{"type":"string"...
+
+== 2. ZylCode client against that server ==
+   command: cargo test -p zylcode-mcp --test mcp_real_server -- --ignored --test-threads=1
+        Running tests\mcp_real_server.rs (target\debug\deps\mcp_real_server-4c646d617224d49a.exe)
+   
+   running 2 tests
+   test real_server_initializes_discovers_tools_and_executes_a_read ... ok
+   test real_server_refuses_a_path_outside_its_roots_and_stays_usable ... ok
+   
+   test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 21.33s
+   
+
+== 3. Negative control — the test must fail, never silently skip ==
+   command: ZYLCODE_MCP_E2E_SERVER=@modelcontextprotocol/server-filesystem@9.9.9 \
+            cargo test -p zylcode-mcp --test mcp_real_server -- --ignored --test-threads=1
+   thread 'real_server_initializes_discovers_tools_and_executes_a_read' (27068) panicked at crates\zylcode-mcp\tests\mcp_real_server.rs:141:10:
+       MCP server closed stdout; stderr tail: npm error code ETARGET | npm error notarget No matching version found for @modelcontextprotocol/server-filesystem@9.9.9. | npm error notarget In most cases you or one of your dependencies are requesting a package version that doesn't exist. | npm error A complete log of this run can be found in: C:\Users\MBARIESERVICESLTD\AppData\Local\npm-cache\_logs\2026-11-11T12_51_19_036Z-debug-0.log
+   thread 'real_server_refuses_a_path_outside_its_roots_and_stays_usable' (15820) panicked at crates\zylcode-mcp\tests\mcp_real_server.rs:237:43:
+       MCP server closed stdout; stderr tail: npm error code ETARGET | npm error notarget No matching version found for @modelcontextprotocol/server-filesystem@9.9.9. | npm error notarget In most cases you or one of your dependencies are requesting a package version that doesn't exist. | npm error A complete log of this run can be found in: C:\Users\MBARIESERVICESLTD\AppData\Local\npm-cache\_logs\2026-11-11T12_51_24_326Z-debug-0.log
+   test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 10.54s
+
+== What is asserted by the passing tests ==
+   - server identity reported by the server itself contains 'filesystem'
+   - negotiated protocol version is one this client implements
+   - tools/list returns >= 5 tools incl. read_text_file and list_directory
+   - read_text_file's inputSchema is retained and annotations are present
+   - tools/call read_text_file returns the exact marker bytes from disk
+   - tools/call list_directory names the fixture file
+   - a path outside the server's allowed root is an error, carries no content
+   - the session survives that refusal and still serves a valid read
+   - an unknown tool surfaces an error (no hang)
+   - shutdown completes

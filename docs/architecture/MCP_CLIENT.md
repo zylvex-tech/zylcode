@@ -90,9 +90,35 @@ wire-level cancellation, crash → reported failure → reconnect, exhausted ret
 reported as `Failed`, and gated dispatch for both refusal and allowance with the
 evidence file asserted.
 
+## A real third-party server
+
+`crates/zylcode-mcp/tests/mcp_real_server.rs` spawns the published
+`@modelcontextprotocol/server-filesystem@2.3.0` through `npx` and asserts on what
+only that program can produce: its own `serverInfo` (`secure-filesystem-server`),
+its tool list, its JSON Schemas, and bytes read from a temporary directory.
+
+```text
+cargo test -p zylcode-mcp --test mcp_real_server -- --ignored --test-threads=1
+```
+
+These tests are ignored by default because they need `node`/`npx` on `PATH` and
+network access on a cold cache. They never skip silently once started: a missing
+`npx`, an `initialize` that goes unanswered, or a tool result carrying the wrong
+bytes fails them. The negative control is recorded next to the pass in
+`docs/governance/evidence/mcp_real_server_transcript_2026-11-11.txt` — pinning a
+version that does not exist fails both tests with npm's `ETARGET` error instead
+of passing.
+
+Still covered only by the fixture server: protocol-version rejection, malformed
+frames, timeouts and cancellation, crash/restart recovery, and the permission
+gate's refusal path. Each needs a server that misbehaves on command, which a
+maintained third-party server will not do.
+
 ## Not implemented
 
 - No `resources/*` or `prompts/*`; only tools are discovered.
+- No real third-party server is exercised over Streamable HTTP; the transport's
+  tests use a local fixture, so remote-server interoperability is unproven.
 - No client-side sampling, roots or elicitation. Server requests for those are
   answered `-32601` and counted in the session.
 - No OAuth. A remote server needing it must be reached through a local gateway
