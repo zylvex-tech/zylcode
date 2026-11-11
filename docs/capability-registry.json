@@ -5,116 +5,168 @@
   "capabilities": {
     "application_lifecycle": {
       "status": "GREEN",
+      "rung": "R3",
+      "rung_basis": "Backfilled 2026-11-11 from status GREEN: ZYLCODE_CAPABILITY_MODEL 4.2 requires R3 or above for GREEN. Builder assertion derived from this entry's recorded evidence; not independently audited.",
       "evidence": "Process running, window visible",
       "details": "Tauri v2 application launches successfully"
     },
     "provider_configuration": {
       "status": "GREEN",
+      "rung": "R3",
+      "rung_basis": "Backfilled 2026-11-11 from status GREEN: ZYLCODE_CAPABILITY_MODEL 4.2 requires R3 or above for GREEN. Builder assertion derived from this entry's recorded evidence; not independently audited.",
       "evidence": "UI shows providers, config persists, real HTTP calls",
       "details": "Anthropic, Ollama, OpenRouter, Synthetic Offline"
     },
     "mcp_tool_registration": {
       "status": "GREEN",
+      "rung": "R3",
+      "rung_basis": "Backfilled 2026-11-11 from status GREEN: ZYLCODE_CAPABILITY_MODEL 4.2 requires R3 or above for GREEN. Builder assertion derived from this entry's recorded evidence; not independently audited.",
       "evidence": "Tools registered in ToolRegistry",
       "details": "Real filesystem, shell, git, search tools"
     },
     "real_llm_calls": {
       "status": "GREEN",
+      "rung": "R3",
+      "rung_basis": "Backfilled 2026-11-11 from status GREEN: ZYLCODE_CAPABILITY_MODEL 4.2 requires R3 or above for GREEN. Builder assertion derived from this entry's recorded evidence; not independently audited.",
       "evidence": "router.rs makes HTTP POST to providers",
       "details": "Real HTTP calls when API keys configured"
     },
     "streaming_infrastructure": {
       "status": "GREEN",
+      "rung": "R3",
+      "rung_basis": "Backfilled 2026-11-11 from status GREEN: ZYLCODE_CAPABILITY_MODEL 4.2 requires R3 or above for GREEN. Builder assertion derived from this entry's recorded evidence; not independently audited.",
       "evidence": "process_intent_stream emits intent:chunk events",
       "details": "Frontend listens via useStreamSubscription"
     },
     "agent_protocol": {
       "status": "GREEN",
+      "rung": "R3",
+      "rung_basis": "Backfilled 2026-11-11 from status GREEN: ZYLCODE_CAPABILITY_MODEL 4.2 requires R3 or above for GREEN. Builder assertion derived from this entry's recorded evidence; not independently audited.",
       "evidence": "AgentDecision enum with Think, Plan, ToolCall, RequestApproval, Verify, Complete, Fail",
       "details": "Full agent decision protocol implemented"
     },
     "tool_runtime": {
       "status": "GREEN",
+      "rung": "R3",
+      "rung_basis": "Backfilled 2026-11-11 from status GREEN: ZYLCODE_CAPABILITY_MODEL 4.2 requires R3 or above for GREEN. Builder assertion derived from this entry's recorded evidence; not independently audited.",
       "evidence": "RealTool trait with FileSystemTool, ShellTool, GitTool, SearchTool",
       "details": "Real tool execution with evidence recording"
     },
     "model_client_abstraction": {
       "status": "GREEN",
+      "rung": "R3",
+      "rung_basis": "Backfilled 2026-11-11 from status GREEN: ZYLCODE_CAPABILITY_MODEL 4.2 requires R3 or above for GREEN. Builder assertion derived from this entry's recorded evidence; not independently audited.",
       "evidence": "ModelClient trait with RealModelClient and TestModelClient",
       "details": "Supports real providers and deterministic testing"
     },
     "context_builder": {
       "status": "GREEN",
+      "rung": "R3",
+      "rung_basis": "Backfilled 2026-11-11 from status GREEN: ZYLCODE_CAPABILITY_MODEL 4.2 requires R3 or above for GREEN. Builder assertion derived from this entry's recorded evidence; not independently audited.",
       "evidence": "ContextBuilder gathers file tree, relevant files, git status",
       "details": "Automated context gathering for agent"
     },
     "tool_schema_exposure": {
       "status": "GREEN",
+      "rung": "R3",
+      "rung_basis": "Backfilled 2026-11-11 from status GREEN: ZYLCODE_CAPABILITY_MODEL 4.2 requires R3 or above for GREEN. Builder assertion derived from this entry's recorded evidence; not independently audited.",
       "evidence": "ToolRegistry.list_schemas() returns ToolSchema with risk classification",
       "details": "Models can discover available tools and their risk levels"
     },
     "approval_enforcement": {
       "status": "GREEN",
+      "rung": "R3",
+      "rung_basis": "Backfilled 2026-11-11 from status GREEN: ZYLCODE_CAPABILITY_MODEL 4.2 requires R3 or above for GREEN. Builder assertion derived from this entry's recorded evidence; not independently audited.",
       "evidence": "requires_approval() checks risk level, AwaitingApproval state",
       "details": "Destructive actions require approval"
     },
     "completion_verifier": {
       "status": "GREEN",
+      "rung": "R3",
+      "rung_basis": "Backfilled 2026-11-11 from status GREEN: ZYLCODE_CAPABILITY_MODEL 4.2 requires R3 or above for GREEN. Builder assertion derived from this entry's recorded evidence; not independently audited.",
       "evidence": "verify_completion_evidence() checks for tool execution and evidence",
       "details": "Cannot claim complete without evidence"
     },
     "observation_loop": {
       "status": "GREEN",
+      "rung": "R2",
+      "rung_basis": "Backfilled 2026-11-11: status is GREEN, but the recorded evidence is a passing unit test, which ZYLCODE_CAPABILITY_MODEL 4.2 explicitly says cannot support GREEN (R2 evidence). Rung recorded at R2; the status/rung inconsistency is declared here rather than resolved, and is listed in docs/PHASE2A_COMPLETION_REPORT.md section 10.",
+      "rung_conflict": true,
+      "rung_conflict_reason": "GREEN requires R3 per ZYLCODE_CAPABILITY_MODEL 4.2; evidence is unit-test only (R2). Declared for the auditor; status deliberately unchanged in this backfill.",
       "evidence": "test_observation_loop passes, tool results fed back to model",
       "details": "Model receives tool observations for next decision"
     },
     "repair_loop": {
       "status": "GREEN",
+      "rung": "R2",
+      "rung_basis": "Backfilled 2026-11-11: status is GREEN, but the recorded evidence is a passing unit test, which ZYLCODE_CAPABILITY_MODEL 4.2 explicitly says cannot support GREEN (R2 evidence). Rung recorded at R2; the status/rung inconsistency is declared here rather than resolved, and is listed in docs/PHASE2A_COMPLETION_REPORT.md section 10.",
+      "rung_conflict": true,
+      "rung_conflict_reason": "GREEN requires R3 per ZYLCODE_CAPABILITY_MODEL 4.2; evidence is unit-test only (R2). Declared for the auditor; status deliberately unchanged in this backfill.",
       "evidence": "test_repair_loop passes, failures trigger repair attempts",
       "details": "Agent can recover from failures"
     },
     "bounded_execution": {
       "status": "GREEN",
+      "rung": "R3",
+      "rung_basis": "Backfilled 2026-11-11 from status GREEN: ZYLCODE_CAPABILITY_MODEL 4.2 requires R3 or above for GREEN. Builder assertion derived from this entry's recorded evidence; not independently audited.",
       "evidence": "Step limits, timeouts, and cancellation implemented",
       "details": "Agent cannot run indefinitely"
     },
     "risk_classification": {
       "status": "GREEN",
+      "rung": "R3",
+      "rung_basis": "Backfilled 2026-11-11 from status GREEN: ZYLCODE_CAPABILITY_MODEL 4.2 requires R3 or above for GREEN. Builder assertion derived from this entry's recorded evidence; not independently audited.",
       "evidence": "RiskLevel enum: Read, Write, Execute, Network, GitWrite, Destructive, Release",
       "details": "Tools classified by risk level"
     },
     "test_model_client": {
       "status": "GREEN",
+      "rung": "R2",
+      "rung_basis": "Backfilled 2026-11-11: status is GREEN, but the recorded evidence is a passing unit test, which ZYLCODE_CAPABILITY_MODEL 4.2 explicitly says cannot support GREEN (R2 evidence). Rung recorded at R2; the status/rung inconsistency is declared here rather than resolved, and is listed in docs/PHASE2A_COMPLETION_REPORT.md section 10.",
+      "rung_conflict": true,
+      "rung_conflict_reason": "GREEN requires R3 per ZYLCODE_CAPABILITY_MODEL 4.2; evidence is unit-test only (R2). Declared for the auditor; status deliberately unchanged in this backfill.",
       "evidence": "TestModelClient provides deterministic responses for CI",
       "details": "Enables reliable testing without real API calls"
     },
     "remote_ci": {
       "status": "EXTERNAL_BLOCKER",
+      "rung": "R2",
+      "rung_basis": "Backfilled 2026-11-11: no rung can be evidenced for a channel recorded as blocked. GitHub Actions now runs on this repository (five required checks green at 1c14aec), but this entry is neither re-verified nor reclassified here.",
       "evidence": "GitHub Actions blocked by billing issue",
       "details": "CI repair implemented but cannot run due to account billing"
     },
     "evidence_ledger": {
       "status": "GREEN",
+      "rung": "R3",
+      "rung_basis": "Backfilled 2026-11-11 from status GREEN: ZYLCODE_CAPABILITY_MODEL 4.2 requires R3 or above for GREEN. Builder assertion derived from this entry's recorded evidence; not independently audited.",
       "evidence": "LedgerStore trait with SqliteLedgerStore and MemoryLedgerStore",
       "details": "Append-first, idempotent evidence ledger with execution state machine"
     },
     "session_persistence": {
       "status": "GREEN",
+      "rung": "R3",
+      "rung_basis": "Backfilled 2026-11-11 from status GREEN: ZYLCODE_CAPABILITY_MODEL 4.2 requires R3 or above for GREEN. Builder assertion derived from this entry's recorded evidence; not independently audited.",
       "evidence": "SessionCheckpoint saved/loaded from ledger",
       "details": "Session state persisted for crash recovery"
     },
     "crash_recovery": {
       "status": "GREEN",
+      "rung": "R3",
+      "rung_basis": "Backfilled 2026-11-11 from status GREEN: ZYLCODE_CAPABILITY_MODEL 4.2 requires R3 or above for GREEN. Builder assertion derived from this entry's recorded evidence; not independently audited.",
       "evidence": "Agent can resume from checkpoint after crash",
       "details": "Recovery logic scans ledger for incomplete executions"
     },
     "release_installers": {
       "status": "PARTIAL",
+      "rung": "R3",
+      "rung_basis": "Backfilled 2026-11-11: v0.2.3 shipped 2026-10-29 with 12 platform assets (gh release view v0.2.3), so the installer surface is user-reachable. PARTIAL preserved: installers are unsigned and this entry's recorded evidence still cites the old CI billing block.",
       "evidence": "Tauri build pipeline configured for NSIS/DEB/DMG but CI blocked by billing",
       "details": "release.yml produces installers via tauri-action; Windows NSIS, macOS DMG, Linux DEB/RPM configured; release workflow blocked by GitHub billing issue"
     },
     "documentation_accuracy": {
       "status": "DISPUTED",
+      "rung": "R2",
+      "rung_basis": "Backfilled 2026-11-11: no user or agent entry point; the recorded evidence is a repair claim about repository URLs, and the audit disputed the name's scope. R2 by the reachability test. Status left DISPUTED.",
       "evidence": "All stale github.com/zylcode/zylcode references corrected to github.com/zylvex-tech/zylcode",
       "details": "README installation section rewritten; fabricated download URLs removed; historical v0.2.0-dev assets documented as non-current",
       "status_before_audit": "GREEN",
@@ -381,5 +433,20 @@
     ],
     "new_entries": ["agent_context_gathering", "benchmark_determinism", "tool_system_executable"],
     "rule": "No dispute field erased; no R4 claimed anywhere; Phase 2A remains RE-OPENED."
+  },
+  "rung_backfill": {
+    "date": "2026-11-11",
+    "by": "Phase 2A canonical-report pass (builder; not acceptance authority)",
+    "reason": "ZYLCODE_CAPABILITY_MODEL section 5 requires a rung on every entry; 23 of 37 entries had none.",
+    "method": "Rungs were derived from each entry's existing status and recorded evidence, never invented: GREEN entries take R3 because section 4.2 forbids GREEN below R3, except where the recorded evidence is a unit test only, which is declared as rung_conflict instead of being promoted. No status, dispute reason, or evidence string was changed by this pass.",
+    "entries_completed": 23,
+    "rung_counts_after": {
+      "R2": 17,
+      "R3": 20
+    },
+    "uncertainty": "These rungs are builder assertions, not audited ones. R1/R4/R5 are assigned nowhere in this registry, and no entry claims R4 or R5.",
+    "status_rung_conflicts_declared": ["observation_loop", "repair_loop", "test_model_client"],
+    "stale_figures_preserved": "repository_scanner (\"14,973 files in 12.7s\") and context_retrieval (P@10 0.30 / R@10 0.53 / 10 questions) still carry pre-remediation evidence strings. They were not edited here; the measured replacements are in docs/PHASE2A_COMPLETION_REPORT.md sections 3, 5 and 7.",
+    "validation": "scripts/check_capability_registry.py (wired into CI)"
   }
 }
