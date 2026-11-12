@@ -65,8 +65,14 @@ pub fn parse(
     }
 
     let mut parser = tree_sitter::Parser::new();
+    // `.tsx` is TypeScript *plus JSX*, which the TypeScript grammar cannot
+    // parse. Both grammars are already linked; selecting the wrong one marked
+    // 94 of this repository's 97 `.tsx` files as partially parsed even though a
+    // TSX pass over them reports no error node at all.
+    let is_tsx = file.to_ascii_lowercase().ends_with(".tsx");
     let lang: tree_sitter::Language = match language {
         Language::Rust => tree_sitter_rust::LANGUAGE.into(),
+        Language::TypeScript if is_tsx => tree_sitter_typescript::LANGUAGE_TSX.into(),
         Language::TypeScript => tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into(),
         Language::JavaScript => tree_sitter_javascript::LANGUAGE.into(),
         Language::Unsupported(_) => unreachable!("guarded above"),
@@ -78,7 +84,15 @@ pub fn parse(
             ..Default::default()
         });
     }
-    let tree = match parser.parse(source, None) {
+    // A UTF-8 BOM is not part of any grammar (tree-sitter reports an error on
+    // it). Parse the text after it and shift every byte offset back, so ranges
+    // still address the file as it exists on disk. The file itself is never
+    // rewritten.
+    let (text, byte_base) = match source.strip_prefix('\u{feff}') {
+        Some(rest) => (rest, '\u{feff}'.len_utf8() as u32),
+        None => (source, 0),
+    };
+    let tree = match parser.parse(text, None) {
         Some(t) => t,
         None => {
             return Ok(ParsedFile {
@@ -90,6 +104,11 @@ pub fn parse(
     };
     let root = tree.root_node();
     let has_error = root.has_error();
+    // Name the first construct the grammar could not read. A bare "syntax
+    // errors" message makes a grammar gap indistinguishable from a genuinely
+    // broken file, which is exactly how 94 mislabelled `.tsx` files went
+    // unnoticed.
+    let first_error = has_error.then(|| first_error_site(root, text));
 
     let mut out = ParsedFile {
         status: if has_error {
@@ -97,8 +116,11 @@ pub fn parse(
         } else {
             ParseStatus::Parsed
         },
-        error: has_error
-            .then(|| "grammar reported syntax errors; extracted facts are partial".to_string()),
+        error: first_error.map(|(line, col, snippet)| {
+            format!(
+                "grammar reported syntax errors at {line}:{col} near `{snippet}`; extracted facts are partial"
+            )
+        }),
         ..Default::default()
     };
 
@@ -138,7 +160,8 @@ pub fn parse(
         file: file.to_string(),
         language: language.clone(),
         crate_key: crate_key.to_string(),
-        bytes: source.as_bytes(),
+        bytes: text.as_bytes(),
+        byte_base,
         stack,
         module_scope,
         shadows: Vec::new(),
@@ -148,6 +171,47 @@ pub fn parse(
     };
     cx.walk(root);
     Ok(out)
+}
+
+/// First error or missing node in the tree, as `(line, column, source snippet)`.
+///
+/// Prefers a real `ERROR` node (a construct the grammar rejected) over a
+/// `MISSING` node (a token the parser inserted), and reports the innermost
+/// occurrence so the snippet is the smallest failing construct.
+fn first_error_site(root: tree_sitter::Node, text: &str) -> (usize, usize, String) {
+    fn seek(node: tree_sitter::Node) -> Option<tree_sitter::Node> {
+        if node.is_error() || node.is_missing() {
+            return Some(node);
+        }
+        let mut cursor = node.walk();
+        let mut children: Vec<tree_sitter::Node> = node.children(&mut cursor).collect();
+        // ERROR nodes sort before MISSING ones at the same depth.
+        children.sort_by_key(|c| (!c.is_error(), c.is_missing()));
+        for child in children {
+            if !child.has_error() && !child.is_missing() && !child.is_error() {
+                continue;
+            }
+            if let Some(found) = seek(child) {
+                return Some(found);
+            }
+        }
+        None
+    }
+
+    let Some(node) = seek(root) else {
+        return (1, 1, String::new());
+    };
+    let position = node.start_position();
+    let raw = node.utf8_text(text.as_bytes()).unwrap_or("");
+    let snippet: String = raw
+        .lines()
+        .map(str::trim)
+        .find(|l| !l.is_empty())
+        .unwrap_or(if node.is_missing() { node.kind() } else { "" })
+        .chars()
+        .take(60)
+        .collect();
+    (position.row + 1, position.column + 1, snippet)
 }
 
 // ---------------------------------------------------------------------------
@@ -215,6 +279,9 @@ struct WalkCx<'a> {
     language: Language,
     crate_key: String,
     bytes: &'a [u8],
+    /// Byte offset of the parsed text inside the file (3 when a UTF-8 BOM was
+    /// skipped, otherwise 0). Added to every range so offsets stay file-relative.
+    byte_base: u32,
     /// Qualified name of each enclosing scope, root first; last is current.
     stack: Vec<String>,
     /// The file's own module scope (last element of the initial stack).
@@ -239,8 +306,8 @@ impl<'a> WalkCx<'a> {
         let sp = node.start_position();
         let ep = node.end_position();
         TextRange {
-            start_byte: node.start_byte() as u32,
-            end_byte: node.end_byte() as u32,
+            start_byte: node.start_byte() as u32 + self.byte_base,
+            end_byte: node.end_byte() as u32 + self.byte_base,
             start_line: (sp.row + 1) as u32,
             start_col: (sp.column + 1) as u32,
             end_line: (ep.row + 1) as u32,
