@@ -76,11 +76,22 @@ pub struct ResolvedImport {
     ///
     /// The resolver's own binding table carries no evidence field, so this is
     /// asserted here rather than read from upstream. It is safe for resolved
-    /// *files* (module resolution is path-based); for symbols, `nav` picks the
-    /// exported match or the first same-named definition when a file declares
-    /// several. One import entry in this repository is in that position, so the
-    /// label is empirical, not structural. `via` says which rule was used.
+    /// *files* (module resolution is path-based). For symbols it means the
+    /// binding came from `nav`'s binding table, which may have had to choose
+    /// among declarations sharing a name; [`Self::name_collision`] and
+    /// [`Self::via`] record whether that happened, so this label alone must
+    /// never be read as "one unambiguous candidate".
     pub evidence: String,
+    /// True when the chosen symbol shares its file, name and kind with at least
+    /// one other declaration, so a name match was necessary.
+    ///
+    /// This is the machine-visible form of the distinction `evidence` cannot
+    /// carry. It is an upper bound on genuine ambiguity: `cfg` partitioning is
+    /// not modelled, so two same-kind declarations that never coexist (for
+    /// example `#[cfg(windows)]` / `#[cfg(not(windows))]`) are still counted.
+    /// Check the edge's source before treating a `true` here as a wrong answer.
+    #[serde(default)]
+    pub name_collision: bool,
     /// How the binding was established, for audit.
     pub via: String,
     /// True when the importing file parsed with grammar errors, so its fact set
@@ -157,11 +168,18 @@ pub struct SemanticStats {
     /// `to_file` (re-export chains). Kept as a count so the distinction cannot
     /// silently disappear.
     pub symbols_in_other_file: usize,
-    /// Import edges where the declaring file holds more than one symbol with the
-    /// imported name, so `nav` had to pick one. Not an error, but not proven
-    /// either — these are the edges the `DETERMINISTIC` label only describes
-    /// empirically.
-    pub imports_ambiguous_symbol: usize,
+    /// Import edges whose chosen symbol shares its file, name and kind with
+    /// another declaration (see [`ResolvedImport::name_collision`]).
+    ///
+    /// An **upper bound** on ambiguity, not a count of ambiguous resolutions:
+    /// `cfg`-partitioned declarations are counted although they never compete.
+    /// Kept because a change in this number is the only signal that a name
+    /// match started happening somewhere new.
+    pub imports_name_collision: usize,
+    /// Import entries that are glob/namespace imports (`use a::*`,
+    /// `import * as ns`). They resolve to a file, never to a symbol, and are
+    /// therefore part of `imports_resolved` without being name resolutions.
+    pub imports_glob: usize,
 }
 
 /// The semantic layer's output for one repository.
@@ -208,12 +226,22 @@ impl SemanticIndex {
         let mut files: Vec<&String> = index.facts.keys().collect();
         files.sort();
 
-        // (file, name) -> declaration count, for the ambiguity statistic.
-        let mut name_counts: std::collections::HashMap<(&str, &str), usize> =
-            std::collections::HashMap::new();
+        // (file, name, kind) -> declaration count, for the collision statistic.
+        // Kind is part of the key on purpose: a module named `pipeline` and a
+        // method `ZylCodeEngine::pipeline` cannot compete for one binding, and
+        // counting them as a collision overstated ambiguity in the first
+        // version of this metric.
+        let mut name_counts: std::collections::HashMap<
+            (&str, &str, zylcode_nav::model::SymbolKind),
+            usize,
+        > = std::collections::HashMap::new();
         for symbol in index.symbols.values() {
             *name_counts
-                .entry((symbol.file.as_str(), symbol.name.as_str()))
+                .entry((
+                    symbol.file.as_str(),
+                    symbol.name.as_str(),
+                    symbol.kind.clone(),
+                ))
                 .or_default() += 1;
         }
 
@@ -272,26 +300,33 @@ impl SemanticIndex {
                 }
                 for entry in &decl.entries {
                     out.stats.imports_total += 1;
+                    if entry.glob {
+                        out.stats.imports_glob += 1;
+                    }
                     match &decl.resolution {
                         ImportResolution::Resolved { file: target } => {
                             out.stats.imports_resolved += 1;
                             let binding =
                                 index.bindings.get(file).and_then(|m| m.get(&entry.local));
-                            let ambiguous = binding
+                            let name_collision = binding
                                 .map(|b| &b.target)
                                 .and_then(|t| match t {
                                     zylcode_nav::index::BindingTarget::Symbol(id) => {
                                         index.symbols.get(id).and_then(|symbol| {
                                             name_counts
-                                                .get(&(symbol.file.as_str(), symbol.name.as_str()))
+                                                .get(&(
+                                                    symbol.file.as_str(),
+                                                    symbol.name.as_str(),
+                                                    symbol.kind.clone(),
+                                                ))
                                                 .copied()
                                         })
                                     }
                                     _ => None,
                                 })
                                 .is_some_and(|count| count > 1);
-                            if ambiguous {
-                                out.stats.imports_ambiguous_symbol += 1;
+                            if name_collision {
+                                out.stats.imports_name_collision += 1;
                             }
                             let (to_symbol, symbol_file, via) = match binding.map(|b| &b.target) {
                                 Some(zylcode_nav::index::BindingTarget::Symbol(id)) => (
@@ -326,6 +361,7 @@ impl SemanticIndex {
                                 },
                                 evidence: Evidence::Deterministic.as_str().to_string(),
                                 via: via.to_string(),
+                                name_collision,
                                 from_partial: facts.status == ParseStatus::Partial,
                             });
                         }
