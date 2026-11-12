@@ -108,6 +108,27 @@ pub enum ModelProvider {
     SyntheticOffline,
 }
 
+impl ModelProvider {
+    /// Parse the name this provider reports itself under.
+    ///
+    /// The inverse of `Display`, plus `custom` as the user-facing spelling of
+    /// an OpenAI-compatible endpoint. Unknown names return `None` so a caller
+    /// can keep its default instead of silently picking a provider.
+    pub fn from_name(name: &str) -> Option<Self> {
+        match name.trim().to_ascii_lowercase().as_str() {
+            "openrouter" => Some(Self::OpenRouter),
+            "deepseek" => Some(Self::DeepSeek),
+            "openai" => Some(Self::OpenAi),
+            "openai-compatible" | "openai_compatible" | "custom" => Some(Self::OpenAiCompatible),
+            "anthropic" => Some(Self::Anthropic),
+            "ollama" | "local-ollama" => Some(Self::LocalOllama),
+            "respan" => Some(Self::Respan),
+            "synthetic-offline" | "synthetic" => Some(Self::SyntheticOffline),
+            _ => None,
+        }
+    }
+}
+
 impl std::fmt::Display for ModelProvider {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -675,6 +696,24 @@ impl RouterConfig {
         }
         if let Some(v) = fallback_model {
             cfg.fallback_model = v;
+        }
+        // A headless run has no settings UI, so the provider and its endpoint
+        // have to be nameable from the environment. Both are opt-in: an
+        // unconfigured checkout keeps the built-in default.
+        if let Some(name) = env_nonempty("ZYLCODE_PRIMARY_PROVIDER") {
+            match ModelProvider::from_name(&name) {
+                Some(provider) => cfg.primary_provider = provider,
+                None => warn!(
+                    provider = %name,
+                    "ZYLCODE_PRIMARY_PROVIDER names no known provider; keeping the default"
+                ),
+            }
+        }
+        if let Some(url) = env_nonempty("ZYLCODE_BASE_URL") {
+            cfg.base_url_overrides.insert(
+                cfg.primary_provider.to_string(),
+                url.trim_end_matches('/').to_string(),
+            );
         }
         cfg.connect_respan_gateway();
         cfg
@@ -1547,7 +1586,34 @@ impl TokenRouter {
     where
         F: FnMut(StreamChunk) + Send,
     {
-        use crate::providers::streaming::{ChatRequest, FinishReason};
+        let request = crate::providers::streaming::ChatRequest::new(model, system, prompt);
+        let outcome = self
+            .stream_request(provider, model, &request, cfg, cancel, on_chunk)
+            .await?;
+        Ok(outcome.text)
+    }
+
+    /// One provider round for a request the caller built.
+    ///
+    /// Split out of [`Self::stream_one_provider`] so a caller that owns the
+    /// conversation — the native tool loop, which must carry the assistant turn
+    /// and its tool results — can supply the whole request instead of two
+    /// strings. Everything else (capability check, egress accounting, usage,
+    /// error classification) is shared, so a tool-bearing request cannot take a
+    /// shortcut a plain one could not.
+    async fn stream_request<F>(
+        &self,
+        provider: &ModelProvider,
+        model: &str,
+        request: &crate::providers::streaming::ChatRequest,
+        cfg: &RouterConfig,
+        cancel: &crate::providers::streaming::CancelToken,
+        on_chunk: &mut F,
+    ) -> std::result::Result<crate::providers::streaming::StreamOutcome, StreamAttemptError>
+    where
+        F: FnMut(StreamChunk) + Send,
+    {
+        use crate::providers::streaming::FinishReason;
 
         // A provider that cannot stream is reported as such rather than faked.
         if !crate::providers::capabilities::provider_capabilities(provider).streaming {
@@ -1555,8 +1621,6 @@ impl TokenRouter {
                 "provider {provider} does not support streaming"
             )));
         }
-
-        let request = ChatRequest::new(model, system, prompt);
         let timeout = Duration::from_millis(cfg.provider_timeout_ms(provider));
         let base = cfg.base_url(provider);
         let api_key = cfg.api_key(provider);
@@ -1580,7 +1644,7 @@ impl TokenRouter {
                     &self.http,
                     &base,
                     api_key.as_deref(),
-                    &request,
+                    request,
                     timeout,
                     cancel,
                     &mut forward,
@@ -1591,7 +1655,7 @@ impl TokenRouter {
                 crate::providers::ollama::stream(
                     &self.http,
                     &base,
-                    &request,
+                    request,
                     timeout,
                     cancel,
                     &mut forward,
@@ -1599,12 +1663,16 @@ impl TokenRouter {
                 .await
             }
             ModelProvider::SyntheticOffline => {
-                let outcome = crate::providers::synthetic::stream(prompt, system, &mut forward);
+                let outcome = crate::providers::synthetic::stream(
+                    &request.prompt,
+                    &request.system,
+                    &mut forward,
+                );
                 self.metrics.record_usage(
-                    ((prompt.len() + system.len()) / 4) as u64,
+                    ((request.prompt.len() + request.system.len()) / 4) as u64,
                     (outcome.text.len() / 4) as u64,
                 );
-                return Ok(outcome.text);
+                return Ok(outcome);
             }
             _ => {
                 let extra: Vec<(String, String)> = if *provider == ModelProvider::OpenRouter {
@@ -1628,7 +1696,7 @@ impl TokenRouter {
                 crate::providers::openai_compatible::stream(
                     &self.http,
                     &target,
-                    &request,
+                    request,
                     cancel,
                     &mut forward,
                 )
@@ -1645,7 +1713,7 @@ impl TokenRouter {
                     .usage
                     .as_ref()
                     .and_then(|u| u.input_tokens)
-                    .unwrap_or(((prompt.len() + system.len()) / 4) as u64);
+                    .unwrap_or(((request.prompt.len() + request.system.len()) / 4) as u64);
                 let out = outcome
                     .usage
                     .as_ref()
@@ -1653,7 +1721,7 @@ impl TokenRouter {
                     .unwrap_or((outcome.text.len() / 4) as u64);
                 self.metrics.record_usage(inp, out);
                 info!(provider = %provider, model = %model, input_tokens = inp, output_tokens = out, "provider stream completed");
-                Ok(outcome.text)
+                Ok(outcome)
             }
             Err(err) => {
                 let err = anyhow::anyhow!(
@@ -1670,6 +1738,99 @@ impl TokenRouter {
                 }
             }
         }
+    }
+
+    /// One round of an ongoing conversation, chosen the same way
+    /// [`Self::dispatch_stream_cancellable`] chooses.
+    ///
+    /// Returns the neutral outcome including any tool calls, so a caller that
+    /// owns the conversation can continue it. The first provider that answers
+    /// wins; a provider that fails before producing anything is skipped exactly
+    /// as it is for a plain streaming request.
+    pub async fn stream_turn(
+        &self,
+        request: &crate::providers::streaming::ChatRequest,
+        cancel: &crate::providers::streaming::CancelToken,
+    ) -> std::result::Result<
+        crate::providers::streaming::StreamOutcome,
+        crate::providers::streaming::ProviderError,
+    > {
+        use crate::providers::streaming::ProviderErrorKind;
+
+        let cfg = self.config();
+        let mut last: Option<crate::providers::streaming::ProviderError> = None;
+
+        for (provider, model) in self.provider_candidates(&cfg) {
+            // A caller-supplied model pins the round — the tool loop names the
+            // model it was configured with. Otherwise the router's own model for
+            // that provider wins, as it does everywhere else.
+            let model = if request.model.is_empty() {
+                model
+            } else {
+                request.model.clone()
+            };
+            let mut sent = request.clone();
+            sent.model = model.clone();
+
+            let mut sink = |_chunk: StreamChunk| {};
+            match self
+                .stream_request(&provider, &model, &sent, &cfg, cancel, &mut sink)
+                .await
+            {
+                Ok(outcome) => return Ok(outcome),
+                Err(StreamAttemptError::Cancelled) => {
+                    return Err(crate::providers::streaming::ProviderError {
+                        kind: ProviderErrorKind::Transport,
+                        message: "cancelled".to_string(),
+                        code: None,
+                        raw: None,
+                    });
+                }
+                Err(StreamAttemptError::Failed(err))
+                | Err(StreamAttemptError::AlreadyStreamed(err)) => {
+                    warn!(provider = %provider, error = %err, "tool-turn provider failed");
+                    last = Some(crate::providers::streaming::ProviderError {
+                        kind: ProviderErrorKind::ProviderRejected,
+                        message: err.to_string(),
+                        code: None,
+                        raw: None,
+                    });
+                }
+            }
+        }
+
+        Err(last.unwrap_or(crate::providers::streaming::ProviderError {
+            kind: ProviderErrorKind::InvalidEndpoint,
+            message: "no provider was configured for a tool turn".to_string(),
+            code: None,
+            raw: None,
+        }))
+    }
+
+    /// The provider order a request walks: primary, fallback, then the enabled
+    /// chain entries in `fallback_order`.
+    fn provider_candidates(&self, cfg: &RouterConfig) -> Vec<(ModelProvider, String)> {
+        let mut candidates: Vec<(ModelProvider, String)> = vec![
+            (cfg.primary_provider.clone(), cfg.primary_model.clone()),
+            (cfg.fallback_provider.clone(), cfg.fallback_model.clone()),
+        ];
+        if cfg.max_retries > 0 {
+            let mut entries = cfg.provider_configs.clone();
+            entries.sort_by_key(|e| e.fallback_order);
+            for entry in entries {
+                if !entry.enabled {
+                    continue;
+                }
+                let Some(provider) = kind_to_model_provider(&entry.kind) else {
+                    continue;
+                };
+                if candidates.iter().any(|(p, _)| *p == provider) {
+                    continue;
+                }
+                candidates.push((provider, entry.model.clone()));
+            }
+        }
+        candidates
     }
 
     // -- internal provider call ---------------------------------------------

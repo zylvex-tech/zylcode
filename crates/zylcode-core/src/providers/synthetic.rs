@@ -55,6 +55,9 @@ pub fn stream(
         usage: None,
         chunks: index + 1,
         provider_ref: None,
+        // The offline path has no wire and no tools: it must not claim a
+        // tool call it did not receive.
+        tool_calls: Vec::new(),
     }
 }
 

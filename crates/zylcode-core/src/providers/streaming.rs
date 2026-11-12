@@ -137,6 +137,69 @@ pub struct ChunkKind {
 /// The protocol translation for any provider is behind the native-tool-calling
 /// acceptance gate, so no provider module currently emits these. The type exists
 /// so the contract does not have to change when that gate passes.
+/// One tool a request offers to the model.
+///
+/// This is the *declaration* half of tool calling: what the model is allowed to
+/// ask for. Execution remains ZylCode's own gated path — the provider only
+/// chooses a name and supplies arguments.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct ToolSpec {
+    /// Name the model must use.
+    pub name: String,
+    /// What the tool does, shown to the model.
+    pub description: String,
+    /// JSON Schema for the arguments.
+    pub parameters: serde_json::Value,
+}
+
+impl ToolSpec {
+    /// The name this tool is declared under on the wire.
+    ///
+    /// ZylCode's ids contain dots (`fs.read`, `git.status`), and OpenAI's
+    /// function-name grammar allows only `[A-Za-z0-9_-]` — a live request
+    /// with `"name": "fs.read"` is rejected with HTTP 400, so the dotted id
+    /// cannot be sent as-is. Characters outside the grammar become `_`, which
+    /// keeps the mapping deterministic and reversible: the dispatcher resolves
+    /// a returned name by comparing it to each declared tool's `wire_name()`.
+    ///
+    /// Duplicate wire names inside one declaration are invalid — the caller must
+    /// not declare two ids that collapse to the same wire name, or a returned
+    /// call would be ambiguous.
+    pub fn wire_name(&self) -> String {
+        wire_name(&self.name)
+    }
+}
+
+/// Sanitise a ZylCode tool id into the name grammar providers accept.
+///
+/// Kept as a free function so a returned tool result can be addressed back to
+/// the declaration that produced it without constructing a [`ToolSpec`].
+pub fn wire_name(id: &str) -> String {
+    id.chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '_' || c == '-' {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect()
+}
+
+/// Whether the model may, must, or must not call a tool.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ToolChoice {
+    /// The model decides.
+    #[default]
+    Auto,
+    /// Tools are declared but must not be called.
+    None,
+    /// The model must call one of the declared tools.
+    Required,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct ToolCallState {
@@ -146,7 +209,7 @@ pub struct ToolCallState {
 }
 
 /// One provider-native tool call seen through the neutral contract.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct ToolCall {
     /// Provider-assigned id for the call, if any.
@@ -165,7 +228,7 @@ pub struct ToolCall {
 }
 
 /// One incremental piece of a provider tool call.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct ToolCallDelta {
     /// How this delta relates to a particular tool call.
@@ -236,6 +299,9 @@ impl Usage {
 pub struct Completion {
     /// The assistant text, with no provider framing left in it.
     pub text: String,
+    /// Tool calls the provider asked for, already translated. Empty when the
+    /// provider asked for none — never a placeholder entry.
+    pub tool_calls: Vec<ToolCall>,
     /// Provider-reported usage. Fields stay `None` when the provider did not report
     /// them, so the caller can decide whether to estimate instead of receiving a
     /// fabricated zero.
@@ -396,6 +462,33 @@ impl StreamHandle {
 // Request shape shared by the provider modules
 // ---------------------------------------------------------------------------
 
+/// One turn of a provider-bound conversation.
+///
+/// A native tool conversation is not two strings: after the model asks for a
+/// tool, the next request has to carry the assistant turn that asked and the
+/// result that came back. Without this the second round would re-send the
+/// original question and the model would ask for the same tool forever.
+#[derive(Debug, Clone, PartialEq)]
+pub enum ChatMessage {
+    /// Something the user said.
+    User { content: String },
+    /// What the assistant said, and the tool calls it made while saying it.
+    Assistant {
+        content: String,
+        tool_calls: Vec<ToolCall>,
+    },
+    /// The result of executing one tool call the assistant asked for.
+    ToolResult {
+        /// The id the provider assigned to the call, used to address the result
+        /// back to it. Anthropic and OpenAI-compatible require it; Ollama does not.
+        call_id: String,
+        /// The canonical ZylCode tool id the call resolved to.
+        name: String,
+        content: String,
+        is_error: bool,
+    },
+}
+
 /// The neutral description of one streaming chat call.
 #[derive(Debug, Clone)]
 pub struct ChatRequest {
@@ -404,6 +497,16 @@ pub struct ChatRequest {
     pub prompt: String,
     pub max_tokens: u64,
     pub temperature: f32,
+    /// Tools the model may call. Empty means no `tools` field is sent at all,
+    /// which is what a provider without native tool support must see.
+    pub tools: Vec<ToolSpec>,
+    /// Whether, and how firmly, the model should call one.
+    pub tool_choice: ToolChoice,
+    /// Conversation already exchanged, newest last. When this is empty the
+    /// request is the single `prompt` turn; when it is not, it **is** the whole
+    /// conversation and `prompt` is ignored. Keeping both shapes means every
+    /// existing single-shot caller is unchanged.
+    pub messages: Vec<ChatMessage>,
 }
 
 impl ChatRequest {
@@ -418,6 +521,43 @@ impl ChatRequest {
             prompt: prompt.into(),
             max_tokens: 4096,
             temperature: 0.2,
+            tools: Vec::new(),
+            tool_choice: ToolChoice::Auto,
+            messages: Vec::new(),
+        }
+    }
+
+    /// Declare tools for this request.
+    pub fn with_tools(mut self, tools: Vec<ToolSpec>) -> Self {
+        self.tools = tools;
+        self
+    }
+
+    /// Carry an ongoing conversation instead of a single prompt turn.
+    pub fn with_messages(mut self, messages: Vec<ChatMessage>) -> Self {
+        self.messages = messages;
+        self
+    }
+
+    /// Say whether, and how firmly, a tool should be called.
+    pub fn with_tool_choice(mut self, choice: ToolChoice) -> Self {
+        self.tool_choice = choice;
+        self
+    }
+
+    /// The turns to send, oldest first.
+    ///
+    /// `messages` wins when present; otherwise the request collapses to its one
+    /// prompt turn, which is what every pre-tool-calling caller relies on.
+    pub fn turns(&self) -> Vec<ChatMessage> {
+        if !self.messages.is_empty() {
+            return self.messages.clone();
+        }
+        match self.prompt.as_str() {
+            "" => Vec::new(),
+            prompt => vec![ChatMessage::User {
+                content: prompt.to_string(),
+            }],
         }
     }
 }
@@ -459,6 +599,8 @@ impl StreamEndpoint {
 #[derive(Debug, Clone, Default)]
 pub struct DecodedEvent {
     pub text: Option<String>,
+    /// A provider-native tool-call delta, translated by the provider module.
+    pub tool_call: Option<ToolCallDelta>,
     pub usage: Option<Usage>,
     pub finish: Option<FinishReason>,
     pub error: Option<ProviderError>,
@@ -523,6 +665,10 @@ pub struct StreamOutcome {
     pub usage: Option<Usage>,
     pub chunks: u64,
     pub provider_ref: Option<String>,
+    /// Tool calls assembled from the deltas, in the order the provider started
+    /// them. Arguments are the accumulated text, not a parsed object: a provider
+    /// may stream invalid JSON, and pretending otherwise would hide it.
+    pub tool_calls: Vec<ToolCall>,
 }
 
 impl StreamOutcome {
@@ -533,6 +679,7 @@ impl StreamOutcome {
             usage: None,
             chunks: 0,
             provider_ref: None,
+            tool_calls: Vec::new(),
         }
     }
 }
@@ -777,6 +924,59 @@ fn cancelled_terminal(index: u64, synthetic: bool) -> StreamChunk {
     chunk
 }
 
+/// Fold one provider tool delta into the running list of calls.
+///
+/// Calls are correlated by `call_id` (OpenAI-style) or `block_id`
+/// (Anthropic-style), whichever the provider supplies. A `Start` carries the
+/// tool name in `metadata.name`, because [`ToolCallDelta`] deliberately has no
+/// name field: only the first delta names the tool, and the neutral contract
+/// keeps per-provider framing out of its own shape.
+///
+/// An argument delta for a call that never started is dropped rather than
+/// invented: a call with no name cannot be dispatched, and fabricating one would
+/// produce a tool invocation nobody asked for.
+fn apply_tool_delta(calls: &mut Vec<ToolCall>, delta: ToolCallDelta) {
+    let key = delta.call_id.clone().or_else(|| delta.block_id.clone());
+    let position = key.as_ref().and_then(|k| {
+        calls
+            .iter()
+            .position(|c| c.call_id.as_ref() == Some(k) || c.block_id.as_ref() == Some(k))
+    });
+
+    match delta.kind {
+        ToolCallDeltaKind::Start => {
+            let name = delta
+                .metadata
+                .as_ref()
+                .and_then(|m| m.get("name"))
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or_default()
+                .to_string();
+            if name.is_empty() {
+                return;
+            }
+            calls.push(ToolCall {
+                call_id: delta.call_id,
+                block_id: delta.block_id,
+                name,
+                arguments: String::new(),
+                done: false,
+                metadata: delta.metadata,
+            });
+        }
+        ToolCallDeltaKind::ArgumentDelta => {
+            if let (Some(pos), Some(text)) = (position, delta.argument_delta) {
+                calls[pos].arguments.push_str(&text);
+            }
+        }
+        ToolCallDeltaKind::Done => {
+            if let Some(pos) = position {
+                calls[pos].done = true;
+            }
+        }
+    }
+}
+
 /// Fold one decoded event into the running outcome, returning `true` when the
 /// stream is complete.
 fn emit(
@@ -809,11 +1009,16 @@ fn emit(
         outcome.finish = finish;
     }
 
+    if let Some(delta) = event.tool_call.clone() {
+        apply_tool_delta(&mut outcome.tool_calls, delta);
+    }
+
     let has_payload = event.text.is_some()
         || event.usage.is_some()
         || event.metadata.is_some()
         || event.provider_ref.is_some()
-        || event.finish.is_some();
+        || event.finish.is_some()
+        || event.tool_call.is_some();
 
     if has_payload {
         if let Some(usage) = event.usage.clone() {
@@ -831,6 +1036,12 @@ fn emit(
         chunk.finish_reason = event.finish;
         chunk.metadata = event.metadata;
         chunk.provider_ref = event.provider_ref;
+        if event.tool_call.is_some() {
+            chunk.kind.tool_call = event.tool_call;
+            chunk.tool_state = Some(ToolCallState {
+                calls: outcome.tool_calls.clone(),
+            });
+        }
         // Completion is signalled by exactly one terminal chunk below, never by a
         // payload chunk, so consumers cannot see two "done" chunks per stream.
         chunk.done = false;
@@ -981,6 +1192,7 @@ mod tests {
             error: None,
             provider_ref: None,
             metadata: None,
+            tool_call: None,
             done: true,
         };
         assert!(emit(

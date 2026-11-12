@@ -77,6 +77,12 @@ enum Commands {
     /// Delivery: report deploy targets that are actually commissioned
     /// (GitHub release via tag, crates.io token, remote server).
     DeployStatus,
+
+    /// Ask the configured provider to complete a task, with native tool
+    /// calling: the model's tool calls are resolved to ZylCode ids, gated by
+    /// the permission policy, executed by the real registry, recorded as
+    /// evidence, and returned to the model so it can finish the task.
+    Ask(AskArgs),
 }
 
 // ---------------------------------------------------------------------------
@@ -488,6 +494,7 @@ async fn main() -> Result<()> {
         Commands::BestOfN(args) => handle_best_of_n(&cli.workspace, args).await,
         Commands::Package(args) => handle_package(&cli.workspace, args).await,
         Commands::Mission(args) => handle_mission(args).await,
+        Commands::Ask(args) => handle_ask(&cli.workspace, args).await,
         Commands::DeployStatus => {
             let payload = zylcode_core::delivery::deploy_targets(Path::new(&cli.workspace))?;
             println!("{}", serde_json::to_string_pretty(&payload)?);
@@ -2079,6 +2086,102 @@ async fn handle_package(workspace: &str, args: PackageArgs) -> Result<()> {
 // pin that widening the bind is an explicit, typed act rather than something
 // a malformed argument can produce.
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// ask — native tool calling through the real tool pipeline
+// ---------------------------------------------------------------------------
+
+#[derive(Args, Debug)]
+struct AskArgs {
+    /// The task to give the model.
+    task: Vec<String>,
+
+    /// Stop after this many model rounds.
+    #[arg(long, default_value_t = zylcode_core::native_tools::MAX_TOOL_ROUNDS)]
+    max_rounds: usize,
+
+    /// Pin a model. Empty means the router's configured model for the provider.
+    #[arg(long, default_value = "")]
+    model: String,
+
+    /// System prompt sent with every round.
+    #[arg(
+        long,
+        default_value = "You are a software engineering agent working in the user's workspace. \\
+Use the declared tools to inspect and change it. Ask for one tool at a time and stop when the task is done."
+    )]
+    system: String,
+
+    /// Grant approval for this run, so tools above the read threshold may run.
+    /// Without it the restrictive policy applies and writes are refused.
+    #[arg(long, default_value_t = false)]
+    approve: bool,
+}
+
+async fn handle_ask(workspace: &str, args: AskArgs) -> Result<()> {
+    use zylcode_core::native_tools::{default_runtime, NativeToolRunner};
+    use zylcode_core::providers::streaming::CancelToken;
+    use zylcode_core::{RouterConfig, TokenRouter};
+    use zylcode_mcp::real_tools::ToolContext;
+
+    let prompt = args.task.join(" ");
+    if prompt.trim().is_empty() {
+        anyhow::bail!("give the model a task: zylcode ask 'read README.md and summarise it'");
+    }
+
+    let router = TokenRouter::new(RouterConfig::from_env())?;
+    // The real ledger and the real policy: a model-requested call is held to
+    // exactly the standard a human-requested one is.
+    let runtime = default_runtime();
+    let context = ToolContext {
+        working_directory: std::path::PathBuf::from(workspace),
+        environment: std::env::vars().collect(),
+        timeout: std::time::Duration::from_secs(60),
+        session_id: Some(format!("cli-{}", std::process::id())),
+        actor: Some("cli:ask".to_string()),
+        approval_required: args.approve,
+    };
+
+    let runner = NativeToolRunner::new(&router, &runtime, context)
+        .with_system(args.system)
+        .with_max_rounds(args.max_rounds);
+
+    let run = runner
+        .run(&prompt, &args.model, &CancelToken::new())
+        .await?;
+
+    println!("{}", run.text);
+    if run.calls.is_empty() {
+        println!("\n(no tools were called)");
+    } else {
+        println!("\ntools:");
+        for call in &run.calls {
+            println!(
+                "  {:<14} → {:<14} {}",
+                call.wire_name,
+                call.tool_id,
+                if call.executed {
+                    &call.decision
+                } else {
+                    "refused"
+                }
+            );
+            if !call.executed {
+                println!("    {}", call.result_content.lines().next().unwrap_or(""));
+            }
+        }
+    }
+    // Report the sink the run actually wrote to: a run pointed elsewhere with
+    // ZYLCODE_EVIDENCE_LOG would otherwise send the reader to a file that does
+    // not exist.
+    println!(
+        "\nrounds: {}  invocations: {}  ledger: {}",
+        run.rounds,
+        run.invocation_ids().len(),
+        runtime.sink().describe()
+    );
+    Ok(())
+}
 
 #[cfg(test)]
 mod serve_intel_args_tests {

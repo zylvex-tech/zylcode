@@ -34,6 +34,7 @@ pub mod marketplace;
 pub mod memory_ledger;
 pub mod missions;
 pub mod model_capabilities;
+pub mod native_tools;
 pub mod patch_best_of_n;
 pub mod pipeline;
 pub mod planner;

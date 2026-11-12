@@ -81,10 +81,13 @@ impl ProviderCapabilitySet {
 
 /// Static capability set for each dispatcher-facing model provider.
 ///
-/// `tools` is `false` everywhere: native provider tool calling is behind an
-/// acceptance gate that has not passed, so no provider module builds `tools` into a
-/// request. The provider APIs can do it; this client does not yet, and claiming
-/// otherwise would make the capability table lie to the router.
+/// `tools` is `true` exactly where a provider module both sends the provider's
+/// own tool declaration and translates its tool-call signal back into the
+/// neutral contract: the Anthropic Messages module, the OpenAI-compatible
+/// module (used by OpenAI, OpenRouter, DeepSeek, Respan and any compatible
+/// endpoint) and the Ollama module. `SyntheticOffline` stays `false`: it has
+/// no wire and cannot ask for anything. The coverage is asserted in
+/// `tool_calling_tests`, so this table cannot drift ahead of the parsers.
 ///
 /// `max_client_tokens` is `Some(4096)` wherever the request builder actually sends
 /// `max_tokens`/`num_predict`, which is every provider except the offline path.
@@ -92,7 +95,7 @@ pub fn provider_capabilities(provider: &ModelProvider) -> ProviderCapabilitySet 
     match provider {
         ModelProvider::Anthropic => ProviderCapabilitySet {
             streaming: true,
-            tools: false,
+            tools: true,
             vision: false,
             logprobs: false,
             usage: true,
@@ -104,7 +107,7 @@ pub fn provider_capabilities(provider: &ModelProvider) -> ProviderCapabilitySet 
         | ModelProvider::Respan
         | ModelProvider::OpenAiCompatible => ProviderCapabilitySet {
             streaming: true,
-            tools: false,
+            tools: true,
             vision: false,
             logprobs: false,
             usage: true,
@@ -112,7 +115,7 @@ pub fn provider_capabilities(provider: &ModelProvider) -> ProviderCapabilitySet 
         },
         ModelProvider::LocalOllama => ProviderCapabilitySet {
             streaming: true,
-            tools: false,
+            tools: true,
             vision: false,
             logprobs: false,
             usage: true,

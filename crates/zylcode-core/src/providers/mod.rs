@@ -24,6 +24,8 @@ pub mod synthetic;
 #[cfg(test)]
 mod test_server;
 #[cfg(test)]
+mod tool_calling_tests;
+#[cfg(test)]
 mod transport_tests;
 
 #[cfg(test)]
@@ -67,7 +69,7 @@ mod tests {
     }
 
     #[test]
-    fn native_tool_calling_is_not_claimed_anywhere() {
+    fn native_tool_calling_is_claimed_only_where_it_is_translated() {
         for provider in [
             ModelProvider::Anthropic,
             ModelProvider::OpenAi,
@@ -76,13 +78,16 @@ mod tests {
             ModelProvider::Respan,
             ModelProvider::OpenAiCompatible,
             ModelProvider::LocalOllama,
-            ModelProvider::SyntheticOffline,
         ] {
             assert!(
-                !provider_capabilities(&provider).tools,
-                "{provider} must not claim native tool calling before its gate passes"
+                provider_capabilities(&provider).tools,
+                "{provider} has a tool declaration and a parser, so it must say so"
             );
         }
+        assert!(
+            !provider_capabilities(&ModelProvider::SyntheticOffline).tools,
+            "the offline path has no wire and cannot call a tool"
+        );
     }
 
     #[test]
@@ -113,7 +118,11 @@ mod tests {
             ModelProvider::SyntheticOffline,
         ] {
             let caps = provider_capabilities(&provider);
-            assert!(!caps.tools, "{provider}: tool calling is not implemented");
+            if provider == ModelProvider::SyntheticOffline {
+                assert!(!caps.tools, "{provider}: no wire, so no tool calls");
+            } else {
+                assert!(caps.tools, "{provider}: tool translation is implemented");
+            }
             assert!(!caps.vision, "{provider}: no image content is ever sent");
             assert!(!caps.logprobs, "{provider}: no logprobs are requested");
         }
