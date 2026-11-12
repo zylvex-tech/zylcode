@@ -194,13 +194,19 @@ fn this_repository_resolves_its_own_imports() {
     let index = resolve_repository(repo_root()).expect("index this repository");
 
     println!(
-        "semantic resolution: {:.2}% of {} in-repository imports resolved \
-         ({} external, {} unresolved); {} references resolved, {} heuristic-only; \
+        "semantic resolution: entry-level {:.4}% ({} of {} in-repository entries; \
+         {} external, {} unresolved); declaration-level {:.4}% ({} of {} statements; \
+         {} unresolved declarations); {} references resolved, {} heuristic-only; \
          files: {} parsed, {} partial, {} failed, {} unsupported",
         index.resolution_coverage(),
+        index.stats.imports_resolved,
         index.stats.imports_resolved + index.stats.imports_unresolved,
         index.stats.imports_external,
         index.stats.imports_unresolved,
+        index.declaration_coverage(),
+        index.stats.declarations_resolved,
+        index.stats.declarations_resolved + index.stats.declarations_unresolved,
+        index.stats.declarations_unresolved,
         index.stats.references_resolved,
         index.stats.references_heuristic,
         index.stats.files_parsed,
@@ -261,5 +267,36 @@ fn this_repository_resolves_its_own_imports() {
         index.stats.references_resolved > 5_000,
         "far more than 5,000 cross-file references resolve in this workspace; got {}",
         index.stats.references_resolved
+    );
+
+    // Both denominators must hold, not just the more favourable one.
+    assert!(
+        index.declaration_coverage() >= 95.0,
+        "declaration-level coverage regressed to {:.2}%",
+        index.declaration_coverage()
+    );
+
+    // `crates/zylcode-core/src/router.rs` declares `mod decision;` and the file
+    // is `src/router/decision.rs` — Rust 2018 layout the resolver used to miss.
+    assert!(
+        index.imports.iter().any(|i| {
+            i.from_file == "crates/zylcode-core/src/router.rs"
+                && i.to_file == "crates/zylcode-core/src/router/decision.rs"
+        }),
+        "a module file that owns its directory must resolve its declarations"
+    );
+
+    // Symbol-location ambiguity is reported, not hidden: an edge that points at
+    // a symbol in another file says so.
+    assert!(
+        index.stats.symbols_in_other_file > 0,
+        "re-export chains in this workspace must be counted"
+    );
+    assert!(
+        index
+            .imports
+            .iter()
+            .all(|i| i.to_symbol.is_some() || i.symbol_file.is_none()),
+        "`symbol_file` may only accompany a symbol"
     );
 }

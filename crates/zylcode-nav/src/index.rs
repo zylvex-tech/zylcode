@@ -28,8 +28,13 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-/// Bumped whenever [`FileFacts`] or any cached structure changes shape.
-pub const SCHEMA_VERSION: u32 = 1;
+/// Bumped whenever [`FileFacts`], any cached structure, or the parser's output
+/// for unchanged bytes changes shape.
+///
+/// v2: `.tsx` now selects the TSX grammar and a UTF-8 BOM is skipped, so facts
+/// cached by v1 describe different text and must not be reused.
+/// v3: partial-parse diagnostics name the failing construct.
+pub const SCHEMA_VERSION: u32 = 3;
 
 /// Cache location, repository-relative (gitignored; never an input to queries).
 pub const CACHE_RELATIVE: &str = ".zylcode/nav-index.json";
@@ -726,11 +731,27 @@ impl RepoIndex {
     /// `mod x;` resolves by file layout alone: `dir/x.rs`, then `dir/x/mod.rs`.
     fn mod_decl_file(&self, facts: &FileFacts, name: &str) -> Option<String> {
         let base = resolve::dir_of(&facts.file);
-        let candidates: Vec<String> = if base.is_empty() {
+        let mut candidates: Vec<String> = if base.is_empty() {
             vec![format!("{name}.rs"), format!("{name}/mod.rs")]
         } else {
             vec![format!("{base}/{name}.rs"), format!("{base}/{name}/mod.rs")]
         };
+
+        // Rust 2018 module layout: `src/router.rs` may declare `mod decision;`
+        // whose file is `src/router/decision.rs`. Without this, a module file
+        // that is a sibling of its own directory never resolves — which is what
+        // happened to `crates/zylcode-core/src/router.rs`.
+        let file_name = facts.file.rsplit('/').next().unwrap_or("");
+        let stem = file_name.strip_suffix(".rs").unwrap_or("");
+        if !stem.is_empty() && !matches!(stem, "mod" | "lib" | "main") {
+            let prefix = if base.is_empty() {
+                String::new()
+            } else {
+                format!("{base}/")
+            };
+            candidates.push(format!("{prefix}{stem}/{name}.rs"));
+        }
+
         candidates
             .into_iter()
             .find(|c| self.resolver.files.contains(c))

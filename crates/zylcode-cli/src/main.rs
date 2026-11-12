@@ -52,6 +52,15 @@ enum Commands {
     /// points, git history).
     RepoContext { task: Vec<String> },
 
+    /// Report semantic resolution for a repository: import coverage with both
+    /// denominators, fail-closed file states, and deterministic versus
+    /// heuristic-only reference attribution.
+    RepoSemantic {
+        /// Repository root. Defaults to the workspace.
+        #[arg(long)]
+        path: Option<String>,
+    },
+
     /// Serve Repository Intelligence over HTTP for the desktop frontend
     /// (browser preview and remote surfaces). Endpoints: `GET /healthz`,
     /// `GET /api/repo-intel?task=...`.
@@ -413,6 +422,93 @@ async fn handle_computer_use(engine: &ZylCodeEngine, args: ComputerUseArgs) -> R
 // repo-context
 // ---------------------------------------------------------------------------
 
+/// Handle `zylcode repo-semantic [--path <root>]`: report what the semantic
+/// resolver actually resolved, with both denominators and every fail-closed
+/// state. This is D1's product surface: the figures come from the same code the
+/// library exposes, not from a test harness.
+fn handle_repo_semantic(root: &str) -> Result<()> {
+    use zylcode_core::intelligence::semantic::resolve_repository;
+
+    let path = std::path::Path::new(root)
+        .canonicalize()
+        .map_err(|e| anyhow::anyhow!("cannot resolve repository '{root}': {e}"))?;
+    if !path.is_dir() {
+        anyhow::bail!("'{root}' is not a directory");
+    }
+
+    let started = std::time::Instant::now();
+    let index = resolve_repository(&path)?;
+    let elapsed = started.elapsed();
+
+    let entries_in_repo = index.stats.imports_resolved + index.stats.imports_unresolved;
+    let decls_in_repo = index.stats.declarations_resolved + index.stats.declarations_unresolved;
+
+    println!("repository: {}", path.display());
+    println!("indexed in {:.2}s", elapsed.as_secs_f64());
+    println!(
+        "import statements: {} total, {} resolved, {} external, {} unresolved",
+        index.stats.declarations_total,
+        index.stats.declarations_resolved,
+        index.stats.declarations_external,
+        index.stats.declarations_unresolved
+    );
+    println!(
+        "import entries: {} total, {} resolved, {} external, {} unresolved",
+        index.stats.imports_total,
+        index.stats.imports_resolved,
+        index.stats.imports_external,
+        index.stats.imports_unresolved
+    );
+    println!(
+        "entry-level coverage: {:.4}% ({} resolved / {} in-repository entries)",
+        index.resolution_coverage(),
+        index.stats.imports_resolved,
+        entries_in_repo
+    );
+    println!(
+        "declaration-level coverage: {:.4}% ({} resolved / {} in-repository statements)",
+        index.declaration_coverage(),
+        index.stats.declarations_resolved,
+        decls_in_repo
+    );
+    println!(
+        "files: {} parsed, {} partial, {} failed, {} unsupported",
+        index.stats.files_parsed,
+        index.stats.files_partial,
+        index.stats.files_failed,
+        index.stats.files_unsupported
+    );
+    println!(
+        "attribution: {} deterministic references, {} heuristic-only (never claimed as semantic), {} from partially parsed files",
+        index.stats.references_resolved,
+        index.stats.references_heuristic,
+        index.stats.references_from_partial_files
+    );
+    println!(
+        "symbols: {} import edges resolve into another file (re-export chains), {} edges had to choose among same-named declarations",
+        index.stats.symbols_in_other_file, index.stats.imports_ambiguous_symbol
+    );
+    let mut codes: std::collections::BTreeMap<&str, usize> = std::collections::BTreeMap::new();
+    for failure in &index.failures {
+        *codes.entry(failure.code.as_str()).or_default() += 1;
+    }
+    if !codes.is_empty() {
+        println!("fail-closed file states: {codes:?}");
+    }
+
+    if index.stats.declarations_total == 0 {
+        anyhow::bail!(
+            "no import statements were found under '{root}'; refusing to report 0% as a result"
+        );
+    }
+    if entries_in_repo == 0 {
+        anyhow::bail!(
+            "no in-repository imports were resolved or recorded under '{root}'; the index is not usable"
+        );
+    }
+    Ok(())
+}
+
 /// Handle `zylcode repo-context <task...>`: index the workspace with the real
 /// Repository Intelligence pipeline and return ranked context for the task.
 /// This is the product-reachable entry point for Phase 2A capability.
@@ -484,6 +580,9 @@ async fn main() -> Result<()> {
         Commands::AiInput(args) => handle_ai_input(&engine, args).await,
         Commands::ComputerUse(args) => handle_computer_use(&engine, args).await,
         Commands::RepoContext { task } => handle_repo_context(&cli.workspace, &task),
+        Commands::RepoSemantic { path } => {
+            handle_repo_semantic(path.as_deref().unwrap_or(&cli.workspace))
+        }
         Commands::ServeIntel(args) => handle_serve_intel(&cli.workspace, args).await,
         Commands::BestOfN(args) => handle_best_of_n(&cli.workspace, args).await,
         Commands::Package(args) => handle_package(&cli.workspace, args).await,

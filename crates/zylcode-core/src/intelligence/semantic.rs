@@ -64,8 +64,22 @@ pub struct ResolvedImport {
     pub to_file: String,
     /// Symbol the binding resolved to, when it resolved to one.
     pub to_symbol: Option<String>,
-    /// Always `DETERMINISTIC` here: a heuristic binding is not emitted as a
-    /// resolved import.
+    /// File that declares `to_symbol`, when it differs from `to_file`.
+    ///
+    /// A re-export chain makes these differ: an importer may name a module
+    /// (`mod.rs`) whose `pub use` forwards to a definition in another file. The
+    /// two fields are deliberately separate so a consumer cannot assume the
+    /// symbol lives in `to_file`. `None` means either there is no symbol or it
+    /// is declared in `to_file` itself.
+    pub symbol_file: Option<String>,
+    /// `DETERMINISTIC` for every emitted import.
+    ///
+    /// The resolver's own binding table carries no evidence field, so this is
+    /// asserted here rather than read from upstream. It is safe for resolved
+    /// *files* (module resolution is path-based); for symbols, `nav` picks the
+    /// exported match or the first same-named definition when a file declares
+    /// several. One import entry in this repository is in that position, so the
+    /// label is empirical, not structural. `via` says which rule was used.
     pub evidence: String,
     /// How the binding was established, for audit.
     pub via: String,
@@ -120,6 +134,14 @@ pub struct SemanticStats {
     pub imports_from_partial_files: usize,
     /// References attributed inside files that parsed only partially.
     pub references_from_partial_files: usize,
+    /// Import statements seen in files that parsed (or partially parsed).
+    pub declarations_total: usize,
+    /// Statements that resolved to a repository file.
+    pub declarations_resolved: usize,
+    /// Statements naming a registry crate or npm package.
+    pub declarations_external: usize,
+    /// Statements that should have resolved here and did not.
+    pub declarations_unresolved: usize,
     /// Import entries in files that parsed.
     pub imports_total: usize,
     /// Import entries that resolved to a file or symbol here.
@@ -131,6 +153,15 @@ pub struct SemanticStats {
     pub references_resolved: usize,
     /// Name-only matches, kept out of `references` on purpose.
     pub references_heuristic: usize,
+    /// Import edges whose `to_symbol` is declared in a file other than
+    /// `to_file` (re-export chains). Kept as a count so the distinction cannot
+    /// silently disappear.
+    pub symbols_in_other_file: usize,
+    /// Import edges where the declaring file holds more than one symbol with the
+    /// imported name, so `nav` had to pick one. Not an error, but not proven
+    /// either — these are the edges the `DETERMINISTIC` label only describes
+    /// empirically.
+    pub imports_ambiguous_symbol: usize,
 }
 
 /// The semantic layer's output for one repository.
@@ -176,6 +207,15 @@ impl SemanticIndex {
         let mut out = SemanticIndex::default();
         let mut files: Vec<&String> = index.facts.keys().collect();
         files.sort();
+
+        // (file, name) -> declaration count, for the ambiguity statistic.
+        let mut name_counts: std::collections::HashMap<(&str, &str), usize> =
+            std::collections::HashMap::new();
+        for symbol in index.symbols.values() {
+            *name_counts
+                .entry((symbol.file.as_str(), symbol.name.as_str()))
+                .or_default() += 1;
+        }
 
         for file in files {
             let Some(facts) = index.facts.get(file) else {
@@ -224,6 +264,12 @@ impl SemanticIndex {
             }
 
             for decl in &facts.imports {
+                out.stats.declarations_total += 1;
+                match &decl.resolution {
+                    ImportResolution::Resolved { .. } => out.stats.declarations_resolved += 1,
+                    ImportResolution::External { .. } => out.stats.declarations_external += 1,
+                    ImportResolution::Unresolved { .. } => out.stats.declarations_unresolved += 1,
+                }
                 for entry in &decl.entries {
                     out.stats.imports_total += 1;
                     match &decl.resolution {
@@ -231,14 +277,35 @@ impl SemanticIndex {
                             out.stats.imports_resolved += 1;
                             let binding =
                                 index.bindings.get(file).and_then(|m| m.get(&entry.local));
-                            let (to_symbol, via) = match binding.map(|b| &b.target) {
-                                Some(zylcode_nav::index::BindingTarget::Symbol(id)) => {
-                                    (Some(id.clone()), "import binding -> symbol")
-                                }
+                            let ambiguous = binding
+                                .map(|b| &b.target)
+                                .and_then(|t| match t {
+                                    zylcode_nav::index::BindingTarget::Symbol(id) => {
+                                        index.symbols.get(id).and_then(|symbol| {
+                                            name_counts
+                                                .get(&(symbol.file.as_str(), symbol.name.as_str()))
+                                                .copied()
+                                        })
+                                    }
+                                    _ => None,
+                                })
+                                .is_some_and(|count| count > 1);
+                            if ambiguous {
+                                out.stats.imports_ambiguous_symbol += 1;
+                            }
+                            let (to_symbol, symbol_file, via) = match binding.map(|b| &b.target) {
+                                Some(zylcode_nav::index::BindingTarget::Symbol(id)) => (
+                                    Some(id.clone()),
+                                    index
+                                        .symbols
+                                        .get(id)
+                                        .and_then(|s| (s.file != *target).then(|| s.file.clone())),
+                                    "import binding -> symbol",
+                                ),
                                 Some(zylcode_nav::index::BindingTarget::File(_)) => {
-                                    (None, "import binding -> file (glob/namespace)")
+                                    (None, None, "import binding -> file (glob/namespace)")
                                 }
-                                _ => (None, "import statement -> file"),
+                                _ => (None, None, "import statement -> file"),
                             };
                             if facts.status == ParseStatus::Partial {
                                 out.stats.imports_from_partial_files += 1;
@@ -251,6 +318,12 @@ impl SemanticIndex {
                                 imported: entry.imported.clone(),
                                 to_file: target.clone(),
                                 to_symbol,
+                                symbol_file: {
+                                    if symbol_file.is_some() {
+                                        out.stats.symbols_in_other_file += 1;
+                                    }
+                                    symbol_file
+                                },
                                 evidence: Evidence::Deterministic.as_str().to_string(),
                                 via: via.to_string(),
                                 from_partial: facts.status == ParseStatus::Partial,
@@ -311,6 +384,19 @@ impl SemanticIndex {
             return 0.0;
         }
         (self.stats.imports_resolved as f64 / denominator as f64) * 100.0
+    }
+
+    /// Share of in-repository import *statements* that resolved.
+    ///
+    /// A statement can carry several entries, so this is always at or below
+    /// [`Self::resolution_coverage`]; both are reported because quoting only the
+    /// higher one overstates completeness.
+    pub fn declaration_coverage(&self) -> f64 {
+        let denominator = self.stats.declarations_resolved + self.stats.declarations_unresolved;
+        if denominator == 0 {
+            return 0.0;
+        }
+        (self.stats.declarations_resolved as f64 / denominator as f64) * 100.0
     }
 
     /// References that resolve to `symbol`.
