@@ -63,7 +63,9 @@ COVERAGE MATHEMATICS (post-fix, measured by `zylcode repo-semantic --path .`)
     resolved                               1,562
     external                               1,531
     unresolved                                 0
-    glob                                     131
+    glob                                     131 (printed by `repo-semantic`; it is
+                                                 ImportEntry::glob over the
+                                                 entries the scanner produced)
 
   entry-level coverage        = 1562 / (1562 + 0)  = 100.0000%
   declaration-level coverage  =  883 / (883 + 4)   =  99.5490%
@@ -89,10 +91,14 @@ FILES (334 indexed)
 
 The 33 partial files, with the construct the grammar rejected:
   29  `fn<T>()` call-site type arguments under `vi.mock(...,
-      importOriginal<typeof import("...")>())` in `*.test.ts(x)` —
-      tree-sitter-typescript 0.23.2 predates that syntax. Grammar version, not
-      a defect in this code and not something D1 can fix without a dependency
-      bump (out of scope here).
+      importOriginal<typeof import("...")>())` in `*.test.ts(x)`. The grammar
+      rejects the construct under BOTH grammars (proved by parsing the same
+      text as .ts and as .tsx), and it parses the same call without type
+      arguments — so it is a grammar capability limit, not a selection bug.
+      tree-sitter-typescript 0.23.2 is the latest version published in the
+      registry, so there is no crate upgrade available as the fix; resolving
+      this needs an upstream grammar change or a different parser strategy, and
+      neither was attempted here.
    2  raw `&` in JSX text (`Audit Trail & Chain Hashes`,
       `Runtime Memory & Token Efficiency`) — invalid JSX per spec; the grammar
       is right to flag it. Pre-existing source defect in the desktop app.
@@ -103,20 +109,21 @@ The 33 partial files, with the construct the grammar rejected:
 
 Every edge from those files carries `from_partial`; none is counted as
 complete. 1,184 resolved references come from partially parsed files and are
-labelled as such (out of 15,604 deterministic attributions).
+labelled as such (out of 15,606 deterministic attributions).
 
 COMMANDS AND OUTPUT (verbatim)
 
   $ cargo run -q -p zylcode-cli -- repo-semantic --path .
   repository: \\?\C:\Projects\zylcode
-  indexed in 56.49s          (warm cache; a cold index of 334 files took 150.49s)
+  indexed in 57.58s          (warm cache; a cold index of 334 files took 116-150s)
   import statements: 1685 total, 883 resolved, 798 external, 4 unresolved
   import entries: 3093 total, 1562 resolved, 1531 external, 0 unresolved
   entry-level coverage: 100.0000% (1562 resolved / 1562 in-repository entries)
   declaration-level coverage: 99.5490% (883 resolved / 887 in-repository statements)
   files: 301 parsed, 33 partial, 0 failed, 0 unsupported
-  attribution: 15604 deterministic references, 42354 heuristic-only (never claimed as semantic), 1184 from partially parsed files
-  symbols: 157 import edges resolve into another file (re-export chains), 3 edges had to choose among same-named declarations
+  attribution: 15606 deterministic references, 42379 heuristic-only (never claimed as semantic), 1184 from partially parsed files
+  glob import entries: 131
+  symbols: 157 import edges resolve into another file (re-export chains), 1 name-collision edges (upper bound; cfg partitions are not modelled)
   fail-closed file states: {"PARSE_PARTIAL": 33}
 
 This is the D1 matrix's integration-demonstration cell: a CLI run on this
@@ -161,14 +168,31 @@ declared, and is `None` when those are the same. A consumer that assumed the
 symbol lived in `to_file` would be wrong 157 times in this repository, so the
 distinction is a field, not a comment.
 
-WHAT `DETERMINISTIC` DOES AND DOES NOT MEAN
-Upstream `nav::Binding` carries no evidence field, so the label is asserted by
-the semantic layer. For resolved files that is structural (module resolution is
-path-based). For symbols, three of 1,562 resolved entries resolve to a file
-holding several same-named declarations, where `nav` picks the exported match
-or the first one; those three are counted in
-`imports_ambiguous_symbol` and printed. The label is therefore empirical for
-those edges, and the report says so rather than claiming proof.
+PROVENANCE IS PER EDGE, NOT ONLY AGGREGATE
+Each edge carries `name_collision: bool`: true when the chosen symbol shares
+its file, name AND kind with another declaration, so `nav` had to pick by name.
+That is the machine-visible form of the distinction `evidence` alone cannot
+carry — `evidence` is `DETERMINISTIC` for every emitted import, and a consumer
+must consult `name_collision` rather than read that label as "exactly one
+candidate existed".
+
+NAME COLLISIONS: 1 EDGE, AND IT IS BENIGN
+The first version of this metric counted same-name declarations regardless of
+kind, and reported 3. Independent review reproduced all three and found them
+misclassified:
+  - `core/src/lib.rs` -> `crate::pipeline`: module vs method
+    `ZylCodeEngine::pipeline` — different kinds, cannot compete;
+  - `core/src/router.rs` -> `crate::router::cache`: module vs method
+    `TokenRouter::cache` — same;
+  - `tauri/src/main.rs` -> `crate::strip_verbatim`: two `fn` declarations at
+    lines 1530 and 1542, one `#[cfg(windows)]` and one `#[cfg(not(windows))]`
+    — mutually exclusive by build target.
+The metric now keys on (file, name, kind), which drops the two cross-kind
+cases. The remaining one is the cfg pair: genuinely two same-kind declarations
+in one file, still counted because `cfg` partitions are not modelled. It is an
+upper bound on ambiguity, not proof of it, and this edge resolves correctly on
+either target. The semantic layer emits no arbitrary choice here; where a
+collision is not benign, `name_collision` is the signal.
 
 FAIL-CLOSED TABLE — AND WHAT IS REACHABLE
   Parsed      -> clean facts

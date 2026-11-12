@@ -299,4 +299,29 @@ fn this_repository_resolves_its_own_imports() {
             .all(|i| i.to_symbol.is_some() || i.symbol_file.is_none()),
         "`symbol_file` may only accompany a symbol"
     );
+
+    // Glob entries are counted where they are produced, so the published
+    // figure has a command behind it rather than a hand-counted number.
+    assert!(
+        index.stats.imports_glob > 0,
+        "this workspace has glob imports (`pub use x::*`); the counter must see them"
+    );
+
+    // Provenance is per edge, not only an aggregate: a consumer must be able to
+    // spot a name match from the edge itself.
+    assert_eq!(
+        index.imports.iter().filter(|i| i.name_collision).count(),
+        index.stats.imports_name_collision,
+        "the collision count must match the edges that carry the flag"
+    );
+    assert!(
+        index.stats.imports_name_collision > 0,
+        "this workspace has same-kind duplicate declarations; the flag must surface one"
+    );
+    for edge in index.imports.iter().filter(|i| i.name_collision) {
+        assert!(
+            edge.to_symbol.is_some(),
+            "only symbol bindings can collide: {edge:?}"
+        );
+    }
 }

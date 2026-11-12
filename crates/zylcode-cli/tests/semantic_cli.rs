@@ -58,6 +58,10 @@ fn the_command_reports_both_coverage_figures() {
         stdout.contains("partial"),
         "partial-parse counts are required, output: {stdout}"
     );
+    assert!(
+        stdout.contains("glob import entries:"),
+        "the glob figure needs a command behind it, output: {stdout}"
+    );
 }
 
 #[test]

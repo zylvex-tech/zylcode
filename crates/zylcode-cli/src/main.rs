@@ -484,9 +484,10 @@ fn handle_repo_semantic(root: &str) -> Result<()> {
         index.stats.references_heuristic,
         index.stats.references_from_partial_files
     );
+    println!("glob import entries: {}", index.stats.imports_glob);
     println!(
-        "symbols: {} import edges resolve into another file (re-export chains), {} edges had to choose among same-named declarations",
-        index.stats.symbols_in_other_file, index.stats.imports_ambiguous_symbol
+        "symbols: {} import edges resolve into another file (re-export chains), {} name-collision edges (upper bound; cfg partitions are not modelled)",
+        index.stats.symbols_in_other_file, index.stats.imports_name_collision
     );
     let mut codes: std::collections::BTreeMap<&str, usize> = std::collections::BTreeMap::new();
     for failure in &index.failures {
