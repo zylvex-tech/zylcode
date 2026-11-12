@@ -7,6 +7,7 @@ use zylcode_core::input_validation as iv;
 use zylcode_core::router::{ProviderConfig, ProviderKind};
 use zylcode_core::{EngineConfig, Intent, McpBridgeDescriptor, ZylCodeEngine};
 
+mod native_chat;
 mod provider_store;
 mod secrets;
 
@@ -23,6 +24,8 @@ struct EngineState {
     missions: Arc<zylcode_core::missions::MissionQueue>,
     /// Last/current workspace build pipeline state.
     build_status: Arc<std::sync::Mutex<serde_json::Value>>,
+    /// Cancellation slot for the live chat turn.
+    cancel: Arc<native_chat::CancelSlot>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -104,6 +107,91 @@ async fn process_intent_stream(
         "intent:chunk",
         serde_json::json!({ "index": 0, "delta": "", "done": false, "phase": "planning" }),
     );
+
+    // ---- Native tool path -------------------------------------------------
+    //
+    // When the configured provider advertises tool calling, the turn is driven
+    // by `NativeToolRunner` — the same loop `zylcode ask` uses — so the desktop
+    // executes the model's tool call natively instead of asking the model to
+    // format one as JSON. What follows is the previous path (`AgentLoop` over
+    // `dispatch_prompt`, JSON-in-text tool protocol), kept only for providers
+    // that cannot be handed tool declarations at all. Neither path has its own
+    // executor: both reach the same gate and the same registry.
+    {
+        let engine = state.inner().engine.clone();
+        let mut router_config = engine.pipeline().router().config().clone();
+        if let Some(m) = model.clone().filter(|m| !m.trim().is_empty()) {
+            router_config.primary_model = m;
+        }
+
+        if native_chat::provider_supports_native_tools(&router_config.primary_provider) {
+            let planner = zylcode_core::IntentPlanner::new();
+            let bridges = engine.list_mcp_bridges().await;
+            let plan = planner.build_execution_plan(
+                &Intent {
+                    prompt: prompt.clone(),
+                    context: None,
+                    correlation_id: None,
+                },
+                &bridges,
+            );
+
+            let router =
+                zylcode_core::TokenRouter::new(router_config).map_err(|e| e.to_string())?;
+            let cancel = zylcode_core::providers::streaming::CancelToken::new();
+            state.inner().cancel.install(cancel.clone());
+
+            let app_for_calls = app.clone();
+            let actor = "desktop:chat";
+            let session = format!("desktop-{}", std::process::id());
+            let workspace = std::path::PathBuf::from(&engine.config().workspace_root);
+
+            let result = native_chat::run_native_session(
+                &router,
+                &workspace,
+                &native_chat::evidence_path(),
+                &plan.system_prompt,
+                &plan.compiled_prompt,
+                // Empty means "the provider's configured model wins", which is
+                // what the router already does when no override was sent.
+                model.as_deref().unwrap_or(""),
+                actor,
+                session,
+                &cancel,
+                move |call| native_chat::emit_call(&app_for_calls, call),
+            )
+            .await;
+            state.inner().cancel.clear();
+
+            return match result {
+                Ok(run) => {
+                    let _ = app.emit(
+                        "intent:chunk",
+                        serde_json::json!({ "index": 1, "delta": run.text, "done": false }),
+                    );
+                    let intent_result = zylcode_core::IntentResult {
+                        summary: run.text,
+                        artifacts: Vec::new(),
+                        success: true,
+                    };
+                    let _ = app.emit("intent:done", &intent_result);
+                    let _ = app.emit(
+                        "intent:chunk",
+                        serde_json::json!({ "index": 999999, "delta": "", "done": true }),
+                    );
+                    Ok(intent_result)
+                }
+                Err(err) => {
+                    // A failed turn is an error, never a fabricated answer.
+                    let _ = app.emit(
+                        "intent:chunk",
+                        serde_json::json!({ "index": 999999, "delta": "", "done": true }),
+                    );
+                    Err(err.to_string())
+                }
+            };
+        }
+    }
 
     // Build a router-level stream so the UI gets token-by-token progress.
     // We drive the full pipeline via the engine but also emit router stream
@@ -200,6 +288,17 @@ async fn process_intent_stream(
     );
 
     Ok(result)
+}
+
+/// Cancel the live chat turn.
+///
+/// The token is checked between provider rounds, before the gate and between
+/// tool calls, so cancelling stops the next provider continuation rather than
+/// leaving one in flight. Returns whether a turn was actually cancelled, so the
+/// UI can tell "stopped" from "nothing was running".
+#[tauri::command]
+fn cancel_intent(state: tauri::State<'_, EngineState>) -> bool {
+    state.inner().cancel.cancel()
 }
 
 /// Return the current execution plan without dispatching to the LLM (useful
@@ -1643,11 +1742,13 @@ fn main() {
                     "state": "idle",
                     "note": "no build run in this app session"
                 }))),
+                cancel: Arc::new(native_chat::CancelSlot::default()),
             }
         })
         .invoke_handler(tauri::generate_handler![
             process_intent,
             process_intent_stream,
+            cancel_intent,
             preview_execution_plan,
             repo_context,
             nav_query,

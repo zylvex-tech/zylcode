@@ -37,6 +37,23 @@ export type McpToolCall = {
   error?: string;
 };
 
+/**
+ * A tool the model asked for, executed by the Rust runtime.
+ *
+ * `tool` is the canonical ZylCode id (`fs.read`), never the provider's wire
+ * name: the wire name is a protocol detail. `decision` is the permission
+ * gate's own record, so the UI cannot render a refusal as a success.
+ */
+export type NativeToolCall = {
+  tool: string;
+  wire_name?: string;
+  status: "complete" | "failed";
+  decision?: string;
+  executed?: boolean;
+  invocation_id?: string;
+  error?: string | null;
+};
+
 export type IntentDone = {
   summary: string;
   artifacts: { kind: string; label: string; content: string }[];
@@ -127,6 +144,20 @@ export function onMcpToolCall(cb: (e: McpToolCall) => void): Promise<UnlistenFn>
   );
 }
 
+/**
+ * Native tool activity from the chat runtime (`process_intent_stream`).
+ *
+ * It is delivered on its own channel rather than folded into `intent:chunk`:
+ * a tool call is structured data, and rendering it by matching text would make
+ * the display depend on prose the model did not necessarily write.
+ */
+export function onNativeToolCall(cb: (e: NativeToolCall) => void): Promise<UnlistenFn> {
+  return listenWhenSafe<NativeToolCall>(
+    "zylcode://tool-call",
+    bufferedHandler("zylcode://tool-call", cb),
+  );
+}
+
 // ---------------------------------------------------------------------------
 // React hook — subscribes to all stream channels, returns state + backlog
 // ---------------------------------------------------------------------------
@@ -159,11 +190,26 @@ export function useStreamSubscription(enabled = true) {
     const pendingDeltas = drainBacklog<StreamDelta>("intent:chunk");
     const pendingStream = drainBacklog<StreamDelta>("zylcode://stream-delta");
     const pendingMcp = drainBacklog<McpToolCall>("zylcode://mcp-tool-call");
-    if (pendingDeltas.length > 0 || pendingStream.length > 0 || pendingMcp.length > 0) {
+    const pendingNative = drainBacklog<NativeToolCall>("zylcode://tool-call");
+    if (
+      pendingDeltas.length > 0 ||
+      pendingStream.length > 0 ||
+      pendingMcp.length > 0 ||
+      pendingNative.length > 0
+    ) {
       setState((s) => ({
         ...s,
         deltas: [...s.deltas, ...pendingDeltas, ...pendingStream],
-        mcpCalls: [...s.mcpCalls, ...pendingMcp],
+        mcpCalls: [
+          ...s.mcpCalls,
+          ...pendingMcp,
+          ...pendingNative.map((payload) => ({
+            tool: payload.tool,
+            transport: "native",
+            status: payload.status,
+            error: payload.error ?? undefined,
+          })),
+        ],
         isStreaming: true,
       }));
     }
@@ -193,7 +239,24 @@ export function useStreamSubscription(enabled = true) {
         if (cancelled) return;
         setState((s) => ({ ...s, done: payload, isStreaming: false }));
       });
-      unlistens.current = [u1, u2, u3, u4];
+      // Native tool activity joins the same list the MCP calls already use, so
+      // there is one place a run's tool rows come from.
+      const u5 = await onNativeToolCall((payload) => {
+        if (cancelled) return;
+        setState((s) => ({
+          ...s,
+          mcpCalls: [
+            ...s.mcpCalls,
+            {
+              tool: payload.tool,
+              transport: "native",
+              status: payload.status,
+              error: payload.error ?? undefined,
+            },
+          ],
+        }));
+      });
+      unlistens.current = [u1, u2, u3, u4, u5];
     })();
 
     return () => {
