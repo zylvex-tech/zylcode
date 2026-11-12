@@ -155,6 +155,24 @@ PATTERNS: list[tuple[str, re.Pattern[str], str]] = [
         "SendGrid API key",
     ),
     (
+        # NVIDIA NIM. Added after a live key was pasted into a chat during
+        # provider commissioning: the scan should catch that class of key if it
+        # ever reaches a tracked file, which it now can be checked for.
+        "NVIDIA NIM API key",
+        re.compile(r"\bnvapi-[0-9A-Za-z_\-]{40,}"),
+        "NVIDIA build.nvidia.com key, billed to the holder's account",
+    ),
+    (
+        "Anthropic API key",
+        re.compile(r"\bsk-ant-[0-9A-Za-z_\-]{20,}"),
+        "Anthropic console key",
+    ),
+    (
+        "OpenAI project key",
+        re.compile(r"\bsk-proj-[0-9A-Za-z_\-]{20,}"),
+        "OpenAI project-scoped key (the bare `sk-` form is too generic to match safely)",
+    ),
+    (
         "Private key block",
         re.compile(r"-----BEGIN (?:RSA |EC |DSA |OPENSSH |PGP )?PRIVATE KEY(?: BLOCK)?-----"),
         "any PEM private key body, including passphrase-protected ones",
@@ -248,6 +266,22 @@ SELFTEST_CASES: list[dict] = [
         "unsafe": "SG." + "abcdefghijklmnopqrstuv" + "."
         "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG",
         "safe": ["SG.short.short"],
+    },
+    {
+        "pattern": "NVIDIA NIM API key",
+        # Split so this scanner does not flag its own test data.
+        "unsafe": "nvapi-" + "VQ4rvnq6oN8wpy9QzI_k09iN1AEDy8KV9XF2XD27X4r53y",
+        "safe": ["nvapi-...", "nvapi-short"],
+    },
+    {
+        "pattern": "Anthropic API key",
+        "unsafe": "sk-ant-" + "api03-abcdefghijklmnopqrstuvwxyz012345",
+        "safe": ["sk-ant-...", "sk-ant-api"],
+    },
+    {
+        "pattern": "OpenAI project key",
+        "unsafe": "sk-proj-" + "abcdefghijklmnopqrstuvwxyz012345",
+        "safe": ["sk-proj-...", "sk-proj"],
     },
     {
         "pattern": "Private key block",
