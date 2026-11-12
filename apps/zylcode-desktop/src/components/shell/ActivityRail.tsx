@@ -294,6 +294,17 @@ const BOTTOM_UTILITIES: Activity[] = [
   },
 ];
 
+/**
+ * Every id the rail can activate, as runtime data.
+ *
+ * `surfaceReachability.test.ts` compares this with App's `ACTIVITY_TO_SURFACE`,
+ * so an activity added without a surface mapping (which currently falls back to
+ * the code surface, silently) fails a test instead of landing somewhere wrong.
+ */
+export const ALL_ACTIVITY_IDS: readonly ActivityId[] = [...ACTIVITIES, ...BOTTOM_UTILITIES].map(
+  (activity) => activity.id,
+);
+
 interface ActivityRailProps {
   activeActivity: ActivityId;
   onActivityChange: (activity: ActivityId) => void;

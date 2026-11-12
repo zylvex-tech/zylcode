@@ -25,6 +25,8 @@ import {
 } from "./components/shell";
 import type { BottomTab } from "./components/shell/BottomPanel";
 import type { ActivityId } from "./components/shell/ActivityRail";
+import type { SurfaceType } from "./components/shell/SurfaceHost";
+import { ACTIVITY_TO_SURFACE } from "./components/shell/navigation";
 
 // ---------------------------------------------------------------------------
 // Backend result shapes (match src-tauri commands)
@@ -46,37 +48,6 @@ type VerificationReport = {
 // ---------------------------------------------------------------------------
 // Navigation model
 // ---------------------------------------------------------------------------
-
-type SurfaceType =
-  | "home"
-  | "overview"
-  | "intel"
-  | "source-control"
-  | "search"
-  | "evidence-live"
-  | "code"
-  | "design"
-  | "missions"
-  | "runtime"
-  | "artifacts"
-  | "evidence"
-  | "extensions"
-  | "forge";
-
-const ACTIVITY_TO_SURFACE: Record<ActivityId, SurfaceType> = {
-  explorer: "code",
-  search: "search",
-  "source-control": "source-control",
-  intel: "intel",
-  design: "design",
-  missions: "missions",
-  run: "runtime",
-  evidence: "evidence-live",
-  forge: "forge",
-  extensions: "extensions",
-  settings: "overview",
-  account: "overview",
-};
 
 type DockModule =
   | "agent"

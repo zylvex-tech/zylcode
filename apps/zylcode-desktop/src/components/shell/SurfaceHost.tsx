@@ -19,21 +19,32 @@ import { IS_DESKTOP } from "../../lib/runtime";
 import type { StreamDelta } from "../../lib/events";
 import type { ArtifactFile, SaveStatus } from "../../lib/useArtifactStream";
 
-type SurfaceType =
-  | "home"
-  | "overview"
-  | "intel"
-  | "source-control"
-  | "search"
-  | "evidence-live"
-  | "code"
-  | "design"
-  | "missions"
-  | "runtime"
-  | "artifacts"
-  | "evidence"
-  | "extensions"
-  | "forge";
+/**
+ * Every surface this host can render, as runtime data.
+ *
+ * The list is the single source of the `SurfaceType` union *and* of
+ * `surfaceReachability.test.ts`, which fails when a surface is added here with
+ * no way to navigate to it — the defect that left `design` unreachable after it
+ * was implemented.
+ */
+export const SURFACES = [
+  "home",
+  "overview",
+  "intel",
+  "source-control",
+  "search",
+  "evidence-live",
+  "code",
+  "design",
+  "missions",
+  "runtime",
+  "artifacts",
+  "evidence",
+  "extensions",
+  "forge",
+] as const;
+
+export type SurfaceType = (typeof SURFACES)[number];
 
 interface SurfaceHostProps {
   surface: SurfaceType;
