@@ -19,7 +19,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: llvm-tools-preview
-      - uses: taiki-e/install-action@5488ac5a951645ce95062214902ac4b6bc1a1037
+      - uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39
         with:
           tool: cargo-llvm-cov
       - name: Coverage gate (lines >= 78%)
