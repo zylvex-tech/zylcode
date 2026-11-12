@@ -125,6 +125,25 @@ jobs:
         # verified 2026-09-19 against the committed catalogue source).
         # Adding a rule requires both a retraction reference and a measurement.
 
+      - name: Capability registry validation
+        run: |
+          python scripts/check_capability_registry.py
+          python scripts/check_capability_registry.py --self-test
+        # The registry is a public claim surface, so its *shape* is gated the
+        # same way its claims are. This catches a missing `rung` (required by
+        # ZYLCODE_CAPABILITY_MODEL.md section 5 — 23 of 37 entries lacked one
+        # until 2026-11-11), a status outside the vocabulary, a DISPUTED entry
+        # without its dispute record, a rung with no stated basis, a missing or
+        # drifted summary, and a GREEN entry below R3 (section 4.2) that is not
+        # declared.
+        #
+        # The second line runs the gate's own regression fixtures, so a future
+        # edit that widens acceptance fails here rather than in an audit.
+        #
+        # It deliberately does not judge whether a rung is *earned*: that is the
+        # auditor's word, and a script that pretended otherwise would be the
+        # same hand-assertion the model forbids.
+
       # ---------------------------------------------------------------------
       # Security gates (added 2026-10-21, Phase 1)
       # ---------------------------------------------------------------------

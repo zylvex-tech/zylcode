@@ -105,3 +105,94 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: "ZylCode ${{ github.ref_name }}"
           args: --target ${{ matrix.target }}
+
+  # ---------------------------------------------------------------------------
+  # Checksum manifest.
+  #
+  # The five build legs upload their bundles straight to the release, so until
+  # this job existed a release published twelve binaries with nothing to verify
+  # them against. v0.2.3 shipped exactly that way.
+  #
+  # It runs only when every leg succeeded (`needs: release`, default
+  # success-only condition), then re-downloads the *published* assets — not the
+  # local build output — so the checksums describe what a user will actually
+  # download. If the expected set is incomplete it fails without publishing a
+  # manifest: a partial SHA256SUMS is worse than none, because it looks like the
+  # assets were verified.
+  #
+  # Operational rule: this job hashes whatever is attached when it runs, and
+  # nothing re-triggers it. If a build leg is re-run after it ("Re-run failed
+  # jobs" on the release workflow), re-run this job too, or the published
+  # manifest will describe the previous upload.
+  # ---------------------------------------------------------------------------
+  checksums:
+    needs: release
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TAG: ${{ github.ref_name }}
+    steps:
+      - name: Download the published assets
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          gh release download "$TAG" --dir dist --clobber
+          # A manifest from a previous attempt must never be hashed into its
+          # successor, which would make the file describe itself.
+          rm -f dist/SHA256SUMS
+
+      - name: Verify the expected artifact set
+        run: |
+          set -euo pipefail
+          version="${TAG#v}"
+          # The 12 assets v0.2.3 actually published, generalised over version.
+          expected=(
+            "ZylCode_${version}_amd64.AppImage"
+            "ZylCode_${version}_aarch64.AppImage"
+            "ZylCode_${version}_amd64.deb"
+            "ZylCode_${version}_arm64.deb"
+            "ZylCode-${version}-1.x86_64.rpm"
+            "ZylCode-${version}-1.aarch64.rpm"
+            "ZylCode_${version}_x64-setup.exe"
+            "ZylCode_${version}_x64_en-US.msi"
+            "ZylCode_${version}_x64.dmg"
+            "ZylCode_${version}_aarch64.dmg"
+            "ZylCode_x64.app.tar.gz"
+            "ZylCode_aarch64.app.tar.gz"
+          )
+          missing=()
+          for name in "${expected[@]}"; do
+            [[ -f "dist/$name" ]] || missing+=("$name")
+          done
+          if (( ${#missing[@]} > 0 )); then
+            for name in "${missing[@]}"; do
+              echo "::error::expected release asset is missing: $name"
+            done
+            echo "Refusing to publish a SHA256SUMS that would cover an incomplete release."
+            exit 1
+          fi
+          echo "All ${#expected[@]} expected assets are present."
+
+      - name: Generate and verify SHA256SUMS
+        run: |
+          set -euo pipefail
+          cd dist
+          find . -maxdepth 1 -type f ! -name SHA256SUMS -printf '%f\n' | sort | xargs sha256sum > SHA256SUMS
+          # Verify the manifest against the files before it is published: a
+          # checksum file nobody checked is a claim, not evidence.
+          sha256sum --check --strict SHA256SUMS
+          echo "--- SHA256SUMS ---"
+          cat SHA256SUMS
+
+      - name: Publish SHA256SUMS and verify the uploaded copy
+        run: |
+          set -euo pipefail
+          gh release upload "$TAG" dist/SHA256SUMS --clobber
+          # Confirm the asset served by the release is byte-identical to the
+          # manifest that was verified locally.
+          mkdir -p verify
+          gh release download "$TAG" --pattern SHA256SUMS --dir verify --clobber
+          cmp dist/SHA256SUMS verify/SHA256SUMS
+          echo "Published manifest matches the verified local copy."
