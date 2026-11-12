@@ -117,6 +117,16 @@ export function DesignStudio({ repository }: DesignStudioProps = {}) {
       setStatus({ kind: "error", message: "Enter a project name first." });
       return;
     }
+    // Creating replaces the open document in memory. Doing that while the
+    // current project is dirty would discard edits with no prompt, which is the
+    // same loss the switch guard exists to prevent.
+    if (dirty) {
+      setStatus({
+        kind: "error",
+        message: "Save or discard your current changes before creating a new project.",
+      });
+      return;
+    }
     setBusy(true);
     try {
       const created = await repo.create(name);
@@ -161,6 +171,16 @@ export function DesignStudio({ repository }: DesignStudioProps = {}) {
     const name = renameValue.trim();
     if (!name) {
       setStatus({ kind: "error", message: "A project name is required." });
+      return;
+    }
+    // Renaming re-reads the stored document, so doing it on the open project
+    // while it is dirty would replace the in-memory edits with the last saved
+    // revision. Refuse instead of discarding them.
+    if (dirty && project?.id === id) {
+      setStatus({
+        kind: "error",
+        message: "Save or discard your current changes before renaming this project.",
+      });
       return;
     }
     setBusy(true);

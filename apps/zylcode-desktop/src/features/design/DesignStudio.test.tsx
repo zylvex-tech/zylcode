@@ -194,6 +194,43 @@ describe("Design Studio workspace", () => {
     await screen.findByText(/Opened "Beta"/);
   });
 
+  // Found by driving the real desktop app: creating a project replaced the open
+  // document in memory, so unsaved edits disappeared with no prompt.
+  it("refuses to create another project while the current one is dirty", async () => {
+    const { repo, projects } = fakeRepository();
+    render(<DesignStudio repository={repo} />);
+    await createProject("Alpha");
+    fireEvent.click(screen.getByRole("button", { name: "Add text" }));
+    expect(screen.getByTestId("dirty")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("New project name"), { target: { value: "Beta" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create project" }));
+
+    expect(
+      await screen.findByText(/Save or discard your current changes before creating/),
+    ).toBeInTheDocument();
+    expect(projects.size).toBe(1);
+    expect(screen.getByText("New label")).toBeInTheDocument();
+  });
+
+  // The same loss through rename: the store's document replaced the editor's.
+  it("refuses to rename the open project while it is dirty", async () => {
+    const { repo, projects } = fakeRepository();
+    render(<DesignStudio repository={repo} />);
+    await createProject("Draft");
+    fireEvent.click(screen.getByRole("button", { name: "Add text" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Rename" }));
+    fireEvent.change(screen.getByLabelText("Rename Draft"), { target: { value: "Final" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save name" }));
+
+    expect(
+      await screen.findByText(/Save or discard your current changes before renaming/),
+    ).toBeInTheDocument();
+    expect([...projects.values()][0].name).toBe("Draft");
+    expect(screen.getByText("New label")).toBeInTheDocument();
+  });
+
   it("exports the current document as standalone HTML", async () => {
     const { repo, exportHtml } = fakeRepository();
     render(<DesignStudio repository={repo} />);
