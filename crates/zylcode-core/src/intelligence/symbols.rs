@@ -2,8 +2,11 @@
 //!
 //! Phase 2A uses regex-based extraction for Rust and TypeScript/JavaScript.
 //! This provides DEFINITION_INDEXED support level.
-//! Full reference resolution (IMPORT_RESOLVED, REFERENCE_RESOLVED)
-//! may be added in a later phase with tree-sitter.
+//! Cross-file semantic resolution (`IMPORT_RESOLVED`, `REFERENCE_RESOLVED`) is
+//! not here: it lives in [`super::semantic`], which parses each file with a real
+//! grammar (tree-sitter, through `zylcode-nav`) and resolves imports and
+//! references against the module graph. This module's regexes are still what
+//! produces `DEFINITION_INDEXED`, and they are not presented as anything more.
 //!
 //! Architecture MUST NOT pretend regex extraction is semantic indexing.
 
