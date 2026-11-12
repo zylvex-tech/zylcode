@@ -6,6 +6,7 @@ export type ActivityId =
   | "search"
   | "source-control"
   | "intel"
+  | "design"
   | "missions"
   | "run"
   | "evidence"
@@ -112,6 +113,31 @@ const ACTIVITIES: Activity[] = [
         <path d="M8.6 7.5l2.5 7.6"></path>
         <path d="M15.4 7.5l-2.5 7.6"></path>
         <path d="M9 6h6"></path>
+      </svg>
+    ),
+  },
+  {
+    // The Design surface held a COMING SOON panel and then a whole workspace,
+    // but no control could ever activate it: the rail had no entry and
+    // ACTIVITY_TO_SURFACE no mapping. This is what makes the workspace reachable.
+    id: "design",
+    label: "Design Studio",
+    status: "limited",
+    icon: (
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
+        <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
+        <path d="M2 2l7.586 7.586"></path>
+        <circle cx="11" cy="11" r="2"></circle>
       </svg>
     ),
   },
@@ -267,6 +293,17 @@ const BOTTOM_UTILITIES: Activity[] = [
     ),
   },
 ];
+
+/**
+ * Every id the rail can activate, as runtime data.
+ *
+ * `surfaceReachability.test.ts` compares this with App's `ACTIVITY_TO_SURFACE`,
+ * so an activity added without a surface mapping (which currently falls back to
+ * the code surface, silently) fails a test instead of landing somewhere wrong.
+ */
+export const ALL_ACTIVITY_IDS: readonly ActivityId[] = [...ACTIVITIES, ...BOTTOM_UTILITIES].map(
+  (activity) => activity.id,
+);
 
 interface ActivityRailProps {
   activeActivity: ActivityId;
