@@ -123,6 +123,10 @@ export function DesignCanvas({
             fontSize: node.fontSize,
             cursor: "grab",
             userSelect: "none",
+            // A text box grows with its content: clipping the words the user
+            // typed is data loss on screen. Shapes keep their authored bounds.
+            overflow: node.kind === "text" ? "visible" : "hidden",
+            whiteSpace: node.kind === "text" ? "pre-wrap" : "normal",
             outline: selected ? "2px solid var(--color-primary, #3b82f6)" : "none",
             outlineOffset: 2,
           };
@@ -133,7 +137,7 @@ export function DesignCanvas({
               role="button"
               tabIndex={0}
               aria-label={`Element ${node.text || node.kind}`}
-              className="flex items-start overflow-hidden rounded"
+              className="flex items-start rounded"
               style={style}
               onMouseDown={(e) => startDrag(e, node)}
               onFocus={() => onSelect(node.id)}

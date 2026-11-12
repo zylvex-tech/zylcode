@@ -68,6 +68,7 @@ const ACTIVITY_TO_SURFACE: Record<ActivityId, SurfaceType> = {
   search: "search",
   "source-control": "source-control",
   intel: "intel",
+  design: "design",
   missions: "missions",
   run: "runtime",
   evidence: "evidence-live",
