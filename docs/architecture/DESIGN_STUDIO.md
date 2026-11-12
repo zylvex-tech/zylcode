@@ -26,7 +26,9 @@ clone; nothing below the panel existed (no component, command, model or test).
    the project's export with it).
 
 Switching away from a project with unsaved changes is refused until the user
-saves or discards; it is never silently discarded.
+saves or discards; it is never silently discarded. Creating another project or
+renaming the open one is refused in the same state, because both replace the
+document the editor is holding.
 
 ## Architecture
 

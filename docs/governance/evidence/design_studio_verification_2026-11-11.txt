@@ -52,3 +52,64 @@ All files          |   96.84 |     90.2 |   94.56 |   96.84 |
    Visual diff (DESIGN vs RUNTIME), design<->code generation, agent repair, proof,
    Figma import, screens/routes/tokens/assets, multi-page projects, concurrent editing.
    The workspace footer and the Design tab note name these; no control renders for them.
+
+== 7. Re-verification, including the desktop GUI (2026-11-12) ==
+   Branch:      feat/design-studio-slice
+   Code commit: d45001c (sections 1-6 above were captured at 776a4af; the
+                numbers below supersede them where they differ)
+   Platform:    MINGW64_NT-10.0-26200 / x86_64
+
+   Re-run from a clean tree:
+     cargo test -p zylcode-desktop design_store   -> 8 passed; 0 failed
+     cargo test -p zylcode-desktop                -> 33 passed; 0 failed
+     cargo clippy -p zylcode-desktop --all-targets -- -D warnings -> exit 0
+     cargo fmt -p zylcode-desktop -- --check      -> exit 0
+     pnpm exec tsc --noEmit                       -> exit 0
+     pnpm exec eslint src --ext .ts,.tsx          -> exit 0 (1 pre-existing warning, ProviderSettings.tsx:205)
+     pnpm exec prettier --check "src/**/*.{ts,tsx}" -> all files formatted
+     pnpm exec vitest run --coverage              -> 72 test files passed
+        All files | 96.78 lines | 90.19 branches | 94.56 functions | 96.78 statements
+        (gates 70/83/80/70, so every threshold is met)
+
+== 8. The GUI walk the earlier report could not do ==
+   Earlier passes said plainly: "I did not launch the Tauri GUI." This pass did.
+   Binary: target/debug/zylcode-desktop.exe, WebView2 driven over CDP
+   (--remote-debugging-port=9222), renderer served by Vite on :1420.
+
+   1. Create a project          -> "Review pass" created; project file on disk
+   2. Add/edit an object        -> text element "Shipped from the desktop app"
+   3. Move it                   -> dragged; x 60 -> 180, y 60 -> 120 persisting in the doc
+   4. Inspector property        -> font size 24 -> 32; canvas computed font-size: 32px
+   5. Undo                      -> font size back to 24; canvas font-size: 24px
+   6. Redo                      -> font size back to 32
+   7. Save                      -> "Saved "Desktop walk" as revision 4."
+   8. Switch away               -> refused: "This project has unsaved changes —
+                                   save or discard them before switching."
+                                   "Save and switch" saved then opened the other project
+   9. Reopen                    -> "Opened "Desktop walk" (revision 4)"
+  10. Confirm saved state       -> font size 32, text intact, UNSAVED absent
+  11. Export                    -> "...\design-projects\exports\p18e7375b1b735b100.html"
+  12. Verify the exported file  -> contains font-size:32px and the element text
+
+   Two defects were found by doing this, neither visible to the automated tests:
+
+   a. (fixed before this pass, commit c0818f9) The Design surface could not be
+      reached from the shell at all: no rail entry, no surface mapping.
+   b. (fixed before this pass, commit b3a33df) Text elements clipped their own
+      content in the canvas.
+
+   A third was found in this pass and fixed at aefc512:
+   c. Creating a project, or renaming the open one, replaced the document in
+      memory and discarded unsaved edits with no prompt. Both now refuse while
+      the editor is dirty, with a regression test each
+      (DesignStudio.test.tsx: "refuses to create another project while the
+      current one is dirty", "refuses to rename the open project while it is
+      dirty"). Re-checked in the running app: the refusal message appears, the
+      edit survives (font size 30 kept) and no third project is written.
+
+   Also corrected in this pass (d45001c): Cargo.lock never recorded the desktop
+   crate's tempfile dev-dependency. CI passed only because its cargo commands do
+   not pass --locked; a --locked build on a clean checkout would have failed.
+
+   What this walk does not cover: one window, one monitor, no concurrent editor,
+   no crash mid-write (atomicity is covered only by the store's tests).
