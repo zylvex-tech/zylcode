@@ -128,7 +128,11 @@ enum ProjectCommands {
         id: String,
     },
     /// Export all project records as portable JSON.
-    Export,
+    Export {
+        /// Optional output path (defaults to './zylcode-projects-export.json').
+        #[arg(long, default_value = "./zylcode-projects-export.json")]
+        output: String,
+    },
     /// Import project records from exported JSON.
     Import {
         /// Path to the exported JSON file.
@@ -2080,7 +2084,7 @@ async fn handle_project(args: ProjectArgs) -> Result<()> {
             } else {
                 println!("Registered projects:");
                 for p in projects {
-                    println!("  {} @ {:?}", p.name, p.root_path);
+                    println!("  {} @ {:?} ID: {}", p.name, p.root_path, p.id);
                 }
             }
             Ok(())
@@ -2088,6 +2092,8 @@ async fn handle_project(args: ProjectArgs) -> Result<()> {
         ProjectCommands::Open { id } => {
             let store = zylcode_core::project_store::ProjectStore::open(&std::env::current_dir()?)
                 .map_err(|e| anyhow::anyhow!("failed to open project store: {e}"))?;
+            // Touch updates last_accessed and re-orders the list by recency.
+            store.touch(&id)?;
             if let Some(p) = store.get(&id)? {
                 println!("Project '{}' @ {:?}", p.name, p.root_path);
             } else {
@@ -2096,16 +2102,26 @@ async fn handle_project(args: ProjectArgs) -> Result<()> {
             }
             Ok(())
         }
-        ProjectCommands::Export => {
+        ProjectCommands::Export { output } => {
             let store = zylcode_core::project_store::ProjectStore::open(&std::env::current_dir()?)
                 .map_err(|e| anyhow::anyhow!("failed to open project store: {e}"))?;
             let exported = store.export_json()?;
-            let json_path = Path::new("./zylcode-projects-export.json");
-            std::fs::write(json_path, &exported)?;
+            let output_path = std::path::Path::new(&output);
+            // Check if output file already exists and prompt/protect.
+            if output_path.exists() {
+                eprintln!(
+                    "Warning: output file '{}' already exists, it will be overwritten.",
+                    output
+                );
+            }
+            std::fs::write(output_path, &exported)?;
+            // Count actual project records, not JSON lines.
+            let project_count = serde_json::from_str::<serde_json::Value>(&exported)
+                .map(|v| v["projects"].as_array().map(|a| a.len()).unwrap_or(0))
+                .unwrap_or(0);
             println!(
                 "Exported {} project(s) to '{:?}'.",
-                json_path.display(),
-                exported.lines().count()
+                project_count, output_path
             );
             Ok(())
         }
