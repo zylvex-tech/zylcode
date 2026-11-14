@@ -132,6 +132,9 @@ enum ProjectCommands {
         /// Optional output path (defaults to './zylcode-projects-export.json').
         #[arg(long, default_value = "./zylcode-projects-export.json")]
         output: String,
+        /// Force overwrite of existing output file.
+        #[arg(long)]
+        force: bool,
     },
     /// Import project records from exported JSON.
     Import {
@@ -2102,15 +2105,15 @@ async fn handle_project(args: ProjectArgs) -> Result<()> {
             }
             Ok(())
         }
-        ProjectCommands::Export { output } => {
+        ProjectCommands::Export { output, force } => {
             let store = zylcode_core::project_store::ProjectStore::open(&std::env::current_dir()?)
                 .map_err(|e| anyhow::anyhow!("failed to open project store: {e}"))?;
             let exported = store.export_json()?;
             let output_path = std::path::Path::new(&output);
-            // Check if output file already exists and prompt/protect.
-            if output_path.exists() {
-                eprintln!(
-                    "Warning: output file '{}' already exists, it will be overwritten.",
+            // Enforce overwrite policy: refuse to overwrite unless --force is provided.
+            if output_path.exists() && !force {
+                anyhow::bail!(
+                    "refusing to overwrite existing output file '{}'. use --force to overwrite",
                     output
                 );
             }

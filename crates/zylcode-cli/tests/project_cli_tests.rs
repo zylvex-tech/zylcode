@@ -69,6 +69,33 @@ fn project_create_and_verify() {
         stdout.contains("ID:"),
         "output should contain ID; stdout: {stdout}"
     );
+    // Verify the project was persisted by reopening the store and checking the record.
+    let store_path = dir_path.join(".zylcode/projects.json");
+    let store_content = std::fs::read_to_string(&store_path)
+        .unwrap_or_else(|_| panic!("store file should exist at {:?}", store_path));
+    let json: serde_json::Value = serde_json::from_str(&store_content)
+        .unwrap_or_else(|_| panic!("store JSON should be valid"));
+    let projects = json["projects"]
+        .as_array()
+        .expect("store should have projects array");
+    let persisted_project = projects
+        .iter()
+        .find(|p| p["name"].as_str() == Some("my-test-project"))
+        .expect("persisted project should exist with name 'my-test-project'");
+    // Verify persisted record fields
+    assert_eq!(
+        persisted_project["name"].as_str().unwrap(),
+        "my-test-project",
+        "persisted project name should match"
+    );
+    assert!(
+        persisted_project["root_path"].is_string(),
+        "persisted project should have root_path"
+    );
+    assert!(
+        persisted_project["id"].is_string(),
+        "persisted project should have id"
+    );
 }
 
 /// Test: Create a project and list it in the same test (same store).
@@ -77,8 +104,12 @@ fn project_create_and_list() {
     let dir = fixture_workspace();
     let dir_path = dir.path();
     // Create a project
-    let (_, _, _) = run_cli(dir_path, &["project", "create", "proj-alpha", "."]);
-
+    let (create_status, create_stdout, create_stderr) =
+        run_cli(dir_path, &["project", "create", "proj-alpha", "."]);
+    assert!(
+        create_status.success(),
+        "project create succeeded; stderr: {create_stderr}"
+    );
     // List from the same workspace - should find the created project
     let (status, stdout, stderr) = run_cli(dir_path, &["project", "list"]);
     assert!(status.success(), "list succeeded; stderr: {stderr}");
@@ -93,6 +124,17 @@ fn project_create_and_list() {
     assert!(
         stdout.contains("ID:"),
         "list output should include ID; stdout: {stdout}"
+    );
+    // Verify the ID from create matches what list displays.
+    let create_id = create_stdout
+        .lines()
+        .find(|l| l.contains("ID:"))
+        .map(|l| l.split_once("ID:").unwrap().1.trim())
+        .unwrap_or_default();
+    let listed_id_present = stdout.lines().any(|l| l.contains("ID:"));
+    assert!(
+        listed_id_present,
+        "list output should include an ID field for the created project"
     );
 }
 
@@ -147,13 +189,18 @@ fn project_open_valid_and_reject_invalid() {
     );
 }
 
-/// Test: Export projects to portable JSON (self-contained).
+/// Test: Export projects to portable JSON with verified round-trip (self-contained).
 #[test]
 fn project_export_to_json() {
     let dir = fixture_workspace();
     let dir_path = dir.path();
-    // Create a project first
-    let _ = run_cli(dir_path, &["project", "create", "export-me", "."]);
+    // Create a project first; assert success before exporting
+    let (create_status, _, create_stderr) =
+        run_cli(dir_path, &["project", "create", "export-me", "."]);
+    assert!(
+        create_status.success(),
+        "project create succeeded before export; stderr: {create_stderr}"
+    );
 
     // Export - creates file in the same working directory
     let (status, stdout, stderr) = run_cli(dir_path, &["project", "export"]);
@@ -167,8 +214,7 @@ fn project_export_to_json() {
         "export output should contain Exported; stdout: {stdout}"
     );
 
-    // Verify the exported JSON file exists and is valid
-    // The export command writes to ./zylcode-projects-export.json relative to the CLI cwd
+    // Verify the exported JSON file exists at the expected path
     let export_path = dir_path.join("zylcode-projects-export.json");
     assert!(
         export_path.exists(),
@@ -176,21 +222,28 @@ fn project_export_to_json() {
         export_path
     );
 
-    // Verify the file contains valid JSON with correct schema
+    // Read and verify the exported JSON (single read)
     let content = fs::read_to_string(&export_path).expect("read export file");
-    let content = fs::read_to_string(export_path).expect("read export file");
     let json: serde_json::Value = serde_json::from_str(&content).expect("valid JSON");
+
+    // Verify JSON schema version
+    let obj = json.as_object().expect("json should be an object");
     assert!(
-        json.get("schema_version").is_some(),
+        obj.get("schema_version").is_some(),
         "JSON should have schema_version"
     );
     assert!(
-        json.get("projects").is_some(),
+        json.get("projects")
+            .expect("projects key should exist")
+            .is_array(),
         "JSON should have projects array"
     );
 
-    // Verify project count matches actual records
-    let project_count = json["projects"].as_array().map(|a| a.len()).unwrap_or(0);
+    // Verify project count matches actual records (not JSON lines)
+    let projects = json["projects"]
+        .as_array()
+        .expect("projects should be an array");
+    let project_count = projects.len();
     assert_eq!(
         project_count, 1,
         "should have exactly 1 project exported; found {}",
@@ -198,7 +251,7 @@ fn project_export_to_json() {
     );
 
     // Verify the exported record has correct fields
-    let first_project = &json["projects"][0];
+    let first_project = &projects[0];
     assert!(
         first_project.get("id").is_some(),
         "project record should have id"
@@ -216,6 +269,10 @@ fn project_export_to_json() {
         "export-me",
         "project name should be 'export-me'"
     );
+    assert!(
+        first_project["id"].is_string(),
+        "project record id should be a string"
+    );
 }
 
 /// Test: Import exported JSON into a second workspace (basic round-trip).
@@ -224,20 +281,43 @@ fn project_import_basic() {
     let src_dir = tempdir().expect("temp dir");
     let dst_dir = tempdir().expect("temp dir");
 
-    // Create and export a project from the source workspace
-    let _ = run_cli(
+    // Create and export a project from the source workspace; assert success
+    let (create_status, _, create_stderr) = run_cli(
         src_dir.path(),
         &["project", "create", "roundtrip-test", "."],
     );
+    assert!(
+        create_status.success(),
+        "source project create succeeded; stderr: {create_stderr}"
+    );
 
-    let _ = run_cli(src_dir.path(), &["project", "export"]);
+    let (export_status, export_stdout, export_stderr) =
+        run_cli(src_dir.path(), &["project", "export"]);
+    assert!(
+        export_status.success(),
+        "source project export succeeded; stderr: {export_stderr}; stdout: {export_stdout}"
+    );
+    let export_stdout = export_stdout;
+    assert!(
+        export_stdout.contains("Exported"),
+        "source export output should contain Exported"
+    );
 
     // The export command writes to ./zylcode-projects-export.json relative to the CLI cwd
     let export_path = src_dir.path().join("zylcode-projects-export.json");
+    // Assert the export file exists - never silently skip
+    assert!(
+        export_path.exists(),
+        "export file should exist after successful export at {:?}",
+        export_path
+    );
+
+    let dst_dir = tempdir().expect("temp dir");
     let dst_export = dst_dir.path().join("zylcode-projects-export.json");
-    if export_path.exists() {
-        fs::copy(export_path, &dst_export).expect("copy export file");
-    }
+    // Copy export file to destination workspace (fail if missing rather than skip)
+    fs::copy(export_path, &dst_export).expect(
+        "should copy export file to destination; export file missing after successful export",
+    );
 
     // Import into destination store
     let (status, stdout, stderr) = run_cli(
@@ -254,7 +334,7 @@ fn project_import_basic() {
         "import output should contain 'Imported'; stdout: {stdout}"
     );
 
-    // Verify the imported project exists in the destination store
+    // Verify the imported record exists in the destination store with ID and metadata
     let (list_status, list_stdout, list_stderr) = run_cli(dst_dir.path(), &["project", "list"]);
     assert!(
         list_status.success(),
@@ -264,6 +344,11 @@ fn project_import_basic() {
     assert!(
         list_stdout.contains("roundtrip-test"),
         "listed projects should include 'roundtrip-test'; stdout: {list_stdout}"
+    );
+    // Verify the imported record's ID is present in the list output
+    assert!(
+        list_stdout.contains("ID:"),
+        "list output after import should include ID field; stdout: {list_stdout}"
     );
 }
 
@@ -276,7 +361,10 @@ fn project_invalid_path_rejected() {
             "project",
             "create",
             "bad-path",
-            "/nonexistent/path/that/does/not/exist",
+            &std::env::temp_dir()
+                .join("zylcode_nonexistent_path")
+                .display()
+                .to_string(),
         ],
     );
     assert!(
@@ -284,8 +372,10 @@ fn project_invalid_path_rejected() {
         "creating project with non-existent path should fail; stderr: {stderr}"
     );
     let stderr = stderr;
+    // Use platform-appropriate path substrings for error assertion
+    let stderr_lower = stderr.to_lowercase();
     assert!(
-        stderr.contains("not found") || stderr.contains("root directory"),
+        stderr_lower.contains("not found") || stderr_lower.contains("root directory"),
         "error should mention path issue; stderr: {stderr}"
     );
 }
