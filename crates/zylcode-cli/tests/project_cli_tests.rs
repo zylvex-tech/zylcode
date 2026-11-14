@@ -58,7 +58,7 @@ fn project_create_and_verify() {
         status.success(),
         "project create succeeded; stderr: {stderr}"
     );
-    let stdout = stdout;
+
     // Actual output format: Project 'my-test-project' created at 'C:\...' ID: <uuid>
     assert!(
         stdout.contains("my-test-project"),
@@ -124,7 +124,7 @@ fn project_create_and_list() {
     // List from the same workspace - should find the created project
     let (status, stdout, stderr) = run_cli(dir_path, &["project", "list"]);
     assert!(status.success(), "list succeeded; stderr: {stderr}");
-    let stdout = stdout;
+
     // Assert that the list contains the registered project by name
     assert!(
         stdout.contains("proj-alpha"),
@@ -181,7 +181,7 @@ fn project_open_valid_and_reject_invalid() {
         status.success(),
         "project open succeeded; stderr: {stderr}; stdout: {stdout}"
     );
-    let stdout = stdout;
+
     // Assert the open shows the correct project name
     assert!(
         stdout.contains("open-me"),
@@ -223,7 +223,7 @@ fn project_export_to_json() {
         status.success(),
         "project export succeeded; stderr: {stderr}"
     );
-    let stdout = stdout;
+
     assert!(
         stdout.contains("Exported"),
         "export output should contain Exported; stdout: {stdout}"
@@ -346,7 +346,7 @@ fn project_export_custom_destination() {
         status.success(),
         "project export with --output succeeded; stderr: {stderr}"
     );
-    let stdout = stdout;
+
     assert!(
         stdout.contains("Exported"),
         "export output should contain Exported; stdout: {stdout}"
@@ -428,7 +428,7 @@ fn project_import_basic() {
         status.success(),
         "project import succeeded; stderr: {stderr}; stdout: {stdout}"
     );
-    let stdout = stdout;
+
     assert!(
         stdout.contains("Imported"),
         "import output should contain 'Imported'; stdout: {stdout}"
