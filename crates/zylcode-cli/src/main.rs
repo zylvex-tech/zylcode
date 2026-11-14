@@ -2161,7 +2161,10 @@ async fn handle_project(args: ProjectArgs) -> Result<()> {
             let store = zylcode_core::project_store::ProjectStore::open(&std::env::current_dir()?)
                 .map_err(|e| anyhow::anyhow!("failed to open project store: {e}"))?;
             let record = store.register(&name, root_path)?;
-            println!("Project '{}' created at '{}' ID: {}", record.name, record.root_path, record.id);
+            println!(
+                "Project '{}' created at '{}' ID: {}",
+                record.name, record.root_path, record.id
+            );
             Ok(())
         }
         ProjectCommands::List => {
@@ -2195,12 +2198,14 @@ async fn handle_project(args: ProjectArgs) -> Result<()> {
             let exported = store.export_json()?;
             let json_path = std::path::Path::new("./zylcode-projects-export.json");
             std::fs::write(json_path, &exported)?;
-            println!("Exported {} project(s) to '{:?}'.", json_path.display(), exported.lines().count());
+            println!(
+                "Exported {} project(s) to '{:?}'.",
+                json_path.display(),
+                exported.lines().count()
+            );
             Ok(())
         }
-        ProjectCommands::Import {
-            path: import_path,
-        } => {
+        ProjectCommands::Import { path: import_path } => {
             let content = std::fs::read_to_string(&import_path)?;
             let store = zylcode_core::project_store::ProjectStore::open(&std::env::current_dir()?)
                 .map_err(|e| anyhow::anyhow!("failed to open project store: {e}"))?;

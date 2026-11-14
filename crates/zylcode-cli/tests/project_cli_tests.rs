@@ -8,14 +8,17 @@ use tempfile::tempdir;
 
 fn write_cargo_toml(root: &std::path::Path, name: &str, version: &str) {
     let toml_path = root.join("Cargo.toml");
-    fs::write(&toml_path, format!(
-        r#"[package]
+    fs::write(
+        &toml_path,
+        format!(
+            r#"[package]
 name = "{}"
 version = "{}"
 edition = "2021"
 "#,
-        name, version
-    ))
+            name, version
+        ),
+    )
     .expect("write Cargo.toml");
 }
 
@@ -47,14 +50,13 @@ fn run_cli(args: &[&str]) -> (std::process::ExitStatus, String, String) {
 /// Test: Create a project and verify the stored project record (self-contained).
 #[test]
 fn project_create_and_verify() {
-    let dir = fixture_workspace();
+    let _dir = fixture_workspace();
     // Create project using workspace root (current dir)
     let (status, stdout, stderr) = run_cli(&["project", "create", "my-test-project", "."]);
     assert!(
         status.success(),
         "project create succeeded; stderr: {stderr}"
     );
-    let stdout = stdout;
     // Actual output format: Project 'my-test-project' created at 'C:\...' ID: <uuid>
     assert!(
         stdout.contains("my-test-project"),
@@ -85,20 +87,21 @@ fn project_create_and_list() {
 #[test]
 fn project_open_valid_and_reject_invalid() {
     // Create a project and capture the UUID from output
-    let (create_status, create_stdout, create_stderr) = run_cli(&["project", "create", "open-me", "."]);
+    let (create_status, create_stdout, create_stderr) =
+        run_cli(&["project", "create", "open-me", "."]);
     assert!(
         create_status.success(),
         "project create succeeded; stderr: {create_stderr}"
     );
-    let create_stdout = create_stdout;
     // Extract UUID from output: format is "Project 'name' created at 'path' ID: uuid"
-    let uuid = create_stdout.lines()
+    let uuid = create_stdout
+        .lines()
         .find(|l| l.contains("ID:"))
         .map(|l| l.split_once("ID:").unwrap().1.trim())
         .unwrap_or_default();
 
     // Open the created project by UUID (in same isolated dir context)
-    let (status, stdout, stderr) = run_cli(&["project", "open", &uuid]);
+    let (status, stdout, stderr) = run_cli(&["project", "open", uuid]);
     // In isolated temp dir, the project was just created, so it should be findable
     // But actually, each run_cli call uses a NEW temp dir, so the project created
     // in the first call is NOT in the store of the second call.
@@ -124,7 +127,6 @@ fn project_export_to_json() {
         status.success(),
         "project export succeeded; stderr: {stderr}"
     );
-    let stdout = stdout;
     assert!(
         stdout.contains("Exported"),
         "export output should contain Exported; stdout: {stdout}"
@@ -145,7 +147,7 @@ fn project_import_basic() {
     }
 
     // Import into destination
-    let (status, stdout, stderr) = run_cli(&["project", "import", dst_export.to_str().unwrap()]);
+    let (_status, _stdout, _stderr) = run_cli(&["project", "import", dst_export.to_str().unwrap()]);
     // Import command runs; accept that cross-directory import may not persist
     // The key is that the command runs without error
     // We just verify it doesn't panic
@@ -158,12 +160,16 @@ fn project_import_basic() {
 /// Test: Reject invalid project paths (self-contained).
 #[test]
 fn project_invalid_path_rejected() {
-    let (status, _stdout, stderr) = run_cli(&["project", "create", "bad-path", "/nonexistent/path/that/does/not/exist"]);
+    let (status, _stdout, stderr) = run_cli(&[
+        "project",
+        "create",
+        "bad-path",
+        "/nonexistent/path/that/does/not/exist",
+    ]);
     assert!(
         !status.success(),
         "creating project with non-existent path should fail; stderr: {stderr}"
     );
-    let stderr = stderr;
     assert!(
         stderr.contains("not found") || stderr.contains("root directory"),
         "error should mention path issue; stderr: {stderr}"
@@ -173,7 +179,7 @@ fn project_invalid_path_rejected() {
 /// Test: Empty-store behaviour and useful error messages (self-contained).
 #[test]
 fn project_empty_store_behaviour() {
-    let dir = tempdir().expect("temp dir");
+    let _dir = tempdir().expect("temp dir");
 
     // List projects from empty store
     let (status, stdout, stderr) = run_cli(&["project", "list"]);
@@ -181,7 +187,6 @@ fn project_empty_store_behaviour() {
         status.success(),
         "list from empty store should succeed; stderr: {stderr}"
     );
-    let stdout = stdout;
     assert!(
         stdout.contains("No projects registered"),
         "empty store message should appear; stdout: {stdout}"
@@ -193,7 +198,6 @@ fn project_empty_store_behaviour() {
         !status.success(),
         "opening project from empty store should fail; stderr: {stderr}"
     );
-    let stderr = stderr;
     assert!(
         stderr.contains("No project found") || stderr.contains("not found"),
         "error message should indicate project not found; stderr: {stderr}"
