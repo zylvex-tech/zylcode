@@ -28,6 +28,10 @@ opentelemetry-otlp = { version = "0.28", features = ["tonic"] }
 opentelemetry-stdout = { version = "0.28" }
 tracing-opentelemetry = "0.28"
 http = "1"
+# MCP client transports. Both are already in the workspace lockfile via
+# zylcode-core's provider client, so this adds no new versions to resolve.
+reqwest = { workspace = true }
+futures = { workspace = true }
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
@@ -39,3 +43,9 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 [[bench]]
 name = "concurrency"
 harness = false
+
+[[bin]]
+name = "mcp-test-server"
+path = "tests/support/mcp_test_server.rs"
+test = false
+bench = false
