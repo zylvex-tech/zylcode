@@ -175,7 +175,7 @@ fn project_open_valid_and_reject_invalid() {
         .unwrap_or_default();
 
     // Open the created project by UUID in the same working directory
-    let (status, stdout, stderr) = run_cli(dir_path, &["project", "open", &uuid]);
+    let (status, stdout, stderr) = run_cli(dir_path, &["project", "open", uuid]);
     // In the same dir context, the project should be findable
     assert!(
         status.success(),
@@ -195,7 +195,6 @@ fn project_open_valid_and_reject_invalid() {
         !status.success(),
         "opening project with nonexistent ID should fail; stderr: {stderr}; stdout: {stdout}"
     );
-    let stderr = stderr;
     // Assert a useful error message
     assert!(
         stderr.contains("No project found")
@@ -561,7 +560,7 @@ fn project_open_updates_last_accessed() {
         .map(|p| p["last_accessed"].as_str().unwrap_or("").to_string())
         .unwrap_or_default();
     // Open the project through the CLI (which calls store.touch(&id))
-    let (open_status, open_stdout, open_stderr) = run_cli(dir_path, &["project", "open", &uuid]);
+    let (open_status, open_stdout, open_stderr) = run_cli(dir_path, &["project", "open", uuid]);
     assert!(
         open_status.success(),
         "project open succeeded; stderr: {open_stderr}; stdout: {open_stdout}"
@@ -610,7 +609,6 @@ fn project_export_overwrite_refusal() {
         !status.success(),
         "second export without --force should fail; stderr: {stderr}"
     );
-    let stderr = stderr;
     // The error message should indicate the overwrite refusal
     let stderr_lower = stderr.to_lowercase();
     assert!(
@@ -646,7 +644,6 @@ fn project_export_overwrite_force() {
         status.success(),
         "export with --force should succeed; stderr: {stderr}; stdout: {stdout}"
     );
-    let stdout = stdout;
     assert!(
         stdout.contains("Exported"),
         "export output should contain Exported; stdout: {stdout}"
@@ -694,7 +691,6 @@ fn project_invalid_path_rejected() {
         !status.success(),
         "creating project with non-existent path should fail; stderr: {stderr}"
     );
-    let stderr = stderr;
     // Use platform-appropriate path substrings for error assertion
     let stderr_lower = stderr.to_lowercase();
     assert!(
@@ -714,7 +710,6 @@ fn project_empty_store_behaviour() {
         status.success(),
         "list from empty store should succeed; stderr: {stderr}"
     );
-    let stdout = stdout;
     assert!(
         stdout.contains("No projects registered"),
         "empty store message should appear; stdout: {stdout}"
@@ -726,7 +721,6 @@ fn project_empty_store_behaviour() {
         !status.success(),
         "opening project from empty store should fail; stderr: {stderr}"
     );
-    let stderr = stderr;
     assert!(
         stderr.contains("No project found")
             || stderr.contains("not found")
