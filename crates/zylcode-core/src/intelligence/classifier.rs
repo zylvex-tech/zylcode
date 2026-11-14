@@ -303,11 +303,7 @@ pub fn is_secret_file(path: &Path) -> bool {
     }
 
     // .env files at any depth
-    if name.starts_with(".env") {
-        return true;
-    }
-
-    false
+    name.starts_with(".env")
 }
 
 #[cfg(test)]
