@@ -501,16 +501,21 @@ fn project_import_duplicate() {
     );
 
     // Second import of the same file
-    let (status2, _stdout2, stderr2) = run_cli(
+    let (status2, stdout2, stderr2) = run_cli(
         dst_dir.path(),
         &["project", "import", dst_export.to_str().unwrap()],
     );
     // The ProjectStore contract for duplicate import: the import should succeed
-    // (records are append-only, new record gets a new ID) or fail gracefully.
+    // (the existing record is detected by ID/root_path and skipped, added += 0).
     // We verify defined behaviour: import does not crash and produces useful output.
     assert!(
         status2.success(),
         "second import should succeed; stderr: {stderr2}"
+    );
+    // Verify the import output reports zero newly imported records (duplicate case)
+    assert!(
+        stdout2.contains("Imported 0 project(s)"),
+        "duplicate import should report zero newly imported records; stdout: {stdout2}"
     );
     // The list should now contain the imported project (possibly with a different ID)
     let (list_status, list_stdout, list_stderr) = run_cli(dst_dir.path(), &["project", "list"]);
