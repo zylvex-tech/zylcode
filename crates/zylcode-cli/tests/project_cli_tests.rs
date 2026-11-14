@@ -509,8 +509,8 @@ fn project_import_duplicate() {
     // (records are append-only, new record gets a new ID) or fail gracefully.
     // We verify defined behaviour: import does not crash and produces useful output.
     assert!(
-        status2.code().is_some(),
-        "second import should produce a defined exit status; stderr: {stderr2}"
+        status2.success(),
+        "second import should succeed; stderr: {stderr2}"
     );
     // The list should now contain the imported project (possibly with a different ID)
     let (list_status, list_stdout, list_stderr) = run_cli(dst_dir.path(), &["project", "list"]);
@@ -630,8 +630,16 @@ fn project_export_overwrite_force() {
     let (first_status, _, _) = run_cli(dir_path, &["project", "export"]);
     assert!(first_status.success(), "first export should succeed");
 
-    // Create a second project (changes the store's project record)
-    let _ = run_cli(dir_path, &["project", "create", "force-test-v2", "."]);
+    // Create a second project (changes the store's project record).
+    // The implementation rejects duplicate roots, so this is expected to fail.
+    // We capture the result to verify the expected behaviour.
+    let (second_create_status, _, create_stderr) =
+        run_cli(dir_path, &["project", "create", "force-test-v2", "."]);
+    // Verify the second creation fails as expected (duplicate root path)
+    assert!(
+        !second_create_status.success(),
+        "second project creation should fail with duplicate root path; stderr: {create_stderr}"
+    );
 
     // Second export with --force should succeed (refusing to overwrite is bypassed)
     let (status, stdout, stderr) = run_cli(dir_path, &["project", "export", "--force"]);
@@ -650,13 +658,24 @@ fn project_export_overwrite_force() {
     let projects = json["projects"]
         .as_array()
         .expect("projects should be an array");
-    // The export should now contain projects (at least the first one)
+    // The export should now contain the original project record
     assert!(
-        !projects.is_empty(),
-        "overwritten export should contain at least one project"
+        projects.len() == 1,
+        "forced overwrite export should contain exactly 1 project; found {}",
+        projects.len()
+    );
+    // Verify the project name is the originally created one
+    let project_name = projects
+        .first()
+        .and_then(|p| p.get("name").and_then(|n| n.as_str()))
+        .unwrap_or("");
+    assert!(
+        project_name == "force-test",
+        "forced overwrite export should contain the originally created project 'force-test'; found '{}'",
+        project_name
     );
     // Verify the file was actually overwritten by confirming it's valid JSON
-    // with the expected schema (not checking specific project name content)
+    // with the expected schema
     assert!(
         json.get("schema_version").is_some(),
         "overwritten export should have schema_version"
