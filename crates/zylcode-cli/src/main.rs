@@ -77,6 +77,9 @@ enum Commands {
     /// Delivery: report deploy targets that are actually commissioned
     /// (GitHub release via tag, crates.io token, remote server).
     DeployStatus,
+
+    /// Project management: create, list, open, export, import projects.
+    Project(ProjectArgs),
 }
 
 // ---------------------------------------------------------------------------
@@ -96,6 +99,48 @@ struct BuildArgs {
     /// Output format (text | json).
     #[arg(long, default_value = "text")]
     output: String,
+}
+
+// ---------------------------------------------------------------------------
+// project
+// ---------------------------------------------------------------------------
+
+#[derive(Args, Debug)]
+struct ProjectArgs {
+    #[command(subcommand)]
+    command: ProjectCommands,
+}
+
+#[derive(Subcommand, Debug)]
+enum ProjectCommands {
+    /// Create a new project with a name and workspace root.
+    Create {
+        /// Human-readable project name.
+        name: String,
+        /// Absolute path to the project root directory.
+        root: String,
+    },
+    /// List all projects registered in the store.
+    List,
+    /// Open an existing project by ID (prints project details).
+    Open {
+        /// Project identifier.
+        id: String,
+    },
+    /// Export all project records as portable JSON.
+    Export {
+        /// Optional output path (defaults to './zylcode-projects-export.json').
+        #[arg(long, default_value = "./zylcode-projects-export.json")]
+        output: String,
+        /// Force overwrite of existing output file.
+        #[arg(long)]
+        force: bool,
+    },
+    /// Import project records from exported JSON.
+    Import {
+        /// Path to the exported JSON file.
+        path: String,
+    },
 }
 
 // ---------------------------------------------------------------------------
@@ -493,6 +538,7 @@ async fn main() -> Result<()> {
             println!("{}", serde_json::to_string_pretty(&payload)?);
             Ok(())
         }
+        Commands::Project(args) => handle_project(args).await,
     };
 
     if let Err(err) = &result {
@@ -2008,6 +2054,86 @@ async fn handle_mission(args: MissionArgs) -> Result<()> {
                     .unwrap_or("no reason recorded")
             );
             std::process::exit(2);
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// project
+// ---------------------------------------------------------------------------
+
+async fn handle_project(args: ProjectArgs) -> Result<()> {
+    match args.command {
+        ProjectCommands::Create { name, root } => {
+            let root_path = std::path::Path::new(&root);
+            if !root_path.exists() {
+                anyhow::bail!("project root directory not found: {}", root);
+            }
+            let store = zylcode_core::project_store::ProjectStore::open(&std::env::current_dir()?)
+                .map_err(|e| anyhow::anyhow!("failed to open project store: {e}"))?;
+            let record = store.register(&name, root_path)?;
+            println!(
+                "Project '{}' created at '{}' ID: {}",
+                record.name, record.root_path, record.id
+            );
+            Ok(())
+        }
+        ProjectCommands::List => {
+            let store = zylcode_core::project_store::ProjectStore::open(&std::env::current_dir()?)
+                .map_err(|e| anyhow::anyhow!("failed to open project store: {e}"))?;
+            let projects = store.list()?;
+            if projects.is_empty() {
+                println!("No projects registered.");
+            } else {
+                println!("Registered projects:");
+                for p in projects {
+                    println!("  {} @ {:?} ID: {}", p.name, p.root_path, p.id);
+                }
+            }
+            Ok(())
+        }
+        ProjectCommands::Open { id } => {
+            let store = zylcode_core::project_store::ProjectStore::open(&std::env::current_dir()?)
+                .map_err(|e| anyhow::anyhow!("failed to open project store: {e}"))?;
+            // Touch updates last_accessed and re-orders the list by recency.
+            store.touch(&id)?;
+            if let Some(p) = store.get(&id)? {
+                println!("Project '{}' @ {:?}", p.name, p.root_path);
+            } else {
+                anyhow::bail!("No project found with id '{id}'.");
+            }
+            Ok(())
+        }
+        ProjectCommands::Export { output, force } => {
+            let store = zylcode_core::project_store::ProjectStore::open(&std::env::current_dir()?)
+                .map_err(|e| anyhow::anyhow!("failed to open project store: {e}"))?;
+            let exported = store.export_json()?;
+            let output_path = std::path::Path::new(&output);
+            // Enforce overwrite policy: refuse to overwrite unless --force is provided.
+            if output_path.exists() && !force {
+                anyhow::bail!(
+                    "refusing to overwrite existing output file '{}'. use --force to overwrite",
+                    output
+                );
+            }
+            std::fs::write(output_path, &exported)?;
+            // Count actual project records, not JSON lines.
+            let project_count = serde_json::from_str::<serde_json::Value>(&exported)
+                .map(|v| v["projects"].as_array().map(|a| a.len()).unwrap_or(0))
+                .unwrap_or(0);
+            println!(
+                "Exported {} project(s) to '{:?}'.",
+                project_count, output_path
+            );
+            Ok(())
+        }
+        ProjectCommands::Import { path } => {
+            let content = std::fs::read_to_string(&path)?;
+            let store = zylcode_core::project_store::ProjectStore::open(&std::env::current_dir()?)
+                .map_err(|e| anyhow::anyhow!("failed to open project store: {e}"))?;
+            let imported = store.import_json(&content)?;
+            println!("Imported {} project(s) from '{path}'.", imported);
+            Ok(())
         }
     }
 }
