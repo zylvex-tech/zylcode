@@ -52,6 +52,15 @@ enum Commands {
     /// points, git history).
     RepoContext { task: Vec<String> },
 
+    /// Report semantic resolution for a repository: import coverage with both
+    /// denominators, fail-closed file states, and deterministic versus
+    /// heuristic-only reference attribution.
+    RepoSemantic {
+        /// Repository root. Defaults to the workspace.
+        #[arg(long)]
+        path: Option<String>,
+    },
+
     /// Serve Repository Intelligence over HTTP for the desktop frontend
     /// (browser preview and remote surfaces). Endpoints: `GET /healthz`,
     /// `GET /api/repo-intel?task=...`.
@@ -77,6 +86,44 @@ enum Commands {
     /// Delivery: report deploy targets that are actually commissioned
     /// (GitHub release via tag, crates.io token, remote server).
     DeployStatus,
+
+    /// Project management: create, list, open, export, import projects.
+    Project(ProjectArgs),
+}
+
+// ---------------------------------------------------------------------------
+// project
+// ---------------------------------------------------------------------------
+
+#[derive(Args, Debug)]
+struct ProjectArgs {
+    #[command(subcommand)]
+    command: ProjectCommands,
+}
+
+#[derive(Subcommand, Debug)]
+enum ProjectCommands {
+    /// Create a new project with a name and workspace root.
+    Create {
+        /// Human-readable project name.
+        name: String,
+        /// Absolute path to the project root directory.
+        root: String,
+    },
+    /// List all projects registered in the store.
+    List,
+    /// Open an existing project by ID (prints project details).
+    Open {
+        /// Project identifier.
+        id: String,
+    },
+    /// Export all project records as portable JSON.
+    Export,
+    /// Import project records from exported JSON.
+    Import {
+        /// Path to the exported JSON file.
+        path: String,
+    },
 }
 
 // ---------------------------------------------------------------------------
@@ -413,6 +460,94 @@ async fn handle_computer_use(engine: &ZylCodeEngine, args: ComputerUseArgs) -> R
 // repo-context
 // ---------------------------------------------------------------------------
 
+/// Handle `zylcode repo-semantic [--path <root>]`: report what the semantic
+/// resolver actually resolved, with both denominators and every fail-closed
+/// state. This is D1's product surface: the figures come from the same code the
+/// library exposes, not from a test harness.
+fn handle_repo_semantic(root: &str) -> Result<()> {
+    use zylcode_core::intelligence::semantic::resolve_repository;
+
+    let path = std::path::Path::new(root)
+        .canonicalize()
+        .map_err(|e| anyhow::anyhow!("cannot resolve repository '{root}': {e}"))?;
+    if !path.is_dir() {
+        anyhow::bail!("'{root}' is not a directory");
+    }
+
+    let started = std::time::Instant::now();
+    let index = resolve_repository(&path)?;
+    let elapsed = started.elapsed();
+
+    let entries_in_repo = index.stats.imports_resolved + index.stats.imports_unresolved;
+    let decls_in_repo = index.stats.declarations_resolved + index.stats.declarations_unresolved;
+
+    println!("repository: {}", path.display());
+    println!("indexed in {:.2}s", elapsed.as_secs_f64());
+    println!(
+        "import statements: {} total, {} resolved, {} external, {} unresolved",
+        index.stats.declarations_total,
+        index.stats.declarations_resolved,
+        index.stats.declarations_external,
+        index.stats.declarations_unresolved
+    );
+    println!(
+        "import entries: {} total, {} resolved, {} external, {} unresolved",
+        index.stats.imports_total,
+        index.stats.imports_resolved,
+        index.stats.imports_external,
+        index.stats.imports_unresolved
+    );
+    println!(
+        "entry-level coverage: {:.4}% ({} resolved / {} in-repository entries)",
+        index.resolution_coverage(),
+        index.stats.imports_resolved,
+        entries_in_repo
+    );
+    println!(
+        "declaration-level coverage: {:.4}% ({} resolved / {} in-repository statements)",
+        index.declaration_coverage(),
+        index.stats.declarations_resolved,
+        decls_in_repo
+    );
+    println!(
+        "files: {} parsed, {} partial, {} failed, {} unsupported",
+        index.stats.files_parsed,
+        index.stats.files_partial,
+        index.stats.files_failed,
+        index.stats.files_unsupported
+    );
+    println!(
+        "attribution: {} deterministic references, {} heuristic-only (never claimed as semantic), {} from partially parsed files",
+        index.stats.references_resolved,
+        index.stats.references_heuristic,
+        index.stats.references_from_partial_files
+    );
+    println!("glob import entries: {}", index.stats.imports_glob);
+    println!(
+        "symbols: {} import edges resolve into another file (re-export chains), {} name-collision edges (upper bound; cfg partitions are not modelled)",
+        index.stats.symbols_in_other_file, index.stats.imports_name_collision
+    );
+    let mut codes: std::collections::BTreeMap<&str, usize> = std::collections::BTreeMap::new();
+    for failure in &index.failures {
+        *codes.entry(failure.code.as_str()).or_default() += 1;
+    }
+    if !codes.is_empty() {
+        println!("fail-closed file states: {codes:?}");
+    }
+
+    if index.stats.declarations_total == 0 {
+        anyhow::bail!(
+            "no import statements were found under '{root}'; refusing to report 0% as a result"
+        );
+    }
+    if entries_in_repo == 0 {
+        anyhow::bail!(
+            "no in-repository imports were resolved or recorded under '{root}'; the index is not usable"
+        );
+    }
+    Ok(())
+}
+
 /// Handle `zylcode repo-context <task...>`: index the workspace with the real
 /// Repository Intelligence pipeline and return ranked context for the task.
 /// This is the product-reachable entry point for Phase 2A capability.
@@ -484,6 +619,9 @@ async fn main() -> Result<()> {
         Commands::AiInput(args) => handle_ai_input(&engine, args).await,
         Commands::ComputerUse(args) => handle_computer_use(&engine, args).await,
         Commands::RepoContext { task } => handle_repo_context(&cli.workspace, &task),
+        Commands::RepoSemantic { path } => {
+            handle_repo_semantic(path.as_deref().unwrap_or(&cli.workspace))
+        }
         Commands::ServeIntel(args) => handle_serve_intel(&cli.workspace, args).await,
         Commands::BestOfN(args) => handle_best_of_n(&cli.workspace, args).await,
         Commands::Package(args) => handle_package(&cli.workspace, args).await,
@@ -493,6 +631,7 @@ async fn main() -> Result<()> {
             println!("{}", serde_json::to_string_pretty(&payload)?);
             Ok(())
         }
+        Commands::Project(args) => handle_project(args).await,
     };
 
     if let Err(err) = &result {
@@ -2008,6 +2147,71 @@ async fn handle_mission(args: MissionArgs) -> Result<()> {
                     .unwrap_or("no reason recorded")
             );
             std::process::exit(2);
+        }
+    }
+}
+
+async fn handle_project(args: ProjectArgs) -> Result<()> {
+    match args.command {
+        ProjectCommands::Create { name, root } => {
+            let root_path = std::path::Path::new(&root);
+            if !root_path.exists() {
+                anyhow::bail!("project root directory not found: {}", root);
+            }
+            let store = zylcode_core::project_store::ProjectStore::open(&std::env::current_dir()?)
+                .map_err(|e| anyhow::anyhow!("failed to open project store: {e}"))?;
+            let record = store.register(&name, root_path)?;
+            println!(
+                "Project '{}' created at '{}' ID: {}",
+                record.name, record.root_path, record.id
+            );
+            Ok(())
+        }
+        ProjectCommands::List => {
+            let store = zylcode_core::project_store::ProjectStore::open(&std::env::current_dir()?)
+                .map_err(|e| anyhow::anyhow!("failed to open project store: {e}"))?;
+            let projects = store.list()?;
+            if projects.is_empty() {
+                println!("No projects registered.");
+            } else {
+                println!("Registered projects:");
+                for p in projects {
+                    println!("  {} @ {:?}", p.name, p.root_path);
+                }
+            }
+            Ok(())
+        }
+        ProjectCommands::Open { id } => {
+            let store = zylcode_core::project_store::ProjectStore::open(&std::env::current_dir()?)
+                .map_err(|e| anyhow::anyhow!("failed to open project store: {e}"))?;
+            if let Some(p) = store.get(&id)? {
+                println!("Project '{}' @ {:?}", p.name, p.root_path);
+            } else {
+                eprintln!("No project found with id '{id}'.");
+                std::process::exit(1);
+            }
+            Ok(())
+        }
+        ProjectCommands::Export => {
+            let store = zylcode_core::project_store::ProjectStore::open(&std::env::current_dir()?)
+                .map_err(|e| anyhow::anyhow!("failed to open project store: {e}"))?;
+            let exported = store.export_json()?;
+            let json_path = std::path::Path::new("./zylcode-projects-export.json");
+            std::fs::write(json_path, &exported)?;
+            println!(
+                "Exported {} project(s) to '{:?}'.",
+                json_path.display(),
+                exported.lines().count()
+            );
+            Ok(())
+        }
+        ProjectCommands::Import { path: import_path } => {
+            let content = std::fs::read_to_string(&import_path)?;
+            let store = zylcode_core::project_store::ProjectStore::open(&std::env::current_dir()?)
+                .map_err(|e| anyhow::anyhow!("failed to open project store: {e}"))?;
+            let imported = store.import_json(&content)?;
+            println!("Imported {} project(s) from '{import_path}'.", imported);
+            Ok(())
         }
     }
 }

@@ -1,0 +1,219 @@
+Phase 2B — D1 semantic resolution: reproduction evidence
+Date:    2026-11-12
+Branch:  feat/phase2b-d1-semantic-resolution
+Base:    9af3148 (main, the merge of PR #62)
+Platform: MINGW64_NT-10.0-26200 / x86_64, rustc 1.97.1
+
+WHY THIS EXISTS
+Phase 2A's accepted report recorded, truthfully, that symbol resolution was
+regex-based and that IMPORT_RESOLVED / REFERENCE_RESOLVED were not implemented.
+D1 requires them to be produced by a real resolver before those markers may be
+retired. This file is the reproduction block for that change.
+
+An independent pre-PR review rejected the first version of this evidence: it
+quoted entry-level coverage as though it were the whole picture, attributed
+117 partial parses to "grammar coverage" when 94 of them were one wrong grammar
+selection, and left the D1 CLI demonstration cell empty. Those three things are
+fixed below, along with the defects the review found in `zylcode-nav`.
+
+WHAT CHANGED (code)
+  crates/zylcode-core/src/intelligence/semantic.rs      the resolver
+  crates/zylcode-core/src/intelligence/mod.rs           registers the module
+  crates/zylcode-core/src/intelligence/symbols.rs       header retired/repointed
+  crates/zylcode-core/tests/semantic_resolution.rs      acceptance tests
+  crates/zylcode-core/tests/fixtures/semantic/          positive + negative fixtures
+  crates/zylcode-nav/src/parse.rs                       TSX grammar, BOM, error site
+  crates/zylcode-nav/src/index.rs                       module-directory layout, cache v3
+  crates/zylcode-nav/tests/parser_grammar.rs            grammar + BOM regressions
+  crates/zylcode-nav/tests/module_layout.rs             module-layout regressions
+  crates/zylcode-cli/src/main.rs                        `repo-semantic` command
+  crates/zylcode-cli/tests/semantic_cli.rs              CLI acceptance tests
+
+No new dependency: the grammar engine is `zylcode-nav` (tree-sitter 0.25,
+tree-sitter-rust/typescript/javascript), already a workspace dependency of
+`zylcode-core`. The TSX grammar was already compiled and unused. Nothing here
+adds network egress, and the semantic layer reads only files the existing
+scanner already inventories.
+
+UPSTREAM PARSER DEFECTS FIXED (zylcode-nav)
+1. TSX grammar selection. `Language::from_path` maps `.tsx` to TypeScript, and
+   `parse()` selected LANGUAGE_TYPESCRIPT, so JSX could not parse. `parse()` now
+   selects LANGUAGE_TSX for `.tsx`; `.ts` keeps the TypeScript grammar, and a
+   `.ts` file containing JSX still reports a parse problem (tested).
+   Effect: 94 partial `.tsx` files -> 24, all of which have a real cause below.
+2. Rust module-directory layout. `mod decision;` in `src/router.rs` now finds
+   `src/router/decision.rs`; `mod.rs`/`lib.rs`/`main.rs` keep their existing
+   resolution, and a same-named file in an unrelated directory is still
+   refused (negative test).
+3. UTF-8 BOM. A leading BOM is skipped for parsing and every byte offset is
+   shifted back, so ranges still address the file on disk; the file is never
+   rewritten and no other character is stripped (tested: `start_byte == 3`).
+4. The cache schema is bumped to v3. The persisted per-file facts are keyed by
+   content hash, so without a bump the parser fixes above would have been
+   invisible on any machine with a warm cache — which is exactly what happened
+   during remediation: the first post-fix run still reported 117 partials.
+
+COVERAGE MATHEMATICS (post-fix, measured by `zylcode repo-semantic --path .`)
+
+  Import statements (declarations)        1,685
+    resolved                                 883
+    external (registry crates/npm)           798
+    unresolved                                 4
+  Import entries                          3,093
+    resolved                               1,562
+    external                               1,531
+    unresolved                                 0
+    glob                                     131 (printed by `repo-semantic`; it is
+                                                 ImportEntry::glob over the
+                                                 entries the scanner produced)
+
+  entry-level coverage        = 1562 / (1562 + 0)  = 100.0000%
+  declaration-level coverage  =  883 / (883 + 4)   =  99.5490%
+
+Both are printed. A statement can carry several entries, so entry-level
+coverage is the more favourable number; quoting it alone overstates
+completeness, which is why the declaration figure and its denominator are
+published beside it. External imports are excluded from both denominators:
+they are not resolution failures. The four unresolved declarations are outside
+the semantic layer's reach:
+
+  - three CSS imports (`./styles.css` etc.) — no grammar, so no declaration
+    inside them to resolve;
+  - `@testing-library/jest-dom/vitest` — a package specifier the JS resolver
+    does not classify as external.
+
+Files with unsupported grammars are never inventoried, so there is no
+"excluded" import bucket to report. That is a property of the scanner, stated
+here because its absence is otherwise indistinguishable from a zero.
+
+FILES (334 indexed)
+  parsed 301, partial 33, failed 0, unsupported 0
+
+The 33 partial files, with the construct the grammar rejected:
+  29  `fn<T>()` call-site type arguments under `vi.mock(...,
+      importOriginal<typeof import("...")>())` in `*.test.ts(x)`. The grammar
+      rejects the construct under BOTH grammars (proved by parsing the same
+      text as .ts and as .tsx), and it parses the same call without type
+      arguments — so it is a grammar capability limit, not a selection bug.
+      tree-sitter-typescript 0.23.2 is the latest version published in the
+      registry, so there is no crate upgrade available as the fix; resolving
+      this needs an upstream grammar change or a different parser strategy, and
+      neither was attempted here.
+   2  raw `&` in JSX text (`Audit Trail & Chain Hashes`,
+      `Runtime Memory & Token Efficiency`) — invalid JSX per spec; the grammar
+      is right to flag it. Pre-existing source defect in the desktop app.
+   1  `apps/zylcode-desktop/src-tauri/src/commands/project.rs:9` — the file
+      contains literal `\"snake_case\"` (escaped quotes written into the
+      source). Genuine syntax error, pre-existing, unrelated to D1.
+   1  `tests/fixtures/semantic/parse_failed/src/lib.rs` — deliberate fixture.
+
+Every edge from those files carries `from_partial`; none is counted as
+complete. 1,184 resolved references come from partially parsed files and are
+labelled as such (out of 15,606 deterministic attributions).
+
+COMMANDS AND OUTPUT (verbatim)
+
+  $ cargo run -q -p zylcode-cli -- repo-semantic --path .
+  repository: \\?\C:\Projects\zylcode
+  indexed in 57.58s          (warm cache; a cold index of 334 files took 116-150s)
+  import statements: 1685 total, 883 resolved, 798 external, 4 unresolved
+  import entries: 3093 total, 1562 resolved, 1531 external, 0 unresolved
+  entry-level coverage: 100.0000% (1562 resolved / 1562 in-repository entries)
+  declaration-level coverage: 99.5490% (883 resolved / 887 in-repository statements)
+  files: 301 parsed, 33 partial, 0 failed, 0 unsupported
+  attribution: 15606 deterministic references, 42379 heuristic-only (never claimed as semantic), 1184 from partially parsed files
+  glob import entries: 131
+  symbols: 157 import edges resolve into another file (re-export chains), 1 name-collision edges (upper bound; cfg partitions are not modelled)
+  fail-closed file states: {"PARSE_PARTIAL": 33}
+
+This is the D1 matrix's integration-demonstration cell: a CLI run on this
+repository, with the coverage figure and its denominator in the output. The
+command exits non-zero for a path that does not resolve and for a tree with no
+import statements (tested in crates/zylcode-cli/tests/semantic_cli.rs), so a
+0% result cannot masquerade as success.
+
+  $ cargo test -p zylcode-core --lib intelligence::semantic
+  test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 694 filtered out
+
+  $ cargo test -p zylcode-core --test semantic_resolution -- --nocapture --test-threads=1
+  test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+
+  $ cargo test -p zylcode-nav
+  28 + 3 + 23 + 4 tests, 0 failures (includes the new grammar and module-layout
+  regressions)
+
+  $ cargo clippy -p zylcode-nav -p zylcode-core -p zylcode-cli --all-targets -- -D warnings
+  Finished (no warnings)
+
+  $ cargo fmt --all -- --check
+  exit 0
+
+WHAT THE FIXTURES PROVE
+  positive/        `use crate::account::Account;` in ledger.rs resolves to
+                   account.rs AND to the Account symbol, line 1; the type use
+                   inside ledger.rs resolves back to that symbol.
+  unsupported/     A Python file is not inventoried by the scan, and naming it
+                   with resolve_file returns UNSUPPORTED_SEMANTIC_INDEX with a
+                   reason — not an empty result that reads as "imports nothing".
+  parse_failed/    A syntax error is reported as PARSE_PARTIAL (tree-sitter
+                   recovers), every edge from that file carries from_partial.
+  invalid_utf8/    An undecodable file is excluded rather than treated as empty,
+                   and naming it produces an explicit refusal.
+
+EDGE MODEL: `to_file` IS NOT ALWAYS THE SYMBOL'S FILE
+157 import edges resolve their symbol into a different file from the module the
+importer named — re-export chains (`pub use`). `ResolvedImport::to_file` is the
+module the statement pointed at; `symbol_file` is where `to_symbol` is
+declared, and is `None` when those are the same. A consumer that assumed the
+symbol lived in `to_file` would be wrong 157 times in this repository, so the
+distinction is a field, not a comment.
+
+PROVENANCE IS PER EDGE, NOT ONLY AGGREGATE
+Each edge carries `name_collision: bool`: true when the chosen symbol shares
+its file, name AND kind with another declaration, so `nav` had to pick by name.
+That is the machine-visible form of the distinction `evidence` alone cannot
+carry — `evidence` is `DETERMINISTIC` for every emitted import, and a consumer
+must consult `name_collision` rather than read that label as "exactly one
+candidate existed".
+
+NAME COLLISIONS: 1 EDGE, AND IT IS BENIGN
+The first version of this metric counted same-name declarations regardless of
+kind, and reported 3. Independent review reproduced all three and found them
+misclassified:
+  - `core/src/lib.rs` -> `crate::pipeline`: module vs method
+    `ZylCodeEngine::pipeline` — different kinds, cannot compete;
+  - `core/src/router.rs` -> `crate::router::cache`: module vs method
+    `TokenRouter::cache` — same;
+  - `tauri/src/main.rs` -> `crate::strip_verbatim`: two `fn` declarations at
+    lines 1530 and 1542, one `#[cfg(windows)]` and one `#[cfg(not(windows))]`
+    — mutually exclusive by build target.
+The metric now keys on (file, name, kind), which drops the two cross-kind
+cases. The remaining one is the cfg pair: genuinely two same-kind declarations
+in one file, still counted because `cfg` partitions are not modelled. It is an
+upper bound on ambiguity, not proof of it, and this edge resolves correctly on
+either target. The semantic layer emits no arbitrary choice here; where a
+collision is not benign, `name_collision` is the signal.
+
+FAIL-CLOSED TABLE — AND WHAT IS REACHABLE
+  Parsed      -> clean facts
+  Partial     -> PARSE_PARTIAL, edges labelled from_partial
+  Failed      -> PARSE_FAILED
+  Unsupported -> UNSUPPORTED_SEMANTIC_INDEX
+
+A directory scan cannot currently produce `PARSE_FAILED`: a file whose bytes
+are undecodable is dropped from inventory, and a hard parser failure is not
+produced by this scanner. `PARSE_FAILED` and `UNSUPPORTED_SEMANTIC_INDEX` are
+exercised through `resolve_file` (the explicit-file surface) and by the
+decision-table unit test. The scan's reachable states are Parsed, Partial and
+Failed-by-construction; this is stated rather than implied by a passing test.
+
+WHAT THIS DOES NOT CLAIM
+  - It does not claim D2 (test-to-code), D3 (impact), or D10 (agent/CLI
+    agreement). No impact() surface exists yet, and nothing here is wired into
+    AgentLoop::assemble_context.
+  - It does not claim the regex extractors were removed: DEFINITION_INDEXED is
+    still produced by symbols.rs, which still says so.
+  - It does not claim the 33 remaining partial files are anywhere near the D1
+    completeness ceiling: 29 are a grammar-version gap in
+    `tree-sitter-typescript` 0.23.2, and the rest are source defects or a
+    fixture. None is a resolver bug.

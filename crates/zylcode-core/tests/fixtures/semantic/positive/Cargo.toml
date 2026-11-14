@@ -1,0 +1,8 @@
+# Fixture for the semantic-resolution tests. It is its own workspace root so the
+# outer workspace never tries to build it.
+[workspace]
+
+[package]
+name = "semantic-positive"
+version = "0.1.0"
+edition = "2021"
