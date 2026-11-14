@@ -166,7 +166,6 @@ fn project_open_valid_and_reject_invalid() {
         create_status.success(),
         "project create succeeded; stderr: {create_stderr}"
     );
-    let create_stdout = create_stdout;
     // Extract UUID from output: format is "Project 'name' created at 'path' ID: uuid"
     let uuid = create_stdout
         .lines()
@@ -279,12 +278,12 @@ fn project_export_to_json() {
     // Assert that the CLI's reported export count matches the actual JSON record count.
     let reported_count_from_stdout = stdout
         .lines()
-        .find(|l| l.contains("project"))
-        .map(|l| {
-            l.split_whitespace()
-                .find(|w| w.parse::<usize>().is_ok())
-                .map(|n| n.parse::<usize>().unwrap_or(0))
-                .unwrap_or(0)
+        .find_map(|l| {
+            if l.contains("project") {
+                l.split_whitespace().find_map(|w| w.parse::<usize>().ok())
+            } else {
+                None
+            }
         })
         .unwrap_or(0);
     assert_eq!(
@@ -397,7 +396,6 @@ fn project_import_basic() {
         export_status.success(),
         "source project export succeeded; stderr: {export_stderr}; stdout: {export_stdout}"
     );
-    let export_stdout = export_stdout;
     assert!(
         export_stdout.contains("Exported"),
         "source export output should contain Exported"
@@ -440,7 +438,6 @@ fn project_import_basic() {
         list_status.success(),
         "list after import succeeded; stderr: {list_stderr}"
     );
-    let list_stdout = list_stdout;
     assert!(
         list_stdout.contains("roundtrip-test"),
         "listed projects should include 'roundtrip-test'; stdout: {list_stdout}"
@@ -498,7 +495,6 @@ fn project_import_duplicate() {
         status1.success(),
         "first import should succeed; stderr: {stderr1}"
     );
-    let stdout1 = stdout1;
     assert!(
         stdout1.contains("Imported"),
         "first import output should contain 'Imported'"
@@ -522,7 +518,6 @@ fn project_import_duplicate() {
         list_status.success(),
         "list after second import should succeed; stderr: {list_stderr}"
     );
-    let list_stdout = list_stdout;
     assert!(
         list_stdout.contains("dup-test"),
         "listed projects should include 'dup-test' after second import; stdout: {list_stdout}"
