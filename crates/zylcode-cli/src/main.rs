@@ -2100,8 +2100,7 @@ async fn handle_project(args: ProjectArgs) -> Result<()> {
             if let Some(p) = store.get(&id)? {
                 println!("Project '{}' @ {:?}", p.name, p.root_path);
             } else {
-                eprintln!("No project found with id '{id}'.");
-                std::process::exit(1);
+                anyhow::bail!("No project found with id '{id}'.");
             }
             Ok(())
         }
