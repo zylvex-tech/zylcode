@@ -51,7 +51,7 @@ required for the capability to be honest.
 
 | #     | Requirement                                                    | State now                                                                                                                                                         | Where                                                          |
 | ----- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| P0.1  | Fix path exclusion; `ignore` crate; components not raw strings | `scanner.rs` builds a real `Gitignore` via `ignore::gitignore::GitignoreBuilder`; `ignore = "0.4"` is a declared dependency; `should_exclude` has four unit tests | `crates/zylcode-core/src/intelligence/{scanner,classifier}.rs` |
+| P0.1  | Fix path exclusion; `ignore` crate; components not raw strings | `scanner.rs` builds a real `Gitignore` via `ignore::gitignore::GitignoreBuilder`; `ignore = "0.4"` is a declared dependency; `should_exclude` has nine exclusion unit tests (component matching; Windows, Unix, nested generated trees, near-matches) plus two scanner traversal tests | `crates/zylcode-core/src/intelligence/{scanner,classifier}.rs` |
 | P0.2  | Re-baseline every metric, visibly                              | Corrected figures in §3, each with its wrong figure and root cause. Registry statuses left `DISPUTED` rather than silently promoted                               | §3, §9                                                         |
 | P0.3  | Benchmark deterministic and self-enforcing                     | `Precision@10 >= 0.60` **and** `Recall@10 >= 0.60` asserted; **scope assertions absent at the time of this report — added 2026-11-14** (see §1a, §5); performance split into its own test | `crates/zylcode-core/tests/repo_intelligence_benchmark.rs`     |
 | P0.4  | Machine-independent timing budget                              | Throughput reported and now gated by a documented collapse floor, not an acceptance budget; the original wall-clock `< 120 s` assertion was removed because it measured the wrong thing and was never run (**2026-11-14**, §7) | benchmark test                                                 |
@@ -60,7 +60,7 @@ required for the capability to be honest.
 | P1.7  | Integrate, or downgrade — and say which                        | **(a) integrate.** Agent context assembly consumes the intelligence ranking; `zylcode repo-context` is a named CLI surface; graph citations are deterministic     | §8                                                             |
 | P1.8  | Raise the acceptance thresholds; ≥ 20 questions                | 28 questions; `P@10 >= 0.60` and `R@10 >= 0.60` asserted in the merge gate                                                                                        | §7                                                             |
 | P1.9  | Resolve the failing test                                       | Resolved; the original diagnosis was partly wrong and is corrected in the order's own status block (retired XML contract; cache satisfied the prompt)             | order §P1.9                                                    |
-| P1.10 | Commit or discard the working tree                             | Tracked tree is clean; six untracked local files remain on the developer machine and are disclosed in §11                                                         | §11                                                            |
+| P1.10 | Commit or discard the working tree                             | The remediation worktree is clean and committed; the developer checkout that holds protected unrelated work still has eight untracked local files, disclosed in §11 | §11                                                            |
 | P1.11 | Completion report self-consistency                             | This file. The stale `(Pending — to be committed…)` / `REMOTE CI = BLOCKED_EXTERNAL` fields are gone; the commit and CI facts are stated in §4                    | §1, §4                                                         |
 
 **Definition of Done (order §8), checked honestly:**
@@ -77,7 +77,7 @@ required for the capability to be honest.
 | Registry consistent with `ZYLCODE_CAPABILITY_MODEL.md` §4.2               | ⚠️ 19 GREEN entries at R3; **3 declared exceptions** (§10)   |
 | Every capability has a committed entry point or is PARTIAL/R2             | ⚠️ 12 Phase 2A entries remain DISPUTED pending the verdict   |
 | `cargo test --workspace` fully green                                      | ✅ CI at `c2a2b94` and `1c14aec`                             |
-| Working tree clean                                                        | ⚠️ six untracked local files (§11)                           |
+| Working tree clean                                                        | ⚠️ remediation worktree clean; developer checkout has eight untracked files (§11) |
 | No governance document modified                                           | ✅ — this pass changed no file under `docs/governance/`      |
 | Phase 2B not started                                                      | ✅                                                           |
 
@@ -161,7 +161,7 @@ an acceptance budget.
 task: where is should_exclude defined
 indexed: 753 files, 3210 symbols, 8 packages, 34 entry points (22861 ms)
 top results:
-   2.87 [symbol] crates::zylcode-core::src::intelligence::classifier::should_exclude :: symbol name 'should_exclude' matches task; …
+   2.87 [symbol] crates::zylcode-core::src::intelligence::classifier::should_exclude :: symbol name 'should_exclude' matches task; symbol 'should_exclude' contains 'exclude'; symbol 'should_exclude' contains 'should_exclude'; recently changed file
    1.43 [file] crates/zylcode-core/src/intelligence/classifier.rs :: defines symbol 'should_exclude'; defines 2 symbol(s) matching task terms; recently changed
    0.97 [symbol] crates::zylcode-core::src::intelligence::classifier::EXCLUDED_DIR_NAMES :: symbol 'EXCLUDED_DIR_NAMES' contains 'exclude'; recently changed file
 ```
@@ -234,9 +234,15 @@ freshly checked-out worktree where the OS cache and on-access virus scanning dom
 performance test now prints `files/second` from the scan duration and the file count from the
 same operation, and fails below a documented 10 files/s collapse floor — roughly 6× below the
 slowest observation, so it catches a collapse without red-flagging a slow machine. It is **not**
-the Phase 2A performance acceptance proof: no universal budget has been agreed, and the order's
-“parallelise the scan” step was not taken because measurements do not show it is needed. The
+the Phase 2A performance acceptance proof: no universal budget has been agreed, and the order's “parallelise the scan” step was not taken because measurements do not show it is needed. The
 honest statement of what remains is in §11.
+
+**Owner decision — 2026-11-15.** The product owner authorized this submission to proceed with
+P0.4 declared as an **explicit exception**: throughput is measured and reported from the same
+scan, a collapse floor is enforced so a catastrophic regression fails, and **no
+machine-independent acceptance budget is claimed**. The exception is repeated at the top of the
+pull-request body so the auditor receives it as an open criterion rather than a closed one, and it
+is the auditor's to accept or reject.
 
 ---
 
@@ -364,10 +370,11 @@ Recorded rather than silently resolved, per order constraint 2.
 - **Incremental indexing is file-level only.** Symbol-level invalidation does not exist.
 - **Rung backfill is builder-asserted** (§10.2) and three entries declare a status/rung conflict
   (§10.3). Nothing in this registry claims R4 or R5, so no entry claims independent verification.
-- **The local working tree is not pristine.** Six untracked files exist on the developer machine
+- **The developer checkout is not pristine.** Eight untracked entries exist there
   (`Cargo.lock.bak`, three `Cargo.toml.bak`, `MCP_TRUTH_RECONCILIATION.md`,
-  `composio_integration_plan.md`). None are committed, none are load-bearing, and the tracked
-  tree is clean.
+  `Phase2B_Completion_Report.md`, `composio_integration_plan.md`, `screenshots/`). None are
+  committed and none are load-bearing. The remediation worktree itself is clean, which is what
+  the order's clean-tree requirement is checked against for this submission.
 - **The perf figures were measured on one workstation.** No second machine has reproduced them.
 
 ---
