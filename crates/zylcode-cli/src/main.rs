@@ -74,6 +74,11 @@ enum Commands {
     /// Resumes automatically when mission state already exists in --workdir.
     Mission(MissionArgs),
 
+    /// Mission Engine (Phase 3B): a durable mission with acceptance criteria,
+    /// eleven states, and completion that requires a cited proof per criterion.
+    /// State survives the process dying mid-EXECUTING; `resume` continues it.
+    Missions(MissionsArgs),
+
     /// Delivery: report deploy targets that are actually commissioned
     /// (GitHub release via tag, crates.io token, remote server).
     DeployStatus,
@@ -533,6 +538,7 @@ async fn main() -> Result<()> {
         Commands::BestOfN(args) => handle_best_of_n(&cli.workspace, args).await,
         Commands::Package(args) => handle_package(&cli.workspace, args).await,
         Commands::Mission(args) => handle_mission(args).await,
+        Commands::Missions(args) => handle_missions(args).await,
         Commands::DeployStatus => {
             let payload = zylcode_core::delivery::deploy_targets(Path::new(&cli.workspace))?;
             println!("{}", serde_json::to_string_pretty(&payload)?);
@@ -1990,6 +1996,186 @@ struct MissionArgs {
     /// `op:2:pre-evidence`). Falls back to $ZYLCODE_MISSION_CRASH_AT.
     #[arg(long)]
     crash_at: Option<String>,
+}
+
+// ---------------------------------------------------------------------------
+// Mission Engine (Phase 3B)
+// ---------------------------------------------------------------------------
+
+#[derive(Args, Debug)]
+struct MissionsArgs {
+    #[command(subcommand)]
+    command: MissionsCommand,
+}
+
+#[derive(Subcommand, Debug)]
+enum MissionsCommand {
+    /// Create a mission: objective plus explicit acceptance criteria.
+    Create(MissionsCreateArgs),
+    /// Print phase, criteria, citations and step progress.
+    Status(MissionsStatusArgs),
+    /// Advance the mission as far as its rules and evidence allow.
+    Resume(MissionsResumeArgs),
+    /// Attach the proof that satisfies an acceptance criterion.
+    Cite(MissionsCiteArgs),
+    /// Stop the mission with a recorded reason.
+    Cancel(MissionsCancelArgs),
+}
+
+#[derive(Args, Debug)]
+struct MissionsCreateArgs {
+    /// Mission working directory (holds `.zylcode/mission.journal.jsonl`).
+    #[arg(long)]
+    workdir: std::path::PathBuf,
+
+    /// What the mission must achieve.
+    #[arg(long)]
+    objective: String,
+
+    /// Acceptance criterion; repeatable. At least one is required, because a
+    /// mission with none could never be honestly COMPLETE.
+    #[arg(long = "criterion", required = true)]
+    criterion: Vec<String>,
+
+    /// Execution step; repeatable.
+    #[arg(long = "step")]
+    step: Vec<String>,
+}
+
+#[derive(Args, Debug)]
+struct MissionsStatusArgs {
+    #[arg(long)]
+    workdir: std::path::PathBuf,
+}
+
+#[derive(Args, Debug)]
+struct MissionsResumeArgs {
+    #[arg(long)]
+    workdir: std::path::PathBuf,
+
+    /// Pass the human approval gate and execute.
+    #[arg(long, default_value_t = false)]
+    approve: bool,
+
+    /// Complete at most N steps in this call, then stop (state is saved).
+    /// With this flag set the process exits 9 when it stopped early, which is
+    /// how the kill-resume benchmark interrupts a mission mid-EXECUTING.
+    #[arg(long)]
+    crash_after_steps: Option<usize>,
+}
+
+#[derive(Args, Debug)]
+struct MissionsCiteArgs {
+    #[arg(long)]
+    workdir: std::path::PathBuf,
+
+    /// Criterion id, e.g. `c1`.
+    #[arg(long)]
+    criterion: String,
+
+    /// Evidence id the citation points at (test name, ledger hash, path...).
+    #[arg(long)]
+    evidence: String,
+
+    /// test | ledger | file | command | artifact | human
+    #[arg(long, default_value = "test")]
+    kind: String,
+
+    /// What the evidence shows, in one line.
+    #[arg(long, default_value = "")]
+    summary: String,
+}
+
+#[derive(Args, Debug)]
+struct MissionsCancelArgs {
+    #[arg(long)]
+    workdir: std::path::PathBuf,
+
+    #[arg(long)]
+    reason: String,
+}
+
+/// Handle `zylcode missions`. Exit codes: 0 = moved forward or already
+/// terminal, 2 = verification is waiting on citations (not complete),
+/// 9 = execution paused deliberately mid-flight, 1 = error.
+async fn handle_missions(args: MissionsArgs) -> Result<()> {
+    use zylcode_core::mission_engine::{phase_name, EvidenceKind, MissionEngine, Progress};
+
+    match args.command {
+        MissionsCommand::Create(a) => {
+            let mission =
+                MissionEngine::new(a.workdir).create(&a.objective, &a.criterion, &a.step)?;
+            println!("mission: {}", mission.id);
+            println!("phase: {}", phase_name(mission.phase));
+            println!("criteria: {}", mission.criteria.len());
+            println!("steps: {}", mission.steps.len());
+            Ok(())
+        }
+        MissionsCommand::Status(a) => {
+            print!("{}", MissionEngine::new(a.workdir).describe()?);
+            Ok(())
+        }
+        MissionsCommand::Resume(a) => {
+            let progress = MissionEngine::new(a.workdir).resume(a.approve, a.crash_after_steps)?;
+            match progress {
+                Progress::AwaitingApproval => {
+                    println!("AWAITING_APPROVAL: nothing executed; re-run with --approve");
+                    Ok(())
+                }
+                Progress::Executing { done, remaining } => {
+                    println!("EXECUTING: {done} step(s) done, {remaining} remaining (saved)");
+                    if a.crash_after_steps.is_some() {
+                        println!("paused deliberately; `resume` continues from here");
+                        std::process::exit(9);
+                    }
+                    Ok(())
+                }
+                Progress::AwaitingEvidence { unsatisfied } => {
+                    println!(
+                        "VERIFYING: not COMPLETE — {} criterion/criteria lack a cited proof: {}",
+                        unsatisfied.len(),
+                        unsatisfied.join(", ")
+                    );
+                    std::process::exit(2);
+                }
+                Progress::Complete { mission_id } => {
+                    println!("COMPLETE: {mission_id} — every criterion has a cited proof");
+                    Ok(())
+                }
+                Progress::Terminal { phase } => {
+                    println!("terminal: {}", phase_name(phase));
+                    Ok(())
+                }
+            }
+        }
+        MissionsCommand::Cite(a) => {
+            let kind = match a.kind.as_str() {
+                "test" => EvidenceKind::Test,
+                "ledger" => EvidenceKind::Ledger,
+                "file" => EvidenceKind::File,
+                "command" => EvidenceKind::Command,
+                "artifact" => EvidenceKind::Artifact,
+                "human" => EvidenceKind::Human,
+                other => anyhow::bail!(
+                    "unknown evidence kind '{other}'; use test|ledger|file|command|artifact|human"
+                ),
+            };
+            let mission =
+                MissionEngine::new(a.workdir).cite(&a.criterion, &a.evidence, kind, &a.summary)?;
+            println!(
+                "cited: {} <- {} ({})",
+                a.criterion,
+                a.evidence,
+                phase_name(mission.phase)
+            );
+            Ok(())
+        }
+        MissionsCommand::Cancel(a) => {
+            let mission = MissionEngine::new(a.workdir).cancel(&a.reason)?;
+            println!("CANCELLED: {} ({})", mission.id, a.reason);
+            Ok(())
+        }
+    }
 }
 
 /// Run (or resume) a First Mission and print the closing statement (§35).
