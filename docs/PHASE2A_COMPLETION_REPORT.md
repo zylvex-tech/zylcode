@@ -68,7 +68,7 @@ required for the capability to be honest.
 | Item                                                                      | State                                                        |
 | ------------------------------------------------------------------------- | ------------------------------------------------------------ |
 | `should_exclude()` correct on Windows, verified against real `.gitignore` | ⚠️ **2026-11-14:** now component-based for both separator styles, with Windows/Unix/near-match tests; the real-repository `.gitignore` is loaded through the `ignore` crate, and scope is asserted on the live index |
-| Indexed file count in the low hundreds, not fifteen thousand              | ✅ 753–760 depending on checkout (live tree, not fixed)      |
+| Indexed file count in the low hundreds, not fifteen thousand              | ✅ 754–760 depending on checkout (live tree, not fixed)      |
 | Index scope asserted in a test                                            | ✅ **2026-11-14:** `assert_index_scope` in both benchmark tests |
 | Benchmark deterministic and fails on regression                           | ✅ thresholds asserted at 0.60; in-process re-query must byte-match |
 | Benchmark passes off the author's machine with a files/second budget      | ⚠️ measured (59–615 files/s) and gated by a collapse floor; not an acceptance budget |
@@ -125,8 +125,9 @@ historical evidence string was changed, and the registry checker still passes.
 - `rustc 1.97.1 (8bab26f4f 2026-07-14)`, `cargo 1.97.1 (c980f4866 2026-06-30)`
 - Commit: `b5767fe` — the classifier, scanner and benchmark remediation commit. The report
   itself is committed after it; this SHA exists in the branch history.
-- Corpus: the branch working tree (753 files, 767 tracked). The benchmark is not a fixed fixture;
-  see the corpus note at the top of `repo_intelligence_benchmark.rs`.
+- Corpus: the branch working tree (754 files indexed, 768 tracked). The benchmark is not a fixed
+  fixture; see the corpus note at the top of `repo_intelligence_benchmark.rs`. Counts move by one
+  whenever a file is added, including evidence files such as these transcripts.
 
 ### Commands
 
@@ -139,27 +140,28 @@ cargo run -p zylcode-cli -- repo-context "where is should_exclude defined"
 ### Raw output (verbatim, not summarised)
 
 ```text
-Files indexed: 753
+Files indexed: 754
 Symbols indexed: 3210
 Packages: 8
 Entry points: 34
-Average Precision@10: 0.63
+Average Precision@10: 0.64
 Average Recall@10: 0.96
-MEASUREMENT scan_files=767 indexed_files=753 scan_seconds=1.335 files_per_second=574.7
-test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 72.32s
+MEASUREMENT scan_files=768 indexed_files=754 scan_seconds=1.461 files_per_second=525.7
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 75.76s
+EXIT:0
 ```
 
 The second test (`benchmark_indexing_performance`) is no longer `#[ignore]`d, so both suites ran in
 that single invocation. Its measurement line is the scan duration in the same operation as the
-file count. A separate cold-worktree run measured `12.956 s` for 767 files (≈ 59 files/s); the
-difference is OS cache and on-access virus scanning, and is why the gate is a collapse floor, not
-an acceptance budget.
+file count. Cold runs of the same scan measured `11.99–12.96 s` for 767–768 files (≈ 60–64
+files/s); the difference from the warm figure is OS cache and on-access virus scanning, and is why
+the gate is a collapse floor, not an acceptance budget.
 
 ### Entry point, invoked
 
 ```text
 task: where is should_exclude defined
-indexed: 753 files, 3210 symbols, 8 packages, 34 entry points (22861 ms)
+indexed: 753 files, 3210 symbols, 8 packages, 34 entry points (22861 ms)  [run before the evidence transcripts were added; the benchmark run above supersedes the count]
 top results:
    2.87 [symbol] crates::zylcode-core::src::intelligence::classifier::should_exclude :: symbol name 'should_exclude' matches task; symbol 'should_exclude' contains 'exclude'; symbol 'should_exclude' contains 'should_exclude'; recently changed file
    1.43 [file] crates/zylcode-core/src/intelligence/classifier.rs :: defines symbol 'should_exclude'; defines 2 symbol(s) matching task terms; recently changed
@@ -168,17 +170,34 @@ top results:
 
 CI at the audited base `29638d4`: `CI` (Ubuntu, macOS, Windows — each running
 `cargo test --workspace --all-targets`) and `Coverage` both **succeeded** (runs 43594645423 and
-43594645409). CI for this remediation branch had not run when this block was written; it is a
-local measurement until the branch is pushed and CI completes.
+43594645409). CI for this remediation branch is triggered by the draft pull request for
+`fix/phase2a-scope-and-evidence`; until that run completes, every number here is a Windows-local
+measurement and must not be described as cross-platform verification.
+
+### Evidence files (committed, complete)
+
+Every required command was re-run on this branch with its complete stdout/stderr and exit status
+captured. Nothing is summarised or elided; each file's last line is `EXIT:<status>`.
+
+| File | Exit | Covers |
+| --- | --- | --- |
+| `docs/evidence/phase2a-2026-11-14/01-fmt.log` | 0 | `cargo fmt --all -- --check` |
+| `…/02-check.log` | 0 | `cargo check --workspace --all-targets` |
+| `…/03-clippy.log` | 0 | `cargo clippy --workspace --all-targets -- -D warnings` |
+| `…/04-intelligence.log` | 0 | `cargo test -p zylcode-core --lib intelligence::` — 110 passed |
+| `…/05-benchmark.log` | 0 | benchmark, both tests, `--nocapture` |
+| `…/06-workspace.log` | 0 | `cargo test --workspace --all-targets` — 32 suites, 1094 passed, 0 failed, 4 ignored |
+| `…/07-registry.log` | 0 | `python scripts/check_capability_registry.py` |
+| `…/README.md` | — | provenance, platform, and what the logs do not establish |
 
 ---
 
 ## 5. Index scope evidence
 
-Measured on this branch at `b5767fe`:
+Measured on this branch at `0ca849d` + evidence transcripts:
 
-- `git ls-files | wc -l` → **767**
-- Index size reported by the benchmark → **753**
+- `git ls-files | wc -l` → **768**
+- Index size reported by the benchmark → **754**
 - Indexed paths with a `target`, `node_modules`, `.git`, `dist` or `build` component → **0**
 - This is now an **assertion**, not a manual inspection: `assert_index_scope()` runs in both
   benchmark tests and fails the suite on the first violation.
@@ -228,9 +247,9 @@ cited as evidence that offline operation fails.
 
 **Correction (2026-11-14).** The figure previously published here — “760 files in 164.54 s ≈ 4.6
 files/second” — was not a scan measurement. 164.54 s was the retrieval-quality suite's total
-runtime for 28 queries. The scan itself, measured on the same checkout, was **1.286 s for 923
-walk entries** (≈ 615 files/s warm), and **12.956 s for 767 files** (≈ 59 files/s) on a cold,
-freshly checked-out worktree where the OS cache and on-access virus scanning dominate. The
+runtime for 28 queries. The scan itself, measured on the same checkout, was **1.461 s for 754
+indexed files / 768 scanned** (≈ 526 files/s warm), and **11.99–12.96 s** (≈ 60–64 files/s) on a
+cold, freshly checked-out worktree where the OS cache and on-access virus scanning dominate. The
 performance test now prints `files/second` from the scan duration and the file count from the
 same operation, and fails below a documented 10 files/s collapse floor — roughly 6× below the
 slowest observation, so it catches a collapse without red-flagging a slow machine. It is **not**
