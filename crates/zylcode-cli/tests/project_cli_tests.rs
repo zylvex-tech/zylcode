@@ -242,7 +242,9 @@ fn project_export_to_json() {
 
     // Verify JSON schema version (authoritative value from ProjectStore)
     let obj = json.as_object().expect("json should be an object");
-    let expected_schema_version = 1u32; // ProjectStore schema_version
+    // Authoritative value from the store crate: the export must carry whatever
+    // schema the store currently writes, not a copy of the number in this test.
+    let expected_schema_version = zylcode_core::project_store::PROJECTS_SCHEMA_VERSION;
     let actual_schema = obj.get("schema_version");
     assert!(
         actual_schema.is_some(),
@@ -743,5 +745,99 @@ fn project_empty_store_behaviour() {
             || stderr.contains("not found")
             || stderr.contains("unknown project id"),
         "error message should indicate project not found; stderr: {stderr}"
+    );
+}
+
+/// Test: `project status <id>` reports identity, root resolution and history.
+#[test]
+fn project_status_reports_identity_and_history() {
+    let dir = fixture_workspace();
+    let dir_path = dir.path();
+    let (create_status, create_stdout, create_stderr) =
+        run_cli(dir_path, &["project", "create", "status-test", "."]);
+    assert!(
+        create_status.success(),
+        "create should succeed; stderr: {create_stderr}"
+    );
+    let id = create_stdout
+        .lines()
+        .find(|l| l.contains("ID:"))
+        .and_then(|l| l.split_once("ID:"))
+        .map(|(_, id)| id.trim().to_string())
+        .expect("created project id");
+
+    let (status, stdout, stderr) = run_cli(dir_path, &["project", "status", &id]);
+    assert!(status.success(), "status should succeed; stderr: {stderr}");
+    assert!(stdout.contains("status-test"), "stdout: {stdout}");
+    assert!(
+        stdout.contains(&id),
+        "status must print the id; stdout: {stdout}"
+    );
+    assert!(
+        stdout.contains("root present: yes"),
+        "status must report root resolution; stdout: {stdout}"
+    );
+    assert!(
+        stdout.contains("decisions: 1") && stdout.contains("created"),
+        "status must expose the decision history; stdout: {stdout}"
+    );
+
+    // Unknown id must fail loudly rather than printing an empty status.
+    let (missing_status, _out, missing_err) = run_cli(dir_path, &["project", "status", "nope"]);
+    assert!(!missing_status.success());
+    assert!(missing_err.contains("No project found"), "{missing_err}");
+}
+
+/// Test: importing a project whose repository is absent keeps identity and
+/// reports the unresolved root (PROJECT_SYSTEM.md R3) instead of dropping it.
+#[test]
+fn project_import_reports_unresolved_roots() {
+    let dir = fixture_workspace();
+    let dir_path = dir.path();
+    let missing_root = std::env::temp_dir().join("zylcode_import_missing_root_xyz");
+    let payload = serde_json::json!({
+        "schema_version": zylcode_core::project_store::PROJECTS_SCHEMA_VERSION,
+        "projects": [{
+            "id": "imported-missing-root",
+            "name": "from-other-machine",
+            "root_path": missing_root.to_string_lossy(),
+            "created_at": "2026-01-01T00:00:00Z",
+            "last_accessed": "2026-01-01T00:00:00Z",
+            "schema_version": zylcode_core::project_store::PROJECTS_SCHEMA_VERSION
+        }]
+    });
+    let payload_path = dir_path.join("import.json");
+    fs::write(
+        &payload_path,
+        serde_json::to_string_pretty(&payload).unwrap(),
+    )
+    .expect("write import payload");
+
+    let (status, stdout, stderr) = run_cli(
+        dir_path,
+        &["project", "import", payload_path.to_str().unwrap()],
+    );
+    assert!(status.success(), "import should succeed; stderr: {stderr}");
+    assert!(stdout.contains("Imported 1 project"), "stdout: {stdout}");
+    assert!(
+        stdout.contains("Unresolved project roots"),
+        "unresolved root must be reported explicitly; stdout: {stdout}"
+    );
+    assert!(
+        stdout.contains("zylcode_import_missing_root_xyz"),
+        "the unresolved path itself must be named; stdout: {stdout}"
+    );
+
+    // The imported project is inspectable, and status tells the truth about it.
+    let (status_out, stdout_out, _) =
+        run_cli(dir_path, &["project", "status", "imported-missing-root"]);
+    assert!(status_out.success());
+    assert!(
+        stdout_out.contains("root present: NO"),
+        "status must not pretend the root exists; stdout: {stdout_out}"
+    );
+    assert!(
+        stdout_out.contains("imported"),
+        "status must show the import decision; stdout: {stdout_out}"
     );
 }

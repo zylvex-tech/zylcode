@@ -281,3 +281,39 @@ Travel is the test that will expose a violation of that rule, which is a reason 
 early rather than late.
 
 **Not in scope for v2.1:** the reconstruction mechanism, storage format, or UI.
+
+---
+
+## 13. Implementation status (2026-11-15)
+
+This section records what exists in source against §6 and §7. It is not an acceptance verdict;
+the auditor decides the rung.
+
+| Requirement            | State           | Evidence                                                                                                                                                                |
+| ---------------------- | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R1 — Durable identity  | **Implemented** | UUID id independent of path; `root_path`/`created_at` immutable after registration; duplicate roots rejected                                                            |
+| R2 — Restart survival  | **Implemented** | Store at `.zylcode/projects.json` (or `PROJECTS_PATH`); atomic temp+rename writes; reopen test                                                                          |
+| R3 — Machine migration | **Partial**     | Export/import of records and decision history; unresolved roots are reported by name and recorded in the project's history. Evidence/artifact **bytes** are not bundled |
+| R4 — Concurrency       | **Partial**     | One store instance serialises mutations with a mutex. No cross-process file lock, so two processes can still interleave read-modify-write                               |
+| R5 — Versioned schema  | **Implemented** | Envelope `schema_version`; v1→v2 migration stamps each record and adds a visible `schema_migrated` decision; corrupt stores are preserved, future versions fail closed  |
+
+**Entry points (CLI):** `zylcode project create | list | open | status | export | import`. The
+`status` command reports identity, root resolution on this machine, schema version, and the
+decision history.
+
+**Mutation history:** every `create`, `update` and `import` appends a `ProjectDecision`
+(`{at, kind, summary}`); no-op updates add nothing. This is the §7.2 requirement, and it is stored
+with the record rather than in a separate log.
+
+**Not implemented (do not claim otherwise):**
+
+- The creation-flow fields beyond name/root/repository-remote/notes — project type, targets,
+  design system, models, runtime environments, deployment targets, secrets, team.
+- Project Knowledge Graph persistence (`PROJECT_KNOWLEDGE_GRAPH.md`).
+- Persistence of missions, evidence references, artifacts, releases or deployment history inside
+  the project record.
+- Evidence and artifact bytes in the export bundle, and re-resolution of those references on import.
+- Cross-process locking (R4 is in-process only).
+- The desktop application's project commands (`create_project`, `open_project`, `list_projects`,
+  `close_project`) still use the runtime project model; they are **not** wired to this store, so a
+  project created in the desktop UI is not yet part of the durable Project System.
