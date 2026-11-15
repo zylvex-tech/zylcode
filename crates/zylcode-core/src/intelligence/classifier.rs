@@ -447,9 +447,14 @@ mod tests {
         assert!(!should_exclude(Path::new("src/main.rs")));
     }
 
+    // Windows path semantics only exist on Windows: on Unix a backslash is an
+    // ordinary filename character, so `C:\repo\target\x` is ONE component and
+    // must not be excluded. CI runs this suite on Linux and macOS, which is why
+    // the two platforms are asserted separately rather than in one test.
+    #[cfg(windows)]
     #[test]
     fn exclude_windows_absolute_path() {
-        // The primary target platform: WalkDir yields backslash paths there.
+        // The primary platform: WalkDir yields backslash paths there.
         assert!(should_exclude(Path::new(
             r"C:\Projects\zylcode\target\debug\zylcode.exe"
         )));
@@ -458,6 +463,22 @@ mod tests {
         )));
         assert!(should_exclude(Path::new(
             r"C:\Users\dev\repo\.git\objects\ab\cd1234"
+        )));
+        // Extended-length prefix as produced by `canonicalize` on Windows.
+        assert!(should_exclude(Path::new(
+            r"\\?\C:\Projects\zylcode\target\debug\zylcode.exe"
+        )));
+    }
+
+    #[cfg(not(windows))]
+    #[test]
+    fn backslash_sequence_is_one_filename_on_unix() {
+        // Documents platform semantics rather than a product rule: a Unix path
+        // cannot contain a `target/` *component* via backslashes, so exclusion
+        // must not fire. Windows behaviour is covered by the test above on the
+        // Windows CI job.
+        assert!(!should_exclude(Path::new(
+            r"C:\Projects\zylcode\target\debug\zylcode.exe"
         )));
     }
 

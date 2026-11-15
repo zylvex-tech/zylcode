@@ -146,8 +146,8 @@ Packages: 8
 Entry points: 34
 Average Precision@10: 0.64
 Average Recall@10: 0.96
-MEASUREMENT scan_files=768 indexed_files=754 scan_seconds=1.461 files_per_second=525.7
-test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 75.76s
+MEASUREMENT scan_files=768 indexed_files=754 scan_seconds=1.597 files_per_second=480.9
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 91.98s
 EXIT:0
 ```
 
@@ -247,8 +247,8 @@ cited as evidence that offline operation fails.
 
 **Correction (2026-11-14).** The figure previously published here — “760 files in 164.54 s ≈ 4.6
 files/second” — was not a scan measurement. 164.54 s was the retrieval-quality suite's total
-runtime for 28 queries. The scan itself, measured on the same checkout, was **1.461 s for 754
-indexed files / 768 scanned** (≈ 526 files/s warm), and **11.99–12.96 s** (≈ 60–64 files/s) on a
+runtime for 28 queries. The scan itself, measured on the same checkout, was **1.597 s for 754
+indexed files / 768 scanned** (≈ 481 files/s warm), and **11.99–12.96 s** (≈ 60–64 files/s) on a
 cold, freshly checked-out worktree where the OS cache and on-access virus scanning dominate. The
 performance test now prints `files/second` from the scan duration and the file count from the
 same operation, and fails below a documented 10 files/s collapse floor — roughly 6× below the
