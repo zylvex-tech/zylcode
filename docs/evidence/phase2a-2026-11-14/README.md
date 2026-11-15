@@ -13,15 +13,15 @@ line is the command; **the last line is `EXIT:<status>`**. Nothing is trimmed, s
 reordered. The logs are committed so a reviewer does not depend on a developer machine's
 temporary directory.
 
-| File | Command | Purpose |
-| --- | --- | --- |
-| `01-fmt.log` | `cargo fmt --all -- --check` | Formatting gate |
-| `02-check.log` | `cargo check --workspace --all-targets` | Compilation gate |
-| `03-clippy.log` | `cargo clippy --workspace --all-targets -- -D warnings` | Lint gate |
-| `04-intelligence.log` | `cargo test -p zylcode-core --lib intelligence::` | Classifier/scanner unit tests |
-| `05-benchmark.log` | `cargo test -p zylcode-core --test repo_intelligence_benchmark -- --nocapture --test-threads=1` | Retrieval quality + scan measurement + scope assertions |
-| `06-workspace.log` | `cargo test --workspace --all-targets` | Full workspace test gate |
-| `07-registry.log` | `python scripts/check_capability_registry.py` | Registry shape gate |
+| File                  | Command                                                                                         | Purpose                                                 |
+| --------------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `01-fmt.log`          | `cargo fmt --all -- --check`                                                                    | Formatting gate                                         |
+| `02-check.log`        | `cargo check --workspace --all-targets`                                                         | Compilation gate                                        |
+| `03-clippy.log`       | `cargo clippy --workspace --all-targets -- -D warnings`                                         | Lint gate                                               |
+| `04-intelligence.log` | `cargo test -p zylcode-core --lib intelligence::`                                               | Classifier/scanner unit tests                           |
+| `05-benchmark.log`    | `cargo test -p zylcode-core --test repo_intelligence_benchmark -- --nocapture --test-threads=1` | Retrieval quality + scan measurement + scope assertions |
+| `06-workspace.log`    | `cargo test --workspace --all-targets`                                                          | Full workspace test gate                                |
+| `07-registry.log`     | `python scripts/check_capability_registry.py`                                                   | Registry shape gate                                     |
 
 ## What these logs establish, and what they do not
 
