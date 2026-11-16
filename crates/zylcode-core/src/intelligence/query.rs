@@ -342,7 +342,15 @@ pub fn build_repo_query(root: &Path) -> Result<RepoQuery> {
 
     let mut all_symbols = Vec::new();
     for file in &scan_result.files {
-        if file.language == Language::Rust {
+        // Every language `extract_symbols` understands is indexed here. This
+        // used to be Rust-only, which left TypeScript/JavaScript extraction
+        // unreachable from the product surface — `typescript_symbol_index`
+        // stayed R2 because a symbol extractor nothing calls is a library, not
+        // a capability (Phase 2A audit, condition C1).
+        if matches!(
+            file.language,
+            Language::Rust | Language::TypeScript | Language::JavaScript
+        ) {
             if let Ok(content) = std::fs::read_to_string(&file.path) {
                 all_symbols.extend(extract_symbols(
                     &file.id,
@@ -526,5 +534,36 @@ mod tests {
     fn file_count_test() {
         let query = make_test_query();
         assert_eq!(query.file_count(), 2);
+    }
+
+    /// Phase 2A audit condition C1: the TypeScript extractor existed but the
+    /// canonical pipeline was Rust-only, so no product surface ever produced a
+    /// TypeScript symbol. This asserts the pipeline now indexes one.
+    #[test]
+    fn build_repo_query_indexes_typescript_symbols() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let root = dir.path();
+        std::fs::write(
+            root.join("Cargo.toml"),
+            "[package]\nname = \"fixture\"\nversion = \"0.1.0\"\n",
+        )
+        .expect("write Cargo.toml");
+        std::fs::create_dir_all(root.join("src")).expect("src dir");
+        std::fs::write(
+            root.join("src/widget.ts"),
+            "export class Widget {\n  render(): void {}\n}\n\nexport interface Props {\n  label: string;\n}\n",
+        )
+        .expect("write widget.ts");
+
+        let query = build_repo_query(root).expect("build query");
+        let names: Vec<&str> = query.symbols().iter().map(|s| s.name.as_str()).collect();
+        assert!(
+            names.contains(&"Widget"),
+            "TypeScript class must be indexed by the pipeline; symbols: {names:?}"
+        );
+        assert!(
+            names.contains(&"Props"),
+            "TypeScript interface must be indexed; symbols: {names:?}"
+        );
     }
 }
