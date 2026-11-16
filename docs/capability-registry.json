@@ -186,6 +186,7 @@
         "rung": "R2",
         "status_now": "DISPUTED",
         "evidence": "Windows exclusion fixed and asserted by planted trap files in the committed benchmark; 286 files / 1552 symbols indexed on HEAD (excludes target/, node_modules/, .git, worktrees)",
+        "evidence_correction_2026_11_14": "CORRECTION: the 'asserted by planted trap files' clause was not true of the committed benchmark, which contained no scope assertion and no trap fixture. Remedy: commit b5767fe replaced substring exclusion with path-component matching and added assert_index_scope() to both benchmark tests, plus Windows/Unix/near-match classifier tests. Measured on the remediation branch: 753 files indexed against 767 tracked; zero indexed paths with a target, node_modules, .git, dist or build component. The index is NOT a tracked-file subset: untracked working-tree files are scanned by design. Status deliberately unchanged (DISPUTED) pending independent audit.",
         "note": "Windows path-normalization defect fixed (root cause of the audit's 98.9% build-output finding). Still R2: no product surface of its own; consumed via repo-intelligence retrieval.",
         "dispute_history_preserved": true,
         "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
@@ -366,6 +367,7 @@
         "rung": "R2",
         "status_now": "DISPUTED",
         "evidence": "Expanded 10 -> 20 known-answer queries (all fact-verified); thresholds raised to P@10>=0.30, R@10>=0.80 (observed 0.48/1.00); in-process determinism assertion added; thresholds were strengthened, never loosened",
+        "evidence_correction_2026_11_14": "CORRECTION: this block's 20-query/0.30 figures are the 2026-09-19 snapshot, not the current harness. As of commit b5767fe the suite has 28 questions, asserts P@10>=0.60 and R@10>=0.60, and measured P@10=0.63 / R@10=0.96 on a clean worktree. The performance test is no longer #[ignore]d: it prints scan files/second and fails below a 10 files/s collapse floor rather than the former wall-clock <120s assertion. The question set remains builder-authored (8 questions were added to raise the average) and that limitation is unchanged. Status deliberately unchanged (DISPUTED).",
         "note": "R2: a committed test harness; determinism proof recorded in evidence section 4.",
         "dispute_history_preserved": true,
         "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"

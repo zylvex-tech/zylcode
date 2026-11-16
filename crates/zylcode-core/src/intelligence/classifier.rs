@@ -5,7 +5,7 @@
 //! Architecture permits later adapters.
 
 use crate::intelligence::types::{FileRole, Language, LanguageSupport};
-use std::path::Path;
+use std::path::{Component, Path};
 
 /// Classify a file's language from its extension.
 pub fn classify_language(path: &Path) -> Language {
@@ -218,38 +218,49 @@ fn is_config_file(name: &str, path_str: &str) -> bool {
     false
 }
 
+/// Directory names that are never part of the source inventory.
+///
+/// These are matched against **whole path components**, never as substrings.
+/// The distinction is the difference between excluding build output and
+/// silently dropping source: `mytarget/notes.md` and `src/target_helpers.rs`
+/// contain the substring `target` but are ordinary repository content, while
+/// `target/debug/foo` and `crates/x/target/foo` are generated trees. The
+/// previous implementation used `contains("target/")`, which excluded the
+/// former as well and could not be fixed by normalising separators alone.
+///
+/// Path components are compared exactly, so a directory that differs only in
+/// case (`Target/`) is *not* excluded on a case-sensitive filesystem. That
+/// matches the policy recorded in `PHASE2A_REMEDIATION_ORDER.md` and the
+/// repository `.gitignore`, which are both case-sensitive.
+const EXCLUDED_DIR_NAMES: &[&str] = &[
+    "target",
+    "node_modules",
+    "dist",
+    "build",
+    ".git",
+    ".next",
+    ".nuxt",
+    "__pycache__",
+    ".venv",
+    "venv",
+    ".cache",
+    "coverage",
+];
+
 /// Check if a path should be excluded from scanning.
 pub fn should_exclude(path: &Path) -> bool {
-    // Normalise separators before matching: on Windows, WalkDir yields
-    // backslash paths, and every exclusion substring below uses forward
-    // slashes. Without this, `target/`, `node_modules/` and `.git/` are never
-    // excluded on Windows and the scanner descends into build output — which
-    // is what made the Phase 2A indexing benchmark fail on re-execution.
-    let path_str = path.to_string_lossy().replace('\\', "/");
-
-    // Standard exclusions
-    let excluded = [
-        "/target/",
-        "/node_modules/",
-        "/dist/",
-        "/build/",
-        "/.git/",
-        "/.next/",
-        "/.nuxt/",
-        "/__pycache__/",
-        "/.venv/",
-        "/venv/",
-        "/.cache/",
-        "/coverage/",
-        "target/",
-        "node_modules/",
-        ".git/",
-    ];
-
-    for exc in &excluded {
-        if path_str.contains(exc) {
-            return true;
-        }
+    // Match on components rather than on the rendered string. `Path::components`
+    // splits on both `\` and `/` and collapses `.`/repeated separators, so a
+    // Windows path (`C:\\repo\\target\\debug\\x`) and a Unix path
+    // (`/repo/target/debug/x`) are handled by the same rule with no separator
+    // normalisation step that a future edit could forget to apply.
+    if path.components().any(|component| match component {
+        Component::Normal(name) => name
+            .to_str()
+            .is_some_and(|name| EXCLUDED_DIR_NAMES.contains(&name)),
+        _ => false,
+    }) {
+        return true;
     }
 
     // Hidden files at the root level (but allow .github, .vscode etc.)
@@ -434,6 +445,85 @@ mod tests {
     #[test]
     fn dont_exclude_src() {
         assert!(!should_exclude(Path::new("src/main.rs")));
+    }
+
+    // Windows path semantics only exist on Windows: on Unix a backslash is an
+    // ordinary filename character, so `C:\repo\target\x` is ONE component and
+    // must not be excluded. CI runs this suite on Linux and macOS, which is why
+    // the two platforms are asserted separately rather than in one test.
+    #[cfg(windows)]
+    #[test]
+    fn exclude_windows_absolute_path() {
+        // The primary platform: WalkDir yields backslash paths there.
+        assert!(should_exclude(Path::new(
+            r"C:\Projects\zylcode\target\debug\zylcode.exe"
+        )));
+        assert!(should_exclude(Path::new(
+            r"C:\Users\dev\repo\node_modules\pkg\index.js"
+        )));
+        assert!(should_exclude(Path::new(
+            r"C:\Users\dev\repo\.git\objects\ab\cd1234"
+        )));
+        // Extended-length prefix as produced by `canonicalize` on Windows.
+        assert!(should_exclude(Path::new(
+            r"\\?\C:\Projects\zylcode\target\debug\zylcode.exe"
+        )));
+    }
+
+    #[cfg(not(windows))]
+    #[test]
+    fn backslash_sequence_is_one_filename_on_unix() {
+        // Documents platform semantics rather than a product rule: a Unix path
+        // cannot contain a `target/` *component* via backslashes, so exclusion
+        // must not fire. Windows behaviour is covered by the test above on the
+        // Windows CI job.
+        assert!(!should_exclude(Path::new(
+            r"C:\Projects\zylcode\target\debug\zylcode.exe"
+        )));
+    }
+
+    #[test]
+    fn exclude_unix_absolute_path() {
+        assert!(should_exclude(Path::new(
+            "/home/dev/zylcode/target/debug/zylcode"
+        )));
+        assert!(should_exclude(Path::new(
+            "/home/dev/repo/node_modules/x/index.js"
+        )));
+        assert!(should_exclude(Path::new("/home/dev/repo/.git/HEAD")));
+    }
+
+    #[test]
+    fn exclude_nested_generated_directory() {
+        // `**/target` in the repository .gitignore is per-directory, not only
+        // at the root.
+        assert!(should_exclude(Path::new(
+            "crates/zylcode-core/target/debug/x"
+        )));
+        assert!(should_exclude(Path::new("apps/web/dist/assets/index.js")));
+        assert!(should_exclude(Path::new("services/api/build/lib.rs")));
+        assert!(should_exclude(Path::new("crates/x/__pycache__/m.pyc")));
+    }
+
+    #[test]
+    fn dont_exclude_near_match_directory() {
+        // Substring matching classified these as build output. They are not.
+        assert!(!should_exclude(Path::new("mytarget/notes.md")));
+        assert!(!should_exclude(Path::new("crates/mytarget/src/lib.rs")));
+        assert!(!should_exclude(Path::new("docs/target-notes.md")));
+        assert!(!should_exclude(Path::new("src/target_helpers.rs")));
+        assert!(!should_exclude(Path::new("src/build.rs")));
+        assert!(!should_exclude(Path::new("crates/x/distances.rs")));
+        assert!(!should_exclude(Path::new("docs/build-guide.md")));
+    }
+
+    #[test]
+    fn exclude_git_but_keep_github_workflows() {
+        assert!(!should_exclude(Path::new(".github/workflows/ci.yml")));
+        assert!(!should_exclude(Path::new(
+            "crates/x/.github/ISSUE_TEMPLATE.md"
+        )));
+        assert!(should_exclude(Path::new("vendor/.git/config")));
     }
 
     #[test]

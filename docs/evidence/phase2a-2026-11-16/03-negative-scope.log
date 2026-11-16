@@ -1,0 +1,27 @@
+# falsification probe B: scope assertion also forbids 'src' (source revert follows)
+# commit: 0d7e71ae987df9150bfddc421321b5f203b97121
+   Compiling zylcode-core v0.2.4 (C:\Projects\zylcode\.wt\phase2a-remediation\crates\zylcode-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 6.58s
+     Running tests\repo_intelligence_benchmark.rs (C:/Projects/zylcode/target\debug\deps\repo_intelligence_benchmark-7222bb72b1be700e.exe)
+
+running 2 tests
+test benchmark_indexing_performance ... 
+thread 'benchmark_indexing_performance' (49232) panicked at crates\zylcode-core\tests\repo_intelligence_benchmark.rs:542:5:
+scan scope violated: ["apps/natlas-sdk/src/index.ts", "apps/zylcode-desktop/src/App.test.tsx", "apps/zylcode-desktop/src/App.tsx", "apps/zylcode-desktop/src/components/AboutModal.test.tsx", "apps/zylcode-desktop/src/components/AboutModal.tsx", "apps/zylcode-desktop/src/components/AgentTurnPanel.test.tsx", "apps/zylcode-desktop/src/components/AgentTurnPanel.tsx", "apps/zylcode-desktop/src/components/AgentWorkspace.test.tsx", "apps/zylcode-desktop/src/components/AgentWorkspace.tsx", "apps/zylcode-desktop/src/components/ArtifactViewer.test.tsx"]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+FAILED
+test benchmark_repository_intelligence ... 
+thread 'benchmark_repository_intelligence' (48596) panicked at crates\zylcode-core\tests\repo_intelligence_benchmark.rs:50:5:
+index scope violated: 287 path(s) under excluded directories (first 10: ["apps/natlas-sdk/src/index.ts", "apps/zylcode-desktop/src-tauri/src/commands/project.rs", "apps/zylcode-desktop/src-tauri/src/main.rs", "apps/zylcode-desktop/src-tauri/src/provider_store.rs", "apps/zylcode-desktop/src-tauri/src/secrets.rs", "apps/zylcode-desktop/src/App.test.tsx", "apps/zylcode-desktop/src/App.tsx", "apps/zylcode-desktop/src/components/AboutModal.test.tsx", "apps/zylcode-desktop/src/components/AboutModal.tsx", "apps/zylcode-desktop/src/components/AgentTurnPanel.test.tsx"])
+FAILED
+
+failures:
+
+failures:
+    benchmark_indexing_performance
+    benchmark_repository_intelligence
+
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 34.65s
+
+error: test failed, to rerun pass `-p zylcode-core --test repo_intelligence_benchmark`
+EXIT:101
