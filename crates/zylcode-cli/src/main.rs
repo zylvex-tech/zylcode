@@ -127,6 +127,11 @@ enum ProjectCommands {
         /// Project identifier.
         id: String,
     },
+    /// Show a project's identity, root resolution, and decision history.
+    Status {
+        /// Project identifier.
+        id: String,
+    },
     /// Export all project records as portable JSON.
     Export {
         /// Optional output path (defaults to './zylcode-projects-export.json').
@@ -2104,6 +2109,37 @@ async fn handle_project(args: ProjectArgs) -> Result<()> {
             }
             Ok(())
         }
+        ProjectCommands::Status { id } => {
+            let store = zylcode_core::project_store::ProjectStore::open(&std::env::current_dir()?)
+                .map_err(|e| anyhow::anyhow!("failed to open project store: {e}"))?;
+            let project = store
+                .get(&id)?
+                .ok_or_else(|| anyhow::anyhow!("No project found with id '{id}'."))?;
+            let root_present = std::path::Path::new(&project.root_path).is_dir();
+            println!("Project '{}'", project.name);
+            println!("id: {}", project.id);
+            println!("root: {}", project.root_path);
+            println!(
+                "root present: {}",
+                if root_present {
+                    "yes".to_string()
+                } else {
+                    "NO — repository not found on this machine".to_string()
+                }
+            );
+            println!(
+                "repository: {}",
+                project.repository_remote.as_deref().unwrap_or("(none)")
+            );
+            println!("created: {}", project.created_at);
+            println!("last accessed: {}", project.last_accessed);
+            println!("schema: v{}", project.schema_version);
+            println!("decisions: {}", project.decisions.len());
+            for decision in &project.decisions {
+                println!("  {} {} — {}", decision.at, decision.kind, decision.summary);
+            }
+            Ok(())
+        }
         ProjectCommands::Export { output, force } => {
             let store = zylcode_core::project_store::ProjectStore::open(&std::env::current_dir()?)
                 .map_err(|e| anyhow::anyhow!("failed to open project store: {e}"))?;
@@ -2131,8 +2167,27 @@ async fn handle_project(args: ProjectArgs) -> Result<()> {
             let content = std::fs::read_to_string(&path)?;
             let store = zylcode_core::project_store::ProjectStore::open(&std::env::current_dir()?)
                 .map_err(|e| anyhow::anyhow!("failed to open project store: {e}"))?;
-            let imported = store.import_json(&content)?;
-            println!("Imported {} project(s) from '{path}'.", imported);
+            let report = store.import_json_report(&content)?;
+            println!("Imported {} project(s) from '{path}'.", report.added);
+            if report.skipped_existing > 0 {
+                println!(
+                    "Skipped {} project(s) already present (same id or root).",
+                    report.skipped_existing
+                );
+            }
+            if !report.unresolved_roots.is_empty() {
+                println!(
+                    "Unresolved project roots on this machine ({}):",
+                    report.unresolved_roots.len()
+                );
+                for root in &report.unresolved_roots {
+                    println!("  {root}");
+                }
+                println!(
+                    "Their identity and history were imported; clone or locate each repository at \
+                     the path above to resolve it."
+                );
+            }
             Ok(())
         }
     }
