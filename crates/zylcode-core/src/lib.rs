@@ -32,6 +32,7 @@ pub mod intelligence;
 pub mod ledger;
 pub mod marketplace;
 pub mod memory_ledger;
+pub mod mission_engine;
 pub mod missions;
 pub mod model_capabilities;
 pub mod patch_best_of_n;

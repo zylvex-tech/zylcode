@@ -18,7 +18,11 @@ committed evidence bundle, so an auditor no longer has to trust a stale SHA.
 
 ## 1. Status
 
-**SUBMITTED FOR AUDIT.** Not accepted. Not complete. The 12 disputed capability entries remain
+> **OUTCOME (2026-11-16):** audited by an independent AI agent; verdict **ACCEPTED WITH CONDITIONS**,
+> recorded in [`PHASE2A_AUDIT_VERDICT_2026-11-16.md`](PHASE2A_AUDIT_VERDICT_2026-11-16.md). This
+> request is retained as the record of what was asked, not as the current status.
+
+**SUBMITTED FOR AUDIT** at the time of writing. Not accepted then. Not complete. The 12 disputed capability entries remain
 `DISPUTED`, Phase 2B remains **BLOCKED**, and neither changes until an independent auditor returns a
 verdict recorded in §8.
 

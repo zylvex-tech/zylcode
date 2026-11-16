@@ -74,6 +74,11 @@ enum Commands {
     /// Resumes automatically when mission state already exists in --workdir.
     Mission(MissionArgs),
 
+    /// Mission Engine (Phase 3B): a durable mission with acceptance criteria,
+    /// eleven states, and completion that requires a cited proof per criterion.
+    /// State survives the process dying mid-EXECUTING; `resume` continues it.
+    Missions(MissionsArgs),
+
     /// Delivery: report deploy targets that are actually commissioned
     /// (GitHub release via tag, crates.io token, remote server).
     DeployStatus,
@@ -124,6 +129,11 @@ enum ProjectCommands {
     List,
     /// Open an existing project by ID (prints project details).
     Open {
+        /// Project identifier.
+        id: String,
+    },
+    /// Show a project's identity, root resolution, and decision history.
+    Status {
         /// Project identifier.
         id: String,
     },
@@ -533,6 +543,7 @@ async fn main() -> Result<()> {
         Commands::BestOfN(args) => handle_best_of_n(&cli.workspace, args).await,
         Commands::Package(args) => handle_package(&cli.workspace, args).await,
         Commands::Mission(args) => handle_mission(args).await,
+        Commands::Missions(args) => handle_missions(args).await,
         Commands::DeployStatus => {
             let payload = zylcode_core::delivery::deploy_targets(Path::new(&cli.workspace))?;
             println!("{}", serde_json::to_string_pretty(&payload)?);
@@ -1992,6 +2003,186 @@ struct MissionArgs {
     crash_at: Option<String>,
 }
 
+// ---------------------------------------------------------------------------
+// Mission Engine (Phase 3B)
+// ---------------------------------------------------------------------------
+
+#[derive(Args, Debug)]
+struct MissionsArgs {
+    #[command(subcommand)]
+    command: MissionsCommand,
+}
+
+#[derive(Subcommand, Debug)]
+enum MissionsCommand {
+    /// Create a mission: objective plus explicit acceptance criteria.
+    Create(MissionsCreateArgs),
+    /// Print phase, criteria, citations and step progress.
+    Status(MissionsStatusArgs),
+    /// Advance the mission as far as its rules and evidence allow.
+    Resume(MissionsResumeArgs),
+    /// Attach the proof that satisfies an acceptance criterion.
+    Cite(MissionsCiteArgs),
+    /// Stop the mission with a recorded reason.
+    Cancel(MissionsCancelArgs),
+}
+
+#[derive(Args, Debug)]
+struct MissionsCreateArgs {
+    /// Mission working directory (holds `.zylcode/mission.journal.jsonl`).
+    #[arg(long)]
+    workdir: std::path::PathBuf,
+
+    /// What the mission must achieve.
+    #[arg(long)]
+    objective: String,
+
+    /// Acceptance criterion; repeatable. At least one is required, because a
+    /// mission with none could never be honestly COMPLETE.
+    #[arg(long = "criterion", required = true)]
+    criterion: Vec<String>,
+
+    /// Execution step; repeatable.
+    #[arg(long = "step")]
+    step: Vec<String>,
+}
+
+#[derive(Args, Debug)]
+struct MissionsStatusArgs {
+    #[arg(long)]
+    workdir: std::path::PathBuf,
+}
+
+#[derive(Args, Debug)]
+struct MissionsResumeArgs {
+    #[arg(long)]
+    workdir: std::path::PathBuf,
+
+    /// Pass the human approval gate and execute.
+    #[arg(long, default_value_t = false)]
+    approve: bool,
+
+    /// Complete at most N steps in this call, then stop (state is saved).
+    /// With this flag set the process exits 9 when it stopped early, which is
+    /// how the kill-resume benchmark interrupts a mission mid-EXECUTING.
+    #[arg(long)]
+    crash_after_steps: Option<usize>,
+}
+
+#[derive(Args, Debug)]
+struct MissionsCiteArgs {
+    #[arg(long)]
+    workdir: std::path::PathBuf,
+
+    /// Criterion id, e.g. `c1`.
+    #[arg(long)]
+    criterion: String,
+
+    /// Evidence id the citation points at (test name, ledger hash, path...).
+    #[arg(long)]
+    evidence: String,
+
+    /// test | ledger | file | command | artifact | human
+    #[arg(long, default_value = "test")]
+    kind: String,
+
+    /// What the evidence shows, in one line.
+    #[arg(long, default_value = "")]
+    summary: String,
+}
+
+#[derive(Args, Debug)]
+struct MissionsCancelArgs {
+    #[arg(long)]
+    workdir: std::path::PathBuf,
+
+    #[arg(long)]
+    reason: String,
+}
+
+/// Handle `zylcode missions`. Exit codes: 0 = moved forward or already
+/// terminal, 2 = verification is waiting on citations (not complete),
+/// 9 = execution paused deliberately mid-flight, 1 = error.
+async fn handle_missions(args: MissionsArgs) -> Result<()> {
+    use zylcode_core::mission_engine::{phase_name, EvidenceKind, MissionEngine, Progress};
+
+    match args.command {
+        MissionsCommand::Create(a) => {
+            let mission =
+                MissionEngine::new(a.workdir).create(&a.objective, &a.criterion, &a.step)?;
+            println!("mission: {}", mission.id);
+            println!("phase: {}", phase_name(mission.phase));
+            println!("criteria: {}", mission.criteria.len());
+            println!("steps: {}", mission.steps.len());
+            Ok(())
+        }
+        MissionsCommand::Status(a) => {
+            print!("{}", MissionEngine::new(a.workdir).describe()?);
+            Ok(())
+        }
+        MissionsCommand::Resume(a) => {
+            let progress = MissionEngine::new(a.workdir).resume(a.approve, a.crash_after_steps)?;
+            match progress {
+                Progress::AwaitingApproval => {
+                    println!("AWAITING_APPROVAL: nothing executed; re-run with --approve");
+                    Ok(())
+                }
+                Progress::Executing { done, remaining } => {
+                    println!("EXECUTING: {done} step(s) done, {remaining} remaining (saved)");
+                    if a.crash_after_steps.is_some() {
+                        println!("paused deliberately; `resume` continues from here");
+                        std::process::exit(9);
+                    }
+                    Ok(())
+                }
+                Progress::AwaitingEvidence { unsatisfied } => {
+                    println!(
+                        "VERIFYING: not COMPLETE — {} criterion/criteria lack a cited proof: {}",
+                        unsatisfied.len(),
+                        unsatisfied.join(", ")
+                    );
+                    std::process::exit(2);
+                }
+                Progress::Complete { mission_id } => {
+                    println!("COMPLETE: {mission_id} — every criterion has a cited proof");
+                    Ok(())
+                }
+                Progress::Terminal { phase } => {
+                    println!("terminal: {}", phase_name(phase));
+                    Ok(())
+                }
+            }
+        }
+        MissionsCommand::Cite(a) => {
+            let kind = match a.kind.as_str() {
+                "test" => EvidenceKind::Test,
+                "ledger" => EvidenceKind::Ledger,
+                "file" => EvidenceKind::File,
+                "command" => EvidenceKind::Command,
+                "artifact" => EvidenceKind::Artifact,
+                "human" => EvidenceKind::Human,
+                other => anyhow::bail!(
+                    "unknown evidence kind '{other}'; use test|ledger|file|command|artifact|human"
+                ),
+            };
+            let mission =
+                MissionEngine::new(a.workdir).cite(&a.criterion, &a.evidence, kind, &a.summary)?;
+            println!(
+                "cited: {} <- {} ({})",
+                a.criterion,
+                a.evidence,
+                phase_name(mission.phase)
+            );
+            Ok(())
+        }
+        MissionsCommand::Cancel(a) => {
+            let mission = MissionEngine::new(a.workdir).cancel(&a.reason)?;
+            println!("CANCELLED: {} ({})", mission.id, a.reason);
+            Ok(())
+        }
+    }
+}
+
 /// Run (or resume) a First Mission and print the closing statement (§35).
 /// Exit codes: 0 = completed with evidence, 2 = blocked (reason on stderr),
 /// 1 = the runner itself failed, non-zero abort = injected interruption.
@@ -2104,6 +2295,37 @@ async fn handle_project(args: ProjectArgs) -> Result<()> {
             }
             Ok(())
         }
+        ProjectCommands::Status { id } => {
+            let store = zylcode_core::project_store::ProjectStore::open(&std::env::current_dir()?)
+                .map_err(|e| anyhow::anyhow!("failed to open project store: {e}"))?;
+            let project = store
+                .get(&id)?
+                .ok_or_else(|| anyhow::anyhow!("No project found with id '{id}'."))?;
+            let root_present = std::path::Path::new(&project.root_path).is_dir();
+            println!("Project '{}'", project.name);
+            println!("id: {}", project.id);
+            println!("root: {}", project.root_path);
+            println!(
+                "root present: {}",
+                if root_present {
+                    "yes".to_string()
+                } else {
+                    "NO — repository not found on this machine".to_string()
+                }
+            );
+            println!(
+                "repository: {}",
+                project.repository_remote.as_deref().unwrap_or("(none)")
+            );
+            println!("created: {}", project.created_at);
+            println!("last accessed: {}", project.last_accessed);
+            println!("schema: v{}", project.schema_version);
+            println!("decisions: {}", project.decisions.len());
+            for decision in &project.decisions {
+                println!("  {} {} — {}", decision.at, decision.kind, decision.summary);
+            }
+            Ok(())
+        }
         ProjectCommands::Export { output, force } => {
             let store = zylcode_core::project_store::ProjectStore::open(&std::env::current_dir()?)
                 .map_err(|e| anyhow::anyhow!("failed to open project store: {e}"))?;
@@ -2131,8 +2353,27 @@ async fn handle_project(args: ProjectArgs) -> Result<()> {
             let content = std::fs::read_to_string(&path)?;
             let store = zylcode_core::project_store::ProjectStore::open(&std::env::current_dir()?)
                 .map_err(|e| anyhow::anyhow!("failed to open project store: {e}"))?;
-            let imported = store.import_json(&content)?;
-            println!("Imported {} project(s) from '{path}'.", imported);
+            let report = store.import_json_report(&content)?;
+            println!("Imported {} project(s) from '{path}'.", report.added);
+            if report.skipped_existing > 0 {
+                println!(
+                    "Skipped {} project(s) already present (same id or root).",
+                    report.skipped_existing
+                );
+            }
+            if !report.unresolved_roots.is_empty() {
+                println!(
+                    "Unresolved project roots on this machine ({}):",
+                    report.unresolved_roots.len()
+                );
+                for root in &report.unresolved_roots {
+                    println!("  {root}");
+                }
+                println!(
+                    "Their identity and history were imported; clone or locate each repository at \
+                     the path above to resolve it."
+                );
+            }
             Ok(())
         }
     }
