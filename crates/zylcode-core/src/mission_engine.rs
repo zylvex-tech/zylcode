@@ -31,6 +31,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{bail, Context, Result};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 /// Schema version of the engine's on-disk state.
@@ -99,13 +100,51 @@ pub enum EvidenceKind {
 }
 
 /// One proof attached to an acceptance criterion.
+///
+/// A citation is a *pointer*. For `File` evidence the pointer is made
+/// re-checkable: `content_sha256` is the digest of the bytes at citation time,
+/// so `verify_citations` can say whether the cited file still says what the
+/// mission claimed it said. Without that, "cited proof" only ever meant "a
+/// string was typed here".
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Citation {
     pub evidence_id: String,
     pub kind: EvidenceKind,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub summary: String,
+    /// SHA-256 of the cited bytes, recorded when the citation was made.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub content_sha256: Option<String>,
     pub cited_at: DateTime<Utc>,
+}
+
+/// What re-checking the citations of a mission found.
+///
+/// `unverifiable` is not a failure: a test name or a human statement has no
+/// bytes to hash. It is reported so an operator can tell "checked and matched"
+/// apart from "nothing to check" instead of reading both as green.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct CitationAudit {
+    /// Citations with a recorded digest that were re-read from disk.
+    pub verified: Vec<String>,
+    /// `(evidence_id, expected, actual)` — the bytes changed after citation.
+    pub mismatched: Vec<(String, String, String)>,
+    /// File citations whose path no longer resolves.
+    pub missing: Vec<String>,
+    /// Citations that carry no digest (test, ledger, command, human...).
+    pub unverifiable: Vec<String>,
+}
+
+impl CitationAudit {
+    /// True when every digest-bearing citation still matches and no cited file
+    /// has vanished.
+    pub fn is_clean(&self) -> bool {
+        self.mismatched.is_empty() && self.missing.is_empty()
+    }
+
+    pub fn checked(&self) -> usize {
+        self.verified.len() + self.mismatched.len() + self.missing.len()
+    }
 }
 
 /// A condition the mission must satisfy, with the proofs that it does.
@@ -425,15 +464,70 @@ impl MissionEngine {
             };
             out.push_str(&format!("  {} [{}] {}\n", c.id, mark, c.statement));
             for cite in &c.citations {
+                let digest = match &cite.content_sha256 {
+                    Some(d) => format!(" sha256:{}", &d[..d.len().min(12)]),
+                    None => String::new(),
+                };
                 out.push_str(&format!(
-                    "      <- {:?} {} {}\n",
-                    cite.kind, cite.evidence_id, cite.summary
+                    "      <- {:?} {}{} {}\n",
+                    cite.kind, cite.evidence_id, digest, cite.summary
                 ));
             }
         }
         let done = m.steps.iter().filter(|s| s.done).count();
         out.push_str(&format!("steps: {done}/{} complete\n", m.steps.len()));
         Ok(out)
+    }
+
+    /// Resolve a citation's evidence id to a path on disk, if it is one.
+    ///
+    /// Absolute ids are used as given; relative ids are resolved against the
+    /// mission's working directory, which is what `--evidence src/lib.rs`
+    /// means to an operator running the CLI from the project root.
+    pub fn resolve_evidence_path(&self, evidence_id: &str) -> Option<PathBuf> {
+        let candidate = Path::new(evidence_id);
+        if candidate.is_absolute() {
+            return candidate.is_file().then(|| candidate.to_path_buf());
+        }
+        let under_workdir = self.workdir.join(candidate);
+        if under_workdir.is_file() {
+            return Some(under_workdir);
+        }
+        candidate.is_file().then(|| candidate.to_path_buf())
+    }
+
+    /// Re-read every digest-bearing citation and report what still matches.
+    ///
+    /// This is the difference between "the mission cites a proof" and "the
+    /// proof can be checked": a citation written by a previous run is only
+    /// trustworthy if the bytes it named still hash to what was recorded.
+    pub fn verify_citations(&self) -> Result<CitationAudit> {
+        let (mission, _) = self.load()?;
+        let mut audit = CitationAudit::default();
+        for criterion in &mission.criteria {
+            for cite in &criterion.citations {
+                let Some(expected) = cite.content_sha256.as_deref() else {
+                    audit.unverifiable.push(cite.evidence_id.clone());
+                    continue;
+                };
+                let Some(path) = self.resolve_evidence_path(&cite.evidence_id) else {
+                    audit.missing.push(cite.evidence_id.clone());
+                    continue;
+                };
+                match file_digest(&path) {
+                    Ok(actual) if actual == expected => {
+                        audit.verified.push(cite.evidence_id.clone())
+                    }
+                    Ok(actual) => audit.mismatched.push((
+                        cite.evidence_id.clone(),
+                        expected.to_string(),
+                        actual,
+                    )),
+                    Err(_) => audit.missing.push(cite.evidence_id.clone()),
+                }
+            }
+        }
+        Ok(audit)
     }
 
     /// Move the mission forward as far as the rules and evidence allow.
@@ -558,6 +652,25 @@ impl MissionEngine {
         kind: EvidenceKind,
         summary: &str,
     ) -> Result<Mission> {
+        self.cite_with_digest(criterion_id, evidence_id, kind, summary, None)
+    }
+
+    /// Cite evidence, recording a digest so the claim can be re-checked.
+    ///
+    /// For `EvidenceKind::File` the digest is taken from the cited bytes unless
+    /// the caller supplies one (the CLI does not have to, a producer of the
+    /// evidence can). A path that does not resolve is cited without a digest
+    /// rather than refused: the operator may be citing a file that a later step
+    /// creates, and `verify_citations` will report it as missing instead of the
+    /// mission silently pretending it was checked.
+    pub fn cite_with_digest(
+        &self,
+        criterion_id: &str,
+        evidence_id: &str,
+        kind: EvidenceKind,
+        summary: &str,
+        digest: Option<String>,
+    ) -> Result<Mission> {
         if evidence_id.trim().is_empty() {
             bail!("evidence id must not be empty; an uncited criterion cannot complete a mission");
         }
@@ -580,10 +693,19 @@ impl MissionEngine {
         {
             return Ok(mission);
         }
+        let evidence_id = evidence_id.trim().to_string();
+        let content_sha256 = match (digest, kind) {
+            (Some(d), _) if !d.trim().is_empty() => Some(d.trim().to_string()),
+            (None, EvidenceKind::File) => self
+                .resolve_evidence_path(&evidence_id)
+                .and_then(|p| file_digest(&p).ok()),
+            _ => None,
+        };
         criterion.citations.push(Citation {
-            evidence_id: evidence_id.trim().to_string(),
+            evidence_id: evidence_id.clone(),
             kind,
             summary: summary.trim().to_string(),
+            content_sha256,
             cited_at: Utc::now(),
         });
         self.append(
@@ -778,6 +900,15 @@ pub fn mission_state_dir(workdir: &Path) -> PathBuf {
     workdir.join(".zylcode")
 }
 
+/// SHA-256 of a file's bytes, lowercase hex — the same shape as the project
+/// filesystem's content hashes, so a citation and an editor share a vocabulary.
+fn file_digest(path: &Path) -> std::io::Result<String> {
+    let bytes = std::fs::read(path)?;
+    let mut hasher = Sha256::new();
+    hasher.update(&bytes);
+    Ok(format!("{:x}", hasher.finalize()))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -802,6 +933,87 @@ mod tests {
         let p = e.resume(true, None).unwrap();
         // No evidence yet, so it parks in verification.
         assert!(matches!(p, Progress::AwaitingEvidence { .. }), "{p:?}");
+    }
+
+    #[test]
+    fn a_file_citation_records_a_digest_that_verifies() {
+        let (dir, e) = engine();
+        create(&e);
+        std::fs::write(dir.path().join("proof.txt"), b"the tests passed").unwrap();
+
+        executing_done(&e);
+        let mission = e
+            .cite("c1", "proof.txt", EvidenceKind::File, "observed output")
+            .unwrap();
+        let digest = mission.criteria[0].citations[0]
+            .content_sha256
+            .clone()
+            .expect("file citation must carry a digest");
+        assert_eq!(digest.len(), 64);
+
+        let audit = e.verify_citations().unwrap();
+        assert!(audit.is_clean(), "{audit:?}");
+        assert_eq!(audit.verified, vec!["proof.txt".to_string()]);
+        assert_eq!(audit.checked(), 1);
+    }
+
+    #[test]
+    fn a_changed_file_is_reported_as_a_mismatch() {
+        let (dir, e) = engine();
+        create(&e);
+        let proof = dir.path().join("proof.txt");
+        std::fs::write(&proof, b"before").unwrap();
+
+        executing_done(&e);
+        e.cite("c1", "proof.txt", EvidenceKind::File, "checked")
+            .unwrap();
+        std::fs::write(&proof, b"after the claim").unwrap();
+
+        let audit = e.verify_citations().unwrap();
+        assert!(!audit.is_clean());
+        assert_eq!(audit.mismatched.len(), 1);
+        assert_eq!(audit.mismatched[0].0, "proof.txt");
+        assert_ne!(audit.mismatched[0].1, audit.mismatched[0].2);
+    }
+
+    #[test]
+    fn a_deleted_cited_file_is_reported_as_missing_not_as_verified() {
+        let (dir, e) = engine();
+        create(&e);
+        let proof = dir.path().join("proof.txt");
+        std::fs::write(&proof, b"here for now").unwrap();
+
+        executing_done(&e);
+        e.cite("c1", "proof.txt", EvidenceKind::File, "checked")
+            .unwrap();
+        std::fs::remove_file(&proof).unwrap();
+
+        let audit = e.verify_citations().unwrap();
+        assert!(!audit.is_clean());
+        assert_eq!(audit.missing, vec!["proof.txt".to_string()]);
+        assert!(audit.verified.is_empty());
+    }
+
+    #[test]
+    fn non_file_citations_are_visible_as_unverifiable() {
+        let (_dir, e) = engine();
+        create(&e);
+        executing_done(&e);
+        e.cite(
+            "c1",
+            "cargo test --workspace",
+            EvidenceKind::Command,
+            "exit 0",
+        )
+        .unwrap();
+
+        let audit = e.verify_citations().unwrap();
+        assert!(
+            audit.is_clean(),
+            "nothing to check is not a failure: {audit:?}"
+        );
+        assert_eq!(audit.verified.len(), 0);
+        assert_eq!(audit.unverifiable.len(), 1);
     }
 
     #[test]

@@ -34,6 +34,7 @@ uuid = { version = "1", features = ["v4", "serde"] }
 toml = { workspace = true }
 glob = { workspace = true }
 ignore = "0.4"
+fs2 = "0.4"
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }

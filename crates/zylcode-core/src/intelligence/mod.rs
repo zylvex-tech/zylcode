@@ -20,4 +20,5 @@ pub mod query;
 pub mod scanner;
 pub mod store;
 pub mod symbols;
+pub mod trust;
 pub mod types;
