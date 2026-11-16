@@ -92,35 +92,35 @@ reported complete.
 
 ## 2. Program Status Board
 
-| Phase  | Title                                      | Status                                              | Rung | Blocks                 |
-| ------ | ------------------------------------------ | --------------------------------------------------- | ---- | ---------------------- |
-| 1A     | Real Tool Runtime                          | ✅ ACCEPTED                                         | R3   | 1B                     |
-| 1B     | Agent Execution Loop                       | ✅ ACCEPTED                                         | R3   | 1C                     |
-| 1C     | Model-Driven Autonomous Agent              | ✅ ACCEPTED WITH CONDITIONS                         | R3   | 1D                     |
-| 1D     | Durable Memory, Evidence & Recovery        | ✅ ACCEPTED WITH CONDITIONS                         | R3   | 2A                     |
-| **2A** | **Repository Intelligence Foundation**     | ✅ **ACCEPTED WITH CONDITIONS (2026-11-16, C1–C6)** | R3   | **2B**                 |
-| **2B** | **Repository Reasoning & Impact Analysis** | ⏸ **GATE CLEARED — not started**                    | —    | 3A                     |
-| 3A     | ZylCode Project System                     | ⏸ PARTIAL — durable store v2 + CLI identity/status  | —    | 3B, 4, 5, 6A, 8A       |
-| 3B     | Mission Engine                             | ⏸ NOT STARTED                                       | —    | 4, 14                  |
-| 4      | Model Platform / Model Democracy           | ⏸ NOT STARTED                                       | —    | 14                     |
-| 5      | Extension Platform                         | ⏸ NOT STARTED                                       | —    | 6A, 7A, 10, 11, 13, 15 |
-| 6A     | Artifact System                            | ⏸ NOT STARTED                                       | —    | 6B, 7A, 9              |
-| 6B     | Live Preview Runtime                       | ⏸ NOT STARTED                                       | —    | 7A                     |
-| 7A     | Browser Runtime                            | ⏸ NOT STARTED                                       | —    | 7B, 9, 12              |
-| 7B     | Computer Use Foundation                    | ⏸ NOT STARTED                                       | —    | 7C, 7D                 |
-| 7C     | Computer Use Reliability                   | ⏸ NOT STARTED                                       | —    | 7D                     |
-| 7D     | Application Adapters                       | ⏸ NOT STARTED                                       | —    | 9, 12                  |
-| 8A     | Design Foundation                          | ⏸ NOT STARTED                                       | —    | 8B, 8C                 |
-| 8B     | Professional Design Canvas                 | ⏸ NOT STARTED                                       | —    | 9                      |
-| 8C     | Design ↔ Code                              | ⏸ NOT STARTED                                       | —    | 9                      |
-| 9      | Visual Intelligence & Self-Repair          | ⏸ NOT STARTED                                       | —    | 12, 16                 |
-| 10     | Android Device Lab                         | ⏸ NOT STARTED                                       | —    | 12, 13, 16             |
-| 11     | macOS/iOS Worker                           | ⏸ NOT STARTED                                       | —    | 12, 13                 |
-| 12     | Proof Engine v2                            | ⏸ NOT STARTED                                       | —    | 13, 16                 |
-| 13     | Delivery Engine                            | ⏸ NOT STARTED                                       | —    | 16                     |
-| 14     | Multi-Agent Engineering                    | ⏸ NOT STARTED                                       | —    | 15, 16                 |
-| 15     | Marketplace and Ecosystem                  | ⏸ NOT STARTED                                       | —    | 16                     |
-| 16     | Public Commissioning                       | ⏸ NOT STARTED                                       | —    | —                      |
+| Phase  | Title                                      | Status                                                           | Rung | Blocks                 |
+| ------ | ------------------------------------------ | ---------------------------------------------------------------- | ---- | ---------------------- |
+| 1A     | Real Tool Runtime                          | ✅ ACCEPTED                                                      | R3   | 1B                     |
+| 1B     | Agent Execution Loop                       | ✅ ACCEPTED                                                      | R3   | 1C                     |
+| 1C     | Model-Driven Autonomous Agent              | ✅ ACCEPTED WITH CONDITIONS                                      | R3   | 1D                     |
+| 1D     | Durable Memory, Evidence & Recovery        | ✅ ACCEPTED WITH CONDITIONS                                      | R3   | 2A                     |
+| **2A** | **Repository Intelligence Foundation**     | ✅ **ACCEPTED WITH CONDITIONS (2026-11-16, C1–C6)**              | R3   | **2B**                 |
+| **2B** | **Repository Reasoning & Impact Analysis** | ⏸ **GATE CLEARED — not started**                                 | —    | 3A                     |
+| 3A     | ZylCode Project System                     | ⏸ PARTIAL — durable store v2 + CLI identity/status               | —    | 3B, 4, 5, 6A, 8A       |
+| 3B     | Mission Engine                             | ⏸ PARTIAL — 11-state engine, cited-proof completion, kill-resume | —    | 4, 14                  |
+| 4      | Model Platform / Model Democracy           | ⏸ NOT STARTED                                                    | —    | 14                     |
+| 5      | Extension Platform                         | ⏸ NOT STARTED                                                    | —    | 6A, 7A, 10, 11, 13, 15 |
+| 6A     | Artifact System                            | ⏸ NOT STARTED                                                    | —    | 6B, 7A, 9              |
+| 6B     | Live Preview Runtime                       | ⏸ NOT STARTED                                                    | —    | 7A                     |
+| 7A     | Browser Runtime                            | ⏸ NOT STARTED                                                    | —    | 7B, 9, 12              |
+| 7B     | Computer Use Foundation                    | ⏸ NOT STARTED                                                    | —    | 7C, 7D                 |
+| 7C     | Computer Use Reliability                   | ⏸ NOT STARTED                                                    | —    | 7D                     |
+| 7D     | Application Adapters                       | ⏸ NOT STARTED                                                    | —    | 9, 12                  |
+| 8A     | Design Foundation                          | ⏸ NOT STARTED                                                    | —    | 8B, 8C                 |
+| 8B     | Professional Design Canvas                 | ⏸ NOT STARTED                                                    | —    | 9                      |
+| 8C     | Design ↔ Code                              | ⏸ NOT STARTED                                                    | —    | 9                      |
+| 9      | Visual Intelligence & Self-Repair          | ⏸ NOT STARTED                                                    | —    | 12, 16                 |
+| 10     | Android Device Lab                         | ⏸ NOT STARTED                                                    | —    | 12, 13, 16             |
+| 11     | macOS/iOS Worker                           | ⏸ NOT STARTED                                                    | —    | 12, 13                 |
+| 12     | Proof Engine v2                            | ⏸ NOT STARTED                                                    | —    | 13, 16                 |
+| 13     | Delivery Engine                            | ⏸ NOT STARTED                                                    | —    | 16                     |
+| 14     | Multi-Agent Engineering                    | ⏸ NOT STARTED                                                    | —    | 15, 16                 |
+| 15     | Marketplace and Ecosystem                  | ⏸ NOT STARTED                                                    | —    | 16                     |
+| 16     | Public Commissioning                       | ⏸ NOT STARTED                                                    | —    | —                      |
 
 ---
 
@@ -297,6 +297,19 @@ REPAIRING · BLOCKED · COMPLETE · FAILED · CANCELLED`.
 - `COMPLETE` requires every criterion satisfied by a **cited** proof.
 
 **Entry points** — `zylcode mission create|status|resume` · UI Mission surface.
+
+**Implementation status (2026-11-15)** — the engine core exists in
+`crates/zylcode-core/src/mission_engine.rs` with the eleven states, legal-edge enforcement, a
+`COMPLETE` gate that refuses while any criterion lacks a cited proof, and an append-only journal that
+survives a kill mid-`EXECUTING` (torn tail discarded, interior corruption fails closed). The CLI is
+`zylcode missions create|status|resume|cite|cancel` — plural, because `zylcode mission` is still the
+First Mission runner; that naming divergence is recorded in
+`docs/architecture/MISSION_ENGINE.md` §5 rather than hidden. Verified by 16 engine unit tests and a
+real three-process kill-resume test in `crates/zylcode-cli/tests/mission_engine_cli.rs`.
+
+Not done: the desktop Mission surface, mission persistence inside the Project System, cross-process
+writer locking, and any hashing/replay of the evidence a citation names (a citation is a pointer, not
+by itself a proof). Phase 3B is **not** accepted, and 2A/2B status is unchanged by this work.
 
 **Benchmark** — kill the process mid-`EXECUTING`; on restart the mission resumes and completes
 with a full evidence bundle. A mission with one unsatisfied criterion **cannot** report COMPLETE.
