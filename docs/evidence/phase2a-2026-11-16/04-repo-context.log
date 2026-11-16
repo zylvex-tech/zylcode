@@ -1,0 +1,14 @@
+# command: cargo run -p zylcode-cli --quiet -- repo-context "where is the retrieval ranking implemented?"
+# commit: 0d7e71ae987df9150bfddc421321b5f203b97121
+[2m2026-11-16T08:14:03.878336Z[0m [32m INFO[0m initializing ZylCodeEngine [3mworkspace_root[0m[2m=[0m.
+task: where is the retrieval ranking implemented?
+indexed: 755 files, 3210 symbols, 8 packages, 34 entry points (23634 ms)
+top results:
+   1.65 [symbol] crates::zylcode-core::src::provider_scorecard::ProviderScorecard::ranking :: symbol name 'ranking' matches task; symbol 'ranking' contains 'ranking'
+   1.00 [file] crates/zylcode-core/src/provider_scorecard.rs :: defines symbol 'ranking'; defines 1 symbol(s) matching task terms
+   0.87 [symbol] crates::zylcode-core::src::provider_scorecard::MIN_SAMPLES_FOR_RANKING :: symbol 'MIN_SAMPLES_FOR_RANKING' contains 'ranking'
+   0.87 [symbol] crates::zylcode-core::src::router::TokenRouter::provider_ranking :: symbol 'provider_ranking' contains 'ranking'
+   0.30 [file] crates/zylcode-nav/tests/navigation.rs :: defines symbol 'W'
+   0.30 [symbol] crates::zylcode-nav::tests::navigation::W :: symbol name 'W' matches task
+   0.22 [file] crates/zylcode-core/src/router.rs :: defines 1 symbol(s) matching task terms
+EXIT:0
