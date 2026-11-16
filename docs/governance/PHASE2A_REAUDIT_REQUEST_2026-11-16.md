@@ -2,7 +2,9 @@
 
 **Date:** 2026-11-16
 **Submission:** Pull request #69 — `fix/phase2a-scope-and-evidence`
-**Head commit under audit:** `c32f3d8`
+**Code head under audit:** `c32f3d8`
+**Branch head at submission:** `f9d267c` — this document only; no source, test or registry change
+follows `c32f3d8`
 **Base:** `main` @ `29638d4`
 **Requested by:** ZylCode engineering (builder — **not** the acceptance authority)
 **Audit method:** [`PHASE2A_INDEPENDENT_AUDIT.md`](PHASE2A_INDEPENDENT_AUDIT.md)
