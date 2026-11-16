@@ -43,6 +43,25 @@ Two further corrections to the code were made in the same pass and are described
 `mytarget/` and `src/target_helpers.rs`; and `files_scanned` counted directory entries, so
 “files scanned” exceeded the inventory by the number of directories walked.
 
+## 1b. Submission binding — 2026-11-16
+
+This report is submitted for audit as it stands at **`c32f3d8`** (PR #69,
+`fix/phase2a-scope-and-evidence`), not at the `c2a2b94` it was originally written against.
+
+- The authoritative evidence is the committed bundle in
+  [`docs/evidence/phase2a-2026-11-14/`](../evidence/phase2a-2026-11-14/README.md), captured on this
+  branch; every log records its command and ends with `EXIT:<status>`.
+- The binding re-audit request is
+  [`docs/governance/PHASE2A_REAUDIT_REQUEST_2026-11-16.md`](governance/PHASE2A_REAUDIT_REQUEST_2026-11-16.md),
+  which supersedes the 2026-11-11 request and lists every command an auditor should run.
+- The measurement base named in §1 above remains `c2a2b94` for the originally published figures;
+  §1a and §3 correct those figures, and the evidence bundle supersedes them for the submission.
+
+No verdict is asserted here. Phase 2A is **NOT ACCEPTED** until
+`docs/governance/PHASE2A_AUDIT_VERDICT_2026-11-16.md` exists and says otherwise.
+
+---
+
 ## 2. What changed since the rejected report
 
 Point by point against the remediation order. P0 items block re-submission; P1 items are
