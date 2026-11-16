@@ -15,6 +15,18 @@ describe("ActivityRail", () => {
     expect(onActivityChange).toHaveBeenCalledWith("intel");
   });
 
+  // Regression guard: the Design surface was wired into SurfaceHost with no
+  // rail entry and no ACTIVITY_TO_SURFACE mapping, so the workspace existed but
+  // nothing could navigate to it.
+  it("offers Design Studio and routes it to the design activity", () => {
+    const onActivityChange = vi.fn();
+
+    render(<ActivityRail activeActivity="explorer" onActivityChange={onActivityChange} />);
+
+    fireEvent.click(screen.getByLabelText("Design Studio"));
+    expect(onActivityChange).toHaveBeenCalledWith("design");
+  });
+
   it("shows its label on hover so the icon is not unexplained", () => {
     render(<ActivityRail activeActivity="explorer" onActivityChange={vi.fn()} />);
 

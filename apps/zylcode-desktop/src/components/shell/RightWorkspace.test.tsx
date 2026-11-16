@@ -7,7 +7,7 @@ import { RightWorkspace } from "./RightWorkspace";
 //
 // Three tabs, each honest about what it is:
 //   * Preview  — the real preview target in a sandboxed iframe.
-//   * Design   — says outright that no visual builder is commissioned.
+//   * Design   — points at the implemented Design surface and names what is missing.
 //   * Responsive — real width presets that actually resize the iframe.
 // The collapse control must hide the preview without unmounting the agent
 // workspace below it, and an embedded preview must not render a second iframe.
@@ -27,14 +27,15 @@ describe("RightWorkspace", () => {
     expect(screen.getByLabelText("Collapse preview")).toBeInTheDocument();
   });
 
-  it("says the design canvas is not commissioned instead of faking one", () => {
+  it("points at the Design surface and names what is still missing", () => {
     render(<RightWorkspace />);
 
     fireEvent.click(screen.getByRole("button", { name: "Design" }));
 
     expect(
-      screen.getByText(/The visual design canvas is not commissioned in this build/),
+      screen.getByText(/Design Studio is a working workspace on the Design surface/),
     ).toBeInTheDocument();
+    expect(screen.getByText(/Not implemented: visual diff/)).toBeInTheDocument();
     expect(screen.queryByTitle("Project preview")).not.toBeInTheDocument();
   });
 

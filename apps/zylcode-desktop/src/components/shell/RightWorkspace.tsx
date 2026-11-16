@@ -14,7 +14,7 @@ const WIDTHS: { id: string; label: string; px: number | null }[] = [
 
 /**
  * Right workspace: Preview (the actual running project in an iframe),
- * Design (honest: the visual builder is not commissioned), Responsive
+ * Design (points at the Design surface, which is implemented), Responsive
  * (real width-constrained preview presets). Below it, the agent workspace
  * (AI Agent / Tasks / Changes / Evidence) backed by the real queue+ledger.
  */
@@ -91,14 +91,14 @@ export const RightWorkspace: React.FC = () => {
 
       {tab === "design" ? (
         <div className="flex-1 min-h-0 p-3 overflow-y-auto">
-          <StatusBadge status="COMING SOON" size="xs" />
+          <StatusBadge status="LIMITED" size="xs" />
           <p className="text-xs text-text-muted mt-2">
-            The visual design canvas is not commissioned in this build — no drag-and-drop surface or
-            visual diff exists to render here, so none is shown.
+            Design Studio is a working workspace on the Design surface — create projects, edit text
+            and shapes on the canvas, save, reopen and export standalone HTML. It is not duplicated
+            in this pane.
           </p>
           <p className="text-[11px] text-text-muted/70 mt-2">
-            What exists today: the mission pipeline (AI Agent tab), real verification runs
-            (Tasks/Evidence), and the live project preview (Preview tab).
+            Not implemented: visual diff, design↔code generation, agent repair, Figma import.
           </p>
         </div>
       ) : (

@@ -10,6 +10,7 @@ interface ContextSidebarProps {
     | "search"
     | "source-control"
     | "intel"
+    | "design"
     | "missions"
     | "run"
     | "evidence"
@@ -49,6 +50,21 @@ export function ContextSidebar({ activeActivity, children }: ContextSidebarProps
               </ul>
               <p className="text-xs text-text-muted">
                 Pick a symbol or file in the main pane and run Analyze.
+              </p>
+            </div>
+          </Panel>
+        );
+
+      case "design":
+        return (
+          <Panel title="DESIGN STUDIO">
+            <div className="space-y-2 text-sm">
+              <p className="text-text-muted">
+                Projects, the canvas and export live in the main pane. Projects are JSON documents
+                in the app data directory; exported HTML is written beside them.
+              </p>
+              <p className="text-xs text-text-muted">
+                Not implemented: visual diff, design↔code generation, agent repair, Figma import.
               </p>
             </div>
           </Panel>

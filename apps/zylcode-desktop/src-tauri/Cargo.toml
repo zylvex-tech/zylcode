@@ -25,6 +25,11 @@ tauri = { version = "2", features = [] }
 tauri-plugin-shell = "2"
 rusqlite = { version = "0.41.1", features = ["bundled"] }
 
+[dev-dependencies]
+# The design store's tests need a disposable directory. `tempfile` is already
+# in the workspace lockfile (via zylcode-mcp), so this adds no new resolution.
+tempfile = "3"
+
 [features]
 # Production / standalone builds.
 #

@@ -415,6 +415,14 @@ assets, states, interactions; DESIGN ↔ CODE ↔ RUNTIME ↔ VISUAL DIFF ↔ AG
 REPAIR ↔ PROOF). This unit ships only the architectural shell/status surface.
 **No fake Figma clone.** Design navigation exists ≠ Vision Studio implemented.
 
+Implemented since 2026-11-11 (limited vertical slice, see
+`docs/architecture/DESIGN_STUDIO.md`): project create/open/save/rename/delete,
+canvas text and shape elements with drag positioning, inspector, undo/redo,
+standalone HTML export, and JSON persistence in the app data directory.
+Not implemented: visual diff, design↔code generation, agent repair, Figma
+import, screens/routes/tokens/assets, multi-page projects. The interface labels
+that boundary rather than rendering controls for it.
+
 ## 24. Visual design direction
 
 Professional, dense-but-readable, engineering-oriented, futuristic without

@@ -236,13 +236,18 @@ describe("SurfaceHost renders every declared surface", () => {
     expect(screen.getByText(/Full repository browsing is/)).toBeInTheDocument();
   });
 
-  it("marks design and extensions as coming soon with their own titles", () => {
-    const { unmount } = render(<SurfaceHost {...baseProps()} surface="design" />);
-    expect(screen.getByText("DESIGN STUDIO")).toBeInTheDocument();
-    unmount();
+  it("hosts the Design Studio workspace rather than a coming-soon panel", async () => {
+    render(<SurfaceHost {...baseProps()} surface="design" />);
 
+    expect(screen.getByRole("heading", { name: "Design Studio" })).toBeInTheDocument();
+    expect(await screen.findByText(/No design projects yet/)).toBeInTheDocument();
+  });
+
+  it("keeps extensions honestly marked as coming soon", () => {
     render(<SurfaceHost {...baseProps()} surface="extensions" />);
+
     expect(screen.getByText("EXTENSIONS")).toBeInTheDocument();
+    expect(screen.getByText("COMING SOON")).toBeInTheDocument();
   });
 
   it("falls back to a visible message for a surface that does not exist", () => {
