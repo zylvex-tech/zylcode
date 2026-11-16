@@ -3,8 +3,8 @@
 **Date:** 2026-11-16
 **Submission:** Pull request #69 — `fix/phase2a-scope-and-evidence`
 **Code head under audit:** `c32f3d8`
-**Branch head at submission:** `f9d267c` — this document only; no source, test or registry change
-follows `c32f3d8`
+**Branch head at submission:** `556a83a` — documentation and evidence logs only; no source, test or
+registry change follows `c32f3d8`
 **Base:** `main` @ `29638d4`
 **Requested by:** ZylCode engineering (builder — **not** the acceptance authority)
 **Audit method:** [`PHASE2A_INDEPENDENT_AUDIT.md`](PHASE2A_INDEPENDENT_AUDIT.md)
@@ -115,6 +115,12 @@ File counts vary with the live checkout (the corpus is the working tree, not a f
 
 Committed evidence: `01-fmt.log` … `07-registry.log` in `docs/evidence/phase2a-2026-11-14/`, with a
 README stating exactly what they do and do not establish.
+
+**Additional submission evidence (2026-11-16):** `docs/evidence/phase2a-2026-11-16/` carries a rerun
+of the merge gate at this head plus two falsification probes — the Precision floor raised to 0.99 and
+`src` added to the forbidden components — both of which **fail as they must** (`EXIT:101`), alongside
+a real `repo-context` invocation and the registry gate. Its README also records one observation for
+the auditor about the CLI's top-1 answer, without ruling on it.
 
 ---
 
