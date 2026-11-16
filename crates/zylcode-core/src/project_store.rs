@@ -25,6 +25,10 @@
 //! - v1: initial envelope `{ schema_version, projects[] }` with `id`, `name`,
 //!   `root_path`, optional `repository_remote`/`notes`, timestamps.
 //!   (A bare, pre-envelope `schema_version: 0` document migrates by stamping.)
+//! - v2: adds `decisions[]` — the inspectable history PROJECT_SYSTEM.md §7.2
+//!   requires ("every mutation is recorded as a Project Decision entry").
+//!   v1 records migrate by gaining a `schema_migrated` decision, so the change
+//!   is visible in the project's own history rather than only in a log.
 
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
@@ -33,7 +37,23 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
 /// Current on-disk schema version. Bump only with a migration step below.
-pub const PROJECTS_SCHEMA_VERSION: u32 = 1;
+pub const PROJECTS_SCHEMA_VERSION: u32 = 2;
+
+/// One entry in a project's inspectable history.
+///
+/// PROJECT_SYSTEM.md §7.2: "Every mutation is recorded as a Project Decision
+/// entry so the project's history is inspectable." Decisions are append-only
+/// and carry their own timestamp; they are not a replacement for the evidence
+/// ledger, which records engineering proof rather than store mutations.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ProjectDecision {
+    /// ISO 8601 timestamp of the mutation.
+    pub at: String,
+    /// Machine-readable kind: `created`, `updated`, `imported`, `schema_migrated`.
+    pub kind: String,
+    /// Human-readable summary, including what changed.
+    pub summary: String,
+}
 
 /// A durable project record. Deliberately distinct from
 /// [`crate::project::Project`], which carries runtime/UI state: this is the
@@ -59,6 +79,9 @@ pub struct ProjectRecord {
     pub last_accessed: String,
     /// Schema version this record was written under.
     pub schema_version: u32,
+    /// Append-only mutation history (added in schema v2).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub decisions: Vec<ProjectDecision>,
 }
 
 impl ProjectRecord {
@@ -84,6 +107,7 @@ impl ProjectRecord {
             created_at: now.clone(),
             last_accessed: now,
             schema_version: PROJECTS_SCHEMA_VERSION,
+            decisions: Vec::new(),
         })
     }
 }
@@ -196,10 +220,20 @@ fn read_document(path: &Path) -> (Result<Vec<ProjectRecord>>, ProjectStoreState)
     }
     if doc.schema_version < PROJECTS_SCHEMA_VERSION {
         let mut projects = doc.projects;
-        // Migration v0→v1: the record shape is unchanged; stamp the version.
+        // Forward-only stamping. Each migrated record gains a visible decision
+        // so the upgrade appears in that project's own history, not only in a
+        // developer log (v1→v2 adds `decisions` itself).
         for p in &mut projects {
-            if p.schema_version == 0 {
+            if p.schema_version < PROJECTS_SCHEMA_VERSION {
+                let from = p.schema_version;
                 p.schema_version = PROJECTS_SCHEMA_VERSION;
+                p.decisions.push(ProjectDecision {
+                    at: chrono::Utc::now().to_rfc3339(),
+                    kind: "schema_migrated".to_string(),
+                    summary: format!(
+                        "project store migrated from schema v{from} to v{PROJECTS_SCHEMA_VERSION}"
+                    ),
+                });
             }
         }
         let state = ProjectStoreState::Migrated {
@@ -300,7 +334,12 @@ impl ProjectStore {
                 canonical.display()
             );
         }
-        let record = ProjectRecord::new(name, &canonical)?;
+        let mut record = ProjectRecord::new(name, &canonical)?;
+        record.decisions.push(ProjectDecision {
+            at: record.created_at.clone(),
+            kind: "created".to_string(),
+            summary: format!("project registered at {}", record.root_path),
+        });
         projects.push(record.clone());
         self.write(&projects)?;
         self.set_state(ProjectStoreState::Ready);
@@ -350,26 +389,46 @@ impl ProjectStore {
         let mut updated: Option<ProjectRecord> = None;
         for p in &mut projects {
             if p.id == id {
+                let mut changed: Vec<&str> = Vec::new();
                 if let Some(n) = name.as_deref() {
                     let n = n.trim().to_string();
                     anyhow::ensure!(!n.is_empty(), "project name must not be empty");
-                    p.name = n;
+                    if n != p.name {
+                        p.name = n;
+                        changed.push("name");
+                    }
                 }
                 if let Some(notes) = notes.as_deref() {
-                    p.notes = if notes.trim().is_empty() {
+                    let next = if notes.trim().is_empty() {
                         None
                     } else {
                         Some(notes.to_string())
                     };
+                    if next != p.notes {
+                        p.notes = next;
+                        changed.push("notes");
+                    }
                 }
                 if let Some(r) = repository_remote.as_deref() {
-                    p.repository_remote = if r.trim().is_empty() {
+                    let next = if r.trim().is_empty() {
                         None
                     } else {
                         Some(r.to_string())
                     };
+                    if next != p.repository_remote {
+                        p.repository_remote = next;
+                        changed.push("repository_remote");
+                    }
                 }
-                p.last_accessed = chrono::Utc::now().to_rfc3339();
+                let now = chrono::Utc::now().to_rfc3339();
+                p.last_accessed = now.clone();
+                if !changed.is_empty() {
+                    p.decisions.push(ProjectDecision {
+                        at: now,
+                        kind: "updated".to_string(),
+                        summary: format!("updated {}", changed.join(", ")),
+                    });
+                }
                 updated = Some(p.clone());
             }
         }
@@ -402,6 +461,16 @@ impl ProjectStore {
     /// or root_path are left untouched; new ones are appended. Returns how
     /// many records were added.
     pub fn import_json(&self, json: &str) -> Result<usize> {
+        Ok(self.import_json_report(json)?.added)
+    }
+
+    /// Import with the explicit report PROJECT_SYSTEM.md R3 requires.
+    ///
+    /// A project may legitimately be imported on a machine where its repository
+    /// is not cloned yet, so an unresolved root is **not** an error: the record
+    /// keeps its identity and the path is reported to the caller (and recorded
+    /// in the project's decision history) rather than being silently dropped.
+    pub fn import_json_report(&self, json: &str) -> Result<ImportReport> {
         let doc: ProjectsDocument = serde_json::from_str(json)
             .context("import payload is not a valid projects document")?;
         anyhow::ensure!(
@@ -412,21 +481,46 @@ impl ProjectStore {
         );
         let _g = self.lock.lock().unwrap();
         let mut projects = self.records()?;
-        let mut added = 0usize;
+        let mut report = ImportReport::default();
         for p in doc.projects {
             let dup_id = projects.iter().any(|e| e.id == p.id);
             let dup_root = projects.iter().any(|e| e.root_path == p.root_path);
             if dup_id || dup_root {
+                report.skipped_existing += 1;
                 continue;
             }
             let mut p = p;
             p.schema_version = PROJECTS_SCHEMA_VERSION;
+            let root_exists = Path::new(&p.root_path).is_dir();
+            p.decisions.push(ProjectDecision {
+                at: chrono::Utc::now().to_rfc3339(),
+                kind: "imported".to_string(),
+                summary: if root_exists {
+                    format!("imported; root resolved at {}", p.root_path)
+                } else {
+                    format!("imported; root UNRESOLVED on this machine: {}", p.root_path)
+                },
+            });
+            if !root_exists {
+                report.unresolved_roots.push(p.root_path.clone());
+            }
             projects.push(p);
-            added += 1;
+            report.added += 1;
         }
         self.write(&projects)?;
-        Ok(added)
+        Ok(report)
     }
+}
+
+/// Outcome of an import, including the references that did not resolve here.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct ImportReport {
+    /// Records newly added to this store.
+    pub added: usize,
+    /// Records skipped because their id or root_path was already present.
+    pub skipped_existing: usize,
+    /// Imported project roots that do not exist on this machine.
+    pub unresolved_roots: Vec<String>,
 }
 #[cfg(test)]
 mod tests {
@@ -616,6 +710,108 @@ mod tests {
         let store2 = ProjectStore::open(dir2.path()).unwrap();
         assert_eq!(store2.import_json(&json).unwrap(), 1);
         assert_eq!(store2.list().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn mutations_are_recorded_as_decisions() {
+        let (_g, dir) = isolated();
+        let store = ProjectStore::open(dir.path()).unwrap();
+        let ws = tempfile::tempdir().unwrap();
+        let rec = store.register("history", ws.path()).unwrap();
+        assert_eq!(rec.decisions.len(), 1, "registration must be recorded");
+        assert_eq!(rec.decisions[0].kind, "created");
+
+        let updated = store
+            .update(&rec.id, Some("history-2".into()), None, None)
+            .unwrap();
+        assert_eq!(updated.decisions.len(), 2);
+        assert_eq!(updated.decisions[1].kind, "updated");
+        assert!(
+            updated.decisions[1].summary.contains("name"),
+            "decision must say what changed: {:?}",
+            updated.decisions[1]
+        );
+
+        // A no-op update must not manufacture history.
+        let unchanged = store
+            .update(&rec.id, Some("history-2".into()), None, None)
+            .unwrap();
+        assert_eq!(unchanged.decisions.len(), 2);
+
+        // History is durable.
+        drop(store);
+        let reopened = ProjectStore::open(dir.path()).unwrap();
+        assert_eq!(reopened.get(&rec.id).unwrap().unwrap().decisions.len(), 2);
+    }
+
+    #[test]
+    fn import_reports_unresolved_roots_instead_of_dropping_them() {
+        let (_g, dir) = isolated();
+        let store = ProjectStore::open(dir.path()).unwrap();
+        let missing = dir.path().join("not-cloned-yet");
+        let payload = serde_json::json!({
+            "schema_version": PROJECTS_SCHEMA_VERSION,
+            "projects": [{
+                "id": "portable-1",
+                "name": "portable",
+                "root_path": missing.to_string_lossy(),
+                "created_at": "2026-01-01T00:00:00Z",
+                "last_accessed": "2026-01-01T00:00:00Z",
+                "schema_version": PROJECTS_SCHEMA_VERSION
+            }]
+        });
+
+        let report = store
+            .import_json_report(&serde_json::to_string(&payload).unwrap())
+            .unwrap();
+        assert_eq!(report.added, 1, "identity must survive a missing root");
+        assert_eq!(report.skipped_existing, 0);
+        assert_eq!(report.unresolved_roots.len(), 1);
+        assert_eq!(Path::new(&report.unresolved_roots[0]), missing);
+
+        let imported = store.get("portable-1").unwrap().unwrap();
+        assert!(
+            imported
+                .decisions
+                .iter()
+                .any(|d| d.kind == "imported" && d.summary.contains("UNRESOLVED")),
+            "unresolved reference must appear in project history: {:?}",
+            imported.decisions
+        );
+
+        // Re-import must report the skip, not add a duplicate.
+        let again = store
+            .import_json_report(&serde_json::to_string(&payload).unwrap())
+            .unwrap();
+        assert_eq!(again.added, 0);
+        assert_eq!(again.skipped_existing, 1);
+    }
+
+    #[test]
+    fn v1_document_migrates_to_v2_with_visible_history() {
+        let _g = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("v1.json");
+        let v1 = serde_json::json!({
+            "schema_version": 1,
+            "projects": [{
+                "id": "v1-project",
+                "name": "v1",
+                "root_path": "/tmp/v1",
+                "created_at": "2026-01-01T00:00:00Z",
+                "last_accessed": "2026-01-01T00:00:00Z",
+                "schema_version": 1
+            }]
+        });
+        std::fs::write(&path, serde_json::to_string(&v1).unwrap()).unwrap();
+        std::env::set_var("PROJECTS_PATH", &path);
+
+        let store = ProjectStore::open(dir.path()).unwrap();
+        let migrated = store.get("v1-project").unwrap().unwrap();
+        assert_eq!(migrated.schema_version, PROJECTS_SCHEMA_VERSION);
+        assert_eq!(migrated.decisions.len(), 1);
+        assert_eq!(migrated.decisions[0].kind, "schema_migrated");
+        assert!(migrated.decisions[0].summary.contains("v1 to v2"));
     }
 
     #[test]

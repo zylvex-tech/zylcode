@@ -1,0 +1,14 @@
+# command: python scripts/check_capability_registry.py
+# commit: 0d7e71ae987df9150bfddc421321b5f203b97121
+WARN: 37 entr(ies) incomplete against ZYLCODE_CAPABILITY_MODEL section 5
+      (not gated: completing these is a documentation programme, not a shape check)
+
+  capabilities.application_lifecycle: no entry_points/scope/evidence_commit/verified_at/limitations
+  capabilities.provider_configuration: no entry_points/scope/evidence_commit/verified_at/limitations
+  capabilities.mcp_tool_registration: no entry_points/scope/evidence_commit/verified_at/limitations
+  capabilities.real_llm_calls: no entry_points/scope/evidence_commit/verified_at/limitations
+  capabilities.streaming_infrastructure: no entry_points/scope/evidence_commit/verified_at/limitations
+  ... and 32 more
+
+OK: 37 capabilities valid - R2 17, R3 20; statuses DISPUTED 12, EXTERNAL_BLOCKER 1, GREEN 22, PARTIAL 2
+EXIT:0

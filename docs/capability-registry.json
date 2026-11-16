@@ -166,19 +166,20 @@
     "documentation_accuracy": {
       "status": "DISPUTED",
       "rung": "R2",
-      "rung_basis": "Backfilled 2026-11-11: no user or agent entry point; the recorded evidence is a repair claim about repository URLs, and the audit disputed the name's scope. R2 by the reachability test. Status left DISPUTED.",
+      "rung_basis": "Auditor ruling 2026-11-16 (docs/governance/PHASE2A_AUDIT_VERDICT_2026-11-16.md): C2: no actor entry point; the scope of \"documentation accuracy\" remains undefined.",
       "evidence": "All stale github.com/zylcode/zylcode references corrected to github.com/zylvex-tech/zylcode",
       "details": "README installation section rewritten; fabricated download URLs removed; historical v0.2.0-dev assets documented as non-current",
       "status_before_audit": "GREEN",
       "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
-      "dispute_reason": "Scope defect (ZYLCODE_CAPABILITY_MODEL.md 3.1/3.2). The capability name implies broad documentation accuracy; the evidence string only covers repo-URL references. The 2026-09-16 README review found further inaccuracies: a removed-as-unsupported '156 tools' claim had reappeared, 'Total: 32 tests passing' understated 341 test attributes and omitted a failure, three doc links pointed at files that have never existed, and the README defined an R0-R5 ladder contradicting ZYLCODE_PROOF_GRAPH.md. Requires re-verification against a stated scope."
+      "dispute_reason": "Scope defect (ZYLCODE_CAPABILITY_MODEL.md 3.1/3.2). The capability name implies broad documentation accuracy; the evidence string only covers repo-URL references. The 2026-09-16 README review found further inaccuracies: a removed-as-unsupported '156 tools' claim had reappeared, 'Total: 32 tests passing' understated 341 test attributes and omitted a failure, three doc links pointed at files that have never existed, and the README defined an R0-R5 ladder contradicting ZYLCODE_PROOF_GRAPH.md. Requires re-verification against a stated scope.",
+      "verified_at": "2026-11-16"
     },
     "repository_scanner": {
-      "status": "DISPUTED",
+      "status": "GREEN",
       "evidence": "Scanner indexes 14,973 files in 12.7s with .gitignore and secret-file exclusion",
       "details": "Deterministic file tree walker with language/role classification, content hashing, and Windows path support",
       "status_before_audit": "GREEN",
-      "rung": "R2",
+      "rung": "R3",
       "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
       "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6. METRIC DEFECT: 'indexes 14,973 files' counted target/ build output. Measured: 15,064 indexed of which 14,900 are under target/ (98.9%). The repository is 254 files (git ls-files = 193). Root cause: should_exclude() matches forward-slash patterns against Windows backslash paths, so the exclusion list is dead code on the primary target platform. Also: benchmark asserts only file_count() > 50, and the reported scan time (12.7s) does not reproduce (276.1s measured, assertion FAILS).",
       "p12_rebaseline": {
@@ -186,17 +187,22 @@
         "rung": "R2",
         "status_now": "DISPUTED",
         "evidence": "Windows exclusion fixed and asserted by planted trap files in the committed benchmark; 286 files / 1552 symbols indexed on HEAD (excludes target/, node_modules/, .git, worktrees)",
+        "evidence_correction_2026_11_14": "CORRECTION: the 'asserted by planted trap files' clause was not true of the committed benchmark, which contained no scope assertion and no trap fixture. Remedy: commit b5767fe replaced substring exclusion with path-component matching and added assert_index_scope() to both benchmark tests, plus Windows/Unix/near-match classifier tests. Measured on the remediation branch: 753 files indexed against 767 tracked; zero indexed paths with a target, node_modules, .git, dist or build component. The index is NOT a tracked-file subset: untracked working-tree files are scanned by design. Status deliberately unchanged (DISPUTED) pending independent audit.",
         "note": "Windows path-normalization defect fixed (root cause of the audit's 98.9% build-output finding). Still R2: no product surface of its own; consumed via repo-intelligence retrieval.",
         "dispute_history_preserved": true,
         "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
-      }
+      },
+      "rung_basis": "Auditor ruling 2026-11-16 (docs/governance/PHASE2A_AUDIT_VERDICT_2026-11-16.md, ACCEPTED WITH CONDITIONS): scanner runs as the first pipeline step behind `zylcode repo-context` and the AgentLoop context builder; both surfaces were exercised by the auditor (754 files indexed, scope assertion live).",
+      "verified_at": "2026-11-16",
+      "evidence_commit": "c32f3d8",
+      "dispute_resolution": "Resolved by the independent audit of 2026-11-16: R3 confirmed through a product surface. Dispute history below is retained, not erased."
     },
     "manifest_intelligence": {
-      "status": "DISPUTED",
+      "status": "GREEN",
       "evidence": "Parses Cargo.toml, package.json, pnpm-workspace.yaml; discovers 5 packages and 4 internal dependency edges",
       "details": "Structured manifest parsing with workspace member resolution and dependency extraction",
       "status_before_audit": "GREEN",
-      "rung": "R2",
+      "rung": "R3",
       "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
       "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6.",
       "p12_rebaseline": {
@@ -207,14 +213,18 @@
         "note": "Still R2 (library); reachable through repo-context CLI.",
         "dispute_history_preserved": true,
         "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
-      }
+      },
+      "rung_basis": "Auditor ruling 2026-11-16 (docs/governance/PHASE2A_AUDIT_VERDICT_2026-11-16.md, ACCEPTED WITH CONDITIONS): package/workspace discovery runs in the same pipeline; the CLI reports \"8 packages\" to the user.",
+      "verified_at": "2026-11-16",
+      "evidence_commit": "c32f3d8",
+      "dispute_resolution": "Resolved by the independent audit of 2026-11-16: R3 confirmed through a product surface. Dispute history below is retained, not erased."
     },
     "rust_symbol_index": {
-      "status": "DISPUTED",
+      "status": "GREEN",
       "evidence": "Extracts 1,444 symbols from Rust files using regex-based parsing",
       "details": "Supports struct, enum, trait, impl, function, method, constant, type alias, module, macro; QUALITY: DEFINITION_INDEXED",
       "status_before_audit": "GREEN",
-      "rung": "R2",
+      "rung": "R3",
       "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
       "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6.",
       "p12_rebaseline": {
@@ -225,7 +235,11 @@
         "note": "Still R2 (library); reachable through repo-context CLI.",
         "dispute_history_preserved": true,
         "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
-      }
+      },
+      "rung_basis": "Auditor ruling 2026-11-16 (docs/governance/PHASE2A_AUDIT_VERDICT_2026-11-16.md, ACCEPTED WITH CONDITIONS): Rust symbol extraction runs in the pipeline and the CLI returns ranked symbol results.",
+      "verified_at": "2026-11-16",
+      "evidence_commit": "c32f3d8",
+      "dispute_resolution": "Resolved by the independent audit of 2026-11-16: R3 confirmed through a product surface. Dispute history below is retained, not erased."
     },
     "typescript_symbol_index": {
       "status": "DISPUTED",
@@ -243,14 +257,16 @@
         "note": "Still R2 (library).",
         "dispute_history_preserved": true,
         "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
-      }
+      },
+      "rung_basis": "Auditor ruling 2026-11-16 (docs/governance/PHASE2A_AUDIT_VERDICT_2026-11-16.md): C1: the TypeScript extractor exists in symbols.rs but build_repo_query() only extracts Language::Rust symbols, so no product surface exercises it; remains R2 until it is wired into the pipeline.",
+      "verified_at": "2026-11-16"
     },
     "package_dependency_graph": {
-      "status": "DISPUTED",
+      "status": "GREEN",
       "evidence": "Bidirectional queries: dependencies_of(X), dependents_of(X), transitive_dependencies_of(X), packages_using(external_dep)",
       "details": "Built from manifest parsing; supports internal and external dependency edges",
       "status_before_audit": "GREEN",
-      "rung": "R2",
+      "rung": "R3",
       "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
       "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6.",
       "p12_rebaseline": {
@@ -261,32 +277,40 @@
         "note": "Still R2 (library); reachable through repo-context CLI.",
         "dispute_history_preserved": true,
         "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
-      }
+      },
+      "rung_basis": "Auditor ruling 2026-11-16 (docs/governance/PHASE2A_AUDIT_VERDICT_2026-11-16.md, ACCEPTED WITH CONDITIONS): dependency distance feeds ranking; benchmark Q6 exercises dependents_of(\"zylcode-core\").",
+      "verified_at": "2026-11-16",
+      "evidence_commit": "c32f3d8",
+      "dispute_resolution": "Resolved by the independent audit of 2026-11-16: R3 confirmed through a product surface. Dispute history below is retained, not erased."
     },
     "git_change_graph": {
-      "status": "DISPUTED",
+      "status": "GREEN",
       "evidence": "Extracts HEAD, branch, dirty state, recent commits, files changed by commit",
       "details": "Uses git CLI; handles root commits via git show fallback",
       "status_before_audit": "GREEN",
-      "rung": "R2",
+      "rung": "R3",
       "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
       "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6.",
       "p12_rebaseline": {
         "date": "2026-09-19",
         "rung": "R2",
         "status_now": "DISPUTED",
-        "evidence": "Now also feeds co-change mining (files changed together, <=12-file commits, Source/Test roles) — Q8's agent.rs/ledger.rs surfaced via coupling that exists at commit 6f564ac",
+        "evidence": "Now also feeds co-change mining (files changed together, <=12-file commits, Source/Test roles) \u00e2\u20ac\u201d Q8's agent.rs/ledger.rs surfaced via coupling that exists at commit 6f564ac",
         "note": "Still R2 (library); reachable through repo-context CLI.",
         "dispute_history_preserved": true,
         "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
-      }
+      },
+      "rung_basis": "Auditor ruling 2026-11-16 (docs/governance/PHASE2A_AUDIT_VERDICT_2026-11-16.md, ACCEPTED WITH CONDITIONS): full git history feeds co-change mining; the integration test shows ledger.rs surfacing via co-change evidence.",
+      "verified_at": "2026-11-16",
+      "evidence_commit": "c32f3d8",
+      "dispute_resolution": "Resolved by the independent audit of 2026-11-16: R3 confirmed through a product surface. Dispute history below is retained, not erased."
     },
     "architecture_fingerprint": {
-      "status": "DISPUTED",
+      "status": "GREEN",
       "evidence": "Detects Rust workspace, Tauri v2, React, TypeScript, pnpm, SQLite, Tokio, MCP, Vite, Tailwind CSS",
       "details": "Each fact has evidence and provenance classification (OBSERVED/PARSED/DERIVED)",
       "status_before_audit": "GREEN",
-      "rung": "R2",
+      "rung": "R3",
       "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
       "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6.",
       "p12_rebaseline": {
@@ -297,14 +321,18 @@
         "note": "Still R2 (library).",
         "dispute_history_preserved": true,
         "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
-      }
+      },
+      "rung_basis": "Auditor ruling 2026-11-16 (docs/governance/PHASE2A_AUDIT_VERDICT_2026-11-16.md, ACCEPTED WITH CONDITIONS): the fingerprint is produced in the pipeline and consumed by retrieval ranking.",
+      "verified_at": "2026-11-16",
+      "evidence_commit": "c32f3d8",
+      "dispute_resolution": "Resolved by the independent audit of 2026-11-16: R3 confirmed through a product surface. Dispute history below is retained, not erased."
     },
     "incremental_indexing": {
-      "status": "DISPUTED",
+      "status": "GREEN",
       "evidence": "Content hashing for files; get_changed_files_since() in store",
       "details": "File-level invalidation implemented; symbol-level incremental reindex is future work",
       "status_before_audit": "PARTIAL",
-      "rung": "R2",
+      "rung": "R3",
       "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
       "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6.",
       "p12_rebaseline": {
@@ -315,14 +343,18 @@
         "note": "Still PARTIAL in substance; no persisted cache yet.",
         "dispute_history_preserved": true,
         "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
-      }
+      },
+      "rung_basis": "Auditor ruling 2026-11-16 (docs/governance/PHASE2A_AUDIT_VERDICT_2026-11-16.md, ACCEPTED WITH CONDITIONS): PersistedIndex persists to .zylcode/intelligence-index.json with content-hash file-level invalidation; reachable from CLI and AgentLoop (symbol-level invalidation not implemented).",
+      "verified_at": "2026-11-16",
+      "evidence_commit": "c32f3d8",
+      "dispute_resolution": "Resolved by the independent audit of 2026-11-16: R3 confirmed through a product surface. Dispute history below is retained, not erased."
     },
     "repository_query_api": {
-      "status": "DISPUTED",
+      "status": "GREEN",
       "evidence": "14 query methods: repository_summary, find_symbol, symbol_definition, symbols_in_file, package_for_file, dependencies_of, dependents_of, entry_points, test_targets, build_commands, recent_changes, architecture, relevant_context",
       "details": "Typed query layer with ContextResult including relevance, reason, and provenance",
       "status_before_audit": "GREEN",
-      "rung": "R2",
+      "rung": "R3",
       "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
       "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6.",
       "p12_rebaseline": {
@@ -333,14 +365,18 @@
         "note": "The audit's 'no product entry point' finding is remediated: named CLI surface + committed transcript = R3 per ZYLCODE_PROOF_GRAPH 2.1. Builder evidence; acceptance is the auditor's.",
         "dispute_history_preserved": true,
         "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
-      }
+      },
+      "rung_basis": "Auditor ruling 2026-11-16 (docs/governance/PHASE2A_AUDIT_VERDICT_2026-11-16.md, ACCEPTED WITH CONDITIONS): RepoQuery::relevant_context() is the direct call from `zylcode repo-context`; the auditor invoked it and inspected the ranked output.",
+      "verified_at": "2026-11-16",
+      "evidence_commit": "c32f3d8",
+      "dispute_resolution": "Resolved by the independent audit of 2026-11-16: R3 confirmed through a product surface. Dispute history below is retained, not erased."
     },
     "context_retrieval": {
-      "status": "DISPUTED",
+      "status": "GREEN",
       "evidence": "Benchmark: Precision@10=0.30, Recall@10=0.53 against 10 known-answer questions",
       "details": "Ranks by symbol match, filename, dependency distance, test relationship, recent changes; returns WHY",
       "status_before_audit": "GREEN",
-      "rung": "R2",
+      "rung": "R3",
       "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
       "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6.",
       "p12_rebaseline": {
@@ -351,7 +387,11 @@
         "note": "Product-reachable via repo-context CLI and AgentLoop seam (ContextBuilder integration test committed). Builder evidence; acceptance is the auditor's.",
         "dispute_history_preserved": true,
         "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
-      }
+      },
+      "rung_basis": "Auditor ruling 2026-11-16 (docs/governance/PHASE2A_AUDIT_VERDICT_2026-11-16.md, ACCEPTED WITH CONDITIONS): relevant_context() returns ranked results with reasons, consumed by the CLI and the agent context builder; the integration test proves it is not the keyword heuristic.",
+      "verified_at": "2026-11-16",
+      "evidence_commit": "c32f3d8",
+      "dispute_resolution": "Resolved by the independent audit of 2026-11-16: R3 confirmed through a product surface. Dispute history below is retained, not erased."
     },
     "repository_benchmark": {
       "status": "DISPUTED",
@@ -366,10 +406,13 @@
         "rung": "R2",
         "status_now": "DISPUTED",
         "evidence": "Expanded 10 -> 20 known-answer queries (all fact-verified); thresholds raised to P@10>=0.30, R@10>=0.80 (observed 0.48/1.00); in-process determinism assertion added; thresholds were strengthened, never loosened",
+        "evidence_correction_2026_11_14": "CORRECTION: this block's 20-query/0.30 figures are the 2026-09-19 snapshot, not the current harness. As of commit b5767fe the suite has 28 questions, asserts P@10>=0.60 and R@10>=0.60, and measured P@10=0.63 / R@10=0.96 on a clean worktree. The performance test is no longer #[ignore]d: it prints scan files/second and fails below a 10 files/s collapse floor rather than the former wall-clock <120s assertion. The question set remains builder-authored (8 questions were added to raise the average) and that limitation is unchanged. Status deliberately unchanged (DISPUTED).",
         "note": "R2: a committed test harness; determinism proof recorded in evidence section 4.",
         "dispute_history_preserved": true,
         "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
-      }
+      },
+      "rung_basis": "Auditor ruling 2026-11-16 (docs/governance/PHASE2A_AUDIT_VERDICT_2026-11-16.md): C2: a test harness is not a product capability; no user surface invokes the benchmark.",
+      "verified_at": "2026-11-16"
     },
     "agent_context_gathering": {
       "status": "GREEN",
@@ -396,11 +439,11 @@
   },
   "summary": {
     "total": 37,
-    "GREEN": 22,
+    "GREEN": 31,
     "EXTERNAL_BLOCKER": 1,
     "PARTIAL": 2,
-    "DISPUTED": 12,
-    "note": "Counts computed from entry statuses. p12_rebaseline blocks added 2026-09-19 carry builder evidence for the disputed Phase 2A entries without erasing dispute history; GREEN on repository_query_api/context_retrieval/agent_context_gathering/benchmark_determinism is builder-claimed R3 evidence pending independent acceptance."
+    "DISPUTED": 3,
+    "note": "Counts computed from entry statuses. Phase 2A was ACCEPTED WITH CONDITIONS on 2026-11-16 (docs/governance/PHASE2A_AUDIT_VERDICT_2026-11-16.md): 9 disputed entries were confirmed R3 and promoted to GREEN; 3 remain R2/DISPUTED per conditions C1 and C2. Three pre-existing GREEN/R2 conflicts are unresolved by verdict condition C3."
   },
   "audit": {
     "status": "UNDER CORRECTION",
