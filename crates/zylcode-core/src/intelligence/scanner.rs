@@ -19,7 +19,11 @@ use walkdir::WalkDir;
 pub struct ScanResult {
     pub files: Vec<FileNode>,
     pub errors: Vec<ScanError>,
+    /// Regular files visited by the walk, before secret-file and size filters.
+    /// Directory entries are not counted (they used to be, which made the
+    /// "files scanned" figure 132 higher than the file inventory).
     pub files_scanned: usize,
+    /// Files entered into the inventory after secret/size filtering.
     pub files_indexed: usize,
     pub duration_ms: u64,
 }
@@ -82,11 +86,14 @@ pub fn scan_repository(root: &Path, config: &ScannerConfig) -> Result<ScanResult
             }
         };
 
-        files_scanned += 1;
-
         if !entry.file_type().is_file() {
             continue;
         }
+
+        // Count only regular files. Directory entries are traversal scaffolding,
+        // not scanned files; counting them made `files_scanned` exceed the file
+        // inventory by the number of directories walked.
+        files_scanned += 1;
 
         let path = entry.path();
 
@@ -278,6 +285,93 @@ mod tests {
             .filter(|f| f.path.to_string_lossy().contains("target"))
             .collect();
         assert!(target_files.is_empty(), "target/ should be excluded");
+    }
+
+    #[test]
+    fn scan_excludes_generated_directories_and_keeps_near_matches() {
+        let dir = TempDir::new().unwrap();
+        let root = dir.path();
+
+        // Generated trees, with no .gitignore help: the classifier must exclude
+        // them on every platform.
+        for generated in [
+            "target/debug/app.rs",
+            "crates/foo/target/release/app.rs",
+            "node_modules/pkg/index.js",
+            ".git/objects/ab/cdef",
+            "dist/bundle.js",
+            "build/obj.o",
+        ] {
+            let path = root.join(generated);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(&path, "generated").unwrap();
+        }
+
+        // Near-matches must survive; substring-based exclusion dropped them.
+        for kept in [
+            "mytarget/notes.md",
+            "src/target_helpers.rs",
+            "src/build.rs",
+            "docs/build-guide.md",
+            "src/main.rs",
+        ] {
+            let path = root.join(kept);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(&path, "fn main() {}").unwrap();
+        }
+
+        let result = scan_repository(root, &ScannerConfig::default()).unwrap();
+        let ids: Vec<&str> = result.files.iter().map(|f| f.id.as_str()).collect();
+
+        for forbidden in ["target/", "node_modules/", ".git/", "dist/", "build/"] {
+            assert!(
+                !ids.iter().any(|id| id.split('/').any(|c| {
+                    let expected = forbidden.trim_end_matches('/');
+                    c == expected
+                })),
+                "indexed a path under {forbidden}: {:?}",
+                ids
+            );
+        }
+
+        for expected in [
+            "mytarget/notes.md",
+            "src/target_helpers.rs",
+            "src/build.rs",
+            "docs/build-guide.md",
+        ] {
+            assert!(
+                ids.contains(&expected),
+                "missing near-match path {expected}: {:?}",
+                ids
+            );
+        }
+    }
+
+    #[test]
+    fn scan_does_not_descend_into_excluded_directories() {
+        let dir = TempDir::new().unwrap();
+        let root = dir.path();
+        fs::write(root.join("keep.rs"), "fn main() {}").unwrap();
+        fs::write(root.join("keep.md"), "# notes").unwrap();
+
+        // Five files that must never be visited.
+        for i in 0..5 {
+            let path = root.join(format!("target/debug/deep/{i}.rs"));
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(&path, "fn generated() {}").unwrap();
+        }
+
+        let result = scan_repository(root, &ScannerConfig::default()).unwrap();
+
+        // If the walker had descended into target/, files_scanned would be 7.
+        assert_eq!(
+            result.files_scanned,
+            2,
+            "excluded directories must not be traversed: {:?}",
+            result.files.iter().map(|f| &f.id).collect::<Vec<_>>()
+        );
+        assert_eq!(result.files_indexed, 2);
     }
 
     #[test]
