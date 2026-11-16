@@ -126,6 +126,16 @@ $ zylcode missions cancel --workdir . --reason "owner withdrew the objective"
 Exit codes: `0` moved forward or already terminal, `2` verification is waiting on citations (not
 complete), `9` execution paused deliberately (`--crash-after-steps`), `1` error.
 
+### Desktop surface
+
+The **Missions** surface (`MissionEnginePanel`) drives the same engine through five Tauri commands —
+`mission_engine_create`, `mission_engine_status`, `mission_engine_resume`, `mission_engine_cite`,
+`mission_engine_cancel` — all of which read the workspace journal rather than caching state in the UI.
+The panel offers a cite control only while `VERIFYING`, shows approval as an explicit `APPROVE & RUN`
+action, and reports `Not complete: c1, c2` instead of rounding partial verification up to success. In
+the browser preview there is no engine process, so every call refuses with that reason rather than
+rendering a simulated mission.
+
 **Naming note (deliberate):** `zylcode mission` (singular) is the existing First Mission runner and
 keeps its flags. The engine is `zylcode missions` (plural) until the runner is folded into the engine;
 the roadmap's `zylcode mission create|status|resume` is served by that plural command today. Stating
@@ -137,8 +147,8 @@ this here is cheaper than pretending the two are already one command.
 
 - The engine does not decide _how_ to execute a step. It records durable progress and enforces the
   state contract; the executor (agent loop, Best-of-N, tools) is a caller.
-- No model invocation, no tool permissions, no UI. The desktop Mission surface is not wired to this
-  engine.
+- No model invocation and no tool permissions. The desktop panel drives the engine but does not
+  decide policy.
 - Evidence is cited by id; this module does not hash or verify the artifact it names. Ledger
   verification remains the ledger's job — the citation points at it.
 - No cross-process lock. Concurrent writers on the same workdir can interleave; the journal would
@@ -149,18 +159,18 @@ this here is cheaper than pretending the two are already one command.
 
 ## 7. Implementation status
 
-| Piece                                                     | State                                                             |
-| --------------------------------------------------------- | ----------------------------------------------------------------- |
-| 11-state machine with legal-edge enforcement              | Implemented (`mission_engine.rs`, unit-tested)                    |
-| Cited-proof completion, refused with named unmet criteria | Implemented                                                       |
-| Durable journal with `fsync`, torn-tail recovery          | Implemented                                                       |
-| Interior corruption / sequence gap fails closed           | Implemented                                                       |
-| Kill-resume across real processes                         | Verified by CLI integration test (exit 9, then resume)            |
-| `create` / `status` / `resume` / `cite` / `cancel` CLI    | Implemented                                                       |
-| Desktop Mission surface using the engine                  | Not implemented                                                   |
-| Mission persistence inside the Project System (Phase 3A)  | Not implemented                                                   |
-| Cross-process writer lock                                 | Not implemented                                                   |
-| Automatic evidence verification (hashes, ledger replay)   | Not implemented; citations are pointers, not proofs by themselves |
+| Piece                                                     | State                                                                    |
+| --------------------------------------------------------- | ------------------------------------------------------------------------ |
+| 11-state machine with legal-edge enforcement              | Implemented (`mission_engine.rs`, unit-tested)                           |
+| Cited-proof completion, refused with named unmet criteria | Implemented                                                              |
+| Durable journal with `fsync`, torn-tail recovery          | Implemented                                                              |
+| Interior corruption / sequence gap fails closed           | Implemented                                                              |
+| Kill-resume across real processes                         | Verified by CLI integration test (exit 9, then resume)                   |
+| `create` / `status` / `resume` / `cite` / `cancel` CLI    | Implemented                                                              |
+| Desktop Mission surface using the engine                  | Implemented — `MissionEnginePanel` + 5 Tauri commands, 6 component tests |
+| Mission persistence inside the Project System (Phase 3A)  | Not implemented                                                          |
+| Cross-process writer lock                                 | Not implemented                                                          |
+| Automatic evidence verification (hashes, ledger replay)   | Not implemented; citations are pointers, not proofs by themselves        |
 
 The engine is therefore **not** the whole of Phase 3B, and Phase 3B is not accepted. What is claimed
 is narrow and checkable: the states, the completion rule, and durability across a kill are real and
