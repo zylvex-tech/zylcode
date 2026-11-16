@@ -92,35 +92,35 @@ reported complete.
 
 ## 2. Program Status Board
 
-| Phase  | Title                                      | Status                                                           | Rung         | Blocks                 |
-| ------ | ------------------------------------------ | ---------------------------------------------------------------- | ------------ | ---------------------- |
-| 1A     | Real Tool Runtime                          | ✅ ACCEPTED                                                      | R3           | 1B                     |
-| 1B     | Agent Execution Loop                       | ✅ ACCEPTED                                                      | R3           | 1C                     |
-| 1C     | Model-Driven Autonomous Agent              | ✅ ACCEPTED WITH CONDITIONS                                      | R3           | 1D                     |
-| 1D     | Durable Memory, Evidence & Recovery        | ✅ ACCEPTED WITH CONDITIONS                                      | R3           | 2A                     |
-| **2A** | **Repository Intelligence Foundation**     | 🟡 **REMEDIATION COMPLETE — AWAITING RE-AUDIT**                  | R3 (claimed) | **2B**                 |
-| **2B** | **Repository Reasoning & Impact Analysis** | 🚫 **BLOCKED on 2A verdict**                                     | —            | 3A                     |
-| 3A     | ZylCode Project System                     | ⏸ NOT STARTED                                                    | —            | 3B, 4, 5, 6A, 8A       |
-| 3B     | Mission Engine                             | ⏸ PARTIAL — 11-state engine, cited-proof completion, kill-resume | —            | 4, 14                  |
-| 4      | Model Platform / Model Democracy           | ⏸ NOT STARTED                                                    | —            | 14                     |
-| 5      | Extension Platform                         | ⏸ NOT STARTED                                                    | —            | 6A, 7A, 10, 11, 13, 15 |
-| 6A     | Artifact System                            | ⏸ NOT STARTED                                                    | —            | 6B, 7A, 9              |
-| 6B     | Live Preview Runtime                       | ⏸ NOT STARTED                                                    | —            | 7A                     |
-| 7A     | Browser Runtime                            | ⏸ NOT STARTED                                                    | —            | 7B, 9, 12              |
-| 7B     | Computer Use Foundation                    | ⏸ NOT STARTED                                                    | —            | 7C, 7D                 |
-| 7C     | Computer Use Reliability                   | ⏸ NOT STARTED                                                    | —            | 7D                     |
-| 7D     | Application Adapters                       | ⏸ NOT STARTED                                                    | —            | 9, 12                  |
-| 8A     | Design Foundation                          | ⏸ NOT STARTED                                                    | —            | 8B, 8C                 |
-| 8B     | Professional Design Canvas                 | ⏸ NOT STARTED                                                    | —            | 9                      |
-| 8C     | Design ↔ Code                              | ⏸ NOT STARTED                                                    | —            | 9                      |
-| 9      | Visual Intelligence & Self-Repair          | ⏸ NOT STARTED                                                    | —            | 12, 16                 |
-| 10     | Android Device Lab                         | ⏸ NOT STARTED                                                    | —            | 12, 13, 16             |
-| 11     | macOS/iOS Worker                           | ⏸ NOT STARTED                                                    | —            | 12, 13                 |
-| 12     | Proof Engine v2                            | ⏸ NOT STARTED                                                    | —            | 13, 16                 |
-| 13     | Delivery Engine                            | ⏸ NOT STARTED                                                    | —            | 16                     |
-| 14     | Multi-Agent Engineering                    | ⏸ NOT STARTED                                                    | —            | 15, 16                 |
-| 15     | Marketplace and Ecosystem                  | ⏸ NOT STARTED                                                    | —            | 16                     |
-| 16     | Public Commissioning                       | ⏸ NOT STARTED                                                    | —            | —                      |
+| Phase  | Title                                      | Status                                                           | Rung | Blocks                 |
+| ------ | ------------------------------------------ | ---------------------------------------------------------------- | ---- | ---------------------- |
+| 1A     | Real Tool Runtime                          | ✅ ACCEPTED                                                      | R3   | 1B                     |
+| 1B     | Agent Execution Loop                       | ✅ ACCEPTED                                                      | R3   | 1C                     |
+| 1C     | Model-Driven Autonomous Agent              | ✅ ACCEPTED WITH CONDITIONS                                      | R3   | 1D                     |
+| 1D     | Durable Memory, Evidence & Recovery        | ✅ ACCEPTED WITH CONDITIONS                                      | R3   | 2A                     |
+| **2A** | **Repository Intelligence Foundation**     | ✅ **ACCEPTED WITH CONDITIONS (2026-11-16, C1–C6)**              | R3   | **2B**                 |
+| **2B** | **Repository Reasoning & Impact Analysis** | ⏸ **GATE CLEARED — not started**                                 | —    | 3A                     |
+| 3A     | ZylCode Project System                     | ⏸ NOT STARTED                                                    | —    | 3B, 4, 5, 6A, 8A       |
+| 3B     | Mission Engine                             | ⏸ PARTIAL — 11-state engine, cited-proof completion, kill-resume | —    | 4, 14                  |
+| 4      | Model Platform / Model Democracy           | ⏸ NOT STARTED                                                    | —    | 14                     |
+| 5      | Extension Platform                         | ⏸ NOT STARTED                                                    | —    | 6A, 7A, 10, 11, 13, 15 |
+| 6A     | Artifact System                            | ⏸ NOT STARTED                                                    | —    | 6B, 7A, 9              |
+| 6B     | Live Preview Runtime                       | ⏸ NOT STARTED                                                    | —    | 7A                     |
+| 7A     | Browser Runtime                            | ⏸ NOT STARTED                                                    | —    | 7B, 9, 12              |
+| 7B     | Computer Use Foundation                    | ⏸ NOT STARTED                                                    | —    | 7C, 7D                 |
+| 7C     | Computer Use Reliability                   | ⏸ NOT STARTED                                                    | —    | 7D                     |
+| 7D     | Application Adapters                       | ⏸ NOT STARTED                                                    | —    | 9, 12                  |
+| 8A     | Design Foundation                          | ⏸ NOT STARTED                                                    | —    | 8B, 8C                 |
+| 8B     | Professional Design Canvas                 | ⏸ NOT STARTED                                                    | —    | 9                      |
+| 8C     | Design ↔ Code                              | ⏸ NOT STARTED                                                    | —    | 9                      |
+| 9      | Visual Intelligence & Self-Repair          | ⏸ NOT STARTED                                                    | —    | 12, 16                 |
+| 10     | Android Device Lab                         | ⏸ NOT STARTED                                                    | —    | 12, 13, 16             |
+| 11     | macOS/iOS Worker                           | ⏸ NOT STARTED                                                    | —    | 12, 13                 |
+| 12     | Proof Engine v2                            | ⏸ NOT STARTED                                                    | —    | 13, 16                 |
+| 13     | Delivery Engine                            | ⏸ NOT STARTED                                                    | —    | 16                     |
+| 14     | Multi-Agent Engineering                    | ⏸ NOT STARTED                                                    | —    | 15, 16                 |
+| 15     | Marketplace and Ecosystem                  | ⏸ NOT STARTED                                                    | —    | 16                     |
+| 16     | Public Commissioning                       | ⏸ NOT STARTED                                                    | —    | —                      |
 
 ---
 
@@ -161,13 +161,19 @@ reconciled against git.
 
 ---
 
-## Phase 2A — Repository Intelligence Foundation ❌ RE-OPENED
+## Phase 2A — Repository Intelligence Foundation ✅ ACCEPTED WITH CONDITIONS
 
 **Objective** — A structured, queryable model of a repository.
-**Status** — **NOT ACCEPTED.** See `PHASE2A_INDEPENDENT_AUDIT.md`.
-**Current rung** — **R2.**
+**Status** — **ACCEPTED WITH CONDITIONS** on 2026-11-16 by an independent auditor
+([verdict](../governance/PHASE2A_AUDIT_VERDICT_2026-11-16.md), following
+[the re-audit request](../governance/PHASE2A_REAUDIT_REQUEST_2026-11-16.md)).
+**Current rung** — **R3** for 9 of the 12 disputed capabilities; 3 remain R2 per conditions C1–C2.
+**Conditions** — C1 TypeScript symbols stay R2 until wired into `build_repo_query()`; C2
+`repository_benchmark` and `documentation_accuracy` stay R2; C3 resolve the three pre-existing
+GREEN/R2 conflicts; C4 add independently-authored benchmark questions; C5 throughput has a collapse
+floor, not an acceptance budget; C6 symbol resolution is regex-only (`DEFINITION_INDEXED`).
 
-### Why it was rejected
+### History — why it was re-opened by the 2026-09-16 audit
 
 | Finding                                      | Evidence                                                                |
 | -------------------------------------------- | ----------------------------------------------------------------------- |

@@ -106,8 +106,8 @@ Every prompt to DeepSeek, Codex, ZCode, or any other implementation agent **must
 |                          |                                                                                                                                     |
 | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
 | **Phase 1A–1D**          | ✅ Accepted (1C, 1D with conditions)                                                                                                |
-| **Phase 2A**             | ❌ **NOT ACCEPTED — RE-OPENED**                                                                                                     |
-| **Phase 2B**             | 🚫 **BLOCKED** on 2A                                                                                                                |
+| **Phase 2A**             | ✅ **ACCEPTED WITH CONDITIONS** (2026-11-16) — see `PHASE2A_AUDIT_VERDICT_2026-11-16.md`, conditions C1–C6                          |
+| **Phase 2B**             | ⏸ **GATE CLEARED** by the 2A verdict — not started                                                                                  |
 | **Phases 3A–16**         | ⏸ Not started                                                                                                                       |
 | **Architecture**         | v2.1 — eight systems; Phase 7 split into 7A–7D; 8–16 unrenumbered                                                                   |
 | **Phase numbering**      | Reconciled — three schemes found; two relabelled as named tracks                                                                    |
@@ -115,10 +115,15 @@ Every prompt to DeepSeek, Codex, ZCode, or any other implementation agent **must
 | **Public communication** | Policy ratified — status vocabulary, screenshot rule, Public Claim Matrix.                                                          |
 | **Public Foundation**    | Plan v1.0 ratified — parallel tracks `PUBLIC-FOUNDATION`/`DESIGN-SYSTEM`/`CLOUD-PLATFORM`. Milestones 01–06, 10, 11 executable now. |
 
-**Phase 2A was rejected** because: its headline metric counted `target/` build output (14,900 of
-15,064 files; the repository is 254 files); its benchmark **fails** on independent re-execution;
-it has **zero** product integration; and its "Acceptance Demonstration" was written as an
-expectation rather than captured from a run.
+**Phase 2A was rejected** on 2026-09-16 because: its headline metric counted `target/` build output
+(14,900 of 15,064 files; the repository is 254 files); its benchmark **fails** on independent
+re-execution; it has **zero** product integration; and its "Acceptance Demonstration" was written as
+an expectation rather than captured from a run.
+
+**Phase 2A was re-accepted on 2026-11-16** after remediation (PR #69) and an independent AI audit:
+verdict **ACCEPTED WITH CONDITIONS**, 9 of the 12 disputed capabilities confirmed at R3, 3 held at R2.
+The verdict is `PHASE2A_AUDIT_VERDICT_2026-11-16.md`; the conditions are tracked there and in the
+roadmap's Phase 2A entry. Phase 2B's gate is cleared but 2B has not started.
 
 See `PHASE2A_INDEPENDENT_AUDIT.md`.
 
