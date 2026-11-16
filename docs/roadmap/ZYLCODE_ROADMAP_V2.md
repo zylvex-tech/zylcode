@@ -100,7 +100,7 @@ reported complete.
 | 1D     | Durable Memory, Evidence & Recovery        | ✅ ACCEPTED WITH CONDITIONS                                      | R3   | 2A                     |
 | **2A** | **Repository Intelligence Foundation**     | ✅ **ACCEPTED WITH CONDITIONS (2026-11-16, C1–C6)**              | R3   | **2B**                 |
 | **2B** | **Repository Reasoning & Impact Analysis** | ⏸ **GATE CLEARED — not started**                                 | —    | 3A                     |
-| 3A     | ZylCode Project System                     | ⏸ NOT STARTED                                                    | —    | 3B, 4, 5, 6A, 8A       |
+| 3A     | ZylCode Project System                     | ⏸ PARTIAL — durable store v2 + CLI identity/status               | —    | 3B, 4, 5, 6A, 8A       |
 | 3B     | Mission Engine                             | ⏸ PARTIAL — 11-state engine, cited-proof completion, kill-resume | —    | 4, 14                  |
 | 4      | Model Platform / Model Democracy           | ⏸ NOT STARTED                                                    | —    | 14                     |
 | 5      | Extension Platform                         | ⏸ NOT STARTED                                                    | —    | 6A, 7A, 10, 11, 13, 15 |
@@ -263,7 +263,16 @@ Q5/Q6/Q10 non-zero; index scoped to repository source with the scope asserted in
 - Survives restart. Survives machine migration. Stable identity independent of filesystem path.
 - **Project Knowledge Graph** — see `docs/architecture/PROJECT_KNOWLEDGE_GRAPH.md`.
 
-**Entry points** — `zylcode project create|open|export|import` · UI Project surface.
+**Entry points** — `zylcode project create|list|open|status|export|import` · UI Project surface.
+
+**Implementation status (2026-11-15)** — the durable store exists at schema v2 with an
+append-only decision history, restart survival, export/import, explicit unresolved-root reporting,
+and `zylcode project status`. This is a **slice**, not the phase: the creation-flow fields beyond
+name/root, the Project Knowledge Graph, mission/evidence/artifact persistence, evidence bytes in
+the export bundle, cross-process locking, and wiring the desktop project commands to the store are
+all outstanding. `docs/architecture/PROJECT_SYSTEM.md` §13 records the requirement-by-requirement
+state. Sequencing note: this slice was built while the Phase 2A verdict was still pending; that
+discrepancy is recorded in the governance log, and it is not evidence that 3A is complete.
 
 **Benchmark** — create a project; restart the app; project is intact; export on machine A,
 import on machine B, graph is intact.
