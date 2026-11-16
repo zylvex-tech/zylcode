@@ -18,6 +18,7 @@ pub mod nav_api;
 pub mod persisted;
 pub mod query;
 pub mod scanner;
+pub mod semantic;
 pub mod store;
 pub mod symbols;
 pub mod types;
