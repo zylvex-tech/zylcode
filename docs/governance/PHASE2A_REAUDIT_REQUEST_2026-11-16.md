@@ -3,8 +3,9 @@
 **Date:** 2026-11-16
 **Submission:** Pull request #69 — `fix/phase2a-scope-and-evidence`
 **Code head under audit:** `c32f3d8`
-**Branch head at submission:** `556a83a` — documentation and evidence logs only; no source, test or
-registry change follows `c32f3d8`
+**Branch:** `fix/phase2a-scope-and-evidence` (PR #69). Commits after `c32f3d8` are documentation and
+captured logs only; **audit the source, tests and registry at `c32f3d8`** and the docs at the branch
+head.
 **Base:** `main` @ `29638d4`
 **Requested by:** ZylCode engineering (builder — **not** the acceptance authority)
 **Audit method:** [`PHASE2A_INDEPENDENT_AUDIT.md`](PHASE2A_INDEPENDENT_AUDIT.md)
