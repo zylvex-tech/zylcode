@@ -17,9 +17,12 @@ It runs on your machine and uses your own model keys: the desktop app, the CLI a
 the local intelligence service are all local processes, and model calls go to
 providers you configure yourself.
 
-> **Early access:** the [Developer Preview waitlist](https://site-0522a86bd09e48629a1e90f115711758.freebuff.page)
-> is open and pre-release / invite-only. No pricing is published during public
-> development ([`docs/governance/ZYLCODE_COMMERCIAL_MODEL.md`](docs/governance/ZYLCODE_COMMERCIAL_MODEL.md)).
+> **Pre-release.** Nothing is published: no website, no pricing, no waitlist, no signup.
+> The only ways to run this are a source checkout and the
+> [GitHub releases page](https://github.com/zylvex-tech/zylcode/releases) (latest tag
+> **v0.2.3**, 2026-10-29; the 0.2.4 tree is unreleased). The commercial model is written
+> down in [`docs/governance/ZYLCODE_COMMERCIAL_MODEL.md`](docs/governance/ZYLCODE_COMMERCIAL_MODEL.md)
+> and is not an offer.
 
 ![ZylCode workbench with a live backend — repository explorer, terminal running real git commands, mission list, capability spotlight and the status bar reporting branch and version](docs/media/zylcode/14-workbench-live.png)
 
@@ -410,8 +413,9 @@ Things a reader might reasonably assume, which this repository does **not** do y
 - **Computer use is simulation.** Nothing drives a screen
   ([`docs/governance/MAIN_STATUS_REPORT_2026-10-11.md`](docs/governance/MAIN_STATUS_REPORT_2026-10-11.md)).
 - **No signed installers.** Source checkout is the supported path today.
-- **No published website or pricing.** The waitlist link above is the only public URL in
-  this repository; nothing else should be inferred from it.
+- **No published website, pricing or waitlist.** The GitHub releases page is the only
+  public distribution URL in this repository; nothing else should be inferred from it.
+  There is no invite, no signup and no date for either.
 
 ---
 
@@ -423,14 +427,16 @@ Things a reader might reasonably assume, which this repository does **not** do y
   clippy/fmt are clean on this head, and the retrieval gate measures Precision@10 0.65 /
   Recall@10 0.96 over 768 indexed files.
 - **In progress:** Phase 2A conditions C2–C6 (C1 closed in code); the Phase 3A/3B gaps
-  listed above; the Phase 2B impact engine (contract written, engine not started);
-  surfacing the full `StreamChunk` across IPC; honest distribution.
+  listed above; the rest of the Phase 2B impact engine (import-closure impact shipped,
+  test selection and contracts are not); surfacing the full `StreamChunk` across IPC;
+  honest distribution.
 - **Planned:** everything in
   [`docs/roadmap/ZYLCODE_ROADMAP_V2.md`](docs/roadmap/ZYLCODE_ROADMAP_V2.md) —
   repository reasoning (Phase 2B, gate cleared), the rest of the project system,
   design canvas, extension platform. None of it is claimed as working here.
-- **Early access:** [Developer Preview waitlist](https://site-0522a86bd09e48629a1e90f115711758.freebuff.page)
-  — free / invite-only for the first cohort.
+- **Distribution:** [GitHub releases](https://github.com/zylvex-tech/zylcode/releases) only.
+  No waitlist, no invite cohort, no date for either; the installer matrix in
+  `.github/workflows/release.yml` has never been rehearsed.
 
 Full phase-by-phase status: [`docs/PROJECT_MASTER_STATUS.md`](docs/PROJECT_MASTER_STATUS.md).
 
