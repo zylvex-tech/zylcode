@@ -129,11 +129,12 @@
       "details": "Enables reliable testing without real API calls"
     },
     "remote_ci": {
-      "status": "EXTERNAL_BLOCKER",
+      "status": "PARTIAL",
       "rung": "R2",
       "rung_basis": "Backfilled 2026-11-11: no rung can be evidenced for a channel recorded as blocked. GitHub Actions now runs on this repository (five required checks green at 1c14aec), but this entry is neither re-verified nor reclassified here.",
-      "evidence": "GitHub Actions blocked by billing issue",
-      "details": "CI repair implemented but cannot run due to account billing"
+      "evidence": "CI runs green on ubuntu-22.04, macOS and Windows (5 required checks) as of 2026-11-17; the GitHub Actions billing blocker recorded here is gone. Rung stays R2 until a probe binds this claim.",
+      "details": "CI repair implemented but cannot run due to account billing",
+      "limitations": "Green CI is not the same as a released artifact; packaging is tracked by release_installers."
     },
     "evidence_ledger": {
       "status": "GREEN",
@@ -160,8 +161,9 @@
       "status": "PARTIAL",
       "rung": "R3",
       "rung_basis": "Backfilled 2026-11-11: v0.2.3 shipped 2026-10-29 with 12 platform assets (gh release view v0.2.3), so the installer surface is user-reachable. PARTIAL preserved: installers are unsigned and this entry's recorded evidence still cites the old CI billing block.",
-      "evidence": "Tauri build pipeline configured for NSIS/DEB/DMG but CI blocked by billing",
-      "details": "release.yml produces installers via tauri-action; Windows NSIS, macOS DMG, Linux DEB/RPM configured; release workflow blocked by GitHub billing issue"
+      "evidence": "Tauri build pipeline configured for NSIS/DEB/DMG. No tagged matrix run has been rehearsed since v0.2.3 (2026-10-29), so the packaging path is unproven on this head.",
+      "details": "release.yml produces installers via tauri-action; Windows NSIS, macOS DMG, Linux DEB/RPM configured; release workflow blocked by GitHub billing issue",
+      "limitations": "No signed installers; source checkout remains the supported path."
     },
     "documentation_accuracy": {
       "status": "DISPUTED",
@@ -440,10 +442,10 @@
   "summary": {
     "total": 37,
     "GREEN": 31,
-    "EXTERNAL_BLOCKER": 1,
-    "PARTIAL": 2,
+    "EXTERNAL_BLOCKER": 0,
+    "PARTIAL": 3,
     "DISPUTED": 3,
-    "note": "Counts computed from entry statuses. Phase 2A was ACCEPTED WITH CONDITIONS on 2026-11-16 (docs/governance/PHASE2A_AUDIT_VERDICT_2026-11-16.md): 9 disputed entries were confirmed R3 and promoted to GREEN; 3 remain R2/DISPUTED per conditions C1 and C2. Three pre-existing GREEN/R2 conflicts are unresolved by verdict condition C3."
+    "note": "Phase 2A was ACCEPTED WITH CONDITIONS on 2026-11-16 (docs/governance/PHASE2A_AUDIT_VERDICT_2026-11-16.md): 9 disputed entries were confirmed R3 and promoted to GREEN; 3 remain R2/DISPUTED per conditions C1 and C2. Three pre-existing GREEN/R2 conflicts are unresolved by verdict condition C3. remote_ci was re-stated on 2026-11-17 because the recorded billing blocker no longer matches observed CI."
   },
   "audit": {
     "status": "UNDER CORRECTION",

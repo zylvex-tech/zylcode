@@ -7,7 +7,7 @@
 [![CI](https://github.com/zylvex-tech/zylcode/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/zylvex-tech/zylcode/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
-**Project status: 11 November 2026** · `main` @ `c2a2b94` · pre-release
+**Project status: 17 November 2026** · `main` @ `ba7a6cd` · pre-release
 
 ZylCode is an engineering workbench developed by **Zylvex Technologies Ltd.** It
 turns an instruction into a plan, executes the plan through approval-gated tools,
@@ -25,7 +25,43 @@ providers you configure yourself.
 
 ---
 
-## What's new — 11 November 2026
+## What's new — 17 November 2026
+
+**Phase 2A is accepted with conditions, and the first condition is closed in code.**
+An independent audit returned _ACCEPTED WITH CONDITIONS_ on 16 November
+([verdict](docs/governance/PHASE2A_AUDIT_VERDICT_2026-11-16.md)). Nine of the twelve
+disputed capabilities were confirmed at R3 and promoted; three stay R2 until their
+conditions close. Those conditions (C1–C6) are tracked in the verdict, not here.
+
+- **C1 is done.** `build_repo_query()` indexed Rust only while the extractor already
+  understood TypeScript — so no product surface could return a TypeScript symbol.
+  It now indexes Rust/TypeScript/JavaScript, and `zylcode repo-symbols <name>`
+  resolves one through the same persisted index the agent uses. The registry entry
+  is still DISPUTED until the promotion is recorded with its evidence.
+- **Phase 3A slice:** the project store is at schema v2 with an append-only decision
+  history, restart survival, export/import and `zylcode project status`. It now takes
+  an OS advisory lock, so the CLI and desktop can no longer interleave writes and
+  lose a record. The knowledge graph, desktop wiring and evidence bytes in exports
+  are still outstanding.
+- **Phase 3B slice:** an eleven-state mission engine with a `COMPLETE` gate that refuses
+  while any criterion lacks a cited proof, an append-only journal that survives a kill
+  mid-`EXECUTING`, a CLI, and a desktop Mission panel. Citations now record a SHA-256 of
+  the cited file, and `zylcode missions verify` re-reads it and exits non-zero when the
+  bytes changed — a citation can be re-checked instead of merely pointed at.
+- **Phase 2B is contract-only.** [`docs/architecture/IMPACT_ANALYSIS.md`](docs/architecture/IMPACT_ANALYSIS.md)
+  fixes the report shape, the honesty rules and the acceptance corpus _before_ the engine
+  exists. No impact engine has been built.
+- **Claims are now gated where they can be checked:** capability probes
+  (`scripts/check_capability_probes.py`), a generated roadmap status board, a
+  question-set freeze for benchmarks, and `zylcode trust-scan`, which reports
+  instruction-shaped repository text instead of letting a comment address the model.
+  Probe coverage is **5 of 28** GREEN R3+ capabilities — the gap is printed on every
+  run rather than hidden.
+
+Not ready for release: the front page previously lagged `main`, three capabilities
+remain disputed and no installer matrix has been rehearsed for this head.
+
+## Previous — 11 November 2026
 
 **`RUSTSEC-2026-0459` is closed on `main`.** The advisory flagged
 `libsqlite3-sys 0.28.0`, reached through `rusqlite 0.31.0` in the audit-log read path.
@@ -132,8 +168,8 @@ promise about a hosted service.
 
 The authoritative row-by-row ledger, including which of these are disputed, is
 [`docs/capability-registry.json`](docs/capability-registry.json): 37 entries —
-22 GREEN, **12 DISPUTED**, 2 PARTIAL, 1 externally blocked. Builders do not certify
-their own work ([`CONTRIBUTING.md`](CONTRIBUTING.md)).
+31 GREEN, **3 DISPUTED**, 3 PARTIAL. Builders do not certify their own work
+([`CONTRIBUTING.md`](CONTRIBUTING.md)).
 
 ---
 
@@ -361,9 +397,10 @@ Things a reader might reasonably assume, which this repository does **not** do y
   `synthetic` flag stop at the boundary. The UI cannot yet show why a response ended.
 - **Provider editing is desktop-only.** The browser preview renders the live chain
   read-only (capture `17`); changing keys or testing a connection needs the Tauri runtime.
-- **Acceptance is not self-granted.** 12 of 37 registry entries are disputed. Phase 2A
-  remediation is complete and a re-audit is requested, but independent acceptance is
-  still outstanding — so those entries stay disputed here.
+- **Acceptance is not self-granted.** 3 of 37 registry entries remain disputed after the
+  2026-11-16 verdict — `typescript_symbol_index` (wiring landed, promotion not yet
+  recorded), `repository_benchmark` and `documentation_accuracy` (conditions C2/C4).
+  Those entries stay disputed here until their own evidence lands.
 - **Computer use is simulation.** Nothing drives a screen
   ([`docs/governance/MAIN_STATUS_REPORT_2026-10-11.md`](docs/governance/MAIN_STATUS_REPORT_2026-10-11.md)).
 - **No signed installers.** Source checkout is the supported path today.
@@ -376,15 +413,16 @@ Things a reader might reasonably assume, which this repository does **not** do y
 
 - **Now:** a working desktop shell and CLI over a tested core: provider streaming with
   real wire parsing, request-aborting cancellation, failover, an evidence ledger that
-  keeps its failures; 1,069 Rust tests, 764 frontend tests, clippy/fmt clean on this head.
-- **In progress:** the Phase 2A independent re-audit — remediation is closed, the
-  verdict is not
-  ([`docs/governance/PHASE2A_REAUDIT_REQUEST_2026-11-11.md`](docs/governance/PHASE2A_REAUDIT_REQUEST_2026-11-11.md));
+  keeps its failures. 736 core library tests plus the CLI and desktop suites pass,
+  clippy/fmt are clean on this head, and the retrieval gate measures Precision@10 0.65 /
+  Recall@10 0.96 over 768 indexed files.
+- **In progress:** Phase 2A conditions C2–C6 (C1 closed in code); the Phase 3A/3B gaps
+  listed above; the Phase 2B impact engine (contract written, engine not started);
   surfacing the full `StreamChunk` across IPC; honest distribution.
 - **Planned:** everything in
   [`docs/roadmap/ZYLCODE_ROADMAP_V2.md`](docs/roadmap/ZYLCODE_ROADMAP_V2.md) —
-  repository reasoning (Phase 2B, blocked on 2A), project system, design canvas,
-  extension platform. None of it is claimed as working here.
+  repository reasoning (Phase 2B, gate cleared), the rest of the project system,
+  design canvas, extension platform. None of it is claimed as working here.
 - **Early access:** [Developer Preview waitlist](https://site-0522a86bd09e48629a1e90f115711758.freebuff.page)
   — free / invite-only for the first cohort.
 
