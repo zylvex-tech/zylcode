@@ -3,6 +3,7 @@ import { EvidenceCenter } from "../EvidenceCenter";
 import { EvidenceTimeline } from "../EvidenceTimeline";
 import { LiveSearch } from "../LiveSearch";
 import { MissionComposer } from "../MissionComposer";
+import { MissionEnginePanel } from "../MissionEnginePanel";
 import { MissionPipeline } from "../MissionPipeline";
 import { RepoIntelPanel } from "../RepoIntelPanel";
 import { NavErrorBoundary, RepoNavPanel } from "../RepoNavPanel";
@@ -360,63 +361,66 @@ export function SurfaceHost({
 
       case "missions":
         return (
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-3">
-            <Panel title="MISSION COMPOSER" className="xl:col-span-2">
-              <MissionComposer
-                onMissionStart={onMissionStart}
-                busy={busy}
-                streaming={isStreaming}
-              />
-            </Panel>
-            <div className="space-y-3">
-              <Panel title="MISSIONS">
-                {missions.length === 0 ? (
-                  <p className="text-xs text-text-muted">No missions yet.</p>
-                ) : (
-                  <div className="space-y-1.5">
-                    {missions
-                      .slice()
-                      .reverse()
-                      .map((m) => (
-                        <button
-                          key={m.id}
-                          onClick={() => {}}
-                          className={`w-full text-left rounded border px-2 py-1.5 text-xs transition-colors ${
-                            m.id === "active"
-                              ? "border-primary/50 bg-primary/5"
-                              : "border-border hover:border-primary/30"
-                          }`}
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="truncate">{m.title}</span>
-                            <span className="font-mono text-[10px] text-text-muted shrink-0">
-                              {m.state}
-                            </span>
-                          </div>
-                        </button>
+          <div className="space-y-3">
+            <MissionEnginePanel />
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-3">
+              <Panel title="MISSION COMPOSER" className="xl:col-span-2">
+                <MissionComposer
+                  onMissionStart={onMissionStart}
+                  busy={busy}
+                  streaming={isStreaming}
+                />
+              </Panel>
+              <div className="space-y-3">
+                <Panel title="MISSIONS">
+                  {missions.length === 0 ? (
+                    <p className="text-xs text-text-muted">No missions yet.</p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {missions
+                        .slice()
+                        .reverse()
+                        .map((m) => (
+                          <button
+                            key={m.id}
+                            onClick={() => {}}
+                            className={`w-full text-left rounded border px-2 py-1.5 text-xs transition-colors ${
+                              m.id === "active"
+                                ? "border-primary/50 bg-primary/5"
+                                : "border-border hover:border-primary/30"
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="truncate">{m.title}</span>
+                              <span className="font-mono text-[10px] text-text-muted shrink-0">
+                                {m.state}
+                              </span>
+                            </div>
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                </Panel>
+                <Panel title="VERIFY">
+                  <button
+                    onClick={onVerifyMission}
+                    disabled={busy}
+                    className="w-full bg-secondary text-secondary-foreground px-3 py-2 rounded-md text-sm font-medium hover:bg-secondary-hover disabled:opacity-50"
+                  >
+                    Verify active mission
+                  </button>
+                  {verification && (
+                    <div className="mt-2 space-y-1">
+                      <VerificationRungBadge rung={verification.rung} />
+                      {verification.checks.map((c) => (
+                        <p key={c.name} className="text-[11px]">
+                          {c.passed ? "✓" : "✗"} {c.name}: {c.message}
+                        </p>
                       ))}
-                  </div>
-                )}
-              </Panel>
-              <Panel title="VERIFY">
-                <button
-                  onClick={onVerifyMission}
-                  disabled={busy}
-                  className="w-full bg-secondary text-secondary-foreground px-3 py-2 rounded-md text-sm font-medium hover:bg-secondary-hover disabled:opacity-50"
-                >
-                  Verify active mission
-                </button>
-                {verification && (
-                  <div className="mt-2 space-y-1">
-                    <VerificationRungBadge rung={verification.rung} />
-                    {verification.checks.map((c) => (
-                      <p key={c.name} className="text-[11px]">
-                        {c.passed ? "✓" : "✗"} {c.name}: {c.message}
-                      </p>
-                    ))}
-                  </div>
-                )}
-              </Panel>
+                    </div>
+                  )}
+                </Panel>
+              </div>
             </div>
           </div>
         );

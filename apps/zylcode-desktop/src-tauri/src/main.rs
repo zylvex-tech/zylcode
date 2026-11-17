@@ -301,6 +301,163 @@ async fn missions_list(state: tauri::State<'_, EngineState>) -> Result<serde_jso
     Ok(serde_json::json!({ "missions": list }))
 }
 
+// ---------------------------------------------------------------------------
+// Mission Engine (Phase 3B) — durable mission with cited-proof completion
+//
+// The engine (zylcode_core::mission_engine) owns the state machine and the
+// journal; these commands are a thin IPC boundary. Nothing is cached in the
+// UI: every command reads the journal, so a mission created in an earlier app
+// session is still there after a restart.
+// ---------------------------------------------------------------------------
+
+/// Parse the evidence-kind string from the UI. An unknown kind is a rejected
+/// request, not a silent default — mislabeling proof is the one thing this
+/// surface must not do.
+fn evidence_kind(raw: &str) -> Result<zylcode_core::mission_engine::EvidenceKind, String> {
+    use zylcode_core::mission_engine::EvidenceKind as K;
+    match raw {
+        "test" => Ok(K::Test),
+        "ledger" => Ok(K::Ledger),
+        "file" => Ok(K::File),
+        "command" => Ok(K::Command),
+        "artifact" => Ok(K::Artifact),
+        "human" => Ok(K::Human),
+        other => Err(format!(
+            "unknown evidence kind '{other}'; use test|ledger|file|command|artifact|human"
+        )),
+    }
+}
+
+/// Create a mission in the workspace's `.zylcode/` state directory.
+#[tauri::command]
+async fn mission_engine_create(
+    objective: String,
+    criteria: Vec<String>,
+    steps: Vec<String>,
+    state: tauri::State<'_, EngineState>,
+) -> Result<serde_json::Value, String> {
+    iv::ensure_max_chars("objective", &objective, iv::MAX_TASK_CHARS).map_err(|e| e.to_string())?;
+    if criteria.is_empty() {
+        return Err("a mission needs at least one acceptance criterion".to_string());
+    }
+    for c in &criteria {
+        iv::ensure_max_chars("criterion", c, iv::MAX_TASK_CHARS).map_err(|e| e.to_string())?;
+    }
+    for s in &steps {
+        iv::ensure_max_chars("step", s, iv::MAX_TASK_CHARS).map_err(|e| e.to_string())?;
+    }
+    let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
+    tokio::task::spawn_blocking(move || {
+        let mission = zylcode_core::mission_engine::MissionEngine::new(root)
+            .create(&objective, &criteria, &steps)
+            .map_err(|e| format!("{e:#}"))?;
+        serde_json::to_value(&mission).map_err(|e| format!("serialize mission: {e}"))
+    })
+    .await
+    .map_err(|e| format!("mission task failed: {e}"))?
+}
+
+/// Read the mission, its phase and its cited/unmet criteria.
+///
+/// "No mission yet" is a normal answer (`mission: null`) so a fresh workspace
+/// does not render an error. A corrupt or unreadable journal is a different
+/// thing entirely and is returned as an error, so the UI cannot show an empty
+/// mission where the record is actually broken.
+#[tauri::command]
+async fn mission_engine_status(
+    state: tauri::State<'_, EngineState>,
+) -> Result<serde_json::Value, String> {
+    let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
+    tokio::task::spawn_blocking(move || {
+        let engine = zylcode_core::mission_engine::MissionEngine::new(root);
+        if !engine.journal_path().exists() {
+            return Ok(serde_json::json!({
+                "mission": serde_json::Value::Null,
+                "journal_entries": 0,
+                "discarded_partial_tail": false,
+                "repaired_snapshot": false,
+            }));
+        }
+        let (mission, report) = engine
+            .load()
+            .map_err(|e| format!("mission state unreadable: {e:#}"))?;
+        let describe = engine.describe().unwrap_or_default();
+        Ok(serde_json::json!({
+            "mission": mission,
+            "journal_entries": report.entries,
+            "discarded_partial_tail": report.discarded_partial_tail,
+            "repaired_snapshot": report.repaired_snapshot,
+            "describe": describe,
+        }))
+    })
+    .await
+    .map_err(|e| format!("mission task failed: {e}"))?
+}
+
+/// Advance the mission. Every step completion is journaled before this
+/// returns, so closing the app mid-execution loses nothing.
+#[tauri::command]
+async fn mission_engine_resume(
+    approve: bool,
+    state: tauri::State<'_, EngineState>,
+) -> Result<serde_json::Value, String> {
+    let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
+    tokio::task::spawn_blocking(move || {
+        let engine = zylcode_core::mission_engine::MissionEngine::new(root);
+        let progress = engine.resume(approve, None).map_err(|e| format!("{e:#}"))?;
+        let mission = engine.load().map(|(m, _)| m).ok();
+        Ok::<serde_json::Value, String>(serde_json::json!({
+            "progress": progress,
+            "mission": mission,
+        }))
+    })
+    .await
+    .map_err(|e| format!("mission task failed: {e}"))?
+}
+
+/// Cite the proof that satisfies one acceptance criterion.
+#[tauri::command]
+async fn mission_engine_cite(
+    criterion: String,
+    evidence: String,
+    kind: String,
+    summary: Option<String>,
+    state: tauri::State<'_, EngineState>,
+) -> Result<serde_json::Value, String> {
+    iv::ensure_max_chars("criterion", &criterion, iv::MAX_TASK_CHARS).map_err(|e| e.to_string())?;
+    iv::ensure_max_chars("evidence", &evidence, iv::MAX_TASK_CHARS).map_err(|e| e.to_string())?;
+    let summary = summary.unwrap_or_default();
+    iv::ensure_max_chars("summary", &summary, iv::MAX_TASK_CHARS).map_err(|e| e.to_string())?;
+    let kind = evidence_kind(&kind)?;
+    let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
+    tokio::task::spawn_blocking(move || {
+        let mission = zylcode_core::mission_engine::MissionEngine::new(root)
+            .cite(&criterion, &evidence, kind, &summary)
+            .map_err(|e| format!("{e:#}"))?;
+        serde_json::to_value(&mission).map_err(|e| format!("serialize mission: {e}"))
+    })
+    .await
+    .map_err(|e| format!("mission task failed: {e}"))?
+}
+
+/// Stop the mission with a recorded reason. Terminal missions are refused.
+#[tauri::command]
+async fn mission_engine_cancel(
+    reason: String,
+    state: tauri::State<'_, EngineState>,
+) -> Result<serde_json::Value, String> {
+    iv::ensure_max_chars("reason", &reason, iv::MAX_TASK_CHARS).map_err(|e| e.to_string())?;
+    let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
+    tokio::task::spawn_blocking(move || {
+        let mission = zylcode_core::mission_engine::MissionEngine::new(root)
+            .cancel(&reason)
+            .map_err(|e| format!("{e:#}"))?;
+        serde_json::to_value(&mission).map_err(|e| format!("serialize mission: {e}"))
+    })
+    .await
+    .map_err(|e| format!("mission task failed: {e}"))?
+}
+
 /// Drain one queued mission for real (best-of-n or plan generation).
 #[tauri::command]
 async fn mission_run_next(
@@ -1657,6 +1814,11 @@ fn main() {
             mission_enqueue,
             missions_list,
             mission_run_next,
+            mission_engine_create,
+            mission_engine_status,
+            mission_engine_resume,
+            mission_engine_cite,
+            mission_engine_cancel,
             repo_search,
             repo_file_tree,
             file_content,
