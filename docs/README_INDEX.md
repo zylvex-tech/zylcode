@@ -116,6 +116,22 @@ evidence of capability would repeat the exact error the Phase 2A audit caught.
 `docs/STRATEGIC_PLAN.md`, which already carries a SUPERSEDED banner. The lowercase root copy has no
 banner and makes market-leadership claims. Both are historical; the governance set supersedes both.
 
+### 4.3 Root-level notes triaged (2026-11-17)
+
+Two further untracked root notes were quarantined instead of being committed as live prose:
+`MCP_TRUTH_RECONCILIATION.md` (a dated, unmaintained reconciliation written against HEAD `d6ab7c8`,
+superseded by `capability-registry.json` as the source of truth) and
+`composio_integration_plan.md` (an unimplemented integration proposal that specifies modules which
+do not exist, and predates the Phase 5 _Extension ABI first_ rule). Both are now in
+[`archive/2026-root-reports/`](archive/2026-root-reports/INDEX.md).
+
+Deleted in the same sweep rather than archived: four `.bak` copies of tracked `Cargo.lock` and
+`Cargo.toml` files, and `Phase2B_Completion_Report.md`. The last one declared Phase 2B
+"ENGINEERING COMPLETE — CLOSED", cited 3/3 "proven" real-server MCP tests for a test file that does
+not exist, and stated that no further audit cycles were authorized. `phase-status.json` records 2B
+as READY with only the B2 slice shipped, so the report was a stale self-certification; removing it
+deleted a false claim, not a record. `*.bak` and `/screenshots/` are now ignored.
+
 ---
 
 ## 5. The phase-numbering hazard, restated
