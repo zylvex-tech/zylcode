@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "_comment": "Executable probes for capability-registry claims. Validated by scripts/check_capability_probes.py. A probe must run; a capability listed in policy.must_probe must have one or CI fails. Grow must_probe as capabilities earn real assertions.",
+  "policy": {
+    "must_probe": [
+      "rust_symbol_index",
+      "typescript_symbol_index",
+      "repository_query_api",
+      "repository_scanner",
+      "package_dependency_graph",
+      "repository_benchmark",
+      "context_retrieval"
+    ],
+    "unprobed": {}
+  },
+  "probes": {
+    "rust_symbol_index": [
+      {
+        "kind": "cargo_test",
+        "package": "zylcode-core",
+        "test": "intelligence::symbols::tests::extract_rust_struct",
+        "source": "crates/zylcode-core/src/intelligence/symbols.rs"
+      },
+      {
+        "kind": "cargo_test",
+        "package": "zylcode-core",
+        "test": "intelligence::symbols::tests::extract_rust_impl_methods",
+        "source": "crates/zylcode-core/src/intelligence/symbols.rs"
+      }
+    ],
+    "typescript_symbol_index": [
+      {
+        "kind": "cargo_test",
+        "package": "zylcode-core",
+        "test": "intelligence::symbols::tests::extract_ts_class",
+        "source": "crates/zylcode-core/src/intelligence/symbols.rs"
+      },
+      {
+        "kind": "cargo_test",
+        "package": "zylcode-core",
+        "test": "intelligence::query::tests::build_repo_query_indexes_typescript_symbols",
+        "source": "crates/zylcode-core/src/intelligence/query.rs"
+      },
+      {
+        "kind": "cargo_test",
+        "package": "zylcode-cli",
+        "test": "repo_symbols_returns_a_typescript_symbol",
+        "source": "crates/zylcode-cli/tests/trust_surfaces.rs"
+      }
+    ],
+    "repository_query_api": [
+      {
+        "kind": "cargo_test",
+        "package": "zylcode-core",
+        "test": "intelligence::query::tests::find_symbol_test",
+        "source": "crates/zylcode-core/src/intelligence/query.rs"
+      },
+      {
+        "kind": "cargo_test",
+        "package": "zylcode-core",
+        "test": "intelligence::query::tests::symbols_in_file_test",
+        "source": "crates/zylcode-core/src/intelligence/query.rs"
+      }
+    ],
+    "repository_scanner": [
+      {
+        "kind": "cargo_test",
+        "package": "zylcode-core",
+        "test": "intelligence::scanner::tests::scan_finds_source_files",
+        "source": "crates/zylcode-core/src/intelligence/scanner.rs"
+      },
+      {
+        "kind": "cargo_test",
+        "package": "zylcode-core",
+        "test": "intelligence::scanner::tests::scan_excludes_secret_files",
+        "source": "crates/zylcode-core/src/intelligence/scanner.rs"
+      }
+    ],
+    "package_dependency_graph": [
+      {
+        "kind": "cargo_test",
+        "package": "zylcode-core",
+        "test": "intelligence::dependency::tests::package_dependency_graph",
+        "source": "crates/zylcode-core/src/intelligence/dependency.rs"
+      },
+      {
+        "kind": "cargo_test",
+        "package": "zylcode-core",
+        "test": "intelligence::dependency::tests::reverse_dependency_graph",
+        "source": "crates/zylcode-core/src/intelligence/dependency.rs"
+      }
+    ],
+    "repository_benchmark": [
+      {
+        "kind": "cargo_test",
+        "package": "zylcode-core",
+        "test": "benchmark_repository_intelligence",
+        "source": "crates/zylcode-core/tests/repo_intelligence_benchmark.rs"
+      }
+    ],
+    "context_retrieval": [
+      {
+        "kind": "cargo_test",
+        "package": "zylcode-core",
+        "test": "benchmark_repository_intelligence",
+        "source": "crates/zylcode-core/tests/repo_intelligence_benchmark.rs"
+      }
+    ]
+  }
+}

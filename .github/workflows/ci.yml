@@ -144,6 +144,38 @@ jobs:
         # auditor's word, and a script that pretended otherwise would be the
         # same hand-assertion the model forbids.
 
+      - name: Capability probe gate
+        run: |
+          python scripts/check_capability_probes.py
+          python scripts/check_capability_probes.py --self-test
+        # A registry entry is a claim; a probe is the thing that can fail. Every
+        # capability in `policy.must_probe` must name a real test (source file
+        # must declare the `fn`), an existing file, or a command with an
+        # expected outcome. This is the gate that would have caught Phase 2A's
+        # unreachable TypeScript extractor a year before the audit did.
+        #
+        # `--strict` (every GREEN R3+ claim needs a probe or a declared reason)
+        # is the destination, not the starting point: forcing it across all 31
+        # entries today would manufacture 31 probes, which is the failure mode
+        # this repository keeps recovering from. The run prints coverage so the
+        # remaining gap is visible in every CI log.
+
+      - name: Roadmap status board is generated, not hand-edited
+        run: |
+          python scripts/render_status_board.py --check
+          python scripts/render_status_board.py --self-test
+        # The status table used to be hand-maintained: three PRs in one day
+        # conflicted only on its whitespace, and branches cut before a verdict
+        # shipped a stale "2A RE-OPENED" section. The board is now rendered
+        # from docs/governance/phase-status.json, and this step fails on drift.
+
+      - name: Question-set freeze gate
+        run: python scripts/freeze_question_set.py --self-test
+        # C4: an acceptance benchmark's questions must not move after scoring.
+        # When a set exists, this step also runs `--check` for it, so the lock
+        # and the questions cannot disagree. No set has been frozen yet; see
+        # docs/governance/PREREGISTERED_QUESTIONS.md, which says so plainly.
+
       # ---------------------------------------------------------------------
       # Security gates (added 2026-10-21, Phase 1)
       # ---------------------------------------------------------------------
