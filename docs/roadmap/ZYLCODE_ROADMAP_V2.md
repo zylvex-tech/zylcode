@@ -214,10 +214,11 @@ Q5/Q6/Q10 non-zero. 9. Resolve the failing `router::tests::synthetic_offline_dis
 
 ---
 
-## Phase 2B — Repository Reasoning & Impact Analysis 🚫 BLOCKED
+## Phase 2B — Repository Reasoning & Impact Analysis ⏸ READY — NOT STARTED
 
-**Blocked by** — 2A re-acceptance. Reasoning over a polluted index yields confidently wrong
-answers, which is worse than no answers.
+**Gate** — cleared 2026-11-16: Phase 2A was accepted with conditions, so reasoning over the index
+is now permitted. Reasoning over a polluted index would still yield confidently wrong answers,
+which is why the gate existed in the first place.
 
 **Objective** — Turn the graph into actionable engineering intelligence.
 
@@ -238,6 +239,11 @@ answers, which is worse than no answers.
 
 **Entry points** — `zylcode repo context <task>` · `zylcode repo impact <symbol>` ·
 `AgentLoop::assemble_context`.
+
+**Design and plan** — [`docs/architecture/IMPACT_ANALYSIS.md`](../architecture/IMPACT_ANALYSIS.md).
+It fixes the report contract (a reason per item, mandatory unknowns, visible confidence), stages
+B1–B6, and folds Phase 2A audit conditions C1 (TypeScript symbols in the pipeline), C4
+(independently authored scenarios) and C6 (semantic resolution) into named slices.
 
 **Benchmark** — `Precision@10 ≥ 0.60` and `Recall@10 ≥ 0.60` on ≥ 20 known-answer questions;
 Q5/Q6/Q10 non-zero; index scoped to repository source with the scope asserted in a test.
