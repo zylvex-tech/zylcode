@@ -48,6 +48,16 @@ desktop.ini
 *.swo
 *~
 
+# Editor and script backups. These are pre-edit copies (e.g. Cargo.toml.bak from a
+# dependency bump); the tracked file is always the authoritative one.
+*.bak
+
+# Local Desktop acceptance captures. They are not evidence of an accepted phase —
+# the Design Studio walkthrough they come from was never executed interactively —
+# and leaving them trackable put 11 untracked PNGs into the repository index
+# corpus, which the 2026-11-16 Phase 2A audit flagged.
+/screenshots/
+
 # Logs
 logs
 *.log
