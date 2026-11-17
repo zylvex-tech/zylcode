@@ -37,7 +37,7 @@
       "id": "2B",
       "title": "Repository Reasoning & Impact Analysis",
       "state": "READY",
-      "detail": "contract written, engine not started",
+      "detail": "B2 import-closure impact shipped; deeper slices not started",
       "rung": "—",
       "blocks": "3A",
       "emphasis": true

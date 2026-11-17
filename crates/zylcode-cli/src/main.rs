@@ -61,6 +61,10 @@ enum Commands {
         name: String,
     },
 
+    /// Impact analysis (Phase 2B): what would changing this file or symbol
+    /// touch, why, and what could not be determined.
+    Impact(ImpactArgs),
+
     /// Scan repository text for instruction-shaped content addressed at a
     /// model (prompt injection) and for hidden unicode controls. Repository
     /// content is untrusted input; this reports it instead of obeying it.
@@ -558,6 +562,81 @@ fn handle_repo_symbols(workspace: &str, name: &str) -> Result<()> {
     Ok(())
 }
 
+#[derive(Args, Debug)]
+struct ImpactArgs {
+    /// Repository-relative file the change touches.
+    #[arg(long)]
+    file: Option<String>,
+
+    /// Symbol name the change touches.
+    #[arg(long)]
+    symbol: Option<String>,
+
+    /// How many import hops to follow.
+    #[arg(long, default_value_t = 2)]
+    depth: u8,
+
+    /// Emit the report as JSON.
+    #[arg(long, default_value_t = false)]
+    json: bool,
+}
+
+/// `zylcode impact --file <path>` / `--symbol <name>` — Phase 2B impact report.
+///
+/// Exit 1 when the change is not indexed, because an empty report and a report
+/// about nothing are different answers.
+fn handle_impact(workspace: &str, args: ImpactArgs) -> Result<()> {
+    use zylcode_core::intelligence::impact::{self, ChangeSpec};
+
+    let change = match (&args.file, &args.symbol) {
+        (Some(file), None) => ChangeSpec::File(file.clone()),
+        (None, Some(symbol)) => ChangeSpec::Symbol(symbol.clone()),
+        _ => anyhow::bail!("pass exactly one of --file <path> or --symbol <name>"),
+    };
+
+    let root = std::path::Path::new(workspace)
+        .canonicalize()
+        .map_err(|e| anyhow::anyhow!("cannot resolve workspace '{}': {e}", workspace))?;
+    let query = zylcode_core::intelligence::persisted::PersistedIndex::new(&root).build()?;
+    let report = impact::analyze(&query, &change, args.depth);
+
+    if args.json {
+        println!("{}", serde_json::to_string_pretty(&report)?);
+    } else {
+        println!("change: {}", report.change);
+        println!(
+            "confidence: {} — {}",
+            report.confidence, report.confidence_reason
+        );
+        for (title, items) in [
+            ("directly affected", &report.directly_affected),
+            ("transitively affected", &report.transitively_affected),
+            ("tests at risk", &report.tests_at_risk),
+        ] {
+            println!("{title} ({}):", items.len());
+            for item in items {
+                println!(
+                    "  {} [{}, depth {}] — {}",
+                    item.subject,
+                    item.relation.as_str(),
+                    item.depth,
+                    item.reason
+                );
+            }
+        }
+        println!("not determined:");
+        for unknown in &report.unknowns {
+            println!("  - {unknown}");
+        }
+    }
+
+    if report.directly_affected.is_empty() {
+        eprintln!("the change is not in the index; nothing was inferred");
+        std::process::exit(1);
+    }
+    Ok(())
+}
+
 /// `zylcode trust-scan <path>` — report instruction-shaped repository text.
 /// Exit 1 when anything high-severity is found, so this can gate a repository.
 fn handle_trust_scan(path: &str) -> Result<()> {
@@ -635,6 +714,10 @@ async fn main() -> Result<()> {
                 .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new(filter)),
         )
         .with_target(false)
+        // Logs go to stderr: stdout carries command output, and a command with
+        // `--json` must emit nothing but JSON. A log line on stdout is not a
+        // cosmetic issue — it makes machine-readable output unparseable.
+        .with_writer(std::io::stderr)
         .init();
 
     let engine = ZylCodeEngine::new(EngineConfig {
@@ -652,6 +735,7 @@ async fn main() -> Result<()> {
         Commands::RepoContext { task } => handle_repo_context(&cli.workspace, &task),
         Commands::RepoSymbols { name } => handle_repo_symbols(&cli.workspace, &name),
         Commands::TrustScan { path } => handle_trust_scan(&path),
+        Commands::Impact(args) => handle_impact(&cli.workspace, args),
         Commands::ServeIntel(args) => handle_serve_intel(&cli.workspace, args).await,
         Commands::BestOfN(args) => handle_best_of_n(&cli.workspace, args).await,
         Commands::Package(args) => handle_package(&cli.workspace, args).await,
