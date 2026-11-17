@@ -88,22 +88,20 @@
       "details": "Cannot claim complete without evidence"
     },
     "observation_loop": {
-      "status": "GREEN",
+      "status": "PARTIAL",
       "rung": "R2",
       "rung_basis": "Backfilled 2026-11-11: status is GREEN, but the recorded evidence is a passing unit test, which ZYLCODE_CAPABILITY_MODEL 4.2 explicitly says cannot support GREEN (R2 evidence). Rung recorded at R2; the status/rung inconsistency is declared here rather than resolved, and is listed in docs/PHASE2A_COMPLETION_REPORT.md section 10.",
-      "rung_conflict": true,
-      "rung_conflict_reason": "GREEN requires R3 per ZYLCODE_CAPABILITY_MODEL 4.2; evidence is unit-test only (R2). Declared for the auditor; status deliberately unchanged in this backfill.",
       "evidence": "test_observation_loop passes, tool results fed back to model",
-      "details": "Model receives tool observations for next decision"
+      "details": "Model receives tool observations for next decision",
+      "limitations": "Downgraded from GREEN to PARTIAL on 2026-11-17 (verdict condition C3): the evidence is a unit test, not a product surface, so R3 is not earned."
     },
     "repair_loop": {
-      "status": "GREEN",
+      "status": "PARTIAL",
       "rung": "R2",
       "rung_basis": "Backfilled 2026-11-11: status is GREEN, but the recorded evidence is a passing unit test, which ZYLCODE_CAPABILITY_MODEL 4.2 explicitly says cannot support GREEN (R2 evidence). Rung recorded at R2; the status/rung inconsistency is declared here rather than resolved, and is listed in docs/PHASE2A_COMPLETION_REPORT.md section 10.",
-      "rung_conflict": true,
-      "rung_conflict_reason": "GREEN requires R3 per ZYLCODE_CAPABILITY_MODEL 4.2; evidence is unit-test only (R2). Declared for the auditor; status deliberately unchanged in this backfill.",
       "evidence": "test_repair_loop passes, failures trigger repair attempts",
-      "details": "Agent can recover from failures"
+      "details": "Agent can recover from failures",
+      "limitations": "Downgraded from GREEN to PARTIAL on 2026-11-17 (verdict condition C3): the evidence is a unit test, not a product surface, so R3 is not earned."
     },
     "bounded_execution": {
       "status": "GREEN",
@@ -120,13 +118,12 @@
       "details": "Tools classified by risk level"
     },
     "test_model_client": {
-      "status": "GREEN",
+      "status": "PARTIAL",
       "rung": "R2",
       "rung_basis": "Backfilled 2026-11-11: status is GREEN, but the recorded evidence is a passing unit test, which ZYLCODE_CAPABILITY_MODEL 4.2 explicitly says cannot support GREEN (R2 evidence). Rung recorded at R2; the status/rung inconsistency is declared here rather than resolved, and is listed in docs/PHASE2A_COMPLETION_REPORT.md section 10.",
-      "rung_conflict": true,
-      "rung_conflict_reason": "GREEN requires R3 per ZYLCODE_CAPABILITY_MODEL 4.2; evidence is unit-test only (R2). Declared for the auditor; status deliberately unchanged in this backfill.",
       "evidence": "TestModelClient provides deterministic responses for CI",
-      "details": "Enables reliable testing without real API calls"
+      "details": "Enables reliable testing without real API calls",
+      "limitations": "Downgraded from GREEN to PARTIAL on 2026-11-17 (verdict condition C3): the evidence is a unit test, not a product surface, so R3 is not earned."
     },
     "remote_ci": {
       "status": "PARTIAL",
@@ -244,13 +241,11 @@
       "dispute_resolution": "Resolved by the independent audit of 2026-11-16: R3 confirmed through a product surface. Dispute history below is retained, not erased."
     },
     "typescript_symbol_index": {
-      "status": "DISPUTED",
-      "evidence": "Regex-based extraction for class, interface, type, function, variable, component",
+      "status": "GREEN",
+      "evidence": "build_repo_query() indexes TypeScript/JavaScript symbols (intelligence::query), and `zylcode repo-symbols Widget` returns a TypeScript class through the persisted index. Bound by probes: build_repo_query_indexes_typescript_symbols and repo_symbols_returns_a_typescript_symbol (docs/capability-probes.json).",
       "details": "QUALITY: DEFINITION_INDEXED; full semantic resolution is future work",
       "status_before_audit": "GREEN",
-      "rung": "R2",
-      "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
-      "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6.",
+      "rung": "R3",
       "p12_rebaseline": {
         "date": "2026-09-19",
         "rung": "R2",
@@ -260,8 +255,8 @@
         "dispute_history_preserved": true,
         "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
       },
-      "rung_basis": "Auditor ruling 2026-11-16 (docs/governance/PHASE2A_AUDIT_VERDICT_2026-11-16.md): C1: the TypeScript extractor exists in symbols.rs but build_repo_query() only extracts Language::Rust symbols, so no product surface exercises it; remains R2 until it is wired into the pipeline.",
-      "verified_at": "2026-11-16"
+      "rung_basis": "Phase 2A verdict condition C1 closed on 2026-11-17: pipeline wiring (#74) plus a product surface (#76) plus process-level probes; the previous dispute was that only a test could reach it.",
+      "verified_at": "2026-11-17"
     },
     "package_dependency_graph": {
       "status": "GREEN",
@@ -441,11 +436,11 @@
   },
   "summary": {
     "total": 37,
-    "GREEN": 31,
+    "GREEN": 29,
     "EXTERNAL_BLOCKER": 0,
-    "PARTIAL": 3,
-    "DISPUTED": 3,
-    "note": "Phase 2A was ACCEPTED WITH CONDITIONS on 2026-11-16 (docs/governance/PHASE2A_AUDIT_VERDICT_2026-11-16.md): 9 disputed entries were confirmed R3 and promoted to GREEN; 3 remain R2/DISPUTED per conditions C1 and C2. Three pre-existing GREEN/R2 conflicts are unresolved by verdict condition C3. remote_ci was re-stated on 2026-11-17 because the recorded billing blocker no longer matches observed CI."
+    "PARTIAL": 6,
+    "DISPUTED": 2,
+    "note": "Phase 2A was ACCEPTED WITH CONDITIONS on 2026-11-16 (docs/governance/PHASE2A_AUDIT_VERDICT_2026-11-16.md). On 2026-11-17, condition C1 was closed and typescript_symbol_index promoted to GREEN/R3 with probes; condition C3 was resolved by downgrading observation_loop, repair_loop and test_model_client to PARTIAL rather than keeping declared GREEN/R2 conflicts. repository_benchmark and documentation_accuracy remain DISPUTED (conditions C2/C4)."
   },
   "audit": {
     "status": "UNDER CORRECTION",

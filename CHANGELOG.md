@@ -10,6 +10,14 @@ notes and in `README.md` history. A version is only listed here once it is on
 
 ### Added
 
+- **Impact analysis (Phase 2B, slice B2)** — `zylcode impact --file <path>` /
+  `--symbol <name>`: resolves TypeScript/JavaScript relative imports and Rust `use`
+  module paths into a file-level graph, then reports directly and transitively
+  affected files, tests at risk, a confidence with its basis, and mandatory
+  `unknowns` (no call graph, no re-exports/aliases, depth bound). Each entry names
+  the edge that produced it. An unindexed change returns an unknown and exit 1
+  instead of an empty confident answer. (#78)
+
 - **Repository symbols from the CLI** (`zylcode repo-symbols <name>`): resolves a
   symbol through the persisted index the agent uses. This is the product surface
   that makes `typescript_symbol_index` a capability rather than an extractor.
@@ -38,6 +46,14 @@ notes and in `README.md` history. A version is only listed here once it is on
 
 ### Changed
 
+- **Registry truth, conditions C1 and C3.** `typescript_symbol_index` promoted to
+  GREEN/R3 now that the pipeline and `repo-symbols` both reach it; `observation_loop`,
+  `repair_loop` and `test_model_client` downgraded from GREEN to PARTIAL because their
+  evidence is unit-test only, which does not earn R3. Registry now: 29 GREEN /
+  2 DISPUTED / 6 PARTIAL. (#78)
+- **Phase 2B status** is now "B2 import-closure impact shipped; deeper slices not
+  started" rather than contract-only. (#78)
+
 - **Repository indexing now extracts TypeScript and JavaScript symbols** in the
   canonical query path, not only Rust. (#74)
 - `remote_ci` in the capability registry is re-stated as PARTIAL/R2: CI is green
@@ -51,6 +67,9 @@ notes and in `README.md` history. A version is only listed here once it is on
 
 ### Fixed
 
+- **CLI logs go to stderr**, so `--json` output is parseable. A tracing log line on
+  stdout previously corrupted machine-readable output. (#78)
+
 - A relative `cwd` for terminal commands resolves against the workspace root
   (pre-existing behaviour, now covered by a test that was flaky on CI runners).
   (#75)
@@ -63,7 +82,8 @@ notes and in `README.md` history. A version is only listed here once it is on
   bundles are missing.
 - Phase 3B: missions are not yet persisted inside the Project System, and ledger
   evidence has no replay tooling.
-- Phase 2B has a contract and no engine.
+- Phase 2B has its first slice (B2 import closure) and no test-selection, contract or
+  call-graph analysis; `Calls` remains unresolved and every report says so.
 - No signed installers; the tagged packaging matrix has not been rehearsed for
   this head.
 

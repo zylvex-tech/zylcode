@@ -36,8 +36,13 @@ conditions close. Those conditions (C1–C6) are tracked in the verdict, not her
 - **C1 is done.** `build_repo_query()` indexed Rust only while the extractor already
   understood TypeScript — so no product surface could return a TypeScript symbol.
   It now indexes Rust/TypeScript/JavaScript, and `zylcode repo-symbols <name>`
-  resolves one through the same persisted index the agent uses. The registry entry
-  is still DISPUTED until the promotion is recorded with its evidence.
+  resolves one through the same persisted index the agent uses. The registry entry is
+  now **GREEN/R3**, bound by two probes rather than by assertion.
+- **Impact analysis, first slice.** `zylcode impact --file <path>` / `--symbol <name>`
+  follows file-level imports to say what a change would touch, why each file is on the
+  list, which tests are at risk, and what it could not determine (no call graph, no
+  re-exports, depth-bounded). Every entry carries a reason; an unindexed change returns
+  an unknown instead of an empty confident answer.
 - **Phase 3A slice:** the project store is at schema v2 with an append-only decision
   history, restart survival, export/import and `zylcode project status`. It now takes
   an OS advisory lock, so the CLI and desktop can no longer interleave writes and
@@ -168,7 +173,7 @@ promise about a hosted service.
 
 The authoritative row-by-row ledger, including which of these are disputed, is
 [`docs/capability-registry.json`](docs/capability-registry.json): 37 entries —
-31 GREEN, **3 DISPUTED**, 3 PARTIAL. Builders do not certify their own work
+29 GREEN, **2 DISPUTED**, 6 PARTIAL. Builders do not certify their own work
 ([`CONTRIBUTING.md`](CONTRIBUTING.md)).
 
 ---
@@ -397,10 +402,11 @@ Things a reader might reasonably assume, which this repository does **not** do y
   `synthetic` flag stop at the boundary. The UI cannot yet show why a response ended.
 - **Provider editing is desktop-only.** The browser preview renders the live chain
   read-only (capture `17`); changing keys or testing a connection needs the Tauri runtime.
-- **Acceptance is not self-granted.** 3 of 37 registry entries remain disputed after the
-  2026-11-16 verdict — `typescript_symbol_index` (wiring landed, promotion not yet
-  recorded), `repository_benchmark` and `documentation_accuracy` (conditions C2/C4).
-  Those entries stay disputed here until their own evidence lands.
+- **Acceptance is not self-granted.** 2 of 37 registry entries remain disputed after the
+  2026-11-16 verdict — `repository_benchmark` and `documentation_accuracy` (conditions
+  C2/C4). `typescript_symbol_index` closed its condition and was promoted on 2026-11-17;
+  three GREEN/R2 entries were downgraded to PARTIAL rather than left as declared
+  conflicts (condition C3).
 - **Computer use is simulation.** Nothing drives a screen
   ([`docs/governance/MAIN_STATUS_REPORT_2026-10-11.md`](docs/governance/MAIN_STATUS_REPORT_2026-10-11.md)).
 - **No signed installers.** Source checkout is the supported path today.
