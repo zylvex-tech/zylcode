@@ -26,7 +26,7 @@ opentelemetry = { version = "0.28", features = ["trace"] }
 opentelemetry_sdk = { version = "0.28", features = ["trace"] }
 opentelemetry-otlp = { version = "0.28", features = ["tonic"] }
 opentelemetry-stdout = { version = "0.28" }
-tracing-opentelemetry = "0.28"
+tracing-opentelemetry = "0.34"
 http = "1"
 
 [dev-dependencies]
