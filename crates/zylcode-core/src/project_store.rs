@@ -30,6 +30,7 @@
 //!   v1 records migrate by gaining a `schema_migrated` decision, so the change
 //!   is visible in the project's own history rather than only in a log.
 
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
@@ -139,11 +140,21 @@ struct ProjectsDocument {
 
 /// File-backed project store. All mutation is serialized by an internal
 /// mutex; `state` is interior-mutable so read paths can report what they saw.
+///
+/// The internal mutex only serializes threads *in this process*. Two
+/// processes — the CLI and the desktop, which both open the same
+/// `.zylcode/projects.json` — would otherwise interleave read-modify-write
+/// cycles and lose a decision or a record. `_file_lock` is an OS advisory lock
+/// on `<store>.lock`, held for the store's whole lifetime, so the second
+/// process fails loudly with a nameable error instead of silently clobbering
+/// the first. The OS releases it if the holder dies, which is why this is a
+/// file lock and not a PID file.
 #[derive(Debug)]
 pub struct ProjectStore {
     path: PathBuf,
     lock: Mutex<()>,
     state: Mutex<ProjectStoreState>,
+    _file_lock: fs::File,
 }
 
 /// Where project state is persisted (env override → `<root>/.zylcode/projects.json`).
@@ -152,6 +163,62 @@ pub fn projects_path(root: &Path) -> PathBuf {
         return PathBuf::from(p);
     }
     root.join(".zylcode").join("projects.json")
+}
+
+/// How long `open` waits for another process to release the store before it
+/// reports the contention. A store open is fast; two seconds of waiting covers
+/// a CLI command finishing while the desktop starts, and anything longer means
+/// a human should look.
+const STORE_LOCK_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(2);
+const STORE_LOCK_POLL: std::time::Duration = std::time::Duration::from_millis(20);
+
+/// `<store>.lock` beside the store file. Never deleted: removing a lock file
+/// while another process holds it reintroduces the race the lock exists to
+/// prevent.
+fn store_lock_path(path: &Path) -> PathBuf {
+    let mut os = path.as_os_str().to_os_string();
+    os.push(".lock");
+    PathBuf::from(os)
+}
+
+/// Take the cross-process advisory lock, or fail with an error an operator can
+/// act on. The lock is released when the returned file is dropped, and by the
+/// OS if the holder dies.
+fn acquire_store_lock(path: &Path) -> Result<fs::File> {
+    let lock_path = store_lock_path(path);
+    let file = fs::OpenOptions::new()
+        .create(true)
+        .read(true)
+        .write(true)
+        .truncate(false)
+        .open(&lock_path)
+        .with_context(|| format!("failed to open lock file {}", lock_path.display()))?;
+    let deadline = std::time::Instant::now() + STORE_LOCK_TIMEOUT;
+    loop {
+        match fs2::FileExt::try_lock_exclusive(&file) {
+            Ok(()) => return Ok(file),
+            Err(err) if is_lock_contention(&err) => {
+                if std::time::Instant::now() >= deadline {
+                    anyhow::bail!(
+                        "project store is in use by another process: {} (waited {}s). \
+                         Close the other ZylCode surface and retry; nothing was modified.",
+                        path.display(),
+                        STORE_LOCK_TIMEOUT.as_secs()
+                    );
+                }
+                std::thread::sleep(STORE_LOCK_POLL);
+            }
+            Err(err) => {
+                return Err(err).with_context(|| format!("failed to lock {}", lock_path.display()))
+            }
+        }
+    }
+}
+
+/// Windows reports a held lock as `ERROR_LOCK_VIOLATION` (33) rather than the
+/// portable `WouldBlock`, so both are treated as contention.
+fn is_lock_contention(err: &std::io::Error) -> bool {
+    err.kind() == std::io::ErrorKind::WouldBlock || err.raw_os_error() == Some(33)
 }
 
 /// Strip the Windows verbatim (`\\?\`) prefix `std::fs::canonicalize` adds.
@@ -246,16 +313,23 @@ fn read_document(path: &Path) -> (Result<Vec<ProjectRecord>>, ProjectStoreState)
 }
 
 impl ProjectStore {
-    /// Open (or initialize) the store at its path. Fails hard only on
-    /// corrupt/future stores — the operator must see and repair those.
+    /// Open (or initialize) the store at its path. Fails hard on
+    /// corrupt/future stores — the operator must see and repair those — and on
+    /// a store another process is holding.
     pub fn open(root: &Path) -> Result<Self> {
         let path = projects_path(root);
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)
+                .with_context(|| format!("failed to create {}", parent.display()))?;
+        }
+        let file_lock = acquire_store_lock(&path)?;
         let (records, state) = read_document(&path);
         let records = records?;
         let store = Self {
             path,
             lock: Mutex::new(()),
             state: Mutex::new(state),
+            _file_lock: file_lock,
         };
         if matches!(
             store.current_state(),
@@ -826,5 +900,36 @@ mod tests {
         let listed = store.list().unwrap();
         assert_eq!(listed[0].id, a.id);
         assert_eq!(listed[1].id, b.id);
+    }
+
+    /// Two surfaces (CLI and desktop) open the same store. Without an OS lock
+    /// the second read-modify-write cycle silently eats the first's record; the
+    /// store refuses instead, and says so.
+    #[test]
+    fn a_second_process_holding_the_store_is_refused_then_released() {
+        let (_g, dir) = isolated();
+        let first = ProjectStore::open(dir.path()).expect("first open");
+
+        let err = ProjectStore::open(dir.path()).expect_err("second open must be refused");
+        let message = format!("{err:#}");
+        assert!(
+            message.contains("in use by another process"),
+            "error must name the contention, got: {message}"
+        );
+
+        drop(first);
+        ProjectStore::open(dir.path()).expect("lock is released with the store");
+    }
+
+    /// A lock file left behind by a dead holder must not wedge the store: the
+    /// OS releases advisory locks on process exit, so a fresh open succeeds.
+    #[test]
+    fn a_stale_lock_file_does_not_block_a_fresh_open() {
+        let (_g, dir) = isolated();
+        let lock = store_lock_path(&projects_path(dir.path()));
+        std::fs::create_dir_all(lock.parent().unwrap()).unwrap();
+        std::fs::write(&lock, b"leftover from a killed process").unwrap();
+
+        ProjectStore::open(dir.path()).expect("stale lock file must not block opening");
     }
 }

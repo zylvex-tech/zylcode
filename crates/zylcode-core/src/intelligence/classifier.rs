@@ -321,6 +321,69 @@ pub fn is_secret_file(path: &Path) -> bool {
 mod tests {
     use super::*;
 
+    /// `docs/architecture/LANGUAGE_COVERAGE.md` is the public statement of what
+    /// is parsed per language. This parses that table and fails when the
+    /// document and `support_level()` disagree — the documentation claim is
+    /// checked by the code rather than trusted.
+    #[test]
+    fn documented_language_coverage_matches_support_level() {
+        const DOC: &str = include_str!("../../../../docs/architecture/LANGUAGE_COVERAGE.md");
+
+        let mut checked = 0;
+        for line in DOC.lines() {
+            let cells: Vec<&str> = line.split('|').map(str::trim).collect();
+            // Rows look like: "" | Rust | .rs | Parsed | symbols | note | ""
+            if cells.len() < 7 {
+                continue;
+            }
+            let (name, support, symbols) = (cells[1], cells[3], cells[4]);
+            let language = match name {
+                "Rust" => Language::Rust,
+                "TypeScript" => Language::TypeScript,
+                "JavaScript" => Language::JavaScript,
+                "Json" => Language::Json,
+                "Toml" => Language::Toml,
+                "Yaml" => Language::Yaml,
+                "Markdown" => Language::Markdown,
+                "Html" => Language::Html,
+                "Css" => Language::Css,
+                "Shell" => Language::Shell,
+                _ => continue,
+            };
+            let expected = match support {
+                "Parsed" => LanguageSupport::Parsed,
+                "Detected" => LanguageSupport::Detected,
+                other => panic!("{name}: unknown support value in the doc: {other}"),
+            };
+            assert_eq!(
+                super::support_level(&language),
+                expected,
+                "{name}: LANGUAGE_COVERAGE.md says {support}, classifier disagrees"
+            );
+            if symbols == "symbols" {
+                let sample = match language {
+                    Language::Rust => "pub struct Documented {}",
+                    _ => "export class Documented {}",
+                };
+                assert!(
+                    !crate::intelligence::symbols::extract_symbols(
+                        "doc",
+                        std::path::Path::new("doc"),
+                        sample,
+                        &language
+                    )
+                    .is_empty(),
+                    "{name}: doc claims symbol extraction, extractor returned nothing"
+                );
+            }
+            checked += 1;
+        }
+        assert_eq!(
+            checked, 10,
+            "the coverage table must document all ten languages"
+        );
+    }
+
     #[test]
     fn classify_rust_source() {
         let lang = classify_language(Path::new("src/agent.rs"));
