@@ -11,6 +11,7 @@ use zylcode_mcp::{DynamicTool, McpToolConfig, McpTransport};
 
 use crate::agent_protocol::*;
 use crate::context_builder::ContextBuilder;
+use crate::intelligence::impact::{Impact, ImpactReport};
 use crate::ledger::{ExecutionState, LedgerEntry, LedgerStore, SessionCheckpoint};
 use zylcode_mcp::real_tools::RiskLevel;
 
@@ -1442,12 +1443,94 @@ present an inference as a graph fact.",
         }
     }
 
+    /// Tool ids that modify the working tree.
+    ///
+    /// An explicit list, not an `fs.` prefix test: `fs.read` is an `fs.` tool, and
+    /// treating a read as an edit would spend an index build on every file the
+    /// agent opens.
+    fn edited_path(tool_call: &ToolCallRequest) -> Option<&str> {
+        const EDIT_TOOLS: &[&str] = &[
+            "fs.write",
+            "fs.edit",
+            "fs.delete",
+            "apply_patch",
+            "str_replace",
+        ];
+        if !EDIT_TOOLS.contains(&tool_call.tool_id.as_str()) {
+            return None;
+        }
+        tool_call.arguments.get("path").and_then(|v| v.as_str())
+    }
+
+    /// The pre-edit impact block the model sees before a write.
+    ///
+    /// Three things are deliberate: every entry carries the relation and the
+    /// reason that produced it (a bare list is a guess with better formatting);
+    /// the unknowns are quoted rather than summarised; and the closing line says
+    /// what the report is not, because an import closure read as a call graph
+    /// would be believed past its evidence.
+    fn format_pre_edit_impact(report: &ImpactReport) -> String {
+        fn list(items: &[Impact]) -> String {
+            if items.is_empty() {
+                return "  (none found)".to_string();
+            }
+            items
+                .iter()
+                .take(10)
+                .map(|i| format!("  {} [{}] — {}", i.subject, i.relation.as_str(), i.reason))
+                .collect::<Vec<_>>()
+                .join("\n")
+        }
+
+        let mut out = format!(
+            "Pre-edit impact for {} (confidence {}: {}).\n\
+             Directly affected:\n{}\n\
+             Transitively affected:\n{}\n\
+             Tests at risk:\n{}",
+            report.change,
+            report.confidence,
+            report.confidence_reason,
+            list(&report.directly_affected),
+            list(&report.transitively_affected),
+            list(&report.tests_at_risk)
+        );
+        if !report.unknowns.is_empty() {
+            out.push_str("\nNot determined:\n");
+            for unknown in report.unknowns.iter().take(6) {
+                out.push_str(&format!("  - {unknown}\n"));
+            }
+        }
+        out.push_str(
+            "\nThis is an import closure, not a call graph: a file absent above is not \
+             evidence that it is unaffected.",
+        );
+        out
+    }
+
     /// Execute a tool call
     async fn execute_tool_call(&mut self, tool_call: ToolCallRequest) -> Result<()> {
         self.add_system_message(format!(
             "Executing tool: {} - {}",
             tool_call.tool_id, tool_call.reason
         ));
+
+        // Pre-edit impact (Phase 2B B2). The tool that changes a file is about to
+        // run, so this is the last moment at which the model can be told what the
+        // change reaches. Cost: one persisted-index lookup, which is a cache hit
+        // when context gathering already built the index.
+        if let Some(path) = Self::edited_path(&tool_call) {
+            match self.context_builder.impact_for_change(path, 2) {
+                Ok(Some(report)) => self.add_system_message(Self::format_pre_edit_impact(&report)),
+                Ok(None) => self.add_system_message(format!(
+                    "Pre-edit impact for {path}: the path is not in the repository index, so \
+                     no impact was computed. Treat the affected set as unknown, not empty."
+                )),
+                Err(e) => self.add_system_message(format!(
+                    "Pre-edit impact for {path} could not be computed ({e}). Treat the \
+                     affected set as unknown, not empty."
+                )),
+            }
+        }
 
         // Compute hash of previous entry for chain integrity
         let prev_hash = self.compute_prev_hash().await?;

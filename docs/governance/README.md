@@ -122,8 +122,10 @@ an expectation rather than captured from a run.
 
 **Phase 2A was re-accepted on 2026-11-16** after remediation (PR #69) and an independent AI audit:
 verdict **ACCEPTED WITH CONDITIONS**, 9 of the 12 disputed capabilities confirmed at R3, 3 held at R2.
-The verdict is `PHASE2A_AUDIT_VERDICT_2026-11-16.md`; the conditions are tracked there and in the
-roadmap's Phase 2A entry. Phase 2B's gate is cleared but 2B has not started.
+The verdict is `PHASE2A_AUDIT_VERDICT_2026-11-16.md`; the six conditions and their current state
+are tracked in `phase2a-conditions.json`, documented in `PHASE2A_CONDITIONS.md`, and evaluated by
+`scripts/check_conditions.py` on every gate run (C1, C2 and C3 closed; C4 and C6 open; C5 accepted
+as an exception). Phase 2B's gate is cleared but 2B has not started.
 
 See `PHASE2A_INDEPENDENT_AUDIT.md`.
 

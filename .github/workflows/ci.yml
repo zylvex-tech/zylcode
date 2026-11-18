@@ -170,11 +170,55 @@ jobs:
         # from docs/governance/phase-status.json, and this step fails on drift.
 
       - name: Question-set freeze gate
-        run: python scripts/freeze_question_set.py --self-test
+        run: |
+          python scripts/freeze_question_set.py --self-test
+          python scripts/freeze_question_set.py --check-all docs/benchmarks
         # C4: an acceptance benchmark's questions must not move after scoring.
-        # When a set exists, this step also runs `--check` for it, so the lock
-        # and the questions cannot disagree. No set has been frozen yet; see
+        # `--check-all` fails if any set under docs/benchmarks/ has no freeze lock,
+        # so a set cannot be scored and then edited. The directory does not exist
+        # today, so the step passes and C4 stays OPEN — see
         # docs/governance/PREREGISTERED_QUESTIONS.md, which says so plainly.
+
+      - name: Public facts block is generated, not hand-edited
+        run: |
+          python scripts/render_facts.py --check
+          python scripts/render_facts.py --self-test
+        # Every count in a hand-written document is a copy that drifts: the README
+        # said "5 of 28" probe coverage after a merge made it 6 of 29, and pinned a
+        # commit that stopped being main two merges later. The block is rendered
+        # from docs/governance/phase-status.json, the capability registry and the
+        # probe file; this step fails on drift instead of letting the sentence rot.
+
+      - name: Phase 2A conditions still hold
+        run: |
+          python scripts/check_conditions.py
+          python scripts/check_conditions.py --self-test
+        # Phase 2A was accepted WITH CONDITIONS. Six prose paragraphs in a verdict
+        # are a memory: C1 was closed by a later PR and nothing stopped the next
+        # edit from re-opening it, while C2 ("these must remain R2/DISPUTED") had
+        # no enforcement at all. Each condition now has a predicate in
+        # docs/governance/phase2a-conditions.json and this step evaluates it.
+
+      - name: Quarantined tests are declared
+        run: |
+          python scripts/check_flaky_register.py
+          python scripts/check_flaky_register.py --self-test
+        # An ignored test produces no result, so making a red test `#[ignore]`d is
+        # indistinguishable in CI from deleting it. The ignored set is derived from
+        # source and compared with docs/governance/flaky-tests.json: an undeclared
+        # skip fails, a stale entry fails, and a reported flake that was quietly
+        # quarantined fails.
+
+      - name: Tool-catalogue counts agree with source
+        run: |
+          python scripts/check_tool_catalogue_counts.py
+          python scripts/check_tool_catalogue_counts.py --self-test
+        # The registry says "27 catalogued definitions / 12 real executors" and the
+        # truth table says "20 real executors (12 general-purpose + 8 nav.*)". Both
+        # are true and neither said why, so a reader could not tell a second
+        # measurement from a stale number. The counts are now derived from
+        # enhanced_bridge.rs, real_tools.rs and nav_tools.rs and compared with the
+        # declared marker and the registry's evidence string.
 
       # ---------------------------------------------------------------------
       # Security gates (added 2026-10-21, Phase 1)

@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "updated": "2026-11-18",
+  "_comment": "Every test the repository deliberately does not run by default, plus tests reported flaky but still running. Validated by scripts/check_flaky_register.py: the ignored set is derived from source, so adding `#[ignore]` without declaring it here fails the gate. An ignored test is a test whose result nobody has; the register exists so that is a stated decision with a reason, not a quiet absence.",
+  "policy": "A test may be quarantined (ignored) only with (a) a reason naming the external dependency or defect, (b) an entry here, and (c) a note saying what would un-quarantine it. A test reported flaky but not quarantined stays in the default run and is listed under reported_but_not_quarantined so that 'it fails sometimes' is visible rather than folklore.",
+  "quarantined": [
+    {
+      "test": "test_real_provider_commissioning",
+      "file": "crates/zylcode-core/tests/commissioning_test.rs",
+      "reason": "requires running Ollama instance with llama3 model",
+      "class": "external-dependency",
+      "unquarantine_when": "a deterministic provider double replaces the live Ollama call, or the suite gains a self-hosted Ollama service in CI"
+    },
+    {
+      "test": "live_provider_commissioning_probe",
+      "file": "crates/zylcode-core/tests/live_commissioning.rs",
+      "reason": "makes real provider calls; run explicitly with --ignored",
+      "class": "costs-owner-credit",
+      "unquarantine_when": "never by default: a live provider call spends the owner's key and is not reproducible across machines"
+    },
+    {
+      "test": "live_natlas_returns_a_genuine_non_empty_response",
+      "file": "crates/zylcode-core/tests/natlas_live.rs",
+      "reason": "genuine network call; requires a live N-ATLAS endpoint in NATLAS_* env vars",
+      "class": "external-dependency",
+      "unquarantine_when": "CI provides a live N-ATLAS endpoint in the environment"
+    },
+    {
+      "test": "live_acceptance_journey",
+      "file": "crates/zylcode-core/tests/natlas_live.rs",
+      "reason": "genuine network call; requires a live N-ATLAS endpoint in NATLAS_* env vars",
+      "class": "external-dependency",
+      "unquarantine_when": "CI provides a live N-ATLAS endpoint in the environment"
+    }
+  ],
+  "reported_but_not_quarantined": [
+    {
+      "test": "a_relative_cwd_runs_inside_the_workspace",
+      "file": "crates/zylcode-core/src/terminal.rs",
+      "platforms": ["windows"],
+      "observation": "Reported as intermittently failing on Windows in local runs before 2026-11-18. It is NOT ignored: it stays in the default suite and is listed here so a maintainer seeing it fail knows the history without needing to find this file the hard way.",
+      "verified": "not reproduced in this pass; the entry is a report, not a measurement"
+    }
+  ]
+}
