@@ -1,7 +1,20 @@
 //! Repository Intelligence Benchmark — Phase 2A commissioning requirement.
 //!
 //! Known-answer questions against the ZylCode repository.
-//! Measures Precision@K and Recall@K.
+//! Measures Precision@K and Recall@K, and asserts the index scope the
+//! remediation order (P0.3) requires.
+//!
+//! # Corpus
+//!
+//! This is **not** a fixed fixture: the benchmark indexes the working tree at
+//! `CARGO_MANIFEST_DIR/../..` on every run, including untracked files (the
+//! scanner is intentionally not VCS-aware). File and symbol counts therefore
+//! drift with the checkout and are only lower-bound sanity checks. The
+//! invariant that must hold on every run is the **scope assertion** in
+//! [`assert_index_scope`]: no indexed path may lie under a directory the
+//! scanner policy excludes. Do not replace that with an equality assertion
+//! against `git ls-files`; tracked-file count is a different set from the
+//! scanner's declared scope.
 
 use zylcode_core::intelligence::architecture::generate_fingerprint;
 use zylcode_core::intelligence::dependency::DependencyGraph;
@@ -11,6 +24,36 @@ use zylcode_core::intelligence::query::RepoQuery;
 use zylcode_core::intelligence::scanner::{scan_repository, ScannerConfig};
 use zylcode_core::intelligence::symbols::extract_symbols;
 use zylcode_core::intelligence::types::*;
+
+/// Directory names that must never appear in an index.
+///
+/// Mirrors the exclusion policy in `intelligence::classifier`; kept as an
+/// independent list so that weakening the classifier cannot silently satisfy
+/// this assertion with the same edit.
+const FORBIDDEN_INDEX_COMPONENTS: &[&str] = &["target", "node_modules", ".git", "dist", "build"];
+
+/// Fail if the index contains anything under an excluded directory.
+fn assert_index_scope(query: &RepoQuery) {
+    let mut violations: Vec<&str> = query
+        .files()
+        .iter()
+        .filter(|file| {
+            file.id
+                .replace('\\', "/")
+                .split('/')
+                .any(|component| FORBIDDEN_INDEX_COMPONENTS.contains(&component))
+        })
+        .map(|file| file.id.as_str())
+        .collect();
+
+    violations.sort_unstable();
+    assert!(
+        violations.is_empty(),
+        "index scope violated: {} path(s) under excluded directories (first 10: {:?})",
+        violations.len(),
+        &violations[..violations.len().min(10)]
+    );
+}
 
 /// Index the ZylCode repository and return a query interface.
 fn index_zylcode() -> RepoQuery {
@@ -137,6 +180,11 @@ fn recall_at_k(results: &[ContextResult], expected: &[&str], k: usize) -> f64 {
 #[test]
 fn benchmark_repository_intelligence() {
     let query = index_zylcode();
+
+    // P0.3: the scope assertion the rejected report claimed but did not contain.
+    // This runs before any metric so a polluted index fails as a scope error,
+    // not as a mysterious precision drop.
+    assert_index_scope(&query);
 
     // Verify basic indexing
     assert!(
@@ -427,13 +475,25 @@ fn benchmark_repository_intelligence() {
     );
 }
 
-/// Benchmark (not a correctness regression test): measures scan/index
-/// throughput. Environment-sensitive (full-repo scan, 120s ceiling), so it is
-/// excluded from the default merge gate and run explicitly when useful:
-///   cargo test -p zylcode-core --test repo_intelligence_benchmark -- --ignored
+/// Scan throughput measurement, separate from retrieval quality (P0.4).
+///
+/// What this test is: a regression detector and an auditable measurement. It
+/// prints the scan duration, the number of files visited and entered, and the
+/// derived files/second so an auditor can compare machines without trusting a
+/// wall-clock figure.
+///
+/// What it is not: a performance acceptance proof. The floor below is a coarse
+/// lower bound, set well below every measurement taken: 615 files/s on a warm
+/// Windows checkout (`scan 1.286 s` for 923 entries) and 59 files/s on a cold
+/// freshly-checked-out worktree (`scan 12.956 s` for 767 files). At 10 files/s
+/// the floor sits ~6x below the slowest observation, so it fails only on a
+/// collapse, not on a slow machine. The absolute figure is the evidence; the
+/// floor is not a target and is not the Phase 2A performance acceptance proof.
 #[test]
-#[ignore = "indexing performance benchmark; run explicitly, not as a merge gate"]
 fn benchmark_indexing_performance() {
+    /// Catastrophe detector only — see the doc comment above.
+    const MIN_FILES_PER_SECOND: f64 = 10.0;
+
     let crate_dir = std::env::current_dir().expect("failed to get current dir");
     let root = crate_dir
         .parent()
@@ -466,23 +526,53 @@ fn benchmark_indexing_performance() {
 
     let dep_graph = DependencyGraph::from_packages(&packages);
 
-    println!("\n=== Indexing Performance ===");
+    // Scope is asserted here as well as in the quality test: the two suites can
+    // be selected independently, and a polluted index must fail its own scope
+    // assertion rather than only depressing a precision score.
+    let scope_violations: Vec<&str> = scan_result
+        .files
+        .iter()
+        .filter(|f| {
+            f.id.replace('\\', "/")
+                .split('/')
+                .any(|c| FORBIDDEN_INDEX_COMPONENTS.contains(&c))
+        })
+        .map(|f| f.id.as_str())
+        .collect();
+    assert!(
+        scope_violations.is_empty(),
+        "scan scope violated: {:?}",
+        &scope_violations[..scope_violations.len().min(10)]
+    );
+
+    let scan_secs = scan_duration.as_secs_f64();
+    let files_per_second = scan_result.files_scanned as f64 / scan_secs.max(f64::EPSILON);
+
+    println!("\n=== Indexing Performance (measurement, not acceptance proof) ===");
     println!("Files scanned: {}", scan_result.files_scanned);
     println!("Files indexed: {}", scan_result.files_indexed);
     println!("Symbols extracted: {}", all_symbols.len());
     println!("Packages: {}", packages.len());
     println!("Dependency edges: {}", dep_graph.edge_count());
-    println!("Scan duration: {:?}", scan_duration);
-    println!("Total duration: {:?}", start.elapsed());
-
-    // Performance assertions
-    assert!(
-        scan_duration.as_secs() < 120,
-        "Scan should complete in < 120s, took {:?}",
-        scan_duration
+    println!("Scan duration: {:.3}s", scan_secs);
+    println!("Scan throughput: {:.1} files/second", files_per_second);
+    println!("Total duration: {:.3}s", start.elapsed().as_secs_f64());
+    println!(
+        "MEASUREMENT scan_files={} indexed_files={} scan_seconds={:.3} files_per_second={:.1}",
+        scan_result.files_scanned, scan_result.files_indexed, scan_secs, files_per_second
     );
+
     assert!(
         scan_result.files_indexed > 0,
         "Should index at least 1 file"
+    );
+    assert!(
+        files_per_second >= MIN_FILES_PER_SECOND,
+        "Scan throughput {:.1} files/s is below the {:.0} files/s catastrophe floor \
+         ({:.3}s for {} files). This is a regression detector, not an acceptance budget.",
+        files_per_second,
+        MIN_FILES_PER_SECOND,
+        scan_secs,
+        scan_result.files_scanned
     );
 }

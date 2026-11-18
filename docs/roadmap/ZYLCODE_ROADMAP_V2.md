@@ -41,7 +41,7 @@ reported complete.
                                          │
         1A ─► 1B ─► 1C ─► 1D ─► 2A ─► 2B
                                         ▲
-                              (2A NOT ACCEPTED — RE-OPENED)
+                    (2A AWAITING RE-AUDIT — REMEDIATION CLOSED)
                                         │
                           ┌─────────────┴───────────────┐
                           │ EPOCH II — PROJECT & AGENT OS│
@@ -92,35 +92,40 @@ reported complete.
 
 ## 2. Program Status Board
 
-| Phase  | Title                                      | Status                          | Rung | Blocks                 |
-| ------ | ------------------------------------------ | ------------------------------- | ---- | ---------------------- |
-| 1A     | Real Tool Runtime                          | ✅ ACCEPTED                     | R3   | 1B                     |
-| 1B     | Agent Execution Loop                       | ✅ ACCEPTED                     | R3   | 1C                     |
-| 1C     | Model-Driven Autonomous Agent              | ✅ ACCEPTED WITH CONDITIONS     | R3   | 1D                     |
-| 1D     | Durable Memory, Evidence & Recovery        | ✅ ACCEPTED WITH CONDITIONS     | R3   | 2A                     |
-| **2A** | **Repository Intelligence Foundation**     | ❌ **NOT ACCEPTED — RE-OPENED** | R2   | **2B**                 |
-| **2B** | **Repository Reasoning & Impact Analysis** | 🚫 **BLOCKED on 2A**            | —    | 3A                     |
-| 3A     | ZylCode Project System                     | ⏸ NOT STARTED                   | —    | 3B, 4, 5, 6A, 8A       |
-| 3B     | Mission Engine                             | ⏸ NOT STARTED                   | —    | 4, 14                  |
-| 4      | Model Platform / Model Democracy           | ⏸ NOT STARTED                   | —    | 14                     |
-| 5      | Extension Platform                         | ⏸ NOT STARTED                   | —    | 6A, 7A, 10, 11, 13, 15 |
-| 6A     | Artifact System                            | ⏸ NOT STARTED                   | —    | 6B, 7A, 9              |
-| 6B     | Live Preview Runtime                       | ⏸ NOT STARTED                   | —    | 7A                     |
-| 7A     | Browser Runtime                            | ⏸ NOT STARTED                   | —    | 7B, 9, 12              |
-| 7B     | Computer Use Foundation                    | ⏸ NOT STARTED                   | —    | 7C, 7D                 |
-| 7C     | Computer Use Reliability                   | ⏸ NOT STARTED                   | —    | 7D                     |
-| 7D     | Application Adapters                       | ⏸ NOT STARTED                   | —    | 9, 12                  |
-| 8A     | Design Foundation                          | ⏸ NOT STARTED                   | —    | 8B, 8C                 |
-| 8B     | Professional Design Canvas                 | ⏸ NOT STARTED                   | —    | 9                      |
-| 8C     | Design ↔ Code                              | ⏸ NOT STARTED                   | —    | 9                      |
-| 9      | Visual Intelligence & Self-Repair          | ⏸ NOT STARTED                   | —    | 12, 16                 |
-| 10     | Android Device Lab                         | ⏸ NOT STARTED                   | —    | 12, 13, 16             |
-| 11     | macOS/iOS Worker                           | ⏸ NOT STARTED                   | —    | 12, 13                 |
-| 12     | Proof Engine v2                            | ⏸ NOT STARTED                   | —    | 13, 16                 |
-| 13     | Delivery Engine                            | ⏸ NOT STARTED                   | —    | 16                     |
-| 14     | Multi-Agent Engineering                    | ⏸ NOT STARTED                   | —    | 15, 16                 |
-| 15     | Marketplace and Ecosystem                  | ⏸ NOT STARTED                   | —    | 16                     |
-| 16     | Public Commissioning                       | ⏸ NOT STARTED                   | —    | —                      |
+<!-- BEGIN PHASE STATUS BOARD -->
+<!-- Generated from docs/governance/phase-status.json by scripts/render_status_board.py. Edit the JSON, not this table. -->
+<!-- prettier-ignore -->
+| Phase  | Title                                      | Status                                                                           | Rung   | Blocks                 |
+| ------ | ------------------------------------------ | -------------------------------------------------------------------------------- | ------ | ---------------------- |
+| 1A     | Real Tool Runtime                          | ✅ ACCEPTED                                                                       | R3     | 1B                     |
+| 1B     | Agent Execution Loop                       | ✅ ACCEPTED                                                                       | R3     | 1C                     |
+| 1C     | Model-Driven Autonomous Agent              | ✅ ACCEPTED WITH CONDITIONS                                                       | R3     | 1D                     |
+| 1D     | Durable Memory, Evidence & Recovery        | ✅ ACCEPTED WITH CONDITIONS                                                       | R3     | 2A                     |
+| **2A** | **Repository Intelligence Foundation**     | **✅ ACCEPTED WITH CONDITIONS (2026-11-16, C1–C6)**                               | **R3** | **2B**                 |
+| **2B** | **Repository Reasoning & Impact Analysis** | **⏸ GATE CLEARED — B2 import-closure impact shipped; deeper slices not started** | **—**  | **3A**                 |
+| 3A     | ZylCode Project System                     | ⏸ PARTIAL — durable store v2 + CLI identity/status                               | —      | 3B, 4, 5, 6A, 8A       |
+| 3B     | Mission Engine                             | ⏸ PARTIAL — engine + CLI + desktop surface; citations hash-verified              | —      | 4, 14                  |
+| 4      | Model Platform / Model Democracy           | ⏸ NOT STARTED                                                                    | —      | 14                     |
+| 5      | Extension Platform                         | ⏸ NOT STARTED                                                                    | —      | 6A, 7A, 10, 11, 13, 15 |
+| 6A     | Artifact System                            | ⏸ NOT STARTED                                                                    | —      | 6B, 7A, 9              |
+| 6B     | Live Preview Runtime                       | ⏸ NOT STARTED                                                                    | —      | 7A                     |
+| 7A     | Browser Runtime                            | ⏸ NOT STARTED                                                                    | —      | 7B, 9, 12              |
+| 7B     | Computer Use Foundation                    | ⏸ NOT STARTED                                                                    | —      | 7C, 7D                 |
+| 7C     | Computer Use Reliability                   | ⏸ NOT STARTED                                                                    | —      | 7D                     |
+| 7D     | Application Adapters                       | ⏸ NOT STARTED                                                                    | —      | 9, 12                  |
+| 8A     | Design Foundation                          | ⏸ NOT STARTED                                                                    | —      | 8B, 8C                 |
+| 8B     | Professional Design Canvas                 | ⏸ NOT STARTED                                                                    | —      | 9                      |
+| 8C     | Design ↔ Code                              | ⏸ NOT STARTED                                                                    | —      | 9                      |
+| 9      | Visual Intelligence & Self-Repair          | ⏸ NOT STARTED                                                                    | —      | 12, 16                 |
+| 10     | Android Device Lab                         | ⏸ NOT STARTED                                                                    | —      | 12, 13, 16             |
+| 11     | macOS/iOS Worker                           | ⏸ NOT STARTED                                                                    | —      | 12, 13                 |
+| 12     | Proof Engine v2                            | ⏸ NOT STARTED                                                                    | —      | 13, 16                 |
+| 13     | Delivery Engine                            | ⏸ NOT STARTED                                                                    | —      | 16                     |
+| 14     | Multi-Agent Engineering                    | ⏸ NOT STARTED                                                                    | —      | 15, 16                 |
+| 15     | Marketplace and Ecosystem                  | ⏸ NOT STARTED                                                                    | —      | 16                     |
+| 16     | Public Commissioning                       | ⏸ NOT STARTED                                                                    | —      | —                      |
+
+<!-- END PHASE STATUS BOARD -->
 
 ---
 
@@ -161,13 +166,19 @@ reconciled against git.
 
 ---
 
-## Phase 2A — Repository Intelligence Foundation ❌ RE-OPENED
+## Phase 2A — Repository Intelligence Foundation ✅ ACCEPTED WITH CONDITIONS
 
 **Objective** — A structured, queryable model of a repository.
-**Status** — **NOT ACCEPTED.** See `PHASE2A_INDEPENDENT_AUDIT.md`.
-**Current rung** — **R2.**
+**Status** — **ACCEPTED WITH CONDITIONS** on 2026-11-16 by an independent auditor
+([verdict](../governance/PHASE2A_AUDIT_VERDICT_2026-11-16.md), following
+[the re-audit request](../governance/PHASE2A_REAUDIT_REQUEST_2026-11-16.md)).
+**Current rung** — **R3** for 9 of the 12 disputed capabilities; 3 remain R2 per conditions C1–C2.
+**Conditions** — C1 TypeScript symbols stay R2 until wired into `build_repo_query()`; C2
+`repository_benchmark` and `documentation_accuracy` stay R2; C3 resolve the three pre-existing
+GREEN/R2 conflicts; C4 add independently-authored benchmark questions; C5 throughput has a collapse
+floor, not an acceptance budget; C6 symbol resolution is regex-only (`DEFINITION_INDEXED`).
 
-### Why it was rejected
+### History — why it was re-opened by the 2026-09-16 audit
 
 | Finding                                      | Evidence                                                                |
 | -------------------------------------------- | ----------------------------------------------------------------------- |
@@ -208,10 +219,11 @@ Q5/Q6/Q10 non-zero. 9. Resolve the failing `router::tests::synthetic_offline_dis
 
 ---
 
-## Phase 2B — Repository Reasoning & Impact Analysis 🚫 BLOCKED
+## Phase 2B — Repository Reasoning & Impact Analysis ⏸ READY — NOT STARTED
 
-**Blocked by** — 2A re-acceptance. Reasoning over a polluted index yields confidently wrong
-answers, which is worse than no answers.
+**Gate** — cleared 2026-11-16: Phase 2A was accepted with conditions, so reasoning over the index
+is now permitted. Reasoning over a polluted index would still yield confidently wrong answers,
+which is why the gate existed in the first place.
 
 **Objective** — Turn the graph into actionable engineering intelligence.
 
@@ -232,6 +244,11 @@ answers, which is worse than no answers.
 
 **Entry points** — `zylcode repo context <task>` · `zylcode repo impact <symbol>` ·
 `AgentLoop::assemble_context`.
+
+**Design and plan** — [`docs/architecture/IMPACT_ANALYSIS.md`](../architecture/IMPACT_ANALYSIS.md).
+It fixes the report contract (a reason per item, mandatory unknowns, visible confidence), stages
+B1–B6, and folds Phase 2A audit conditions C1 (TypeScript symbols in the pipeline), C4
+(independently authored scenarios) and C6 (semantic resolution) into named slices.
 
 **Benchmark** — `Precision@10 ≥ 0.60` and `Recall@10 ≥ 0.60` on ≥ 20 known-answer questions;
 Q5/Q6/Q10 non-zero; index scoped to repository source with the scope asserted in a test.
@@ -257,7 +274,16 @@ Q5/Q6/Q10 non-zero; index scoped to repository source with the scope asserted in
 - Survives restart. Survives machine migration. Stable identity independent of filesystem path.
 - **Project Knowledge Graph** — see `docs/architecture/PROJECT_KNOWLEDGE_GRAPH.md`.
 
-**Entry points** — `zylcode project create|open|export|import` · UI Project surface.
+**Entry points** — `zylcode project create|list|open|status|export|import` · UI Project surface.
+
+**Implementation status (2026-11-15)** — the durable store exists at schema v2 with an
+append-only decision history, restart survival, export/import, explicit unresolved-root reporting,
+and `zylcode project status`. This is a **slice**, not the phase: the creation-flow fields beyond
+name/root, the Project Knowledge Graph, mission/evidence/artifact persistence, evidence bytes in
+the export bundle, cross-process locking, and wiring the desktop project commands to the store are
+all outstanding. `docs/architecture/PROJECT_SYSTEM.md` §13 records the requirement-by-requirement
+state. Sequencing note: this slice was built while the Phase 2A verdict was still pending; that
+discrepancy is recorded in the governance log, and it is not evidence that 3A is complete.
 
 **Benchmark** — create a project; restart the app; project is intact; export on machine A,
 import on machine B, graph is intact.
@@ -282,6 +308,19 @@ REPAIRING · BLOCKED · COMPLETE · FAILED · CANCELLED`.
 - `COMPLETE` requires every criterion satisfied by a **cited** proof.
 
 **Entry points** — `zylcode mission create|status|resume` · UI Mission surface.
+
+**Implementation status (2026-11-15)** — the engine core exists in
+`crates/zylcode-core/src/mission_engine.rs` with the eleven states, legal-edge enforcement, a
+`COMPLETE` gate that refuses while any criterion lacks a cited proof, and an append-only journal that
+survives a kill mid-`EXECUTING` (torn tail discarded, interior corruption fails closed). The CLI is
+`zylcode missions create|status|resume|cite|cancel` — plural, because `zylcode mission` is still the
+First Mission runner; that naming divergence is recorded in
+`docs/architecture/MISSION_ENGINE.md` §5 rather than hidden. Verified by 16 engine unit tests and a
+real three-process kill-resume test in `crates/zylcode-cli/tests/mission_engine_cli.rs`.
+
+Not done: the desktop Mission surface, mission persistence inside the Project System, cross-process
+writer locking, and any hashing/replay of the evidence a citation names (a citation is a pointer, not
+by itself a proof). Phase 3B is **not** accepted, and 2A/2B status is unchanged by this work.
 
 **Benchmark** — kill the process mid-`EXECUTING`; on restart the mission resumes and completes
 with a full evidence bundle. A mission with one unsatisfied criterion **cannot** report COMPLETE.
@@ -712,17 +751,17 @@ A phase failing G3 is **RE-OPENED** and blocks its dependents.
 
 ## 5. Immediate Actions
 
-| #   | Action                                 | Status                                                    |
-| --- | -------------------------------------- | --------------------------------------------------------- |
-| 1   | Audit `0ecea8e`                        | ✔ DONE — **NOT ACCEPTED**                                 |
-| 2   | Publish governance package             | ✔ DONE                                                    |
-| 3   | Supersede six-engine / 14-stage drafts | ✔ DONE                                                    |
-| 4   | Issue Phase 2A remediation order       | ✔ DONE — `PHASE2A_REMEDIATION_ORDER.md`                   |
-| 5   | Re-audit Phase 2A                      | blocked on #4 execution — **remediation has NOT started** |
-| 6   | Authorize Phase 2B                     | blocked on #5                                             |
-| 7   | Authorize Phase 3A                     | blocked on #6                                             |
-| 8   | **Restore a green baseline**           | **NEW — required before #5** (see below)                  |
-| 9   | **Resolve the dirty tree**             | **NEW — required before #5**                              |
+| #   | Action                                 | Status                                                                 |
+| --- | -------------------------------------- | ---------------------------------------------------------------------- |
+| 1   | Audit `0ecea8e`                        | ✔ DONE — **NOT ACCEPTED**                                              |
+| 2   | Publish governance package             | ✔ DONE                                                                 |
+| 3   | Supersede six-engine / 14-stage drafts | ✔ DONE                                                                 |
+| 4   | Issue Phase 2A remediation order       | ✔ DONE — `PHASE2A_REMEDIATION_ORDER.md`                                |
+| 5   | Re-audit Phase 2A                      | ✔ REQUESTED — 2026-10-24, re-verified 2026-11-11; **awaiting verdict** |
+| 6   | Authorize Phase 2B                     | blocked on #5 verdict                                                  |
+| 7   | Authorize Phase 3A                     | blocked on #6                                                          |
+| 8   | **Restore a green baseline**           | ✔ DONE — CI + coverage green on `c2a2b94`                              |
+| 9   | **Resolve the dirty tree**             | ✔ DONE — working tree clean                                            |
 
 **Phase 2B does not begin until Phase 2A is re-accepted.**
 

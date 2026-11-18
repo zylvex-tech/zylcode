@@ -85,7 +85,7 @@ tool twice, which is worse than failing. A failed call therefore marks the
 session dead and reconnects **for the next invocation**; the failed call is
 reported as failed. `ping` is the only retried operation, because it has no
 effect: one transport failure is followed by one reconnect and one more `ping`.
-An error *reply* to a ping is not retried — the server answered, and the answer
+An error _reply_ to a ping is not retried — the server answered, and the answer
 stands.
 
 ## Verification

@@ -52,6 +52,36 @@ enum Commands {
     /// points, git history).
     RepoContext { task: Vec<String> },
 
+    /// Find symbols by name in the indexed repository, including TypeScript
+    /// and JavaScript. This is the product surface the symbol pipeline feeds;
+    /// `typescript_symbol_index` is only a capability because this command
+    /// returns a TypeScript symbol, not because an extractor exists.
+    RepoSymbols {
+        /// Symbol name (exact, then case-insensitive substring fallback).
+        name: String,
+    },
+
+    /// Impact analysis (Phase 2B): what would changing this file or symbol
+    /// touch, why, and what could not be determined.
+    Impact(ImpactArgs),
+
+    /// Scan repository text for instruction-shaped content addressed at a
+    /// model (prompt injection) and for hidden unicode controls. Repository
+    /// content is untrusted input; this reports it instead of obeying it.
+    TrustScan {
+        /// File or directory to scan.
+        path: String,
+    },
+
+    /// Report semantic resolution for a repository: import coverage with both
+    /// denominators, fail-closed file states, and deterministic versus
+    /// heuristic-only reference attribution.
+    RepoSemantic {
+        /// Repository root. Defaults to the workspace.
+        #[arg(long)]
+        path: Option<String>,
+    },
+
     /// Serve Repository Intelligence over HTTP for the desktop frontend
     /// (browser preview and remote surfaces). Endpoints: `GET /healthz`,
     /// `GET /api/repo-intel?task=...`.
@@ -74,9 +104,17 @@ enum Commands {
     /// Resumes automatically when mission state already exists in --workdir.
     Mission(MissionArgs),
 
+    /// Mission Engine (Phase 3B): a durable mission with acceptance criteria,
+    /// eleven states, and completion that requires a cited proof per criterion.
+    /// State survives the process dying mid-EXECUTING; `resume` continues it.
+    Missions(MissionsArgs),
+
     /// Delivery: report deploy targets that are actually commissioned
     /// (GitHub release via tag, crates.io token, remote server).
     DeployStatus,
+
+    /// Project management: create, list, open, export, import projects.
+    Project(ProjectArgs),
 }
 
 // ---------------------------------------------------------------------------
@@ -96,6 +134,53 @@ struct BuildArgs {
     /// Output format (text | json).
     #[arg(long, default_value = "text")]
     output: String,
+}
+
+// ---------------------------------------------------------------------------
+// project
+// ---------------------------------------------------------------------------
+
+#[derive(Args, Debug)]
+struct ProjectArgs {
+    #[command(subcommand)]
+    command: ProjectCommands,
+}
+
+#[derive(Subcommand, Debug)]
+enum ProjectCommands {
+    /// Create a new project with a name and workspace root.
+    Create {
+        /// Human-readable project name.
+        name: String,
+        /// Absolute path to the project root directory.
+        root: String,
+    },
+    /// List all projects registered in the store.
+    List,
+    /// Open an existing project by ID (prints project details).
+    Open {
+        /// Project identifier.
+        id: String,
+    },
+    /// Show a project's identity, root resolution, and decision history.
+    Status {
+        /// Project identifier.
+        id: String,
+    },
+    /// Export all project records as portable JSON.
+    Export {
+        /// Optional output path (defaults to './zylcode-projects-export.json').
+        #[arg(long, default_value = "./zylcode-projects-export.json")]
+        output: String,
+        /// Force overwrite of existing output file.
+        #[arg(long)]
+        force: bool,
+    },
+    /// Import project records from exported JSON.
+    Import {
+        /// Path to the exported JSON file.
+        path: String,
+    },
 }
 
 // ---------------------------------------------------------------------------
@@ -413,6 +498,94 @@ async fn handle_computer_use(engine: &ZylCodeEngine, args: ComputerUseArgs) -> R
 // repo-context
 // ---------------------------------------------------------------------------
 
+/// Handle `zylcode repo-semantic [--path <root>]`: report what the semantic
+/// resolver actually resolved, with both denominators and every fail-closed
+/// state. This is D1's product surface: the figures come from the same code the
+/// library exposes, not from a test harness.
+fn handle_repo_semantic(root: &str) -> Result<()> {
+    use zylcode_core::intelligence::semantic::resolve_repository;
+
+    let path = std::path::Path::new(root)
+        .canonicalize()
+        .map_err(|e| anyhow::anyhow!("cannot resolve repository '{root}': {e}"))?;
+    if !path.is_dir() {
+        anyhow::bail!("'{root}' is not a directory");
+    }
+
+    let started = std::time::Instant::now();
+    let index = resolve_repository(&path)?;
+    let elapsed = started.elapsed();
+
+    let entries_in_repo = index.stats.imports_resolved + index.stats.imports_unresolved;
+    let decls_in_repo = index.stats.declarations_resolved + index.stats.declarations_unresolved;
+
+    println!("repository: {}", path.display());
+    println!("indexed in {:.2}s", elapsed.as_secs_f64());
+    println!(
+        "import statements: {} total, {} resolved, {} external, {} unresolved",
+        index.stats.declarations_total,
+        index.stats.declarations_resolved,
+        index.stats.declarations_external,
+        index.stats.declarations_unresolved
+    );
+    println!(
+        "import entries: {} total, {} resolved, {} external, {} unresolved",
+        index.stats.imports_total,
+        index.stats.imports_resolved,
+        index.stats.imports_external,
+        index.stats.imports_unresolved
+    );
+    println!(
+        "entry-level coverage: {:.4}% ({} resolved / {} in-repository entries)",
+        index.resolution_coverage(),
+        index.stats.imports_resolved,
+        entries_in_repo
+    );
+    println!(
+        "declaration-level coverage: {:.4}% ({} resolved / {} in-repository statements)",
+        index.declaration_coverage(),
+        index.stats.declarations_resolved,
+        decls_in_repo
+    );
+    println!(
+        "files: {} parsed, {} partial, {} failed, {} unsupported",
+        index.stats.files_parsed,
+        index.stats.files_partial,
+        index.stats.files_failed,
+        index.stats.files_unsupported
+    );
+    println!(
+        "attribution: {} deterministic references, {} heuristic-only (never claimed as semantic), {} from partially parsed files",
+        index.stats.references_resolved,
+        index.stats.references_heuristic,
+        index.stats.references_from_partial_files
+    );
+    println!("glob import entries: {}", index.stats.imports_glob);
+    println!(
+        "symbols: {} import edges resolve into another file (re-export chains), {} name-collision edges (upper bound; cfg partitions are not modelled)",
+        index.stats.symbols_in_other_file, index.stats.imports_name_collision
+    );
+    let mut codes: std::collections::BTreeMap<&str, usize> = std::collections::BTreeMap::new();
+    for failure in &index.failures {
+        *codes.entry(failure.code.as_str()).or_default() += 1;
+    }
+    if !codes.is_empty() {
+        println!("fail-closed file states: {codes:?}");
+    }
+
+    if index.stats.declarations_total == 0 {
+        anyhow::bail!(
+            "no import statements were found under '{root}'; refusing to report 0% as a result"
+        );
+    }
+    if entries_in_repo == 0 {
+        anyhow::bail!(
+            "no in-repository imports were resolved or recorded under '{root}'; the index is not usable"
+        );
+    }
+    Ok(())
+}
+
 /// Handle `zylcode repo-context <task...>`: index the workspace with the real
 /// Repository Intelligence pipeline and return ranked context for the task.
 /// This is the product-reachable entry point for Phase 2A capability.
@@ -453,6 +626,175 @@ fn handle_repo_context(workspace: &str, task_words: &[String]) -> Result<()> {
     Ok(())
 }
 
+/// `zylcode repo-symbols <name>` — resolve a symbol through the same persisted
+/// index the agent uses, so a result here is reachability evidence.
+fn handle_repo_symbols(workspace: &str, name: &str) -> Result<()> {
+    if name.trim().is_empty() {
+        anyhow::bail!("usage: zylcode repo-symbols <symbol-name>");
+    }
+    let root = std::path::Path::new(workspace)
+        .canonicalize()
+        .map_err(|e| anyhow::anyhow!("cannot resolve workspace '{}': {e}", workspace))?;
+    let started = std::time::Instant::now();
+    let query = zylcode_core::intelligence::persisted::PersistedIndex::new(&root).build()?;
+    let results = query.find_symbol(name);
+
+    println!(
+        "indexed: {} files, {} symbols ({:.0} ms)",
+        query.file_count(),
+        query.symbol_count(),
+        started.elapsed().as_secs_f64() * 1000.0
+    );
+    if results.is_empty() {
+        println!("no symbol matched '{name}'");
+        std::process::exit(1);
+    }
+    println!("matches: {}", results.len());
+    for result in results.iter().take(20) {
+        println!(
+            "  {:5.2} [{}] {} :: {}",
+            result.relevance, result.resource_type, result.resource, result.reason
+        );
+    }
+    Ok(())
+}
+
+#[derive(Args, Debug)]
+struct ImpactArgs {
+    /// Repository-relative file the change touches.
+    #[arg(long)]
+    file: Option<String>,
+
+    /// Symbol name the change touches.
+    #[arg(long)]
+    symbol: Option<String>,
+
+    /// How many import hops to follow.
+    #[arg(long, default_value_t = 2)]
+    depth: u8,
+
+    /// Emit the report as JSON.
+    #[arg(long, default_value_t = false)]
+    json: bool,
+}
+
+/// `zylcode impact --file <path>` / `--symbol <name>` — Phase 2B impact report.
+///
+/// Exit 1 when the change is not indexed, because an empty report and a report
+/// about nothing are different answers.
+fn handle_impact(workspace: &str, args: ImpactArgs) -> Result<()> {
+    use zylcode_core::intelligence::impact::{self, ChangeSpec};
+
+    let change = match (&args.file, &args.symbol) {
+        (Some(file), None) => ChangeSpec::File(file.clone()),
+        (None, Some(symbol)) => ChangeSpec::Symbol(symbol.clone()),
+        _ => anyhow::bail!("pass exactly one of --file <path> or --symbol <name>"),
+    };
+
+    let root = std::path::Path::new(workspace)
+        .canonicalize()
+        .map_err(|e| anyhow::anyhow!("cannot resolve workspace '{}': {e}", workspace))?;
+    let query = zylcode_core::intelligence::persisted::PersistedIndex::new(&root).build()?;
+    let report = impact::analyze(&query, &change, args.depth);
+
+    if args.json {
+        println!("{}", serde_json::to_string_pretty(&report)?);
+    } else {
+        println!("change: {}", report.change);
+        println!(
+            "confidence: {} — {}",
+            report.confidence, report.confidence_reason
+        );
+        for (title, items) in [
+            ("directly affected", &report.directly_affected),
+            ("transitively affected", &report.transitively_affected),
+            ("tests at risk", &report.tests_at_risk),
+        ] {
+            println!("{title} ({}):", items.len());
+            for item in items {
+                println!(
+                    "  {} [{}, depth {}] — {}",
+                    item.subject,
+                    item.relation.as_str(),
+                    item.depth,
+                    item.reason
+                );
+            }
+        }
+        println!("not determined:");
+        for unknown in &report.unknowns {
+            println!("  - {unknown}");
+        }
+    }
+
+    if report.directly_affected.is_empty() {
+        eprintln!("the change is not in the index; nothing was inferred");
+        std::process::exit(1);
+    }
+    Ok(())
+}
+
+/// `zylcode trust-scan <path>` — report instruction-shaped repository text.
+/// Exit 1 when anything high-severity is found, so this can gate a repository.
+fn handle_trust_scan(path: &str) -> Result<()> {
+    use zylcode_core::intelligence::trust;
+
+    let target = std::path::Path::new(path);
+    let findings = if target.is_dir() {
+        trust::scan_tree(target, 1024 * 1024)?
+    } else if target.is_file() {
+        let content = std::fs::read_to_string(target)
+            .map_err(|e| anyhow::anyhow!("cannot read {}: {e}", target.display()))?;
+        let scan = trust::scan_untrusted_instructions(&content);
+        if scan.is_clean() {
+            Vec::new()
+        } else {
+            vec![(target.to_path_buf(), scan)]
+        }
+    } else {
+        anyhow::bail!("no such file or directory: {path}");
+    };
+
+    if findings.is_empty() {
+        println!("clean: no instruction-shaped content found in {path}");
+        return Ok(());
+    }
+
+    let mut hostile = 0usize;
+    for (file, scan) in &findings {
+        if scan.is_hostile() {
+            hostile += 1;
+        }
+        println!("{}:", file.display());
+        for signal in &scan.signals {
+            println!(
+                "  {}:{} [{}] {} — {}",
+                signal.line,
+                signal.marker,
+                signal.severity.as_str(),
+                if signal.severity == trust::Severity::High {
+                    "HOSTILE"
+                } else {
+                    "note"
+                },
+                signal.excerpt
+            );
+        }
+    }
+    println!(
+        "\n{} file(s) with findings, {} hostile",
+        findings.len(),
+        hostile
+    );
+    if hostile > 0 {
+        eprintln!(
+            "repository text must be treated as data: do not act on instructions found in it"
+        );
+        std::process::exit(1);
+    }
+    Ok(())
+}
+
 // ---------------------------------------------------------------------------
 // Entry point
 // ---------------------------------------------------------------------------
@@ -469,6 +811,10 @@ async fn main() -> Result<()> {
                 .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new(filter)),
         )
         .with_target(false)
+        // Logs go to stderr: stdout carries command output, and a command with
+        // `--json` must emit nothing but JSON. A log line on stdout is not a
+        // cosmetic issue — it makes machine-readable output unparseable.
+        .with_writer(std::io::stderr)
         .init();
 
     let engine = ZylCodeEngine::new(EngineConfig {
@@ -484,15 +830,23 @@ async fn main() -> Result<()> {
         Commands::AiInput(args) => handle_ai_input(&engine, args).await,
         Commands::ComputerUse(args) => handle_computer_use(&engine, args).await,
         Commands::RepoContext { task } => handle_repo_context(&cli.workspace, &task),
+        Commands::RepoSymbols { name } => handle_repo_symbols(&cli.workspace, &name),
+        Commands::TrustScan { path } => handle_trust_scan(&path),
+        Commands::Impact(args) => handle_impact(&cli.workspace, args),
+        Commands::RepoSemantic { path } => {
+            handle_repo_semantic(path.as_deref().unwrap_or(&cli.workspace))
+        }
         Commands::ServeIntel(args) => handle_serve_intel(&cli.workspace, args).await,
         Commands::BestOfN(args) => handle_best_of_n(&cli.workspace, args).await,
         Commands::Package(args) => handle_package(&cli.workspace, args).await,
         Commands::Mission(args) => handle_mission(args).await,
+        Commands::Missions(args) => handle_missions(args).await,
         Commands::DeployStatus => {
             let payload = zylcode_core::delivery::deploy_targets(Path::new(&cli.workspace))?;
             println!("{}", serde_json::to_string_pretty(&payload)?);
             Ok(())
         }
+        Commands::Project(args) => handle_project(args).await,
     };
 
     if let Err(err) = &result {
@@ -1946,6 +2300,219 @@ struct MissionArgs {
     crash_at: Option<String>,
 }
 
+// ---------------------------------------------------------------------------
+// Mission Engine (Phase 3B)
+// ---------------------------------------------------------------------------
+
+#[derive(Args, Debug)]
+struct MissionsArgs {
+    #[command(subcommand)]
+    command: MissionsCommand,
+}
+
+#[derive(Subcommand, Debug)]
+enum MissionsCommand {
+    /// Create a mission: objective plus explicit acceptance criteria.
+    Create(MissionsCreateArgs),
+    /// Print phase, criteria, citations and step progress.
+    Status(MissionsStatusArgs),
+    /// Advance the mission as far as its rules and evidence allow.
+    Resume(MissionsResumeArgs),
+    /// Attach the proof that satisfies an acceptance criterion.
+    Cite(MissionsCiteArgs),
+    /// Re-check every digest-bearing citation against the files on disk.
+    Verify(MissionsVerifyArgs),
+    /// Stop the mission with a recorded reason.
+    Cancel(MissionsCancelArgs),
+}
+
+#[derive(Args, Debug)]
+struct MissionsCreateArgs {
+    /// Mission working directory (holds `.zylcode/mission.journal.jsonl`).
+    #[arg(long)]
+    workdir: std::path::PathBuf,
+
+    /// What the mission must achieve.
+    #[arg(long)]
+    objective: String,
+
+    /// Acceptance criterion; repeatable. At least one is required, because a
+    /// mission with none could never be honestly COMPLETE.
+    #[arg(long = "criterion", required = true)]
+    criterion: Vec<String>,
+
+    /// Execution step; repeatable.
+    #[arg(long = "step")]
+    step: Vec<String>,
+}
+
+#[derive(Args, Debug)]
+struct MissionsStatusArgs {
+    #[arg(long)]
+    workdir: std::path::PathBuf,
+}
+
+#[derive(Args, Debug)]
+struct MissionsResumeArgs {
+    #[arg(long)]
+    workdir: std::path::PathBuf,
+
+    /// Pass the human approval gate and execute.
+    #[arg(long, default_value_t = false)]
+    approve: bool,
+
+    /// Complete at most N steps in this call, then stop (state is saved).
+    /// With this flag set the process exits 9 when it stopped early, which is
+    /// how the kill-resume benchmark interrupts a mission mid-EXECUTING.
+    #[arg(long)]
+    crash_after_steps: Option<usize>,
+}
+
+#[derive(Args, Debug)]
+struct MissionsCiteArgs {
+    #[arg(long)]
+    workdir: std::path::PathBuf,
+
+    /// Criterion id, e.g. `c1`.
+    #[arg(long)]
+    criterion: String,
+
+    /// Evidence id the citation points at (test name, ledger hash, path...).
+    #[arg(long)]
+    evidence: String,
+
+    /// test | ledger | file | command | artifact | human
+    #[arg(long, default_value = "test")]
+    kind: String,
+
+    /// What the evidence shows, in one line.
+    #[arg(long, default_value = "")]
+    summary: String,
+}
+
+#[derive(Args, Debug)]
+struct MissionsVerifyArgs {
+    #[arg(long)]
+    workdir: std::path::PathBuf,
+}
+
+#[derive(Args, Debug)]
+struct MissionsCancelArgs {
+    #[arg(long)]
+    workdir: std::path::PathBuf,
+
+    #[arg(long)]
+    reason: String,
+}
+
+/// Handle `zylcode missions`. Exit codes: 0 = moved forward or already
+/// terminal, 2 = verification is waiting on citations (not complete),
+/// 9 = execution paused deliberately mid-flight, 1 = error.
+async fn handle_missions(args: MissionsArgs) -> Result<()> {
+    use zylcode_core::mission_engine::{phase_name, EvidenceKind, MissionEngine, Progress};
+
+    match args.command {
+        MissionsCommand::Create(a) => {
+            let mission =
+                MissionEngine::new(a.workdir).create(&a.objective, &a.criterion, &a.step)?;
+            println!("mission: {}", mission.id);
+            println!("phase: {}", phase_name(mission.phase));
+            println!("criteria: {}", mission.criteria.len());
+            println!("steps: {}", mission.steps.len());
+            Ok(())
+        }
+        MissionsCommand::Status(a) => {
+            print!("{}", MissionEngine::new(a.workdir).describe()?);
+            Ok(())
+        }
+        MissionsCommand::Resume(a) => {
+            let progress = MissionEngine::new(a.workdir).resume(a.approve, a.crash_after_steps)?;
+            match progress {
+                Progress::AwaitingApproval => {
+                    println!("AWAITING_APPROVAL: nothing executed; re-run with --approve");
+                    Ok(())
+                }
+                Progress::Executing { done, remaining } => {
+                    println!("EXECUTING: {done} step(s) done, {remaining} remaining (saved)");
+                    if a.crash_after_steps.is_some() {
+                        println!("paused deliberately; `resume` continues from here");
+                        std::process::exit(9);
+                    }
+                    Ok(())
+                }
+                Progress::AwaitingEvidence { unsatisfied } => {
+                    println!(
+                        "VERIFYING: not COMPLETE — {} criterion/criteria lack a cited proof: {}",
+                        unsatisfied.len(),
+                        unsatisfied.join(", ")
+                    );
+                    std::process::exit(2);
+                }
+                Progress::Complete { mission_id } => {
+                    println!("COMPLETE: {mission_id} — every criterion has a cited proof");
+                    Ok(())
+                }
+                Progress::Terminal { phase } => {
+                    println!("terminal: {}", phase_name(phase));
+                    Ok(())
+                }
+            }
+        }
+        MissionsCommand::Cite(a) => {
+            let kind = match a.kind.as_str() {
+                "test" => EvidenceKind::Test,
+                "ledger" => EvidenceKind::Ledger,
+                "file" => EvidenceKind::File,
+                "command" => EvidenceKind::Command,
+                "artifact" => EvidenceKind::Artifact,
+                "human" => EvidenceKind::Human,
+                other => anyhow::bail!(
+                    "unknown evidence kind '{other}'; use test|ledger|file|command|artifact|human"
+                ),
+            };
+            let mission =
+                MissionEngine::new(a.workdir).cite(&a.criterion, &a.evidence, kind, &a.summary)?;
+            println!(
+                "cited: {} <- {} ({})",
+                a.criterion,
+                a.evidence,
+                phase_name(mission.phase)
+            );
+            Ok(())
+        }
+        MissionsCommand::Verify(a) => {
+            let audit = MissionEngine::new(a.workdir).verify_citations()?;
+            println!("checked: {} digest-bearing citation(s)", audit.checked());
+            println!("verified: {}", audit.verified.len());
+            if !audit.unverifiable.is_empty() {
+                println!(
+                    "unverifiable (no digest to check): {}",
+                    audit.unverifiable.join(", ")
+                );
+            }
+            for (evidence, expected, actual) in &audit.mismatched {
+                println!(
+                    "MISMATCH: {evidence} expected sha256:{expected} but found sha256:{actual}"
+                );
+            }
+            for evidence in &audit.missing {
+                println!("MISSING: {evidence} is cited but no longer resolves on disk");
+            }
+            if !audit.is_clean() {
+                eprintln!("evidence no longer supports the claim it was cited for");
+                std::process::exit(1);
+            }
+            println!("OK: cited evidence still matches");
+            Ok(())
+        }
+        MissionsCommand::Cancel(a) => {
+            let mission = MissionEngine::new(a.workdir).cancel(&a.reason)?;
+            println!("CANCELLED: {} ({})", mission.id, a.reason);
+            Ok(())
+        }
+    }
+}
+
 /// Run (or resume) a First Mission and print the closing statement (§35).
 /// Exit codes: 0 = completed with evidence, 2 = blocked (reason on stderr),
 /// 1 = the runner itself failed, non-zero abort = injected interruption.
@@ -2008,6 +2575,136 @@ async fn handle_mission(args: MissionArgs) -> Result<()> {
                     .unwrap_or("no reason recorded")
             );
             std::process::exit(2);
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// project
+// ---------------------------------------------------------------------------
+
+async fn handle_project(args: ProjectArgs) -> Result<()> {
+    match args.command {
+        ProjectCommands::Create { name, root } => {
+            let root_path = std::path::Path::new(&root);
+            if !root_path.exists() {
+                anyhow::bail!("project root directory not found: {}", root);
+            }
+            let store = zylcode_core::project_store::ProjectStore::open(&std::env::current_dir()?)
+                .map_err(|e| anyhow::anyhow!("failed to open project store: {e}"))?;
+            let record = store.register(&name, root_path)?;
+            println!(
+                "Project '{}' created at '{}' ID: {}",
+                record.name, record.root_path, record.id
+            );
+            Ok(())
+        }
+        ProjectCommands::List => {
+            let store = zylcode_core::project_store::ProjectStore::open(&std::env::current_dir()?)
+                .map_err(|e| anyhow::anyhow!("failed to open project store: {e}"))?;
+            let projects = store.list()?;
+            if projects.is_empty() {
+                println!("No projects registered.");
+            } else {
+                println!("Registered projects:");
+                for p in projects {
+                    println!("  {} @ {:?} ID: {}", p.name, p.root_path, p.id);
+                }
+            }
+            Ok(())
+        }
+        ProjectCommands::Open { id } => {
+            let store = zylcode_core::project_store::ProjectStore::open(&std::env::current_dir()?)
+                .map_err(|e| anyhow::anyhow!("failed to open project store: {e}"))?;
+            // Touch updates last_accessed and re-orders the list by recency.
+            store.touch(&id)?;
+            if let Some(p) = store.get(&id)? {
+                println!("Project '{}' @ {:?}", p.name, p.root_path);
+            } else {
+                anyhow::bail!("No project found with id '{id}'.");
+            }
+            Ok(())
+        }
+        ProjectCommands::Status { id } => {
+            let store = zylcode_core::project_store::ProjectStore::open(&std::env::current_dir()?)
+                .map_err(|e| anyhow::anyhow!("failed to open project store: {e}"))?;
+            let project = store
+                .get(&id)?
+                .ok_or_else(|| anyhow::anyhow!("No project found with id '{id}'."))?;
+            let root_present = std::path::Path::new(&project.root_path).is_dir();
+            println!("Project '{}'", project.name);
+            println!("id: {}", project.id);
+            println!("root: {}", project.root_path);
+            println!(
+                "root present: {}",
+                if root_present {
+                    "yes".to_string()
+                } else {
+                    "NO — repository not found on this machine".to_string()
+                }
+            );
+            println!(
+                "repository: {}",
+                project.repository_remote.as_deref().unwrap_or("(none)")
+            );
+            println!("created: {}", project.created_at);
+            println!("last accessed: {}", project.last_accessed);
+            println!("schema: v{}", project.schema_version);
+            println!("decisions: {}", project.decisions.len());
+            for decision in &project.decisions {
+                println!("  {} {} — {}", decision.at, decision.kind, decision.summary);
+            }
+            Ok(())
+        }
+        ProjectCommands::Export { output, force } => {
+            let store = zylcode_core::project_store::ProjectStore::open(&std::env::current_dir()?)
+                .map_err(|e| anyhow::anyhow!("failed to open project store: {e}"))?;
+            let exported = store.export_json()?;
+            let output_path = std::path::Path::new(&output);
+            // Enforce overwrite policy: refuse to overwrite unless --force is provided.
+            if output_path.exists() && !force {
+                anyhow::bail!(
+                    "refusing to overwrite existing output file '{}'. use --force to overwrite",
+                    output
+                );
+            }
+            std::fs::write(output_path, &exported)?;
+            // Count actual project records, not JSON lines.
+            let project_count = serde_json::from_str::<serde_json::Value>(&exported)
+                .map(|v| v["projects"].as_array().map(|a| a.len()).unwrap_or(0))
+                .unwrap_or(0);
+            println!(
+                "Exported {} project(s) to '{:?}'.",
+                project_count, output_path
+            );
+            Ok(())
+        }
+        ProjectCommands::Import { path } => {
+            let content = std::fs::read_to_string(&path)?;
+            let store = zylcode_core::project_store::ProjectStore::open(&std::env::current_dir()?)
+                .map_err(|e| anyhow::anyhow!("failed to open project store: {e}"))?;
+            let report = store.import_json_report(&content)?;
+            println!("Imported {} project(s) from '{path}'.", report.added);
+            if report.skipped_existing > 0 {
+                println!(
+                    "Skipped {} project(s) already present (same id or root).",
+                    report.skipped_existing
+                );
+            }
+            if !report.unresolved_roots.is_empty() {
+                println!(
+                    "Unresolved project roots on this machine ({}):",
+                    report.unresolved_roots.len()
+                );
+                for root in &report.unresolved_roots {
+                    println!("  {root}");
+                }
+                println!(
+                    "Their identity and history were imported; clone or locate each repository at \
+                     the path above to resolve it."
+                );
+            }
+            Ok(())
         }
     }
 }

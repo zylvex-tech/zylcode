@@ -5,128 +5,180 @@
   "capabilities": {
     "application_lifecycle": {
       "status": "GREEN",
+      "rung": "R3",
+      "rung_basis": "Backfilled 2026-11-11 from status GREEN: ZYLCODE_CAPABILITY_MODEL 4.2 requires R3 or above for GREEN. Builder assertion derived from this entry's recorded evidence; not independently audited.",
       "evidence": "Process running, window visible",
       "details": "Tauri v2 application launches successfully"
     },
     "provider_configuration": {
       "status": "GREEN",
+      "rung": "R3",
+      "rung_basis": "Backfilled 2026-11-11 from status GREEN: ZYLCODE_CAPABILITY_MODEL 4.2 requires R3 or above for GREEN. Builder assertion derived from this entry's recorded evidence; not independently audited.",
       "evidence": "UI shows providers, config persists, real HTTP calls",
       "details": "Anthropic, Ollama, OpenRouter, Synthetic Offline"
     },
     "mcp_tool_registration": {
       "status": "GREEN",
+      "rung": "R3",
+      "rung_basis": "Backfilled 2026-11-11 from status GREEN: ZYLCODE_CAPABILITY_MODEL 4.2 requires R3 or above for GREEN. Builder assertion derived from this entry's recorded evidence; not independently audited.",
       "evidence": "Tools registered in ToolRegistry",
       "details": "Real filesystem, shell, git, search tools"
     },
     "real_llm_calls": {
       "status": "GREEN",
+      "rung": "R3",
+      "rung_basis": "Backfilled 2026-11-11 from status GREEN: ZYLCODE_CAPABILITY_MODEL 4.2 requires R3 or above for GREEN. Builder assertion derived from this entry's recorded evidence; not independently audited.",
       "evidence": "router.rs makes HTTP POST to providers",
       "details": "Real HTTP calls when API keys configured"
     },
     "streaming_infrastructure": {
       "status": "GREEN",
+      "rung": "R3",
+      "rung_basis": "Backfilled 2026-11-11 from status GREEN: ZYLCODE_CAPABILITY_MODEL 4.2 requires R3 or above for GREEN. Builder assertion derived from this entry's recorded evidence; not independently audited.",
       "evidence": "process_intent_stream emits intent:chunk events",
       "details": "Frontend listens via useStreamSubscription"
     },
     "agent_protocol": {
       "status": "GREEN",
+      "rung": "R3",
+      "rung_basis": "Backfilled 2026-11-11 from status GREEN: ZYLCODE_CAPABILITY_MODEL 4.2 requires R3 or above for GREEN. Builder assertion derived from this entry's recorded evidence; not independently audited.",
       "evidence": "AgentDecision enum with Think, Plan, ToolCall, RequestApproval, Verify, Complete, Fail",
       "details": "Full agent decision protocol implemented"
     },
     "tool_runtime": {
       "status": "GREEN",
+      "rung": "R3",
+      "rung_basis": "Backfilled 2026-11-11 from status GREEN: ZYLCODE_CAPABILITY_MODEL 4.2 requires R3 or above for GREEN. Builder assertion derived from this entry's recorded evidence; not independently audited.",
       "evidence": "RealTool trait with FileSystemTool, ShellTool, GitTool, SearchTool",
       "details": "Real tool execution with evidence recording"
     },
     "model_client_abstraction": {
       "status": "GREEN",
+      "rung": "R3",
+      "rung_basis": "Backfilled 2026-11-11 from status GREEN: ZYLCODE_CAPABILITY_MODEL 4.2 requires R3 or above for GREEN. Builder assertion derived from this entry's recorded evidence; not independently audited.",
       "evidence": "ModelClient trait with RealModelClient and TestModelClient",
       "details": "Supports real providers and deterministic testing"
     },
     "context_builder": {
       "status": "GREEN",
+      "rung": "R3",
+      "rung_basis": "Backfilled 2026-11-11 from status GREEN: ZYLCODE_CAPABILITY_MODEL 4.2 requires R3 or above for GREEN. Builder assertion derived from this entry's recorded evidence; not independently audited.",
       "evidence": "ContextBuilder gathers file tree, relevant files, git status",
       "details": "Automated context gathering for agent"
     },
     "tool_schema_exposure": {
       "status": "GREEN",
+      "rung": "R3",
+      "rung_basis": "Backfilled 2026-11-11 from status GREEN: ZYLCODE_CAPABILITY_MODEL 4.2 requires R3 or above for GREEN. Builder assertion derived from this entry's recorded evidence; not independently audited.",
       "evidence": "ToolRegistry.list_schemas() returns ToolSchema with risk classification",
       "details": "Models can discover available tools and their risk levels"
     },
     "approval_enforcement": {
       "status": "GREEN",
+      "rung": "R3",
+      "rung_basis": "Backfilled 2026-11-11 from status GREEN: ZYLCODE_CAPABILITY_MODEL 4.2 requires R3 or above for GREEN. Builder assertion derived from this entry's recorded evidence; not independently audited.",
       "evidence": "requires_approval() checks risk level, AwaitingApproval state",
       "details": "Destructive actions require approval"
     },
     "completion_verifier": {
       "status": "GREEN",
+      "rung": "R3",
+      "rung_basis": "Backfilled 2026-11-11 from status GREEN: ZYLCODE_CAPABILITY_MODEL 4.2 requires R3 or above for GREEN. Builder assertion derived from this entry's recorded evidence; not independently audited.",
       "evidence": "verify_completion_evidence() checks for tool execution and evidence",
       "details": "Cannot claim complete without evidence"
     },
     "observation_loop": {
-      "status": "GREEN",
+      "status": "PARTIAL",
+      "rung": "R2",
+      "rung_basis": "Backfilled 2026-11-11: status is GREEN, but the recorded evidence is a passing unit test, which ZYLCODE_CAPABILITY_MODEL 4.2 explicitly says cannot support GREEN (R2 evidence). Rung recorded at R2; the status/rung inconsistency is declared here rather than resolved, and is listed in docs/PHASE2A_COMPLETION_REPORT.md section 10.",
       "evidence": "test_observation_loop passes, tool results fed back to model",
-      "details": "Model receives tool observations for next decision"
+      "details": "Model receives tool observations for next decision",
+      "limitations": "Downgraded from GREEN to PARTIAL on 2026-11-17 (verdict condition C3): the evidence is a unit test, not a product surface, so R3 is not earned."
     },
     "repair_loop": {
-      "status": "GREEN",
+      "status": "PARTIAL",
+      "rung": "R2",
+      "rung_basis": "Backfilled 2026-11-11: status is GREEN, but the recorded evidence is a passing unit test, which ZYLCODE_CAPABILITY_MODEL 4.2 explicitly says cannot support GREEN (R2 evidence). Rung recorded at R2; the status/rung inconsistency is declared here rather than resolved, and is listed in docs/PHASE2A_COMPLETION_REPORT.md section 10.",
       "evidence": "test_repair_loop passes, failures trigger repair attempts",
-      "details": "Agent can recover from failures"
+      "details": "Agent can recover from failures",
+      "limitations": "Downgraded from GREEN to PARTIAL on 2026-11-17 (verdict condition C3): the evidence is a unit test, not a product surface, so R3 is not earned."
     },
     "bounded_execution": {
       "status": "GREEN",
+      "rung": "R3",
+      "rung_basis": "Backfilled 2026-11-11 from status GREEN: ZYLCODE_CAPABILITY_MODEL 4.2 requires R3 or above for GREEN. Builder assertion derived from this entry's recorded evidence; not independently audited.",
       "evidence": "Step limits, timeouts, and cancellation implemented",
       "details": "Agent cannot run indefinitely"
     },
     "risk_classification": {
       "status": "GREEN",
+      "rung": "R3",
+      "rung_basis": "Backfilled 2026-11-11 from status GREEN: ZYLCODE_CAPABILITY_MODEL 4.2 requires R3 or above for GREEN. Builder assertion derived from this entry's recorded evidence; not independently audited.",
       "evidence": "RiskLevel enum: Read, Write, Execute, Network, GitWrite, Destructive, Release",
       "details": "Tools classified by risk level"
     },
     "test_model_client": {
-      "status": "GREEN",
+      "status": "PARTIAL",
+      "rung": "R2",
+      "rung_basis": "Backfilled 2026-11-11: status is GREEN, but the recorded evidence is a passing unit test, which ZYLCODE_CAPABILITY_MODEL 4.2 explicitly says cannot support GREEN (R2 evidence). Rung recorded at R2; the status/rung inconsistency is declared here rather than resolved, and is listed in docs/PHASE2A_COMPLETION_REPORT.md section 10.",
       "evidence": "TestModelClient provides deterministic responses for CI",
-      "details": "Enables reliable testing without real API calls"
+      "details": "Enables reliable testing without real API calls",
+      "limitations": "Downgraded from GREEN to PARTIAL on 2026-11-17 (verdict condition C3): the evidence is a unit test, not a product surface, so R3 is not earned."
     },
     "remote_ci": {
-      "status": "EXTERNAL_BLOCKER",
-      "evidence": "GitHub Actions blocked by billing issue",
-      "details": "CI repair implemented but cannot run due to account billing"
+      "status": "PARTIAL",
+      "rung": "R2",
+      "rung_basis": "Backfilled 2026-11-11: no rung can be evidenced for a channel recorded as blocked. GitHub Actions now runs on this repository (five required checks green at 1c14aec), but this entry is neither re-verified nor reclassified here.",
+      "evidence": "CI runs green on ubuntu-22.04, macOS and Windows (5 required checks) as of 2026-11-17; the GitHub Actions billing blocker recorded here is gone. Rung stays R2 until a probe binds this claim.",
+      "details": "CI repair implemented but cannot run due to account billing",
+      "limitations": "Green CI is not the same as a released artifact; packaging is tracked by release_installers."
     },
     "evidence_ledger": {
       "status": "GREEN",
+      "rung": "R3",
+      "rung_basis": "Backfilled 2026-11-11 from status GREEN: ZYLCODE_CAPABILITY_MODEL 4.2 requires R3 or above for GREEN. Builder assertion derived from this entry's recorded evidence; not independently audited.",
       "evidence": "LedgerStore trait with SqliteLedgerStore and MemoryLedgerStore",
       "details": "Append-first, idempotent evidence ledger with execution state machine"
     },
     "session_persistence": {
       "status": "GREEN",
+      "rung": "R3",
+      "rung_basis": "Backfilled 2026-11-11 from status GREEN: ZYLCODE_CAPABILITY_MODEL 4.2 requires R3 or above for GREEN. Builder assertion derived from this entry's recorded evidence; not independently audited.",
       "evidence": "SessionCheckpoint saved/loaded from ledger",
       "details": "Session state persisted for crash recovery"
     },
     "crash_recovery": {
       "status": "GREEN",
+      "rung": "R3",
+      "rung_basis": "Backfilled 2026-11-11 from status GREEN: ZYLCODE_CAPABILITY_MODEL 4.2 requires R3 or above for GREEN. Builder assertion derived from this entry's recorded evidence; not independently audited.",
       "evidence": "Agent can resume from checkpoint after crash",
       "details": "Recovery logic scans ledger for incomplete executions"
     },
     "release_installers": {
       "status": "PARTIAL",
-      "evidence": "Tauri build pipeline configured for NSIS/DEB/DMG but CI blocked by billing",
-      "details": "release.yml produces installers via tauri-action; Windows NSIS, macOS DMG, Linux DEB/RPM configured; release workflow blocked by GitHub billing issue"
+      "rung": "R3",
+      "rung_basis": "Backfilled 2026-11-11: v0.2.3 shipped 2026-10-29 with 12 platform assets (gh release view v0.2.3), so the installer surface is user-reachable. PARTIAL preserved: installers are unsigned and this entry's recorded evidence still cites the old CI billing block.",
+      "evidence": "Tauri build pipeline configured for NSIS/DEB/DMG. No tagged matrix run has been rehearsed since v0.2.3 (2026-10-29), so the packaging path is unproven on this head.",
+      "details": "release.yml produces installers via tauri-action; Windows NSIS, macOS DMG, Linux DEB/RPM configured; release workflow blocked by GitHub billing issue",
+      "limitations": "No signed installers; source checkout remains the supported path."
     },
     "documentation_accuracy": {
       "status": "DISPUTED",
+      "rung": "R2",
+      "rung_basis": "Auditor ruling 2026-11-16 (docs/governance/PHASE2A_AUDIT_VERDICT_2026-11-16.md): C2: no actor entry point; the scope of \"documentation accuracy\" remains undefined.",
       "evidence": "All stale github.com/zylcode/zylcode references corrected to github.com/zylvex-tech/zylcode",
       "details": "README installation section rewritten; fabricated download URLs removed; historical v0.2.0-dev assets documented as non-current",
       "status_before_audit": "GREEN",
       "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
-      "dispute_reason": "Scope defect (ZYLCODE_CAPABILITY_MODEL.md 3.1/3.2). The capability name implies broad documentation accuracy; the evidence string only covers repo-URL references. The 2026-09-16 README review found further inaccuracies: a removed-as-unsupported '156 tools' claim had reappeared, 'Total: 32 tests passing' understated 341 test attributes and omitted a failure, three doc links pointed at files that have never existed, and the README defined an R0-R5 ladder contradicting ZYLCODE_PROOF_GRAPH.md. Requires re-verification against a stated scope."
+      "dispute_reason": "Scope defect (ZYLCODE_CAPABILITY_MODEL.md 3.1/3.2). The capability name implies broad documentation accuracy; the evidence string only covers repo-URL references. The 2026-09-16 README review found further inaccuracies: a removed-as-unsupported '156 tools' claim had reappeared, 'Total: 32 tests passing' understated 341 test attributes and omitted a failure, three doc links pointed at files that have never existed, and the README defined an R0-R5 ladder contradicting ZYLCODE_PROOF_GRAPH.md. Requires re-verification against a stated scope.",
+      "verified_at": "2026-11-16"
     },
     "repository_scanner": {
-      "status": "DISPUTED",
+      "status": "GREEN",
       "evidence": "Scanner indexes 14,973 files in 12.7s with .gitignore and secret-file exclusion",
       "details": "Deterministic file tree walker with language/role classification, content hashing, and Windows path support",
       "status_before_audit": "GREEN",
-      "rung": "R2",
+      "rung": "R3",
       "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
       "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6. METRIC DEFECT: 'indexes 14,973 files' counted target/ build output. Measured: 15,064 indexed of which 14,900 are under target/ (98.9%). The repository is 254 files (git ls-files = 193). Root cause: should_exclude() matches forward-slash patterns against Windows backslash paths, so the exclusion list is dead code on the primary target platform. Also: benchmark asserts only file_count() > 50, and the reported scan time (12.7s) does not reproduce (276.1s measured, assertion FAILS).",
       "p12_rebaseline": {
@@ -134,17 +186,22 @@
         "rung": "R2",
         "status_now": "DISPUTED",
         "evidence": "Windows exclusion fixed and asserted by planted trap files in the committed benchmark; 286 files / 1552 symbols indexed on HEAD (excludes target/, node_modules/, .git, worktrees)",
+        "evidence_correction_2026_11_14": "CORRECTION: the 'asserted by planted trap files' clause was not true of the committed benchmark, which contained no scope assertion and no trap fixture. Remedy: commit b5767fe replaced substring exclusion with path-component matching and added assert_index_scope() to both benchmark tests, plus Windows/Unix/near-match classifier tests. Measured on the remediation branch: 753 files indexed against 767 tracked; zero indexed paths with a target, node_modules, .git, dist or build component. The index is NOT a tracked-file subset: untracked working-tree files are scanned by design. Status deliberately unchanged (DISPUTED) pending independent audit.",
         "note": "Windows path-normalization defect fixed (root cause of the audit's 98.9% build-output finding). Still R2: no product surface of its own; consumed via repo-intelligence retrieval.",
         "dispute_history_preserved": true,
         "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
-      }
+      },
+      "rung_basis": "Auditor ruling 2026-11-16 (docs/governance/PHASE2A_AUDIT_VERDICT_2026-11-16.md, ACCEPTED WITH CONDITIONS): scanner runs as the first pipeline step behind `zylcode repo-context` and the AgentLoop context builder; both surfaces were exercised by the auditor (754 files indexed, scope assertion live).",
+      "verified_at": "2026-11-16",
+      "evidence_commit": "c32f3d8",
+      "dispute_resolution": "Resolved by the independent audit of 2026-11-16: R3 confirmed through a product surface. Dispute history below is retained, not erased."
     },
     "manifest_intelligence": {
-      "status": "DISPUTED",
+      "status": "GREEN",
       "evidence": "Parses Cargo.toml, package.json, pnpm-workspace.yaml; discovers 5 packages and 4 internal dependency edges",
       "details": "Structured manifest parsing with workspace member resolution and dependency extraction",
       "status_before_audit": "GREEN",
-      "rung": "R2",
+      "rung": "R3",
       "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
       "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6.",
       "p12_rebaseline": {
@@ -155,14 +212,18 @@
         "note": "Still R2 (library); reachable through repo-context CLI.",
         "dispute_history_preserved": true,
         "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
-      }
+      },
+      "rung_basis": "Auditor ruling 2026-11-16 (docs/governance/PHASE2A_AUDIT_VERDICT_2026-11-16.md, ACCEPTED WITH CONDITIONS): package/workspace discovery runs in the same pipeline; the CLI reports \"8 packages\" to the user.",
+      "verified_at": "2026-11-16",
+      "evidence_commit": "c32f3d8",
+      "dispute_resolution": "Resolved by the independent audit of 2026-11-16: R3 confirmed through a product surface. Dispute history below is retained, not erased."
     },
     "rust_symbol_index": {
-      "status": "DISPUTED",
+      "status": "GREEN",
       "evidence": "Extracts 1,444 symbols from Rust files using regex-based parsing",
       "details": "Supports struct, enum, trait, impl, function, method, constant, type alias, module, macro; QUALITY: DEFINITION_INDEXED",
       "status_before_audit": "GREEN",
-      "rung": "R2",
+      "rung": "R3",
       "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
       "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6.",
       "p12_rebaseline": {
@@ -173,16 +234,18 @@
         "note": "Still R2 (library); reachable through repo-context CLI.",
         "dispute_history_preserved": true,
         "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
-      }
+      },
+      "rung_basis": "Auditor ruling 2026-11-16 (docs/governance/PHASE2A_AUDIT_VERDICT_2026-11-16.md, ACCEPTED WITH CONDITIONS): Rust symbol extraction runs in the pipeline and the CLI returns ranked symbol results.",
+      "verified_at": "2026-11-16",
+      "evidence_commit": "c32f3d8",
+      "dispute_resolution": "Resolved by the independent audit of 2026-11-16: R3 confirmed through a product surface. Dispute history below is retained, not erased."
     },
     "typescript_symbol_index": {
-      "status": "DISPUTED",
-      "evidence": "Regex-based extraction for class, interface, type, function, variable, component",
+      "status": "GREEN",
+      "evidence": "build_repo_query() indexes TypeScript/JavaScript symbols (intelligence::query), and `zylcode repo-symbols Widget` returns a TypeScript class through the persisted index. Bound by probes: build_repo_query_indexes_typescript_symbols and repo_symbols_returns_a_typescript_symbol (docs/capability-probes.json).",
       "details": "QUALITY: DEFINITION_INDEXED; full semantic resolution is future work",
       "status_before_audit": "GREEN",
-      "rung": "R2",
-      "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
-      "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6.",
+      "rung": "R3",
       "p12_rebaseline": {
         "date": "2026-09-19",
         "rung": "R2",
@@ -191,14 +254,16 @@
         "note": "Still R2 (library).",
         "dispute_history_preserved": true,
         "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
-      }
+      },
+      "rung_basis": "Phase 2A verdict condition C1 closed on 2026-11-17: pipeline wiring (#74) plus a product surface (#76) plus process-level probes; the previous dispute was that only a test could reach it.",
+      "verified_at": "2026-11-17"
     },
     "package_dependency_graph": {
-      "status": "DISPUTED",
+      "status": "GREEN",
       "evidence": "Bidirectional queries: dependencies_of(X), dependents_of(X), transitive_dependencies_of(X), packages_using(external_dep)",
       "details": "Built from manifest parsing; supports internal and external dependency edges",
       "status_before_audit": "GREEN",
-      "rung": "R2",
+      "rung": "R3",
       "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
       "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6.",
       "p12_rebaseline": {
@@ -209,32 +274,40 @@
         "note": "Still R2 (library); reachable through repo-context CLI.",
         "dispute_history_preserved": true,
         "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
-      }
+      },
+      "rung_basis": "Auditor ruling 2026-11-16 (docs/governance/PHASE2A_AUDIT_VERDICT_2026-11-16.md, ACCEPTED WITH CONDITIONS): dependency distance feeds ranking; benchmark Q6 exercises dependents_of(\"zylcode-core\").",
+      "verified_at": "2026-11-16",
+      "evidence_commit": "c32f3d8",
+      "dispute_resolution": "Resolved by the independent audit of 2026-11-16: R3 confirmed through a product surface. Dispute history below is retained, not erased."
     },
     "git_change_graph": {
-      "status": "DISPUTED",
+      "status": "GREEN",
       "evidence": "Extracts HEAD, branch, dirty state, recent commits, files changed by commit",
       "details": "Uses git CLI; handles root commits via git show fallback",
       "status_before_audit": "GREEN",
-      "rung": "R2",
+      "rung": "R3",
       "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
       "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6.",
       "p12_rebaseline": {
         "date": "2026-09-19",
         "rung": "R2",
         "status_now": "DISPUTED",
-        "evidence": "Now also feeds co-change mining (files changed together, <=12-file commits, Source/Test roles) — Q8's agent.rs/ledger.rs surfaced via coupling that exists at commit 6f564ac",
+        "evidence": "Now also feeds co-change mining (files changed together, <=12-file commits, Source/Test roles) \u00e2\u20ac\u201d Q8's agent.rs/ledger.rs surfaced via coupling that exists at commit 6f564ac",
         "note": "Still R2 (library); reachable through repo-context CLI.",
         "dispute_history_preserved": true,
         "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
-      }
+      },
+      "rung_basis": "Auditor ruling 2026-11-16 (docs/governance/PHASE2A_AUDIT_VERDICT_2026-11-16.md, ACCEPTED WITH CONDITIONS): full git history feeds co-change mining; the integration test shows ledger.rs surfacing via co-change evidence.",
+      "verified_at": "2026-11-16",
+      "evidence_commit": "c32f3d8",
+      "dispute_resolution": "Resolved by the independent audit of 2026-11-16: R3 confirmed through a product surface. Dispute history below is retained, not erased."
     },
     "architecture_fingerprint": {
-      "status": "DISPUTED",
+      "status": "GREEN",
       "evidence": "Detects Rust workspace, Tauri v2, React, TypeScript, pnpm, SQLite, Tokio, MCP, Vite, Tailwind CSS",
       "details": "Each fact has evidence and provenance classification (OBSERVED/PARSED/DERIVED)",
       "status_before_audit": "GREEN",
-      "rung": "R2",
+      "rung": "R3",
       "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
       "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6.",
       "p12_rebaseline": {
@@ -245,14 +318,18 @@
         "note": "Still R2 (library).",
         "dispute_history_preserved": true,
         "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
-      }
+      },
+      "rung_basis": "Auditor ruling 2026-11-16 (docs/governance/PHASE2A_AUDIT_VERDICT_2026-11-16.md, ACCEPTED WITH CONDITIONS): the fingerprint is produced in the pipeline and consumed by retrieval ranking.",
+      "verified_at": "2026-11-16",
+      "evidence_commit": "c32f3d8",
+      "dispute_resolution": "Resolved by the independent audit of 2026-11-16: R3 confirmed through a product surface. Dispute history below is retained, not erased."
     },
     "incremental_indexing": {
-      "status": "DISPUTED",
+      "status": "GREEN",
       "evidence": "Content hashing for files; get_changed_files_since() in store",
       "details": "File-level invalidation implemented; symbol-level incremental reindex is future work",
       "status_before_audit": "PARTIAL",
-      "rung": "R2",
+      "rung": "R3",
       "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
       "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6.",
       "p12_rebaseline": {
@@ -263,14 +340,18 @@
         "note": "Still PARTIAL in substance; no persisted cache yet.",
         "dispute_history_preserved": true,
         "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
-      }
+      },
+      "rung_basis": "Auditor ruling 2026-11-16 (docs/governance/PHASE2A_AUDIT_VERDICT_2026-11-16.md, ACCEPTED WITH CONDITIONS): PersistedIndex persists to .zylcode/intelligence-index.json with content-hash file-level invalidation; reachable from CLI and AgentLoop (symbol-level invalidation not implemented).",
+      "verified_at": "2026-11-16",
+      "evidence_commit": "c32f3d8",
+      "dispute_resolution": "Resolved by the independent audit of 2026-11-16: R3 confirmed through a product surface. Dispute history below is retained, not erased."
     },
     "repository_query_api": {
-      "status": "DISPUTED",
+      "status": "GREEN",
       "evidence": "14 query methods: repository_summary, find_symbol, symbol_definition, symbols_in_file, package_for_file, dependencies_of, dependents_of, entry_points, test_targets, build_commands, recent_changes, architecture, relevant_context",
       "details": "Typed query layer with ContextResult including relevance, reason, and provenance",
       "status_before_audit": "GREEN",
-      "rung": "R2",
+      "rung": "R3",
       "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
       "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6.",
       "p12_rebaseline": {
@@ -281,14 +362,18 @@
         "note": "The audit's 'no product entry point' finding is remediated: named CLI surface + committed transcript = R3 per ZYLCODE_PROOF_GRAPH 2.1. Builder evidence; acceptance is the auditor's.",
         "dispute_history_preserved": true,
         "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
-      }
+      },
+      "rung_basis": "Auditor ruling 2026-11-16 (docs/governance/PHASE2A_AUDIT_VERDICT_2026-11-16.md, ACCEPTED WITH CONDITIONS): RepoQuery::relevant_context() is the direct call from `zylcode repo-context`; the auditor invoked it and inspected the ranked output.",
+      "verified_at": "2026-11-16",
+      "evidence_commit": "c32f3d8",
+      "dispute_resolution": "Resolved by the independent audit of 2026-11-16: R3 confirmed through a product surface. Dispute history below is retained, not erased."
     },
     "context_retrieval": {
-      "status": "DISPUTED",
+      "status": "GREEN",
       "evidence": "Benchmark: Precision@10=0.30, Recall@10=0.53 against 10 known-answer questions",
       "details": "Ranks by symbol match, filename, dependency distance, test relationship, recent changes; returns WHY",
       "status_before_audit": "GREEN",
-      "rung": "R2",
+      "rung": "R3",
       "disputed_by": "docs/governance/PHASE2A_INDEPENDENT_AUDIT.md",
       "dispute_reason": "Phase 2A NOT ACCEPTED (independent audit, 2026-09-16). Recorded GREEN on the basis of unit tests and a benchmark that fails on re-execution. The subsystem has no product entry point, so by ZYLCODE_PROOF_GRAPH.md 2.1 it is R2 (a library), not R3 (a capability). Not re-baselined here: re-baselining is remediation item P0.2/P0.6.",
       "p12_rebaseline": {
@@ -299,7 +384,11 @@
         "note": "Product-reachable via repo-context CLI and AgentLoop seam (ContextBuilder integration test committed). Builder evidence; acceptance is the auditor's.",
         "dispute_history_preserved": true,
         "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
-      }
+      },
+      "rung_basis": "Auditor ruling 2026-11-16 (docs/governance/PHASE2A_AUDIT_VERDICT_2026-11-16.md, ACCEPTED WITH CONDITIONS): relevant_context() returns ranked results with reasons, consumed by the CLI and the agent context builder; the integration test proves it is not the keyword heuristic.",
+      "verified_at": "2026-11-16",
+      "evidence_commit": "c32f3d8",
+      "dispute_resolution": "Resolved by the independent audit of 2026-11-16: R3 confirmed through a product surface. Dispute history below is retained, not erased."
     },
     "repository_benchmark": {
       "status": "DISPUTED",
@@ -314,10 +403,13 @@
         "rung": "R2",
         "status_now": "DISPUTED",
         "evidence": "Expanded 10 -> 20 known-answer queries (all fact-verified); thresholds raised to P@10>=0.30, R@10>=0.80 (observed 0.48/1.00); in-process determinism assertion added; thresholds were strengthened, never loosened",
+        "evidence_correction_2026_11_14": "CORRECTION: this block's 20-query/0.30 figures are the 2026-09-19 snapshot, not the current harness. As of commit b5767fe the suite has 28 questions, asserts P@10>=0.60 and R@10>=0.60, and measured P@10=0.63 / R@10=0.96 on a clean worktree. The performance test is no longer #[ignore]d: it prints scan files/second and fails below a 10 files/s collapse floor rather than the former wall-clock <120s assertion. The question set remains builder-authored (8 questions were added to raise the average) and that limitation is unchanged. Status deliberately unchanged (DISPUTED).",
         "note": "R2: a committed test harness; determinism proof recorded in evidence section 4.",
         "dispute_history_preserved": true,
         "evidence_doc": "docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md"
-      }
+      },
+      "rung_basis": "Auditor ruling 2026-11-16 (docs/governance/PHASE2A_AUDIT_VERDICT_2026-11-16.md): C2: a test harness is not a product capability; no user surface invokes the benchmark.",
+      "verified_at": "2026-11-16"
     },
     "agent_context_gathering": {
       "status": "GREEN",
@@ -344,11 +436,11 @@
   },
   "summary": {
     "total": 37,
-    "GREEN": 22,
-    "EXTERNAL_BLOCKER": 1,
-    "PARTIAL": 2,
-    "DISPUTED": 12,
-    "note": "Counts computed from entry statuses. p12_rebaseline blocks added 2026-09-19 carry builder evidence for the disputed Phase 2A entries without erasing dispute history; GREEN on repository_query_api/context_retrieval/agent_context_gathering/benchmark_determinism is builder-claimed R3 evidence pending independent acceptance."
+    "GREEN": 29,
+    "EXTERNAL_BLOCKER": 0,
+    "PARTIAL": 6,
+    "DISPUTED": 2,
+    "note": "Phase 2A was ACCEPTED WITH CONDITIONS on 2026-11-16 (docs/governance/PHASE2A_AUDIT_VERDICT_2026-11-16.md). On 2026-11-17, condition C1 was closed and typescript_symbol_index promoted to GREEN/R3 with probes; condition C3 was resolved by downgrading observation_loop, repair_loop and test_model_client to PARTIAL rather than keeping declared GREEN/R2 conflicts. repository_benchmark and documentation_accuracy remain DISPUTED (conditions C2/C4)."
   },
   "audit": {
     "status": "UNDER CORRECTION",
@@ -381,5 +473,20 @@
     ],
     "new_entries": ["agent_context_gathering", "benchmark_determinism", "tool_system_executable"],
     "rule": "No dispute field erased; no R4 claimed anywhere; Phase 2A remains RE-OPENED."
+  },
+  "rung_backfill": {
+    "date": "2026-11-11",
+    "by": "Phase 2A canonical-report pass (builder; not acceptance authority)",
+    "reason": "ZYLCODE_CAPABILITY_MODEL section 5 requires a rung on every entry; 23 of 37 entries had none.",
+    "method": "Rungs were derived from each entry's existing status and recorded evidence, never invented: GREEN entries take R3 because section 4.2 forbids GREEN below R3, except where the recorded evidence is a unit test only, which is declared as rung_conflict instead of being promoted. No status, dispute reason, or evidence string was changed by this pass.",
+    "entries_completed": 23,
+    "rung_counts_after": {
+      "R2": 17,
+      "R3": 20
+    },
+    "uncertainty": "These rungs are builder assertions, not audited ones. R1/R4/R5 are assigned nowhere in this registry, and no entry claims R4 or R5.",
+    "status_rung_conflicts_declared": ["observation_loop", "repair_loop", "test_model_client"],
+    "stale_figures_preserved": "repository_scanner (\"14,973 files in 12.7s\") and context_retrieval (P@10 0.30 / R@10 0.53 / 10 questions) still carry pre-remediation evidence strings. They were not edited here; the measured replacements are in docs/PHASE2A_COMPLETION_REPORT.md sections 3, 5 and 7.",
+    "validation": "scripts/check_capability_registry.py (wired into CI)"
   }
 }

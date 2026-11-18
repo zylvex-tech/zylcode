@@ -62,3 +62,33 @@ document from that set is `INSTALLATION_GUIDE.md`, which moved to `docs/INSTALLA
 | `skills-system-spec.md` | Skills System Specification |
 | `strategic-plan.md` | ZylCode Strategic Plan: Becoming the Market Leader |
 | `task_plan.md` | Phase 2A — Repository Intelligence Foundation |
+
+## Added 2026-11-17 — root-level notes triaged
+
+These two files lived untracked in the repository root until this date, so they have no commit
+history: they were moved with `mv`, not `git mv`, and their history starts at the commit that added
+them here.
+
+| File | Original heading |
+| ---- | ---------------- |
+| `composio_integration_plan.md` | Composio Integration Plan — ZylCode AI Software Creation OS |
+| `MCP_TRUTH_RECONCILIATION.md` | MCP Truth Reconciliation |
+
+**Why quarantined rather than kept live.** `composio_integration_plan.md` is an unimplemented
+third-party-integration proposal — the `crates/zylcode-mcp/src/composio_client.rs` and
+`crates/zylcode-core/src/user_identity.rs` it specifies do not exist — and it predates Phase 5's
+hard rule that the Extension ABI comes before any hard-coded integration.
+`MCP_TRUTH_RECONCILIATION.md` is a dated reconciliation written against HEAD `d6ab7c8`. Its
+"what exists / what is missing" list was re-checked against the tree on 2026-11-17 and still holds
+(no test spawns a real MCP server), but it is an unmaintained snapshot that duplicates
+`docs/capability-registry.json`, which is the source of truth. Both are useful as a record of what
+was believed and when, and neither may be cited as current capability.
+
+**Deleted in the same sweep, not archived:** `Cargo.lock.bak` and three `Cargo.toml.bak` copies
+(superseded pre-`rusqlite`-upgrade backups of tracked files), and
+`Phase2B_Completion_Report.md`, which declared Phase 2B "ENGINEERING COMPLETE … CLOSED",
+"proven" 3/3 real-server MCP tests (`crates/zylcode-mcp/tests/mcp_real_server.rs` does not exist),
+and "no further audit cycles are authorized". That contradicts `docs/governance/phase-status.json`,
+where 2B is READY with only the B2 import-closure slice shipped, and it is a builder certifying its
+own work. Deleting it removed a false claim rather than a record: the phase's actual state is
+recorded in the governance set. `*.bak` and `/screenshots/` are now gitignored.

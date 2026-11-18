@@ -1,7 +1,7 @@
 # Repository Documentation Index — read this before any other `.md`
 
 **Status:** GOVERNING MAP
-**Last swept:** 2026-09-16
+**Last swept:** 2026-11-11
 **Governed by:** `ZYLCODE_AGENT_OPERATING_PROTOCOL.md` §4.7 (phase numbers) and §4.8 (superseded documents)
 
 ---
@@ -16,7 +16,7 @@ them carries a superseded banner**.
 An agent that reads `PROJECT_COMPLETE.md` before reading `docs/governance/` will conclude the project
 is finished and that Phases 3 and 4 passed. Both conclusions are false. The authoritative state is:
 
-> **Phase 2A is NOT ACCEPTED — RE-OPENED. Phase 2B is BLOCKED on 2A. Phases 3A–16 are NOT STARTED.**
+> **Phase 2A: remediation complete, AWAITING INDEPENDENT RE-AUDIT. Phase 2B stays BLOCKED until that verdict. Phases 3A–16 are NOT STARTED.**
 
 The root files are not lies about the past — they are **provenance**. They record what was believed
 and attempted during an earlier, differently-numbered program. Under Protocol §4.8 they may be read
@@ -115,6 +115,22 @@ evidence of capability would repeat the exact error the Phase 2A audit caught.
 **Note on `strategic-plan.md` (lowercase):** this is a **different file** from the quarantined
 `docs/STRATEGIC_PLAN.md`, which already carries a SUPERSEDED banner. The lowercase root copy has no
 banner and makes market-leadership claims. Both are historical; the governance set supersedes both.
+
+### 4.3 Root-level notes triaged (2026-11-17)
+
+Two further untracked root notes were quarantined instead of being committed as live prose:
+`MCP_TRUTH_RECONCILIATION.md` (a dated, unmaintained reconciliation written against HEAD `d6ab7c8`,
+superseded by `capability-registry.json` as the source of truth) and
+`composio_integration_plan.md` (an unimplemented integration proposal that specifies modules which
+do not exist, and predates the Phase 5 _Extension ABI first_ rule). Both are now in
+[`archive/2026-root-reports/`](archive/2026-root-reports/INDEX.md).
+
+Deleted in the same sweep rather than archived: four `.bak` copies of tracked `Cargo.lock` and
+`Cargo.toml` files, and `Phase2B_Completion_Report.md`. The last one declared Phase 2B
+"ENGINEERING COMPLETE — CLOSED", cited 3/3 "proven" real-server MCP tests for a test file that does
+not exist, and stated that no further audit cycles were authorized. `phase-status.json` records 2B
+as READY with only the B2 slice shipped, so the report was a stale self-certification; removing it
+deleted a false claim, not a record. `*.bak` and `/screenshots/` are now ignored.
 
 ---
 

@@ -301,6 +301,163 @@ async fn missions_list(state: tauri::State<'_, EngineState>) -> Result<serde_jso
     Ok(serde_json::json!({ "missions": list }))
 }
 
+// ---------------------------------------------------------------------------
+// Mission Engine (Phase 3B) — durable mission with cited-proof completion
+//
+// The engine (zylcode_core::mission_engine) owns the state machine and the
+// journal; these commands are a thin IPC boundary. Nothing is cached in the
+// UI: every command reads the journal, so a mission created in an earlier app
+// session is still there after a restart.
+// ---------------------------------------------------------------------------
+
+/// Parse the evidence-kind string from the UI. An unknown kind is a rejected
+/// request, not a silent default — mislabeling proof is the one thing this
+/// surface must not do.
+fn evidence_kind(raw: &str) -> Result<zylcode_core::mission_engine::EvidenceKind, String> {
+    use zylcode_core::mission_engine::EvidenceKind as K;
+    match raw {
+        "test" => Ok(K::Test),
+        "ledger" => Ok(K::Ledger),
+        "file" => Ok(K::File),
+        "command" => Ok(K::Command),
+        "artifact" => Ok(K::Artifact),
+        "human" => Ok(K::Human),
+        other => Err(format!(
+            "unknown evidence kind '{other}'; use test|ledger|file|command|artifact|human"
+        )),
+    }
+}
+
+/// Create a mission in the workspace's `.zylcode/` state directory.
+#[tauri::command]
+async fn mission_engine_create(
+    objective: String,
+    criteria: Vec<String>,
+    steps: Vec<String>,
+    state: tauri::State<'_, EngineState>,
+) -> Result<serde_json::Value, String> {
+    iv::ensure_max_chars("objective", &objective, iv::MAX_TASK_CHARS).map_err(|e| e.to_string())?;
+    if criteria.is_empty() {
+        return Err("a mission needs at least one acceptance criterion".to_string());
+    }
+    for c in &criteria {
+        iv::ensure_max_chars("criterion", c, iv::MAX_TASK_CHARS).map_err(|e| e.to_string())?;
+    }
+    for s in &steps {
+        iv::ensure_max_chars("step", s, iv::MAX_TASK_CHARS).map_err(|e| e.to_string())?;
+    }
+    let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
+    tokio::task::spawn_blocking(move || {
+        let mission = zylcode_core::mission_engine::MissionEngine::new(root)
+            .create(&objective, &criteria, &steps)
+            .map_err(|e| format!("{e:#}"))?;
+        serde_json::to_value(&mission).map_err(|e| format!("serialize mission: {e}"))
+    })
+    .await
+    .map_err(|e| format!("mission task failed: {e}"))?
+}
+
+/// Read the mission, its phase and its cited/unmet criteria.
+///
+/// "No mission yet" is a normal answer (`mission: null`) so a fresh workspace
+/// does not render an error. A corrupt or unreadable journal is a different
+/// thing entirely and is returned as an error, so the UI cannot show an empty
+/// mission where the record is actually broken.
+#[tauri::command]
+async fn mission_engine_status(
+    state: tauri::State<'_, EngineState>,
+) -> Result<serde_json::Value, String> {
+    let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
+    tokio::task::spawn_blocking(move || {
+        let engine = zylcode_core::mission_engine::MissionEngine::new(root);
+        if !engine.journal_path().exists() {
+            return Ok(serde_json::json!({
+                "mission": serde_json::Value::Null,
+                "journal_entries": 0,
+                "discarded_partial_tail": false,
+                "repaired_snapshot": false,
+            }));
+        }
+        let (mission, report) = engine
+            .load()
+            .map_err(|e| format!("mission state unreadable: {e:#}"))?;
+        let describe = engine.describe().unwrap_or_default();
+        Ok(serde_json::json!({
+            "mission": mission,
+            "journal_entries": report.entries,
+            "discarded_partial_tail": report.discarded_partial_tail,
+            "repaired_snapshot": report.repaired_snapshot,
+            "describe": describe,
+        }))
+    })
+    .await
+    .map_err(|e| format!("mission task failed: {e}"))?
+}
+
+/// Advance the mission. Every step completion is journaled before this
+/// returns, so closing the app mid-execution loses nothing.
+#[tauri::command]
+async fn mission_engine_resume(
+    approve: bool,
+    state: tauri::State<'_, EngineState>,
+) -> Result<serde_json::Value, String> {
+    let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
+    tokio::task::spawn_blocking(move || {
+        let engine = zylcode_core::mission_engine::MissionEngine::new(root);
+        let progress = engine.resume(approve, None).map_err(|e| format!("{e:#}"))?;
+        let mission = engine.load().map(|(m, _)| m).ok();
+        Ok::<serde_json::Value, String>(serde_json::json!({
+            "progress": progress,
+            "mission": mission,
+        }))
+    })
+    .await
+    .map_err(|e| format!("mission task failed: {e}"))?
+}
+
+/// Cite the proof that satisfies one acceptance criterion.
+#[tauri::command]
+async fn mission_engine_cite(
+    criterion: String,
+    evidence: String,
+    kind: String,
+    summary: Option<String>,
+    state: tauri::State<'_, EngineState>,
+) -> Result<serde_json::Value, String> {
+    iv::ensure_max_chars("criterion", &criterion, iv::MAX_TASK_CHARS).map_err(|e| e.to_string())?;
+    iv::ensure_max_chars("evidence", &evidence, iv::MAX_TASK_CHARS).map_err(|e| e.to_string())?;
+    let summary = summary.unwrap_or_default();
+    iv::ensure_max_chars("summary", &summary, iv::MAX_TASK_CHARS).map_err(|e| e.to_string())?;
+    let kind = evidence_kind(&kind)?;
+    let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
+    tokio::task::spawn_blocking(move || {
+        let mission = zylcode_core::mission_engine::MissionEngine::new(root)
+            .cite(&criterion, &evidence, kind, &summary)
+            .map_err(|e| format!("{e:#}"))?;
+        serde_json::to_value(&mission).map_err(|e| format!("serialize mission: {e}"))
+    })
+    .await
+    .map_err(|e| format!("mission task failed: {e}"))?
+}
+
+/// Stop the mission with a recorded reason. Terminal missions are refused.
+#[tauri::command]
+async fn mission_engine_cancel(
+    reason: String,
+    state: tauri::State<'_, EngineState>,
+) -> Result<serde_json::Value, String> {
+    iv::ensure_max_chars("reason", &reason, iv::MAX_TASK_CHARS).map_err(|e| e.to_string())?;
+    let root = std::path::PathBuf::from(&state.engine.config().workspace_root);
+    tokio::task::spawn_blocking(move || {
+        let mission = zylcode_core::mission_engine::MissionEngine::new(root)
+            .cancel(&reason)
+            .map_err(|e| format!("{e:#}"))?;
+        serde_json::to_value(&mission).map_err(|e| format!("serialize mission: {e}"))
+    })
+    .await
+    .map_err(|e| format!("mission task failed: {e}"))?
+}
+
 /// Drain one queued mission for real (best-of-n or plan generation).
 #[tauri::command]
 async fn mission_run_next(
@@ -1345,22 +1502,7 @@ async fn get_recent_audit_logs(
     };
 
     let mut rows = Vec::new();
-    if let Ok(mapped_rows) = stmt.query_map([], |row| {
-        Ok(TelemetryAuditEntry {
-            timestamp: row.get::<_, String>(0).unwrap(),
-            event_type: row.get::<_, String>(1).unwrap(),
-            severity: row.get::<_, String>(2).unwrap(),
-            tool_id: row.get::<_, Option<String>>(3).unwrap(),
-            transport: row.get::<_, Option<String>>(4).unwrap(),
-            caller_id: row.get::<_, Option<String>>(5).unwrap(),
-            input_hash: row.get::<_, Option<String>>(6).unwrap(),
-            output_hash: row.get::<_, Option<String>>(7).unwrap(),
-            duration_ms: row.get::<_, Option<u64>>(8).unwrap(),
-            retry_attempt: row.get::<_, Option<u32>>(9).unwrap(),
-            max_retries: row.get::<_, Option<u32>>(10).unwrap(),
-            error: row.get::<_, Option<String>>(11).unwrap(),
-        })
-    }) {
+    if let Ok(mapped_rows) = stmt.query_map([], audit_entry_from_row) {
         for row in mapped_rows {
             match row {
                 Ok(entry) => rows.push(entry),
@@ -1372,6 +1514,27 @@ async fn get_recent_audit_logs(
     }
 
     Ok(rows)
+}
+
+/// Map one `audit_logs` row into a [`TelemetryAuditEntry`].
+///
+/// Conversion failures are returned as `rusqlite::Error` so callers can skip
+/// the corrupted row instead of panicking; SQL `NULL` stays `None`.
+fn audit_entry_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<TelemetryAuditEntry> {
+    Ok(TelemetryAuditEntry {
+        timestamp: row.get(0)?,
+        event_type: row.get(1)?,
+        severity: row.get(2)?,
+        tool_id: row.get(3)?,
+        transport: row.get(4)?,
+        caller_id: row.get(5)?,
+        input_hash: row.get(6)?,
+        output_hash: row.get(7)?,
+        duration_ms: row.get(8)?,
+        retry_attempt: row.get(9)?,
+        max_retries: row.get(10)?,
+        error: row.get(11)?,
+    })
 }
 
 #[allow(dead_code)]
@@ -1393,7 +1556,7 @@ struct TelemetryAuditEntry {
     /// SHA-256 hash of output payload.
     pub output_hash: Option<String>,
     /// Execution duration in milliseconds.
-    pub duration_ms: Option<u64>,
+    pub duration_ms: Option<i64>,
     /// Retry attempt number (if applicable).
     pub retry_attempt: Option<u32>,
     /// Maximum retries configured.
@@ -1651,6 +1814,11 @@ fn main() {
             mission_enqueue,
             missions_list,
             mission_run_next,
+            mission_engine_create,
+            mission_engine_status,
+            mission_engine_resume,
+            mission_engine_cite,
+            mission_engine_cancel,
             repo_search,
             repo_file_tree,
             file_content,
@@ -1909,5 +2077,109 @@ mod workspace_resolution_tests {
             strip_verbatim(std::path::PathBuf::from(r"C:\repo")),
             std::path::PathBuf::from(r"C:\repo")
         );
+    }
+}
+
+#[cfg(test)]
+mod telemetry_audit_tests {
+    //! Regression tests for the `audit_logs` row mapping used by
+    //! `get_recent_audit_logs`.
+    //!
+    //! rusqlite 0.39 removed `FromSql for u64`, so `duration_ms` is decoded as
+    //! `Option<i64>` now. These tests pin the nullable semantics (SQL `NULL`
+    //! stays `None`), the non-negative range, and the error-not-panic contract
+    //! for values that cannot be converted.
+
+    use super::{audit_entry_from_row, TelemetryAuditEntry};
+    use rusqlite::types::Value;
+
+    const SELECT: &str = "SELECT timestamp, event_type, severity, tool_id, transport, \
+         caller_id, input_hash, output_hash, duration_ms, retry_attempt, max_retries, error \
+         FROM audit_logs ORDER BY id ASC LIMIT 50";
+
+    fn audit_db() -> rusqlite::Connection {
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE audit_logs (
+                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                 timestamp TEXT NOT NULL,
+                 event_type TEXT NOT NULL,
+                 severity TEXT NOT NULL,
+                 tool_id TEXT,
+                 transport TEXT,
+                 caller_id TEXT,
+                 input_hash TEXT,
+                 output_hash TEXT,
+                 duration_ms INTEGER,
+                 retry_attempt INTEGER,
+                 max_retries INTEGER,
+                 error TEXT
+             );",
+        )
+        .unwrap();
+        conn
+    }
+
+    fn insert_row(conn: &rusqlite::Connection, duration: Value) {
+        conn.execute(
+            "INSERT INTO audit_logs (timestamp, event_type, severity, duration_ms) \
+             VALUES ('2026-11-11T00:00:00.000Z', 'tool_call', 'info', ?1)",
+            [duration],
+        )
+        .unwrap();
+    }
+
+    fn read_all(conn: &rusqlite::Connection) -> Vec<rusqlite::Result<TelemetryAuditEntry>> {
+        let mut stmt = conn.prepare(SELECT).unwrap();
+        stmt.query_map([], audit_entry_from_row).unwrap().collect()
+    }
+
+    #[test]
+    fn null_duration_maps_to_none() {
+        let conn = audit_db();
+        insert_row(&conn, Value::Null);
+        let entries = read_all(&conn);
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].as_ref().unwrap().duration_ms, None);
+    }
+
+    #[test]
+    fn positive_duration_maps_to_some_i64() {
+        let conn = audit_db();
+        insert_row(&conn, Value::Integer(1_234));
+        let entries = read_all(&conn);
+        assert_eq!(entries[0].as_ref().unwrap().duration_ms, Some(1_234i64));
+    }
+
+    #[test]
+    fn zero_duration_maps_to_some_zero() {
+        let conn = audit_db();
+        insert_row(&conn, Value::Integer(0));
+        let entries = read_all(&conn);
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].as_ref().unwrap().duration_ms, Some(0));
+    }
+
+    #[test]
+    fn invalid_duration_returns_error_without_panicking() {
+        let conn = audit_db();
+        insert_row(&conn, Value::Text("not-a-duration".into()));
+        let entries = read_all(&conn);
+        assert_eq!(entries.len(), 1);
+        assert!(
+            entries[0].is_err(),
+            "a non-integer duration must surface as a row error"
+        );
+    }
+
+    #[test]
+    fn existing_rows_remain_readable() {
+        let conn = audit_db();
+        insert_row(&conn, Value::Null);
+        insert_row(&conn, Value::Integer(42));
+        let entries = read_all(&conn);
+        assert_eq!(entries.len(), 2);
+        assert_eq!(entries[0].as_ref().unwrap().duration_ms, None);
+        assert_eq!(entries[1].as_ref().unwrap().duration_ms, Some(42));
     }
 }

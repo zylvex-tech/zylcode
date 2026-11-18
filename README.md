@@ -7,7 +7,7 @@
 [![CI](https://github.com/zylvex-tech/zylcode/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/zylvex-tech/zylcode/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
-**Project status: 6 November 2026** · branch `fix/r05-input-validation` · head `fc69e4c` · pre-release
+**Project status: 17 November 2026** · `main` @ `ba7a6cd` · pre-release
 
 ZylCode is an engineering workbench developed by **Zylvex Technologies Ltd.** It
 turns an instruction into a plan, executes the plan through approval-gated tools,
@@ -17,15 +17,88 @@ It runs on your machine and uses your own model keys: the desktop app, the CLI a
 the local intelligence service are all local processes, and model calls go to
 providers you configure yourself.
 
-> **Early access:** the [Developer Preview waitlist](https://site-0522a86bd09e48629a1e90f115711758.freebuff.page)
-> is open and pre-release / invite-only. No pricing is published during public
-> development ([`docs/governance/ZYLCODE_COMMERCIAL_MODEL.md`](docs/governance/ZYLCODE_COMMERCIAL_MODEL.md)).
+> **Pre-release.** Nothing is published: no website, no pricing, no waitlist, no signup.
+> The only ways to run this are a source checkout and the
+> [GitHub releases page](https://github.com/zylvex-tech/zylcode/releases) (latest tag
+> **v0.2.3**, 2026-10-29; the 0.2.4 tree is unreleased). The commercial model is written
+> down in [`docs/governance/ZYLCODE_COMMERCIAL_MODEL.md`](docs/governance/ZYLCODE_COMMERCIAL_MODEL.md)
+> and is not an offer.
 
 ![ZylCode workbench with a live backend — repository explorer, terminal running real git commands, mission list, capability spotlight and the status bar reporting branch and version](docs/media/zylcode/14-workbench-live.png)
 
 ---
 
-## What's new — 6 November 2026
+## What's new — 17 November 2026
+
+**Phase 2A is accepted with conditions, and the first condition is closed in code.**
+An independent audit returned _ACCEPTED WITH CONDITIONS_ on 16 November
+([verdict](docs/governance/PHASE2A_AUDIT_VERDICT_2026-11-16.md)). Nine of the twelve
+disputed capabilities were confirmed at R3 and promoted; three stay R2 until their
+conditions close. Those conditions (C1–C6) are tracked in the verdict, not here.
+
+- **C1 is done.** `build_repo_query()` indexed Rust only while the extractor already
+  understood TypeScript — so no product surface could return a TypeScript symbol.
+  It now indexes Rust/TypeScript/JavaScript, and `zylcode repo-symbols <name>`
+  resolves one through the same persisted index the agent uses. The registry entry is
+  now **GREEN/R3**, bound by two probes rather than by assertion.
+- **Impact analysis, first slice.** `zylcode impact --file <path>` / `--symbol <name>`
+  follows file-level imports to say what a change would touch, why each file is on the
+  list, which tests are at risk, and what it could not determine (no call graph, no
+  re-exports, depth-bounded). Every entry carries a reason; an unindexed change returns
+  an unknown instead of an empty confident answer.
+- **Phase 3A slice:** the project store is at schema v2 with an append-only decision
+  history, restart survival, export/import and `zylcode project status`. It now takes
+  an OS advisory lock, so the CLI and desktop can no longer interleave writes and
+  lose a record. The knowledge graph, desktop wiring and evidence bytes in exports
+  are still outstanding.
+- **Phase 3B slice:** an eleven-state mission engine with a `COMPLETE` gate that refuses
+  while any criterion lacks a cited proof, an append-only journal that survives a kill
+  mid-`EXECUTING`, a CLI, and a desktop Mission panel. Citations now record a SHA-256 of
+  the cited file, and `zylcode missions verify` re-reads it and exits non-zero when the
+  bytes changed — a citation can be re-checked instead of merely pointed at.
+- **Phase 2B is contract-only.** [`docs/architecture/IMPACT_ANALYSIS.md`](docs/architecture/IMPACT_ANALYSIS.md)
+  fixes the report shape, the honesty rules and the acceptance corpus _before_ the engine
+  exists. No impact engine has been built.
+- **Claims are now gated where they can be checked:** capability probes
+  (`scripts/check_capability_probes.py`), a generated roadmap status board, a
+  question-set freeze for benchmarks, and `zylcode trust-scan`, which reports
+  instruction-shaped repository text instead of letting a comment address the model.
+  Probe coverage is **5 of 28** GREEN R3+ capabilities — the gap is printed on every
+  run rather than hidden.
+
+Not ready for release: the front page previously lagged `main`, three capabilities
+remain disputed and no installer matrix has been rehearsed for this head.
+
+## Previous — 11 November 2026
+
+**`RUSTSEC-2026-0459` is closed on `main`.** The advisory flagged
+`libsqlite3-sys 0.28.0`, reached through `rusqlite 0.31.0` in the audit-log read path.
+That chain is gone:
+
+- **`rusqlite` 0.31.0 → 0.41.1**, which resolves **`libsqlite3-sys` 0.39.1** (the
+  advisory asks for ≥ 0.39.0). `cargo tree -i libsqlite3-sys` reports a single
+  0.39.1 across the workspace — no duplicate C SQLite builds.
+- **The `duration_ms` read no longer panics.** Row decoding moved into
+  `audit_entry_from_row`, which returns `rusqlite::Result` and uses `?` for every
+  column, so a value SQLite cannot convert becomes a skipped, logged row instead of
+  an abort inside the telemetry reader. `NULL` still reads as `None` and integers as
+  `Some(i64)`; the JSON field stays `number | null`, matching the TypeScript
+  `duration_ms?: number` types already in `useAuditStream` / `useTelemetryStream`.
+- **5 regression tests** cover `NULL`, a positive value, zero, a non-integer value
+  (error, not panic) and mixed rows in one read.
+- **No schema migration.** `audit_logs.duration_ms` was already `INTEGER` — SQLite's
+  signed 64-bit storage class — and `CREATE TABLE IF NOT EXISTS` is unchanged, so
+  existing databases remain readable.
+- **`cargo audit` exits 0.** No `RUSTSEC-2026-0459`; the only remaining entries are
+  the two accepted warnings (unmaintained `proc-macro-error`, unsound `glib 0.18.5`).
+
+Landed as **PR #60** (`aaae05e`, merged `c2a2b94`). CI on that head was green on
+Ubuntu, macOS and Windows — including `Cargo audit` and the full workspace suite in
+the Windows leg — plus `coverage` and `frontend-coverage`.
+
+---
+
+## Provider boundary — 6 November 2026
 
 The model layer stopped pretending. Before this milestone the "streaming" path was a
 fake line-chunker in `router.rs` that emitted `{index, delta, done}` and nothing else;
@@ -103,8 +176,8 @@ promise about a hosted service.
 
 The authoritative row-by-row ledger, including which of these are disputed, is
 [`docs/capability-registry.json`](docs/capability-registry.json): 37 entries —
-22 GREEN, **12 DISPUTED**, 2 PARTIAL, 1 externally blocked. Builders do not certify
-their own work ([`CONTRIBUTING.md`](CONTRIBUTING.md)).
+29 GREEN, **2 DISPUTED**, 6 PARTIAL. Builders do not certify their own work
+([`CONTRIBUTING.md`](CONTRIBUTING.md)).
 
 ---
 
@@ -332,13 +405,17 @@ Things a reader might reasonably assume, which this repository does **not** do y
   `synthetic` flag stop at the boundary. The UI cannot yet show why a response ended.
 - **Provider editing is desktop-only.** The browser preview renders the live chain
   read-only (capture `17`); changing keys or testing a connection needs the Tauri runtime.
-- **Acceptance is not self-granted.** 12 of 37 registry entries are disputed and Phase 2A
-  re-acceptance is open; independent acceptance remains outstanding.
+- **Acceptance is not self-granted.** 2 of 37 registry entries remain disputed after the
+  2026-11-16 verdict — `repository_benchmark` and `documentation_accuracy` (conditions
+  C2/C4). `typescript_symbol_index` closed its condition and was promoted on 2026-11-17;
+  three GREEN/R2 entries were downgraded to PARTIAL rather than left as declared
+  conflicts (condition C3).
 - **Computer use is simulation.** Nothing drives a screen
   ([`docs/governance/MAIN_STATUS_REPORT_2026-10-11.md`](docs/governance/MAIN_STATUS_REPORT_2026-10-11.md)).
 - **No signed installers.** Source checkout is the supported path today.
-- **No published website or pricing.** The waitlist link above is the only public URL in
-  this repository; nothing else should be inferred from it.
+- **No published website, pricing or waitlist.** The GitHub releases page is the only
+  public distribution URL in this repository; nothing else should be inferred from it.
+  There is no invite, no signup and no date for either.
 
 ---
 
@@ -346,16 +423,20 @@ Things a reader might reasonably assume, which this repository does **not** do y
 
 - **Now:** a working desktop shell and CLI over a tested core: provider streaming with
   real wire parsing, request-aborting cancellation, failover, an evidence ledger that
-  keeps its failures; 1,069 Rust tests, 764 frontend tests, clippy/fmt clean on this head.
-- **In progress:** Phase 2A re-acceptance evidence
-  ([`docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md`](docs/governance/PHASE_2A_REACCEPTANCE_EVIDENCE_2026-09-18.md));
-  surfacing the full `StreamChunk` across IPC; honest distribution.
+  keeps its failures. 736 core library tests plus the CLI and desktop suites pass,
+  clippy/fmt are clean on this head, and the retrieval gate measures Precision@10 0.65 /
+  Recall@10 0.96 over 768 indexed files.
+- **In progress:** Phase 2A conditions C2–C6 (C1 closed in code); the Phase 3A/3B gaps
+  listed above; the rest of the Phase 2B impact engine (import-closure impact shipped,
+  test selection and contracts are not); surfacing the full `StreamChunk` across IPC;
+  honest distribution.
 - **Planned:** everything in
   [`docs/roadmap/ZYLCODE_ROADMAP_V2.md`](docs/roadmap/ZYLCODE_ROADMAP_V2.md) —
-  repository reasoning (Phase 2B, blocked on 2A), project system, design canvas,
-  extension platform. None of it is claimed as working here.
-- **Early access:** [Developer Preview waitlist](https://site-0522a86bd09e48629a1e90f115711758.freebuff.page)
-  — free / invite-only for the first cohort.
+  repository reasoning (Phase 2B, gate cleared), the rest of the project system,
+  design canvas, extension platform. None of it is claimed as working here.
+- **Distribution:** [GitHub releases](https://github.com/zylvex-tech/zylcode/releases) only.
+  No waitlist, no invite cohort, no date for either; the installer matrix in
+  `.github/workflows/release.yml` has never been rehearsed.
 
 Full phase-by-phase status: [`docs/PROJECT_MASTER_STATUS.md`](docs/PROJECT_MASTER_STATUS.md).
 
