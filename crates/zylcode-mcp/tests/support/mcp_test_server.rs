@@ -17,6 +17,9 @@
 //! | `malformed` | Emits a non-JSON line before each response |
 //! | `slow` | Sleeps 2s before answering `tools/call` |
 //! | `die-after-call` | Answers one `tools/call`, then exits |
+//! | `fail-tools-list` | Handshakes, then answers `tools/list` with an error |
+//! | `fail-first-ping` | Exits on its first `ping`; the next process serves normally |
+//! | `ping-error` | Answers `ping` with a JSON-RPC error |
 //!
 //! # Observation log
 //!
@@ -104,9 +107,43 @@ fn main() {
                 );
             }
             "ping" => {
-                let _ = respond(&mut out, id, Ok(json!({})));
+                if mode == "fail-first-ping" {
+                    let marker = std::env::var("ZYLCODE_TEST_SERVER_PING_MARKER").ok();
+                    let first = marker
+                        .as_ref()
+                        .is_some_and(|path| !std::path::Path::new(path).exists());
+                    if first {
+                        if let Some(path) = &marker {
+                            let _ = std::fs::write(path, b"failed once\n");
+                        }
+                        let _ = out.flush();
+                        // A real wire failure: the client sees the stream end,
+                        // not a protocol error.
+                        std::process::exit(1);
+                    }
+                }
+                if mode == "ping-error" {
+                    let _ = respond(
+                        &mut out,
+                        id,
+                        Err((-32601, "ping is not implemented".to_string())),
+                    );
+                } else {
+                    let _ = respond(&mut out, id, Ok(json!({})));
+                }
             }
             "tools/list" => {
+                if mode == "fail-tools-list" {
+                    let _ = respond(
+                        &mut out,
+                        id,
+                        Err((
+                            -32603,
+                            "tools/list is unavailable in this build".to_string(),
+                        )),
+                    );
+                    continue;
+                }
                 let cursor = message
                     .get("params")
                     .and_then(|p| p.get("cursor"))

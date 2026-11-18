@@ -68,6 +68,15 @@ restores the budget. `Failed` is terminal for the current configuration; a
 broken server cannot spin forever. Only **ready** servers advertise tools —
 listing a tool that cannot run is the stub behaviour this repository rejects.
 
+One attempt is a handshake **and** a complete `tools/list` walk: a server that
+handshakes and then fails discovery is charged to the same budget, retained as
+`last_error`, and never left reporting `Starting`.
+
+A snapshot is assembled from the slot's own record of the handshake, so it
+answers while a tool call is running. No lock is held across a network exchange;
+a failed session clears that record rather than leaving a stale protocol
+version on display.
+
 ## No blind retry of a tool call
 
 A transport failure during `tools/call` is ambiguous: the server may have
@@ -75,7 +84,9 @@ executed the tool and lost the response. Retrying would run a side-effecting
 tool twice, which is worse than failing. A failed call therefore marks the
 session dead and reconnects **for the next invocation**; the failed call is
 reported as failed. `ping` is the only retried operation, because it has no
-effect.
+effect: one transport failure is followed by one reconnect and one more `ping`.
+An error *reply* to a ping is not retried — the server answered, and the answer
+stands.
 
 ## Verification
 
@@ -89,6 +100,11 @@ two-page discovery, annotation-to-risk mapping (including fail-closed),
 wire-level cancellation, crash → reported failure → reconnect, exhausted retries
 reported as `Failed`, and gated dispatch for both refusal and allowance with the
 evidence file asserted.
+
+Also covered, against the same fixture: a `tools/list` failure charged to the
+retry budget (once exhausted, and once retried) instead of leaving the slot in
+`Starting`; `ping` recovering from one transport failure and not repeating an
+answered one; and a status snapshot taken while a tool call is in flight.
 
 ## Not implemented
 

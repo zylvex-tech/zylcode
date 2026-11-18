@@ -18,6 +18,7 @@
 
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::Duration;
 
 use zylcode_mcp::evidence::{JsonlEvidenceSink, ToolRuntime};
@@ -428,4 +429,169 @@ async fn an_allowed_remote_tool_executes_and_records_the_result() {
         records[0].end_time.is_some(),
         "a record must be placeable in time"
     );
+}
+
+// ---------------------------------------------------------------------------
+// Retry accounting and locking
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn a_failed_tools_list_is_charged_to_the_retry_budget() {
+    let mut cfg = config("no-discovery", Some("fail-tools-list"));
+    cfg.restart.max_attempts = 1;
+    cfg.restart.initial_backoff_ms = 50;
+    cfg.restart.max_backoff_ms = 60;
+    let registry = McpRegistry::new(vec![cfg], client());
+    let slot = registry.slot("no-discovery").expect("slot exists");
+
+    let error = slot
+        .ensure_ready()
+        .await
+        .expect_err("a server that cannot list tools is not ready");
+    assert!(
+        error.to_string().contains("failed after 1 attempt"),
+        "the failure must be reported as an exhausted attempt: {error}"
+    );
+
+    let snapshot = slot.snapshot().await;
+    assert_eq!(
+        snapshot.state,
+        ServerState::Failed,
+        "a discovery failure must not leave the slot in `Starting`"
+    );
+    assert_eq!(snapshot.attempts, 1);
+    let last_error = snapshot
+        .last_error
+        .expect("the inspector must be told why discovery failed");
+    assert!(
+        last_error.contains("tools/list"),
+        "the retained error must name the failed request: {last_error}"
+    );
+    assert!(snapshot.tools.is_empty());
+    assert!(
+        snapshot.protocol_version.is_none(),
+        "a server that never became ready must not report a protocol version"
+    );
+}
+
+#[tokio::test]
+async fn a_failed_tools_list_is_retried_not_escaped() {
+    let mut cfg = config("no-discovery-twice", Some("fail-tools-list"));
+    cfg.restart.max_attempts = 2;
+    cfg.restart.initial_backoff_ms = 50;
+    cfg.restart.max_backoff_ms = 60;
+    let registry = McpRegistry::new(vec![cfg], client());
+    let slot = registry.slot("no-discovery-twice").expect("slot exists");
+
+    let error = slot
+        .ensure_ready()
+        .await
+        .expect_err("discovery never succeeds");
+    assert!(
+        error.to_string().contains("failed after 2 attempt"),
+        "discovery must be retried within the budget: {error}"
+    );
+    assert_eq!(
+        slot.snapshot().await.attempts,
+        2,
+        "each discovery failure costs one attempt, like a failed connect"
+    );
+}
+
+#[tokio::test]
+async fn ping_recovers_from_one_transport_failure() {
+    let dir = tempfile::tempdir().unwrap();
+    let log = dir.path().join("methods.log");
+    let marker = dir.path().join("ping-failed-once");
+    let mut cfg = config("pingy", Some("fail-first-ping"));
+    cfg.env.insert(
+        "ZYLCODE_TEST_SERVER_LOG".to_string(),
+        log.to_string_lossy().to_string(),
+    );
+    cfg.env.insert(
+        "ZYLCODE_TEST_SERVER_PING_MARKER".to_string(),
+        marker.to_string_lossy().to_string(),
+    );
+    let registry = McpRegistry::new(vec![cfg], client());
+    let slot = registry.slot("pingy").expect("slot exists");
+
+    slot.ensure_ready().await.expect("first start");
+    slot.ping()
+        .await
+        .expect("a ping lost on the wire must be retried over a fresh session");
+
+    let observed = std::fs::read_to_string(&log).unwrap_or_default();
+    let pings = observed.lines().filter(|line| *line == "ping").count();
+    assert_eq!(
+        pings, 2,
+        "exactly one retry: the first ping died with its process, the second answered, saw: {observed}"
+    );
+    let snapshot = slot.snapshot().await;
+    assert_eq!(snapshot.state, ServerState::Ready);
+    assert!(snapshot.protocol_version.is_some());
+}
+
+#[tokio::test]
+async fn ping_does_not_repeat_an_answered_ping() {
+    let dir = tempfile::tempdir().unwrap();
+    let log = dir.path().join("methods.log");
+    let mut cfg = config("ping-refused", Some("ping-error"));
+    cfg.env.insert(
+        "ZYLCODE_TEST_SERVER_LOG".to_string(),
+        log.to_string_lossy().to_string(),
+    );
+    let registry = McpRegistry::new(vec![cfg], client());
+    let slot = registry.slot("ping-refused").expect("slot exists");
+
+    slot.ensure_ready().await.expect("start");
+    let error = slot
+        .ping()
+        .await
+        .expect_err("a server that rejects ping must be reported");
+    assert!(
+        error.to_string().contains("ping is not implemented"),
+        "the server's own message must survive: {error}"
+    );
+
+    let observed = std::fs::read_to_string(&log).unwrap_or_default();
+    let pings = observed.lines().filter(|line| *line == "ping").count();
+    assert_eq!(
+        pings, 1,
+        "an answered ping must not be repeated, saw: {observed}"
+    );
+    assert_eq!(
+        slot.snapshot().await.state,
+        ServerState::Ready,
+        "a protocol-level answer is not a dead session"
+    );
+}
+
+#[tokio::test]
+async fn the_inspector_answers_while_a_call_is_in_flight() {
+    let mut cfg = config("busy", Some("slow"));
+    cfg.timeout_ms = 15_000;
+    let registry = McpRegistry::new(vec![cfg], client());
+    let slot = registry.slot("busy").expect("slot exists").clone();
+    slot.ensure_ready().await.expect("start");
+
+    let call = {
+        let slot = Arc::clone(&slot);
+        tokio::spawn(async move { slot.call_tool("alpha", serde_json::json!({})).await })
+    };
+    // The fixture sleeps 2s inside `tools/call`; let the call reach it.
+    tokio::time::sleep(Duration::from_millis(300)).await;
+
+    let snapshot = tokio::time::timeout(Duration::from_millis(700), slot.snapshot())
+        .await
+        .expect("status must not wait for a call in flight");
+    assert_eq!(snapshot.state, ServerState::Ready);
+    assert_eq!(
+        snapshot.protocol_version.as_deref(),
+        Some("2025-06-18"),
+        "a busy session is still a described session"
+    );
+
+    call.await
+        .expect("task joins")
+        .expect("the slow call must still complete");
 }

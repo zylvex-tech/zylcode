@@ -30,15 +30,37 @@
 //! may have executed the tool and lost the response. Retrying automatically
 //! would run a side-effecting tool twice, which is worse than failing. So a
 //! failed call marks the session dead and reconnects **for the next
-//! invocation**, and the failed call is reported as failed. `ping` is the only
-//! operation this supervisor retries, because it has no effect.
+//! invocation**, and the failed call is reported as failed.
+//!
+//! `ping` is the only operation this supervisor retries, because it has no
+//! effect: one transport failure is followed by one reconnect and one more
+//! `ping`. An error *reply* to a ping is not retried — the server answered, and
+//! its answer is the failure.
+//!
+//! # What counts as an attempt
+//!
+//! One attempt is a handshake **and** a complete `tools/list` walk. A server
+//! that greets the client and then fails discovery is not ready, so that failure
+//! is charged to `restart.max_attempts`, retained as `last_error`, and retried
+//! with the same backoff as a failed connect. It does not escape the supervisor
+//! and leave the slot reporting `Starting`.
+//!
+//! # Locking
+//!
+//! No lock is held across a network exchange. The status mutex covers
+//! bookkeeping only, the live session has its own mutex, and `connect_gate`
+//! makes attempts sequential. That is what lets the inspector answer while a
+//! slow tool runs, and it is also what stops two callers from opening two
+//! connections to one server.
 //!
 //! # Status snapshot
 //!
 //! [`McpRegistry::snapshot`] is what a UI renders. It reports observed facts —
 //! negotiated protocol version, server name, discovered tool ids, attempt count,
 //! last error — and nothing inferred. A server that has never connected reports
-//! `Stopped` with no protocol version, not a plausible-looking one.
+//! `Stopped` with no protocol version, not a plausible-looking one. The handshake
+//! facts are recorded when the session is installed, so a snapshot never waits
+//! on a call in flight, and a lost session stops being described.
 
 use anyhow::{anyhow, bail, Result};
 use serde::Serialize;
@@ -47,6 +69,7 @@ use std::time::Duration;
 use tokio::sync::Mutex;
 
 use super::config::{McpServerConfig, McpServersFile, StartupPolicy};
+use super::jsonrpc::JsonRpcError;
 use super::remote::RemoteTool;
 use super::session::{ClientInfo, McpSession, RemoteToolDef};
 use super::transport::{StdioTransport, StreamableHttpTransport, Transport};
@@ -111,11 +134,40 @@ impl ServerSnapshot {
     }
 }
 
-/// Mutable per-server state, guarded by one mutex.
+/// What the handshake said, recorded when the session is installed.
+///
+/// Cached here rather than read back through the live session so that
+/// [`ServerSlot::snapshot`] answers without waiting on a call in flight. It is
+/// filled only from a real [`McpSession::handshake`] and cleared with the session
+/// it describes, so it never describes a connection that no longer exists.
+#[derive(Debug, Clone)]
+struct SessionFacts {
+    protocol_version: String,
+    server_name: String,
+    server_version: String,
+    instructions: Option<String>,
+}
+
+impl SessionFacts {
+    fn of(session: &McpSession) -> Self {
+        let handshake = session.handshake();
+        Self {
+            protocol_version: handshake.protocol_version.clone(),
+            server_name: handshake.server_info.name.clone(),
+            server_version: handshake.server_info.version.clone(),
+            instructions: handshake.instructions.clone(),
+        }
+    }
+}
+
+/// Mutable per-server status, guarded by one mutex.
+///
+/// This mutex is never held across a network exchange; see the module note on
+/// locking.
 #[derive(Debug)]
 struct SlotInner {
     state: ServerState,
-    session: Option<McpSession>,
+    facts: Option<SessionFacts>,
     tools: Vec<RemoteToolDef>,
     attempts: u32,
     last_error: Option<String>,
@@ -130,6 +182,10 @@ pub struct ServerSlot {
     config: McpServerConfig,
     client: ClientInfo,
     inner: Mutex<SlotInner>,
+    /// The live session, held only for the duration of one exchange.
+    live: Mutex<Option<McpSession>>,
+    /// Serialises connect attempts, so two callers never open two sessions.
+    connect_gate: Mutex<()>,
 }
 
 impl ServerSlot {
@@ -145,11 +201,13 @@ impl ServerSlot {
             client,
             inner: Mutex::new(SlotInner {
                 state,
-                session: None,
+                facts: None,
                 tools: Vec::new(),
                 attempts: 0,
                 last_error: None,
             }),
+            live: Mutex::new(None),
+            connect_gate: Mutex::new(()),
         }
     }
 
@@ -164,6 +222,9 @@ impl ServerSlot {
     }
 
     /// Observed status.
+    ///
+    /// Reads the slot's own record only: it never waits on the lock a call in
+    /// flight holds, so the inspector keeps answering while a tool runs.
     pub async fn snapshot(&self) -> ServerSnapshot {
         let inner = self.inner.lock().await;
         ServerSnapshot {
@@ -171,27 +232,21 @@ impl ServerSlot {
             transport: self.config.transport.to_string(),
             startup: self.config.startup,
             state: inner.state,
-            protocol_version: inner
-                .session
-                .as_ref()
-                .map(|s| s.handshake().protocol_version.clone()),
+            protocol_version: inner.facts.as_ref().map(|f| f.protocol_version.clone()),
             server_name: inner
-                .session
+                .facts
                 .as_ref()
-                .map(|s| s.handshake().server_info.name.clone())
+                .map(|f| f.server_name.clone())
                 .filter(|n| !n.is_empty()),
             server_version: inner
-                .session
+                .facts
                 .as_ref()
-                .map(|s| s.handshake().server_info.version.clone())
+                .map(|f| f.server_version.clone())
                 .filter(|v| !v.is_empty()),
             tools: inner.tools.iter().map(|t| t.name.clone()).collect(),
             attempts: inner.attempts,
             last_error: inner.last_error.clone(),
-            instructions: inner
-                .session
-                .as_ref()
-                .and_then(|s| s.handshake().instructions.clone()),
+            instructions: inner.facts.as_ref().and_then(|f| f.instructions.clone()),
         }
     }
 
@@ -212,24 +267,43 @@ impl ServerSlot {
         McpSession::connect(transport, self.client.clone(), timeout).await
     }
 
+    /// Whether the slot is already usable, or must refuse outright.
+    ///
+    /// `Ready` implies a live session: a session is installed before the state
+    /// says `Ready`, and every path that forgets a session also leaves `Ready`.
+    async fn already_ready(&self) -> Result<bool> {
+        let inner = self.inner.lock().await;
+        match inner.state {
+            ServerState::Ready => Ok(true),
+            ServerState::Disabled => bail!(
+                "MCP server `{}` is disabled in configuration",
+                self.config.id
+            ),
+            _ => Ok(false),
+        }
+    }
+
     /// Connect if needed, retrying with the configured backoff.
     ///
     /// `max_attempts` counts **consecutive** failures, so one successful start
-    /// restores the budget. Waiting happens outside the lock, so a slow server
-    /// does not block the inspector from reading its status.
+    /// restores the budget. No lock is held across a connect: `connect_gate`
+    /// serialises attempts, which keeps two callers from opening two sessions
+    /// while leaving status reads free.
     pub async fn ensure_ready(&self) -> Result<()> {
-        {
-            let inner = self.inner.lock().await;
-            match inner.state {
-                ServerState::Ready if inner.session.is_some() => return Ok(()),
-                ServerState::Disabled => bail!(
-                    "MCP server `{}` is disabled in configuration",
-                    self.config.id
-                ),
-                _ => {}
-            }
+        if self.already_ready().await? {
+            return Ok(());
         }
 
+        let _gate = self.connect_gate.lock().await;
+        // Whoever held the gate may have finished the job while we waited.
+        if self.already_ready().await? {
+            return Ok(());
+        }
+        self.connect_and_discover().await
+    }
+
+    /// The supervised connect loop. The caller holds `connect_gate`.
+    async fn connect_and_discover(&self) -> Result<()> {
         let policy = self.config.restart.clone();
         loop {
             let attempt = {
@@ -243,12 +317,28 @@ impl ServerSlot {
                 inner.attempts
             };
 
-            match self.connect_once().await {
-                Ok(mut session) => {
-                    let tools = session.list_all_tools().await?;
+            // Handshake and discovery are one attempt. A server that greets the
+            // client and then fails `tools/list` is not ready, so the failure
+            // takes the same path as a failed connect — charged to the budget,
+            // retained as `last_error`, retried with backoff — instead of
+            // escaping through `?` and leaving the slot reporting `Starting`.
+            let outcome = match self.connect_once().await {
+                Ok(mut session) => match session.list_all_tools().await {
+                    Ok(tools) => Ok((session, tools)),
+                    Err(error) => Err(error.context("discovering tools")),
+                },
+                Err(error) => Err(error),
+            };
+
+            match outcome {
+                Ok((session, tools)) => {
+                    let facts = SessionFacts::of(&session);
+                    // Install before announcing readiness: a caller that sees
+                    // `Ready` must always find a session.
+                    *self.live.lock().await = Some(session);
                     let mut inner = self.inner.lock().await;
                     inner.state = ServerState::Ready;
-                    inner.session = Some(session);
+                    inner.facts = Some(facts);
                     inner.tools = tools;
                     inner.attempts = 0;
                     inner.last_error = None;
@@ -256,18 +346,21 @@ impl ServerSlot {
                 }
                 Err(error) => {
                     let exhausted = attempt >= policy.max_attempts.max(1);
+                    *self.live.lock().await = None;
                     {
                         let mut inner = self.inner.lock().await;
-                        inner.session = None;
+                        inner.facts = None;
                         inner.tools.clear();
-                        inner.last_error = Some(error.to_string());
+                        // `{:#}` keeps the cause chain: an outer "discovering
+                        // tools" alone would tell the inspector nothing.
+                        inner.last_error = Some(format!("{error:#}"));
                         if exhausted {
                             inner.state = ServerState::Failed;
                         }
                     }
                     if exhausted {
                         return Err(anyhow!(
-                            "MCP server `{}` failed after {} attempt(s): {error}",
+                            "MCP server `{}` failed after {} attempt(s): {error:#}",
                             self.config.id,
                             attempt
                         ));
@@ -305,18 +398,29 @@ impl ServerSlot {
         arguments: serde_json::Value,
     ) -> Result<super::session::ToolCallOutcome> {
         self.ensure_ready().await?;
-        let mut guard = self.inner.lock().await;
-        let session = guard
-            .session
-            .as_mut()
-            .ok_or_else(|| anyhow!("MCP server `{}` has no live session", self.config.id))?;
-        match session.call_tool(name, arguments).await {
+        let mut live = self.live.lock().await;
+        if live.is_none() {
+            // The session died between the readiness check and this lock. One
+            // reconnect, then the call either runs or fails for a reason.
+            drop(live);
+            self.ensure_ready().await?;
+            live = self.live.lock().await;
+        }
+
+        let outcome = {
+            let session = live
+                .as_mut()
+                .ok_or_else(|| anyhow!("MCP server `{}` has no live session", self.config.id))?;
+            session.call_tool(name, arguments).await
+        };
+
+        match outcome {
             Ok(outcome) => Ok(outcome),
             Err(error) => {
                 let message = error.to_string();
-                guard.session = None;
-                guard.state = ServerState::Restarting;
-                guard.last_error = Some(message.clone());
+                live.take();
+                drop(live);
+                self.forget_session(message.clone()).await;
                 Err(anyhow!(
                     "MCP tool `{name}` on server `{}` failed at the transport: {message}",
                     self.config.id
@@ -325,15 +429,74 @@ impl ServerSlot {
         }
     }
 
-    /// Round-trip check; the one operation that is safe to retry once.
+    /// Round-trip check: the one operation the supervisor retries.
+    ///
+    /// `ping` has no effect, so a lost response is safe to repeat: one transport
+    /// failure is followed by one reconnect and one more `ping`. A JSON-RPC error
+    /// reply is **not** retried — the server answered, and that answer is the
+    /// failure.
     pub async fn ping(&self) -> Result<()> {
         self.ensure_ready().await?;
-        let mut guard = self.inner.lock().await;
-        let session = guard
-            .session
-            .as_mut()
-            .ok_or_else(|| anyhow!("MCP server `{}` has no live session", self.config.id))?;
-        session.ping().await
+        match self.ping_once().await {
+            Ok(()) => Ok(()),
+            Err(error) if error.downcast_ref::<JsonRpcError>().is_some() => Err(error),
+            Err(first) => {
+                // `ping_once` forgot the dead session, so this reconnects.
+                if let Err(reconnect) = self.ensure_ready().await {
+                    return Err(anyhow!(
+                        "MCP server `{}`: ping failed ({first}) and the reconnect failed: {reconnect}",
+                        self.config.id
+                    ));
+                }
+                self.ping_once().await.map_err(|second| {
+                    anyhow!(
+                        "MCP server `{}` failed ping twice: first {first}; after reconnect {second}",
+                        self.config.id
+                    )
+                })
+            }
+        }
+    }
+
+    /// One `ping` round trip against the live session.
+    async fn ping_once(&self) -> Result<()> {
+        let mut live = self.live.lock().await;
+        if live.is_none() {
+            drop(live);
+            self.ensure_ready().await?;
+            live = self.live.lock().await;
+        }
+
+        let outcome = {
+            let session = live
+                .as_mut()
+                .ok_or_else(|| anyhow!("MCP server `{}` has no live session", self.config.id))?;
+            session.ping().await
+        };
+
+        match outcome {
+            Ok(()) => Ok(()),
+            Err(error) => {
+                // An error reply means the server is alive and answered; only a
+                // wire failure costs the session.
+                if error.downcast_ref::<JsonRpcError>().is_none() {
+                    live.take();
+                    drop(live);
+                    self.forget_session(error.to_string()).await;
+                }
+                Err(error)
+            }
+        }
+    }
+
+    /// Record that the session is gone, and why, so the next call reconnects and
+    /// the inspector shows the reason instead of a stale handshake.
+    async fn forget_session(&self, message: String) {
+        let mut inner = self.inner.lock().await;
+        inner.state = ServerState::Restarting;
+        inner.facts = None;
+        inner.tools.clear();
+        inner.last_error = Some(message);
     }
 }
 
