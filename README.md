@@ -7,7 +7,16 @@
 [![CI](https://github.com/zylvex-tech/zylcode/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/zylvex-tech/zylcode/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
-**Project status: 17 November 2026** · `main` @ `ba7a6cd` · pre-release
+<!-- BEGIN PUBLIC FACTS -->
+<!-- Generated from docs/governance/phase-status.json, docs/capability-registry.json and docs/capability-probes.json by scripts/render_facts.py. Edit those files, not this block. -->
+<!-- prettier-ignore -->
+**Project status: 2026-11-18** · pre-release
+
+- **Capabilities:** 29 GREEN / 6 PARTIAL / 2 DISPUTED of 37 (`docs/capability-registry.json`)
+- **Probe coverage:** 6 of 29 GREEN R3+ capabilities have an executable probe (13 probes); the gap is printed on every gate run rather than hidden
+- **Phases:** 5 of 27 accepted or accepted-with-conditions (`docs/governance/phase-status.json`)
+
+<!-- END PUBLIC FACTS -->
 
 ZylCode is an engineering workbench developed by **Zylvex Technologies Ltd.** It
 turns an instruction into a plan, executes the plan through approval-gated tools,
@@ -63,8 +72,8 @@ conditions close. Those conditions (C1–C6) are tracked in the verdict, not her
   (`scripts/check_capability_probes.py`), a generated roadmap status board, a
   question-set freeze for benchmarks, and `zylcode trust-scan`, which reports
   instruction-shaped repository text instead of letting a comment address the model.
-  Probe coverage is **5 of 28** GREEN R3+ capabilities — the gap is printed on every
-  run rather than hidden.
+  Probe coverage is stated in the generated block at the top of this file; the gap is
+  printed on every run rather than hidden.
 
 Not ready for release: the front page previously lagged `main`, three capabilities
 remain disputed and no installer matrix has been rehearsed for this head.

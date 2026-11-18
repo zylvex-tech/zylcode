@@ -6,6 +6,17 @@
 No capability in this document reaches R3 (VERIFIED) — none has been exercised through a
 named product surface with captured evidence.
 
+<!-- tool-counts: definitions=27 general_executors=12 nav_executors=8 total_executors=20 -->
+
+**The four counts, and why two of them differ.** `definitions` are the
+`ToolDefinition`s the bridge catalogues — schema, no executor. `general_executors`
+are the ids `get_real_tool` binds directly. `nav_executors` are the `nav.*` ids
+bound through one catch-all arm. `total_executors` is their sum, which is why
+the registry's "12 real executors" and this document's "20 real executors" are
+the same measurement at two widths, not a contradiction.
+`scripts/check_tool_catalogue_counts.py` derives all four from source and fails
+when this block, this marker or the registry's evidence string disagrees with it.
+
 ---
 
 ## 0. Why this document exists

@@ -1,0 +1,180 @@
+name: Release rehearsal (dry run)
+
+# A release rehearsal that cannot publish.
+#
+# WHY THIS EXISTS
+# ---------------
+# `release.yml` runs only on a `v*` tag, and its first step that creates a release
+# is tauri-action with `tagName`. That means the packaging path — five build legs,
+# twelve artifacts, a checksum manifest — has no way to be exercised except by
+# cutting a real release. `release_installers` in the capability registry says so
+# plainly: "No tagged matrix run has been rehearsed since v0.2.3 (2026-10-29), so
+# the packaging path is unproven on this head."
+#
+# This workflow is the rehearsal: the same legs, the same targets, the same
+# artifact verification, with `tagName` deliberately omitted so tauri-action
+# builds bundles and creates nothing. Every artifact stays inside the workflow run
+# and expires with it.
+#
+# What it proves: the matrix compiles for all five targets on the current head and
+# produces the expected bundle set, in this order.
+# What it does NOT prove: signing, notarisation, the upload path against a real
+# release, or that the published checksums match a published release. Those need a
+# tag and the owner's authorisation.
+
+# No inputs. A partial rehearsal cannot answer the question this workflow asks:
+# whether the full twelve-asset set still comes out of one head. A `group` filter
+# was written first and removed, because the verification job needs all five legs
+# and a skipped matrix leg makes the dependent job skip, which reads as green.
+on:
+  workflow_dispatch:
+
+# Read-only on purpose: the rehearsal must not be able to create a release even if
+# a later edit accidentally passes a tagName.
+permissions:
+  contents: read
+
+concurrency:
+  group: release-rehearsal
+  cancel-in-progress: false
+
+jobs:
+  rehearse:
+    name: rehearse / ${{ matrix.target }}
+    runs-on: ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+          - platform: ubuntu-22.04-arm
+            target: aarch64-unknown-linux-gnu
+          - platform: windows-latest
+            target: x86_64-pc-windows-msvc
+          - platform: macos-latest
+            target: aarch64-apple-darwin
+          - platform: macos-latest
+            target: x86_64-apple-darwin
+    steps:
+      - name: Explain what this run does
+        run: |
+          echo "::notice::Rehearsal: bundles are built and uploaded as workflow artifacts only. No tag, no release, no published asset."
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        if: startsWith(matrix.platform, 'ubuntu')
+        run: |
+          sudo apt-get update
+          # xdg-utils is required by the AppImage step, not incidental: the v0.2.2
+          # aarch64 leg failed five minutes after a green compile for its absence.
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf xdg-utils
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build desktop app assets
+        run: pnpm --filter zylcode-desktop build
+
+      - name: Build bundles (no release)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # No `tagName` and no `releaseName`. That is the whole difference from
+          # release.yml: without a tag, tauri-action builds and stops. Adding one
+          # here would turn the rehearsal into a publish.
+          projectPath: ./apps/zylcode-desktop
+          args: --target ${{ matrix.target }}
+
+      - name: List what was produced
+        shell: bash
+        run: |
+          find apps/zylcode-desktop/src-tauri/target -path '*bundle*' -type f \
+            \( -name '*.AppImage' -o -name '*.deb' -o -name '*.rpm' -o -name '*.exe' -o -name '*.msi' -o -name '*.dmg' -o -name '*.app.tar.gz' \) \
+            -printf '%p %s bytes\n' | sort
+
+      - name: Upload bundles as workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rehearsal-${{ matrix.target }}
+          if-no-files-found: error
+          retention-days: 7
+          path: |
+            apps/zylcode-desktop/src-tauri/target/**/release/bundle/**/*.AppImage
+            apps/zylcode-desktop/src-tauri/target/**/release/bundle/**/*.deb
+            apps/zylcode-desktop/src-tauri/target/**/release/bundle/**/*.rpm
+            apps/zylcode-desktop/src-tauri/target/**/release/bundle/**/*.exe
+            apps/zylcode-desktop/src-tauri/target/**/release/bundle/**/*.msi
+            apps/zylcode-desktop/src-tauri/target/**/release/bundle/**/*.dmg
+            apps/zylcode-desktop/src-tauri/target/**/release/bundle/**/*.app.tar.gz
+
+  verify:
+    name: verify / expected artifact set
+    needs: rehearse
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download every rehearsal artifact
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: rehearsal-*
+
+      - name: Verify the expected set
+        run: |
+          set -euo pipefail
+          # The version comes from the Tauri config, which is what names the
+          # bundles. Reading it here rather than hard-coding 0.2.4 is what keeps
+          # this from passing against a stale expectation.
+          version=$(python3 -c "import json;print(json.load(open('apps/zylcode-desktop/src-tauri/tauri.conf.json'))['version'])")
+          echo "Rehearsing version: $version"
+          expected=(
+            "ZylCode_${version}_amd64.AppImage"
+            "ZylCode_${version}_aarch64.AppImage"
+            "ZylCode_${version}_amd64.deb"
+            "ZylCode_${version}_arm64.deb"
+            "ZylCode-${version}-1.x86_64.rpm"
+            "ZylCode-${version}-1.aarch64.rpm"
+            "ZylCode_${version}_x64-setup.exe"
+            "ZylCode_${version}_x64_en-US.msi"
+            "ZylCode_${version}_x64.dmg"
+            "ZylCode_${version}_aarch64.dmg"
+            "ZylCode_x64.app.tar.gz"
+            "ZylCode_aarch64.app.tar.gz"
+          )
+          missing=()
+          for name in "${expected[@]}"; do
+            if ! find dist -name "$name" -type f | grep -q .; then
+              missing+=("$name")
+            fi
+          done
+          if (( ${#missing[@]} > 0 )); then
+            for name in "${missing[@]}"; do
+              echo "::error::rehearsal did not produce: $name"
+            done
+            echo "A release cut from this head would ship an incomplete asset set."
+            exit 1
+          fi
+          echo "All ${#expected[@]} expected assets were produced."
+          echo "### Rehearsal result: ${#expected[@]}/12 expected assets produced for $version" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "No tag was created and no release asset was published by this run." >> "$GITHUB_STEP_SUMMARY"

@@ -157,6 +157,33 @@ impl ContextBuilder {
         Ok(String::from_utf8_lossy(&output.stdout).to_string())
     }
 
+    /// Impact of editing `path`, for the agent's pre-edit step (Phase 2B B2).
+    ///
+    /// Returns `None` when the index does not know the path. That is deliberately
+    /// neither an error nor an empty report: "the index has never seen this file"
+    /// and "this file affects nothing" are different statements, and only the
+    /// first is true here. A caller that conflated them would tell a model the
+    /// blast radius is empty when it is merely unknown, which is the exact
+    /// overclaim `ImpactReport::unknowns` exists to prevent.
+    pub fn impact_for_change(
+        &self,
+        path: &str,
+        max_depth: u8,
+    ) -> Result<Option<crate::intelligence::impact::ImpactReport>> {
+        let query =
+            crate::intelligence::persisted::PersistedIndex::new(&self.workspace_root).build()?;
+        let report = crate::intelligence::impact::analyze(
+            &query,
+            &crate::intelligence::impact::ChangeSpec::File(path.to_string()),
+            max_depth,
+        );
+        Ok(if report.directly_affected.is_empty() {
+            None
+        } else {
+            Some(report)
+        })
+    }
+
     /// Read file content
     pub async fn read_file(&self, path: &str) -> Result<String> {
         let full_path = self.workspace_root.join(path);
@@ -245,6 +272,52 @@ mod intelligence_integration_tests {
                 .any(|f| f.contains("crates/zylcode-core/src/ledger.rs")),
             "co-change evidence must surface src/ledger.rs; got {:?}",
             ctx.relevant_files
+        );
+    }
+
+    /// Pre-edit impact must distinguish "not indexed" from "nothing affected".
+    ///
+    /// Both halves are asserted on a real temporary workspace: an indexed file
+    /// yields a report that starts at that file, and a path the index never saw
+    /// yields `None` rather than an empty report the model could read as "safe to
+    /// change".
+    #[test]
+    fn impact_for_change_separates_unknown_from_empty() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let root = dir.path();
+        std::fs::write(
+            root.join("Cargo.toml"),
+            "[package]\nname = \"demo\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+        )
+        .expect("manifest");
+        std::fs::create_dir_all(root.join("src")).expect("mkdir");
+        std::fs::write(
+            root.join("src/lib.rs"),
+            "pub fn entry() -> u32 {\n    1\n}\n",
+        )
+        .expect("lib");
+
+        let builder = ContextBuilder::new(root.to_path_buf());
+        let report = builder
+            .impact_for_change("src/lib.rs", 2)
+            .expect("impact")
+            .expect("an indexed file must produce a report");
+        assert_eq!(report.change, "file src/lib.rs");
+        assert!(
+            report
+                .directly_affected
+                .iter()
+                .any(|i| i.subject == "src/lib.rs"),
+            "the change must start at the named file; got {:?}",
+            report.directly_affected
+        );
+
+        assert!(
+            builder
+                .impact_for_change("src/never_indexed.rs", 2)
+                .expect("impact")
+                .is_none(),
+            "an unindexed path must be reported as unknown, not as an empty blast radius"
         );
     }
 

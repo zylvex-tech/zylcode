@@ -576,3 +576,115 @@ fn benchmark_indexing_performance() {
         scan_result.files_scanned
     );
 }
+
+/// Top-1 known-answer set: does the FIRST result point at the implementing file?
+///
+/// WHY THIS EXISTS
+/// ---------------
+/// P@10 and R@10 average over ten slots, so a ranking can be "acceptable" while
+/// the answer sits at rank 4. The 2026-11-16 evidence packet
+/// (`docs/evidence/phase2a-2026-11-16/README.md`) recorded exactly that: asked
+/// *"where is the retrieval ranking implemented?"*, `repo-context` returned
+/// `provider_scorecard::ProviderScorecard::ranking` — a keyword match on the
+/// word "ranking" — before any `intelligence::` file. The averaged benchmark
+/// did not notice, because a keyword coincidence inside the top 10 still scores.
+///
+/// A tool whose answer to "where is X implemented" is often wrong-but-nearby
+/// is not usable without reading all ten results, which is the work it exists to
+/// remove. So the first slot is measured on its own here.
+///
+/// The floor is the measured value at the time of writing, not an aspiration:
+/// it fails on regression and it is raised when the ranking genuinely improves.
+///
+/// THE ONE CASE THAT STILL MISSES
+/// ------------------------------
+/// "Where is the retrieval ranking implemented?" returns
+/// `provider_scorecard::ProviderScorecard::ranking`: a symbol name containing
+/// the word `ranking` scores a verbatim name hit, while the module that owns the
+/// retriever (`ContextRetriever::retrieve`, family-matched to `retrieval` at
+/// partial credit) cannot outrank it. Closing that gap needs identifier-level
+/// reference resolution — audit condition C6, a Phase 2B slice — not another
+/// lexical weight. The case stays in the set so the gap remains measured.
+#[test]
+fn top1_points_at_the_implementing_file() {
+    /// Measured floor. Raise it when the ranking earns it; never lower it to
+    /// make a red build green.
+    ///
+    /// Measured 2026-11-18: 9 of 10 hits (0.90). The floor is that measurement,
+    /// not an aspiration, so any regression is red. One case still misses and is
+    /// described at the end of this test's doc comment.
+    const MIN_TOP1_ACCURACY: f64 = 0.90;
+
+    const CASES: &[(&str, &str)] = &[
+        (
+            "Where are git change tracking functions implemented?",
+            "git.rs",
+        ),
+        ("What file defines the dependency graph?", "dependency.rs"),
+        ("Where is the repository scanner implemented?", "scanner.rs"),
+        ("Which file handles model provider routing?", "router.rs"),
+        ("Where are repository symbols indexed?", "symbols.rs"),
+        ("Where is the terminal session manager?", "terminal.rs"),
+        ("Where is the ledger store implemented?", "ledger.rs"),
+        ("Where is the impact analysis implemented?", "impact.rs"),
+        (
+            "Where is the MCP tool catalogue defined?",
+            "tool_catalogue.rs",
+        ),
+        (
+            // The case the evidence packet recorded as a miss. It stays in the
+            // set: a known failure that is measured is a backlog item, a known
+            // failure that is deleted is a lie.
+            "Where is the retrieval ranking implemented?",
+            "context.rs",
+        ),
+    ];
+
+    let query = index_zylcode();
+
+    let mut hits = 0usize;
+    let mut misses: Vec<String> = Vec::new();
+    for (question, expected) in CASES {
+        let results = query.relevant_context(question);
+        let top = results.first();
+        let hit = top.is_some_and(|r| is_relevant(r, &[expected]));
+        if hit {
+            hits += 1;
+        } else {
+            misses.push(format!(
+                "{:?} → want {}, got {}",
+                question,
+                expected,
+                top.map(|r| format!("{} ({:.2})", r.resource, r.relevance))
+                    .unwrap_or_else(|| "no result".to_string())
+            ));
+        }
+        println!(
+            "TOP1 {} {:?} | expected {} | got {}",
+            if hit { "HIT " } else { "MISS" },
+            question,
+            expected,
+            top.map(|r| r.resource.as_str()).unwrap_or("-")
+        );
+    }
+
+    let accuracy = hits as f64 / CASES.len() as f64;
+    println!(
+        "\n=== Top-1 accuracy: {}/{} = {:.2} (floor {:.2}) ===",
+        hits,
+        CASES.len(),
+        accuracy,
+        MIN_TOP1_ACCURACY
+    );
+    for miss in &misses {
+        println!("  MISS {miss}");
+    }
+
+    assert!(
+        accuracy >= MIN_TOP1_ACCURACY,
+        "Top-1 accuracy {:.2} is below the measured floor {:.2}. Misses:\n  {}",
+        accuracy,
+        MIN_TOP1_ACCURACY,
+        misses.join("\n  ")
+    );
+}

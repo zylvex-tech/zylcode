@@ -1,5 +1,6 @@
 {
   "schema_version": 1,
+  "updated": "2026-11-18",
   "_comment": "Single source of truth for the roadmap status board. scripts/render_status_board.py renders docs/roadmap/ZYLCODE_ROADMAP_V2.md between markers and CI fails on drift. Update this file, run the script, commit both.",
   "phases": [
     { "id": "1A", "title": "Real Tool Runtime", "state": "ACCEPTED", "rung": "R3", "blocks": "1B" },

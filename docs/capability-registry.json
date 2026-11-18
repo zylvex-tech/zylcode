@@ -158,7 +158,7 @@
       "status": "PARTIAL",
       "rung": "R3",
       "rung_basis": "Backfilled 2026-11-11: v0.2.3 shipped 2026-10-29 with 12 platform assets (gh release view v0.2.3), so the installer surface is user-reachable. PARTIAL preserved: installers are unsigned and this entry's recorded evidence still cites the old CI billing block.",
-      "evidence": "Tauri build pipeline configured for NSIS/DEB/DMG. No tagged matrix run has been rehearsed since v0.2.3 (2026-10-29), so the packaging path is unproven on this head.",
+      "evidence": "Tauri build pipeline configured for NSIS/DEB/DMG. No tagged matrix run has been rehearsed since v0.2.3 (2026-10-29), so the packaging path is unproven on this head. A non-publishing rehearsal workflow (.github/workflows/release-rehearsal.yml, workflow_dispatch, tagName deliberately omitted) was added 2026-11-18 so the five-leg matrix can be exercised without cutting a release; it has not been run yet, so nothing about this head's packaging is proven by it.",
       "details": "release.yml produces installers via tauri-action; Windows NSIS, macOS DMG, Linux DEB/RPM configured; release workflow blocked by GitHub billing issue",
       "limitations": "No signed installers; source checkout remains the supported path."
     },
@@ -422,7 +422,7 @@
     "tool_system_executable": {
       "status": "PARTIAL",
       "rung": "R2",
-      "evidence": "27 catalogued definitions / 12 real executors; R3_COMMISSIONING_PLAN slice not yet executed",
+      "evidence": "27 catalogued definitions / 12 real executors (20 mapped executors including 8 nav.*); counts derived by scripts/check_tool_catalogue_counts.py, not hand-typed; R3_COMMISSIONING_PLAN slice not yet executed",
       "details": "Truth-table baseline 0 REAL / 27 SIMULATED / 27 UNREACHABLE stands until the read/write commissioning slice produces all eleven evidence fields",
       "evidence_doc": "docs/governance/TOOL_CATALOGUE_TRUTH_TABLE.md"
     },
@@ -440,7 +440,7 @@
     "EXTERNAL_BLOCKER": 0,
     "PARTIAL": 6,
     "DISPUTED": 2,
-    "note": "Phase 2A was ACCEPTED WITH CONDITIONS on 2026-11-16 (docs/governance/PHASE2A_AUDIT_VERDICT_2026-11-16.md). On 2026-11-17, condition C1 was closed and typescript_symbol_index promoted to GREEN/R3 with probes; condition C3 was resolved by downgrading observation_loop, repair_loop and test_model_client to PARTIAL rather than keeping declared GREEN/R2 conflicts. repository_benchmark and documentation_accuracy remain DISPUTED (conditions C2/C4)."
+    "note": "Phase 2A was ACCEPTED WITH CONDITIONS on 2026-11-16 (docs/governance/PHASE2A_AUDIT_VERDICT_2026-11-16.md). On 2026-11-17, condition C1 was closed and typescript_symbol_index promoted to GREEN/R3 with probes; condition C3 was resolved by downgrading observation_loop, repair_loop and test_model_client to PARTIAL rather than keeping declared GREEN/R2 conflicts. On 2026-11-18, C2 was closed by making its requirement a standing invariant: repository_benchmark and documentation_accuracy stay DISPUTED/R2 and scripts/check_conditions.py fails the gate if either is promoted without a new audit. C4 remains OPEN (no independently authored, frozen question set). The per-condition state lives in docs/governance/phase2a-conditions.json."
   },
   "audit": {
     "status": "UNDER CORRECTION",
