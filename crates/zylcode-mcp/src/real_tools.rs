@@ -1356,6 +1356,31 @@ pub async fn dispatch(
     context: &ToolContext,
     runtime: &crate::evidence::ToolRuntime,
 ) -> DispatchOutcome {
+    match get_real_tool(tool_id) {
+        Some(tool) => dispatch_with(tool_id, tool.as_ref(), params, context, runtime).await,
+        None => unresolved_tool(tool_id, params, context, runtime).await,
+    }
+}
+
+/// The same gated path for a tool **resolved elsewhere**.
+///
+/// Remote MCP tools come from a server's `tools/list`, so there is no entry in
+/// [`get_real_tool`] to look up — but they must not get a second execution
+/// framework. This is the shared half of [`dispatch`]: attribution, risk
+/// classification, the permission gate, evidence recording and the refusal
+/// record are the same code, so a remote `server__fs.read` cannot outrank a
+/// built-in `fs.read`; both meet the same gate carrying the risk their tool
+/// reports.
+///
+/// The risk is taken from `tool`, never from the caller, so a caller cannot
+/// lower the classification of a tool by asking nicely.
+pub async fn dispatch_with(
+    tool_id: &str,
+    tool: &dyn RealTool,
+    params: Value,
+    context: &ToolContext,
+    runtime: &crate::evidence::ToolRuntime,
+) -> DispatchOutcome {
     use crate::permission::PermissionDecision;
 
     // Attribute the invocation. An actor set explicitly on the context wins;
@@ -1366,25 +1391,6 @@ pub async fn dispatch(
         owned.actor = crate::actor::current_actor();
     }
     let context = &owned;
-
-    // 1. Resolve. An id without an executor never reaches the gate.
-    let tool = match get_real_tool(tool_id) {
-        Some(t) => t,
-        None => {
-            let mut evidence =
-                ToolEvidence::begin(tool_id, RiskLevel::Read, None, &params, context);
-            let decision = PermissionDecision::Deny(format!("`{tool_id}` has no executor"));
-            evidence.approval_decision = Some(decision.evidence_record());
-            evidence.end_time = Some(chrono::Utc::now());
-            // Record it: an attempt against an unsupported id is worth keeping.
-            let _ = runtime.sink().record(&evidence).await;
-            return DispatchOutcome {
-                decision,
-                evidence,
-                result: Err(ToolError::NotImplemented(tool_id.to_string()).into()),
-            };
-        }
-    };
 
     let risk = tool.risk_level();
     let bound_operation = tool.bound_operation();
@@ -1451,6 +1457,28 @@ pub async fn dispatch(
         decision,
         evidence: record,
         result,
+    }
+}
+
+/// An id with no executor never reaches the gate, but the attempt is recorded.
+async fn unresolved_tool(
+    tool_id: &str,
+    params: Value,
+    context: &ToolContext,
+    runtime: &crate::evidence::ToolRuntime,
+) -> DispatchOutcome {
+    use crate::permission::PermissionDecision;
+
+    let mut evidence = ToolEvidence::begin(tool_id, RiskLevel::Read, None, &params, context);
+    let decision = PermissionDecision::Deny(format!("`{tool_id}` has no executor"));
+    evidence.approval_decision = Some(decision.evidence_record());
+    evidence.end_time = Some(chrono::Utc::now());
+    // Record it: an attempt against an unsupported id is worth keeping.
+    let _ = runtime.sink().record(&evidence).await;
+    DispatchOutcome {
+        decision,
+        evidence,
+        result: Err(ToolError::NotImplemented(tool_id.to_string()).into()),
     }
 }
 
