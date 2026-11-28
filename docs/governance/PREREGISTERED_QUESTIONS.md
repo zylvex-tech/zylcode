@@ -57,3 +57,24 @@ No acceptance question set has been frozen yet. The Phase 2B acceptance corpus i
 the first intended use, and it is blocked on an external author — the honest
 statement is that C4 is **open**, with a mechanism that is ready for the author
 rather than a claim that it has been satisfied.
+
+## The checkable scope (added 2026-11-18)
+
+C4's real requirement — questions written by someone who did not tune the retriever
+— cannot be automated, and pretending otherwise would be the same hand-assertion
+the capability model forbids. What **can** be automated is the property that makes
+the requirement meaningful: a set that can be edited after scoring measures the
+author.
+
+So C4 now has a scope a script can check, and three places enforce it:
+
+| Where                                      | What it asserts                                                                 |
+| ------------------------------------------ | ------------------------------------------------------------------------------- |
+| `docs/benchmarks/`                         | the only location an acceptance set may live                                    |
+| `freeze_question_set.py --check-all <dir>` | every `*.json` there has a matching `*.lock.json`; an empty directory passes    |
+| `scripts/check_conditions.py` (C4)         | the same rule, plus: an `OPEN` condition may not name a `satisfied_by` artefact |
+
+CI runs `--check-all docs/benchmarks`. Today the directory does not exist, so the
+step passes and C4 stays **OPEN** — a mechanism ready for an author, not a claim
+that one appeared. The condition closes only when the register's `satisfied_by`
+names a frozen set whose lock's `--reason` records who wrote it and when.

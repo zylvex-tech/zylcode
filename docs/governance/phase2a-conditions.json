@@ -1,0 +1,109 @@
+{
+  "schema_version": 1,
+  "phase": "2A",
+  "verdict": "docs/governance/PHASE2A_AUDIT_VERDICT_2026-11-16.md",
+  "updated": "2026-11-18",
+  "_comment": "Every condition the 2026-11-16 verdict attached to Phase 2A, with its current state and the predicate that keeps that state honest. scripts/check_conditions.py evaluates every check on each gate run, so a closed condition cannot be re-opened by a silent registry edit and an open one cannot be described as satisfied. A condition is CLOSED only when a check enforces the state it required, not merely because the builder says so.",
+  "conditions": [
+    {
+      "id": "C1",
+      "title": "typescript_symbol_index stays R2 until wired into build_repo_query()",
+      "status": "CLOSED",
+      "closed": "2026-11-17",
+      "evidence": "TypeScript extraction is wired into build_repo_query(); the capability is GREEN/R3 with three probes, one of which is the product surface (tests/trust_surfaces.rs::repo_symbols_returns_a_typescript_symbol).",
+      "checks": [
+        {
+          "kind": "capability_state",
+          "capability": "typescript_symbol_index",
+          "status": "GREEN",
+          "rung": "R3"
+        }
+      ]
+    },
+    {
+      "id": "C2",
+      "title": "repository_benchmark and documentation_accuracy must remain R2/DISPUTED",
+      "status": "CLOSED",
+      "closed": "2026-11-18",
+      "evidence": "Closed by turning the requirement into a standing invariant rather than a note: the two entries are DISPUTED/R2 and the checks below fail the gate if either is promoted without a new audit. Closing C2 promotes nothing; it makes the auditor's ruling enforced instead of remembered.",
+      "checks": [
+        {
+          "kind": "capability_state",
+          "capability": "repository_benchmark",
+          "status": "DISPUTED",
+          "rung": "R2"
+        },
+        {
+          "kind": "capability_state",
+          "capability": "documentation_accuracy",
+          "status": "DISPUTED",
+          "rung": "R2"
+        }
+      ]
+    },
+    {
+      "id": "C3",
+      "title": "the three GREEN/R2 conflicts are resolved (observation_loop, repair_loop, test_model_client)",
+      "status": "CLOSED",
+      "closed": "2026-11-17",
+      "evidence": "Resolved by downgrading all three to PARTIAL rather than by claiming a rung the recorded evidence does not support. Section 4.2 of the capability model forbids GREEN below R3.",
+      "checks": [
+        {
+          "kind": "capability_not",
+          "capability": "observation_loop",
+          "status": "GREEN"
+        },
+        {
+          "kind": "capability_not",
+          "capability": "repair_loop",
+          "status": "GREEN"
+        },
+        {
+          "kind": "capability_not",
+          "capability": "test_model_client",
+          "status": "GREEN"
+        }
+      ]
+    },
+    {
+      "id": "C4",
+      "title": "the benchmark question set must become independently authored",
+      "status": "OPEN",
+      "satisfied_by": null,
+      "evidence": "No independently authored set exists. The checkable scope is: any question set committed under docs/benchmarks/ must carry a freeze lock, and the register's satisfied_by path must exist and be locked before C4 can close. An empty directory passes the check and leaves the condition OPEN, which is the honest state.",
+      "checks": [
+        {
+          "kind": "frozen_sets",
+          "directory": "docs/benchmarks"
+        }
+      ]
+    },
+    {
+      "id": "C5",
+      "title": "throughput has a collapse floor, not an acceptance budget",
+      "status": "ACCEPTED_AS_EXCEPTION",
+      "evidence": "The owner authorised the exception (remediation item P0.4). The check asserts the floor still exists in the benchmark and is not silently raised into an acceptance claim.",
+      "checks": [
+        {
+          "kind": "file_contains",
+          "path": "crates/zylcode-core/tests/repo_intelligence_benchmark.rs",
+          "needles": ["MIN_FILES_PER_SECOND", "collapse"]
+        }
+      ]
+    },
+    {
+      "id": "C6",
+      "title": "symbol resolution remains regex-based (DEFINITION_INDEXED only)",
+      "status": "OPEN",
+      "satisfied_by": null,
+      "evidence": "No reference resolution exists. The check asserts the limitation is stated where the engine reports it, so the report cannot later imply call-graph knowledge it does not have.",
+      "checks": [
+        {
+          "kind": "file_contains",
+          "path": "crates/zylcode-core/src/intelligence/impact.rs",
+          "needles": ["Call graphs", "unknowns"]
+        }
+      ]
+    }
+  ]
+}

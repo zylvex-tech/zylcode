@@ -84,6 +84,84 @@ fn stem(word: &str) -> &str {
     word
 }
 
+/// Split an identifier into lowercase word tokens (camelCase / PascalCase /
+/// snake_case boundaries), so `ContextRetriever` yields `context` + `retriever`
+/// and can be compared word-for-word with a task term.
+fn identifier_tokens(identifier: &str) -> Vec<String> {
+    let chars: Vec<char> = identifier.chars().collect();
+    let mut out: Vec<String> = Vec::new();
+    let mut start = 0usize;
+    for i in 1..chars.len() {
+        let boundary = (chars[i].is_uppercase() && !chars[i - 1].is_uppercase())
+            || (chars[i] == '_' && i + 1 < chars.len());
+        if boundary {
+            let part: String = chars[start..i].iter().collect();
+            if !part.is_empty() {
+                out.push(part.to_lowercase());
+            }
+            start = if chars[i] == '_' { i + 1 } else { i };
+        }
+    }
+    let tail: String = chars[start..].iter().collect();
+    if !tail.is_empty() {
+        out.push(tail.to_lowercase());
+    }
+    out
+}
+
+/// True when two words are the same word in different grammatical clothes:
+/// `retrieval` / `retrieve`, `retriever` / `retrieval`, `scanner` / `scanning`.
+///
+/// The rule strips one derivational suffix from each word and compares what is
+/// left: two stripped forms must be equal, and a word stripped on one side only
+/// must be a prefix of the other word. That is narrower than the suffix-stemming
+/// above, which was measured and rejected for widening matches into noise.
+///
+/// It is deliberately not a shared-prefix test. A shared prefix is coincidence
+/// as often as it is word family — `context` / `content` share five characters
+/// and mean different things — and the first version of this function, which
+/// accepted any 5-character shared prefix, was caught by its own fixture.
+///
+/// Measured 2026-11-18 with this channel live, against the 28-question
+/// benchmark: P@10 0.64, R@10 0.94, top-1 9/10. The previously recorded snapshot
+/// on the same suite was P@10 0.63, R@10 0.96, so the channel moved precision up
+/// by one slot and recall down by one expected file; the top-1 set it is measured
+/// on is `top1_points_at_the_implementing_file` in
+/// `crates/zylcode-core/tests/repo_intelligence_benchmark.rs`.
+fn shares_stem(a: &str, b: &str) -> bool {
+    match (derivational_base(a), derivational_base(b)) {
+        // Both are inflected forms of a stem that survives stripping.
+        (Some(base_a), Some(base_b)) => base_a == base_b,
+        // Only one side carries a suffix (`retrieval` / `retrieve`): the base
+        // has to lead into the unstripped word, not merely resemble it.
+        (Some(base_a), None) => b.starts_with(base_a) || base_a.starts_with(b),
+        (None, Some(base_b)) => a.starts_with(base_b) || base_b.starts_with(a),
+        (None, None) => false,
+    }
+}
+
+/// Derivational suffixes that mark a different form of the same word.
+///
+/// Deliberately derivational only: a possessive/plural `s` would family-match
+/// `checkpoint` / `checkpoints`, which substring matching already covers.
+const DERIVATIONAL_SUFFIXES: &[&str] = &[
+    "ations", "ation", "ments", "ment", "ings", "ing", "ers", "er", "ors", "or", "ives", "ive",
+    "ions", "ion", "ance", "ence", "ed", "al",
+];
+
+/// Strip one derivational suffix, keeping the remainder only when it is still
+/// long enough to be a stem rather than a fragment (`routed` → `rout` is not).
+fn derivational_base(word: &str) -> Option<&str> {
+    for suffix in DERIVATIONAL_SUFFIXES {
+        if let Some(base) = word.strip_suffix(suffix) {
+            if base.len() >= 5 {
+                return Some(base);
+            }
+        }
+    }
+    None
+}
+
 impl ContextRetriever {
     /// Create a new retriever from indexed data.
     pub fn new(
@@ -435,6 +513,26 @@ impl ContextRetriever {
                 }
             }
 
+            // Same word, different grammatical form (P2-02): the task says
+            // "retrieval" and the code says `retrieve`; the task says
+            // "routing" and an identifier word is `routered`-adjacent. Substring
+            // matching alone cannot connect those, and the rejected
+            // suffix-stemming above proved that widening on suffixes adds noise.
+            // Family matches are therefore partial credit, awarded only when no
+            // substring hit already fired for the word.
+            let sym_name_tokens = identifier_tokens(&sym.name);
+            for word in &task_words {
+                if !sym.name.to_lowercase().contains(word.as_str())
+                    && sym_name_tokens.iter().any(|t| shares_stem(t, word))
+                {
+                    score += 0.6 * word_idf[word];
+                    reasons.push(format!(
+                        "symbol '{}' carries a word related to '{}'",
+                        sym.name, word
+                    ));
+                }
+            }
+
             // File path contains task word as a path TOKEN (IDF-weighted).
             // Token equality, not substring: 'code' must not match 'zylcode'.
             //
@@ -568,6 +666,18 @@ impl ContextRetriever {
                 if file_tokens.iter().any(|t| t == word) {
                     score += 0.8 * word_idf[word];
                     reasons.push(format!("path token '{}'", word));
+                }
+            }
+
+            // Path words in a related grammatical form (`retrieval` task word →
+            // `retriever.rs`). Partial credit, same rule as the symbol channel:
+            // only when the exact token did not already match.
+            for word in &task_words {
+                if !file_tokens.iter().any(|t| t == word)
+                    && file_tokens.iter().any(|t| shares_stem(t, word))
+                {
+                    score += 0.5 * word_idf[word];
+                    reasons.push(format!("path word related to '{}'", word));
                 }
             }
 
@@ -1272,5 +1382,65 @@ mod tests {
             assembler.assemble(&results, crate::intelligence::types::ContextPriority::High);
         // Only high-relevance results should be included
         assert!(assembled.len() <= results.len());
+    }
+}
+
+#[cfg(test)]
+mod family_matching_tests {
+    //! Regression fixtures for the stem-family channel (P2-02).
+    //!
+    //! The channel exists to connect a task's noun to the identifier's verb;
+    //! these fixtures pin the boundary so a later widening cannot silently turn
+    //! it into the suffix-stemming experiment that was measured and rejected.
+
+    use super::*;
+
+    #[test]
+    fn identifier_tokens_splits_camel_case_and_snake_case() {
+        assert_eq!(
+            identifier_tokens("ContextRetriever"),
+            vec!["context", "retriever"]
+        );
+        assert_eq!(
+            identifier_tokens("save_checkpoint"),
+            vec!["save", "checkpoint"]
+        );
+        assert_eq!(identifier_tokens("GitChange"), vec!["git", "change"]);
+    }
+
+    #[test]
+    fn shares_stem_connects_noun_and_verb_forms() {
+        assert!(shares_stem("retrieve", "retrieval"));
+        assert!(shares_stem("retriever", "retrieval"));
+        assert!(shares_stem("scanning", "scanner"));
+    }
+
+    #[test]
+    fn shares_stem_rejects_unrelated_and_short_words() {
+        // Five shared characters, different words: the first implementation
+        // accepted this pair and its own fixture caught it.
+        assert!(!shares_stem("content", "context"));
+        // Bases shorter than five characters are fragments, not stems:
+        // `routing`/`route` is handled by the explicit naming expansion instead.
+        assert!(!shares_stem("routed", "router"));
+        assert!(!shares_stem("routing", "route"));
+        // Short tokens (`rs`, `mod`, `src`) must never family-match.
+        assert!(!shares_stem("rs", "retrieval"));
+        assert!(!shares_stem("mod", "module"));
+    }
+
+    #[test]
+    fn one_sided_stripping_requires_a_leading_prefix() {
+        // `retrieval` strips to `retriev`, which leads into `retrieve`.
+        assert!(shares_stem("retrieval", "retrieve"));
+        // Same prefix, but the unstripped side diverges before the base ends.
+        assert!(!shares_stem("retrieval", "retrench"));
+    }
+
+    #[test]
+    fn a_prefix_relationship_is_not_a_family_match() {
+        // `checkpoint` already matches `checkpoint_*` by substring, so the
+        // family channel stays out of the way and does not double-count.
+        assert!(!shares_stem("checkpoint", "checkpoints"));
     }
 }

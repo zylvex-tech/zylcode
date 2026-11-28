@@ -1,0 +1,102 @@
+# ZylCode dogfood transcript — 2026-11-18
+# Host: Windows 11, Git Bash. Binary: target/debug/zylcode.exe (built from this tree).
+
+$ zylcode repo-context "where is the retrieval ranking implemented"
+[2m2026-11-18T07:10:16.903474Z[0m [32m INFO[0m initializing ZylCodeEngine [3mworkspace_root[0m[2m=[0m.
+task: where is the retrieval ranking implemented
+indexed: 801 files, 3967 symbols, 8 packages, 41 entry points (36336 ms)
+top results:
+   1.59 [symbol] crates::zylcode-core::src::provider_scorecard::ProviderScorecard::ranking :: symbol name 'ranking' matches task; symbol 'ranking' contains 'ranking'
+   0.96 [file] crates/zylcode-core/src/provider_scorecard.rs :: defines symbol 'ranking'; defines 1 symbol(s) matching task terms
+   0.84 [symbol] apps::zylcode-desktop::src::components::shell::BottomPanelx::MeasuredRankingView :: symbol 'MeasuredRankingView' contains 'ranking'
+   0.84 [symbol] crates::zylcode-core::src::provider_scorecard::MIN_SAMPLES_FOR_RANKING :: symbol 'MIN_SAMPLES_FOR_RANKING' contains 'ranking'
+   0.84 [symbol] crates::zylcode-core::src::router::TokenRouter::provider_ranking :: symbol 'provider_ranking' contains 'ranking'
+   0.29 [file] crates/zylcode-nav/tests/navigation.rs :: defines symbol 'W'
+   0.29 [symbol] crates::zylcode-nav::tests::navigation::W :: symbol name 'W' matches task
+   0.21 [file] apps/zylcode-desktop/src/components/shell/BottomPanel.tsx :: defines 1 symbol(s) matching task terms
+   0.21 [file] crates/zylcode-core/src/router.rs :: defines 1 symbol(s) matching task terms
+exit=0
+
+$ zylcode repo-context "where is the impact analysis implemented"
+[2m2026-11-18T07:10:53.337709Z[0m [32m INFO[0m initializing ZylCodeEngine [3mworkspace_root[0m[2m=[0m.
+task: where is the impact analysis implemented
+indexed: 801 files, 3967 symbols, 8 packages, 41 entry points (36451 ms)
+top results:
+   2.74 [file] crates/zylcode-core/src/intelligence/impact.rs :: path token 'impact'; filename is named for 1 task word(s); defines symbol 'Impact'; defines 1 symbol(s) matching task terms; recently changed; changes together with 'crates/zylcode-cli/tests/impact_cli.rs' in git history
+   2.22 [symbol] crates::zylcode-core::src::intelligence::impact::Impact :: symbol name 'Impact' matches task; symbol 'Impact' contains 'impact'; path token 'impact'; defined in 'impact.rs', named for task word(s) 'impact'; recently changed file
+   2.04 [file] crates/zylcode-cli/tests/impact_cli.rs :: path token 'impact'; filename is named for 1 task word(s); recently changed; changes together with 'crates/zylcode-core/src/intelligence/impact.rs' in git history
+   1.67 [symbol] crates::zylcode-core::src::intelligence::impact::ImpactReport :: symbol 'ImpactReport' contains 'impact'; path token 'impact'; defined in 'impact.rs', named for task word(s) 'impact'; recently changed file
+   1.11 [file] docs/architecture/IMPACT_ANALYSIS.md :: path token 'analysis'; path token 'impact'
+   1.06 [symbol] crates::zylcode-cli::tests::impact_cli::a_change_that_is_not_indexed_exits_nonzero_and_guesses_nothing :: path token 'impact'; defined in 'impact_cli.rs', named for task word(s) 'impact'; recently changed file
+   1.06 [symbol] crates::zylcode-cli::tests::impact_cli::a_file_change_reports_importers_tests_and_its_unknowns :: path token 'impact'; defined in 'impact_cli.rs', named for task word(s) 'impact'; recently changed file
+   1.06 [symbol] crates::zylcode-cli::tests::impact_cli::a_symbol_change_starts_from_its_declaring_file :: path token 'impact'; defined in 'impact_cli.rs', named for task word(s) 'impact'; recently changed file
+   1.06 [symbol] crates::zylcode-cli::tests::impact_cli::fixture :: path token 'impact'; defined in 'impact_cli.rs', named for task word(s) 'impact'; recently changed file
+   1.06 [symbol] crates::zylcode-cli::tests::impact_cli::passing_both_targets_is_refused :: path token 'impact'; defined in 'impact_cli.rs', named for task word(s) 'impact'; recently changed file
+exit=0
+
+$ zylcode repo-context "which files would likely need inspection to modify crash recovery"
+[2m2026-11-18T07:11:29.872507Z[0m [32m INFO[0m initializing ZylCodeEngine [3mworkspace_root[0m[2m=[0m.
+task: which files would likely need inspection to modify crash recovery
+indexed: 801 files, 3967 symbols, 8 packages, 41 entry points (37090 ms)
+top results:
+   3.74 [file] crates/zylcode-core/tests/e2e_crash_recovery.rs :: path token 'crash'; path token 'recovery'; filename is named for 2 task word(s); defines 2 symbol(s) matching task terms; changes together with 'crates/zylcode-core/tests/crash_recovery.rs' in git history
+   3.60 [symbol] crates::zylcode-core::tests::e2e_crash_recovery::test_e2e_crash_recovery :: symbol 'test_e2e_crash_recovery' contains 'crash'; symbol 'test_e2e_crash_recovery' contains 'recovery'; path token 'crash'; path token 'recovery'; defined in 'e2e_crash_recovery.rs', named for task word(s) 'crash', 'recovery'
+   3.56 [file] crates/zylcode-core/tests/crash_recovery.rs :: path token 'crash'; path token 'recovery'; filename is named for 2 task word(s); defines 1 symbol(s) matching task terms; changes together with 'crates/zylcode-core/tests/e2e_crash_recovery.rs' in git history
+   2.90 [symbol] crates::zylcode-core::tests::crash_recovery::test_crash_window_1_pre_execution :: symbol 'test_crash_window_1_pre_execution' contains 'crash'; path token 'crash'; path token 'recovery'; defined in 'crash_recovery.rs', named for task word(s) 'crash', 'recovery'
+   2.90 [symbol] crates::zylcode-core::tests::crash_recovery::test_crash_window_2_post_side_effect :: symbol 'test_crash_window_2_post_side_effect' contains 'crash'; path token 'crash'; path token 'recovery'; defined in 'crash_recovery.rs', named for task word(s) 'crash', 'recovery'
+   2.90 [symbol] crates::zylcode-core::tests::crash_recovery::test_crash_window_3_post_evidence :: symbol 'test_crash_window_3_post_evidence' contains 'crash'; path token 'crash'; path token 'recovery'; defined in 'crash_recovery.rs', named for task word(s) 'crash', 'recovery'
+   2.83 [symbol] crates::zylcode-core::tests::e2e_crash_recovery::test_checkpoint_recovery_continuation :: symbol 'test_checkpoint_recovery_continuation' contains 'recovery'; path token 'crash'; path token 'recovery'; defined in 'e2e_crash_recovery.rs', named for task word(s) 'crash', 'recovery'
+   1.17 [symbol] crates::zylcode-core::src::intelligence::query::RepoQuery::files :: symbol name 'files' matches task; symbol 'files' contains 'files'
+   0.80 [file] crates/zylcode-core/src/ledger.rs :: changes together with 'crates/zylcode-core/tests/crash_recovery.rs' in git history
+   0.80 [file] crates/zylcode-core/src/memory_ledger.rs :: changes together with 'crates/zylcode-core/tests/crash_recovery.rs' in git history
+exit=0
+
+$ zylcode impact --file crates/zylcode-core/src/intelligence/impact.rs --depth 2
+[2m2026-11-18T07:12:07.051284Z[0m [32m INFO[0m initializing ZylCodeEngine [3mworkspace_root[0m[2m=[0m.
+change: file crates/zylcode-core/src/intelligence/impact.rs
+confidence: High — every traversed edge is a relative TypeScript/JavaScript import resolved to a file
+directly affected (1):
+  crates/zylcode-core/src/intelligence/impact.rs [named, depth 0] — named by the change (file crates/zylcode-core/src/intelligence/impact.rs)
+transitively affected (0):
+tests at risk (0):
+not determined:
+  - call graph is not resolved (symbols are DEFINITION_INDEXED); callers of a changed function are not listed
+  - dynamic imports, re-exports and tsconfig path aliases are not resolved
+  - 364 import specifier(s) could not be resolved and contribute no edges
+  -  import closure is bounded at depth 2; deeper dependents are not listed
+exit=0
+
+$ zylcode impact --symbol LedgerStore --depth 1
+[2m2026-11-18T07:12:47.133170Z[0m [32m INFO[0m initializing ZylCodeEngine [3mworkspace_root[0m[2m=[0m.
+change: symbol LedgerStore
+confidence: Medium — the closure includes Rust `use` edges matched by module path, which can miss re-exports
+directly affected (4):
+  crates/zylcode-core/src/intelligence/symbols.rs [named, depth 0] — named by the change (symbol LedgerStore)
+  crates/zylcode-core/src/ledger.rs [named, depth 0] — named by the change (symbol LedgerStore)
+  crates/zylcode-core/src/memory_ledger.rs [named, depth 0] — named by the change (symbol LedgerStore)
+  crates/zylcode-core/src/sqlite_ledger.rs [named, depth 0] — named by the change (symbol LedgerStore)
+transitively affected (6):
+  crates/zylcode-core/src/agent/mod.rs [imports, depth 1] — Rust `use` matched by module path: crate::ledger::{ExecutionState, LedgerEntry, LedgerStore, SessionCheckpoint} affected crates/zylcode-core/src/ledger.rs
+  crates/zylcode-core/src/best_of_n.rs [imports, depth 1] — Rust `use` matched by module path: crate::ledger::{ExecutionState, LedgerEntry, LedgerStore} affected crates/zylcode-core/src/ledger.rs
+  crates/zylcode-core/src/first_mission/mod.rs [imports, depth 1] — Rust `use` matched by module path: crate::ledger::{ExecutionState, LedgerEntry, LedgerStore, SessionCheckpoint} affected crates/zylcode-core/src/ledger.rs
+  crates/zylcode-core/src/patch_best_of_n.rs [imports, depth 1] — Rust `use` matched by module path: crate::ledger::LedgerStore affected crates/zylcode-core/src/ledger.rs
+  crates/zylcode-core/src/surfaces.rs [imports, depth 1] — Rust `use` matched by module path: crate::ledger::{ExecutionState, LedgerEntry} affected crates/zylcode-core/src/ledger.rs
+  crates/zylcode-nav/tests/navigation.rs [tested_by, depth 1] — Rust `use` matched by module path: crate::ledger::LedgerEntry as Entry affected crates/zylcode-core/src/ledger.rs
+tests at risk (1):
+  crates/zylcode-nav/tests/navigation.rs [tested_by, depth 1] — Rust `use` matched by module path: crate::ledger::LedgerEntry as Entry affected crates/zylcode-core/src/ledger.rs
+not determined:
+  - call graph is not resolved (symbols are DEFINITION_INDEXED); callers of a changed function are not listed
+  - dynamic imports, re-exports and tsconfig path aliases are not resolved
+  - 364 import specifier(s) could not be resolved and contribute no edges
+  -  import closure is bounded at depth 1; deeper dependents are not listed
+exit=0
+
+$ zylcode repo-symbols ContextRetriever
+[2m2026-11-18T07:13:27.777107Z[0m [32m INFO[0m initializing ZylCodeEngine [3mworkspace_root[0m[2m=[0m.
+indexed: 801 files, 3967 symbols (38478 ms)
+matches: 3
+   1.00 [symbol] crates::zylcode-core::src::intelligence::context::ContextRetriever :: public struct defined at crates/zylcode-core/src/intelligence/context.rs:23
+   1.00 [symbol] crates::zylcode-core::src::intelligence::context::ContextRetriever :: unknown impl defined at crates/zylcode-core/src/intelligence/context.rs:165
+   0.80 [symbol] crates::zylcode-core::src::intelligence::context::ContextRetriever::retrieve :: public method defined at crates/zylcode-core/src/intelligence/context.rs:311
+exit=0
+

@@ -20,6 +20,7 @@ USAGE
     python scripts/freeze_question_set.py --set docs/benchmarks/questions.json \
         --reason "initial freeze before scoring"
     python scripts/freeze_question_set.py --set docs/benchmarks/questions.json --check
+    python scripts/freeze_question_set.py --check-all docs/benchmarks
     python scripts/freeze_question_set.py --self-test
 
 Exit codes: 0 ok, 1 drift/missing lock/invalid argument, 2 unreadable input.
@@ -119,6 +120,34 @@ def check(question_set: Path) -> int:
     return 0
 
 
+def check_all(directory: Path) -> int:
+    """Every question set in `directory` must be frozen.
+
+    This is audit condition C4's checkable half: the condition itself (questions
+    written by someone who did not tune the retriever) cannot be automated, but the
+    property that makes it meaningful can be — a set that can be edited after
+    scoring measures the author, not the software. An empty directory passes and
+    leaves C4 open, which is the honest state rather than a failure.
+    """
+    if not directory.is_dir():
+        print(f"OK: {directory} does not exist; no question set to freeze (C4 remains open)")
+        return 0
+    question_sets = sorted(
+        p for p in directory.glob("*.json") if not p.name.endswith(LOCK_SUFFIX)
+    )
+    if not question_sets:
+        print(f"OK: no question set in {directory} (C4 remains open)")
+        return 0
+    failures = 0
+    for question_set in question_sets:
+        failures += 0 if check(question_set) == 0 else 1
+    if failures:
+        print(f"FAIL: {failures} unfrozen or drifted question set(s) in {directory}", file=sys.stderr)
+        return 1
+    print(f"OK: all {len(question_sets)} question set(s) in {directory} match their freeze")
+    return 0
+
+
 def _self_test() -> int:
     failures = 0
 
@@ -147,6 +176,20 @@ def _self_test() -> int:
         expect("check passes after re-freeze", check(qs) == 0)
         expect("blank reason is refused", freeze(qs, "   ", force=True) == 1)
 
+        missing = root / "absent"
+        expect("a missing directory is not a failure", check_all(missing) == 0)
+        empty = root / "empty"
+        empty.mkdir()
+        expect("an empty directory is not a failure", check_all(empty) == 0)
+
+        suite = root / "suite"
+        suite.mkdir()
+        frozen = suite / "frozen.json"
+        frozen.write_text(json.dumps([{"id": "q1"}]), encoding="utf-8")
+        expect("an unfrozen set in a directory fails", check_all(suite) == 1)
+        expect("freezing it fixes the directory", freeze(frozen, "authored independently", force=False) == 0)
+        expect("the directory then passes", check_all(suite) == 0)
+
     print(f"self-test: {failures} failure(s)")
     return 1 if failures else 0
 
@@ -157,11 +200,19 @@ def main() -> int:
     parser.add_argument("--reason", default="")
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--check", action="store_true")
+    parser.add_argument(
+        "--check-all",
+        metavar="DIR",
+        default="",
+        help="fail if any question set under DIR has no freeze lock",
+    )
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
 
     if args.self_test:
         return _self_test()
+    if args.check_all:
+        return check_all(Path(args.check_all))
     question_set = Path(args.set)
     if args.check:
         return check(question_set)
